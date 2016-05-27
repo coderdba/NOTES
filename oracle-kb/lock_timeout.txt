@@ -1,0 +1,15 @@
+http://oracletuningcorner.com/2012/03/16/ora-02049-timeout-distributed-transaction-waiting-for-lock/
+  There are two ways to deal with this problem:
+  
+  Increase the distributed_lock_timeout value hoping that the session holding the lock releases it before the timeout.
+  Code the application to capture this ORA error and then issue a TRY AGAIN directive.
+  Another workaround would be to add more COMMIT’s as they tend to reset the distributed transaction.
+  Identifying the Root Cause:
+  
+  To identify the session holding the resources, what oracle suggests is to dump a system state trace BEFORE the ORA-02049
+  occurs.
+  
+  However, I have devised another approach based on oracle’s original suggestion. The basic idea will be to monitor v$session 
+  for sessions waiting on the event ‘enq: TX – row lock contention’. If the seconds_in_wait value for such sessions approaches 
+  the distributed_lock_timeout value and the session is involved in a distributed transaction we can find the session holding 
+  the lock by joining v$lock and v$session.

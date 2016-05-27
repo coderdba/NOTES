@@ -1,0 +1,55 @@
+GOLDEN GATE HADR
+http://www.dba-oracle.com/t_goldengate_switchover_failover.htm
+
+Contents:
+INSTANCE CRASH
+SITE SWITCHOVER
+SITE FAILOVER 
+
+===============
+INSTANCE CRASH
+===============
+SEE ALSO - other doc in this repository - or merge this and that
+
+Keep 'dir*' and BR directories in a location shared between cluster nodes
+
+Test1 - Stop all processes and MGR process on one node
+Start them on the other node
+--> Upon starting MGR process on one node, with shared folder for 'dir*' and 'BR' (except dirjar and dirwww)
+--> MGR and other processes started in ALL NODES of cluster ---->>>> is this the expected behaviour?
+--> Inserts done on either node propagated well to destination
+--> CHECK - is this behaviour expected
+
+Test2 - Stop an instance
+Though MGR and other processes were in RUNNING state on both nodes, stop of one instance 
+killed the processes connected to that instance on the respective node
+--> Due to restart specified in MGR parameters, they restarted in both nodes sometime later 
+      - due to remaining running instance
+      
+-----> REDO - RE-DO THIS - THIS IS UNCLEAR ABOVE WHETHER STOPPING THE INSTANCE STOPPED PROCESSES IN BOTH NODES
+
+
+===========================
+SITE SWITCHOVER - SOURCE DB  - INCOMPLETE, MAY NEED REDO
+===========================
+On the switched over side, did the following:
+
+>Copy the parameter files -
+Copy all three - extract, pump and replicat
+If they are stored in a central location "across clusters" - then no copy is needed
+
+>Create userid alias: (this uses already created user, and just  creates an alias for that)
+ggsci> Alter CredentialStore Add User ogguser@TNS_ALIAS_SOURCE Password password Alias ogguser_src
+
+
+-----
+NOTE: TNS_ALIAS_SOURCE is the tns entry at the switched-over side - which may reference a different db-unique-name
+-----
+
+Verify login:
+ggsci> dblogin useridalias ogguser_src
+
+
+===============
+SITE FAILOVER - TBD
+===============

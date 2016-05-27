@@ -1,0 +1,91 @@
+======================================
+'SECURE INSTALLATION' STEPS
+======================================
+
+1. Root initial password change
+2. Other security steps
+
+===================
+secure_install.sh
+===================
+
+Note:
+----
+MySQL 5.7.6 and later:
+ALTER USER 'root'@'localhost' IDENTIFIED BY 'MyNewPass';
+
+MySQL 5.7.5 and earlier:
+SET PASSWORD FOR 'root'@'localhost' = PASSWORD('MyNewPass');
+
+The script:
+----------
+mysql --user=root <<EOF
+SET PASSWORD FOR 'root'@'localhost' = PASSWORD('newRoot123_123');
+DELETE FROM mysql.user WHERE User='';
+DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');
+DROP DATABASE IF EXISTS test;
+DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';
+FLUSH PRIVILEGES;
+EOF
+
+# Start mysql service
+service mysqld restart
+
+===================
+HELP SITES
+===================
+*** Root password change
+------------------------
+From MySQL 5.7 onwards, an initial root password would be set automatically during installation.
+Find it in /var/log/mysqld.log - search for 'temporary password' in it.
+Set that in /etc/my.cnf so that the rest of the steps can be automated with SQL statements in the sections below.
+[mysqld]
+user=root
+password=<initial password from mysqld.log>
+Now, one can logon as root by just typing like "mysql -u root" and password will be picked up from my.cnf.
+Once initial root password is changed, embed that in /etc/my.cnf if you choose to.
+
+Use this for root password part: http://dev.mysql.com/doc/refman/5.7/en/resetting-permissions.html
+MySQL 5.7.6 and later:
+ALTER USER 'root'@'localhost' IDENTIFIED BY 'MyNewPass';
+
+MySQL 5.7.5 and earlier:
+SET PASSWORD FOR 'root'@'localhost' = PASSWORD('MyNewPass');
+
+*** For other steps use the following site and its extract below:
+-------------------
+http://bertvv.github.io/notes-to-self/2015/11/16/automating-mysql_secure_installation/
+Setting the database root password
+There’s actually (at least) two ways of doing this: using the SQL query (like the mysql_secure_installation script does), or by using the mysqladmin command. The SQL statement can e.g. be executed within the mysql(1) client tool that can be accessed with the command:
+$ mysql -u root -p
+The option -u specifies the user (root), the option -p prompts for a password. You can just press ENTER now, but later, when you have set the root password, you will of course need to type it.
+The SQL command to set the root password, copied from the script source, is:
+UPDATE mysql.user SET Password=PASSWORD('my_new_password') WHERE User='root';
+Replace my_new_password with the desired password.
+The alternative method is the mysqladmin(1) command:
+$ mysqladmin password "my_new_password"
+Delete anonymous users
+In the default installation includes anonymous users, apparently for testing. These should be removed before putting the database server into production, as it allows to access the database without a password. Anonymous users have an empty user name and can be deleted with the following SQL statement (from mysql_secure_installation):
+DELETE FROM mysql.user WHERE User='';
+Ensure the root user can not log in remotely
+It’s always a good idea to limit access for the database root user to localhost for added security. This won’t even affect a setup with phpMyAdmin if it’s installed on the same host!
+DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');
+Remove the test database
+The default installation contains a database with the name test (with associated user privileges). These should also be deleted before putting the database into production:
+DROP DATABASE test;
+DELETE FROM mysql.db WHERE Db='test' OR Db='test\_%';
+The first statement removes the database, the second privileges on the database.
+Flush the privileges tables
+The statements above that change user access to the database have no immediate effect. The following command will commit the changes:
+FLUSH PRIVILEGES;
+Without flushing the privilege tables, the root password will remain unset.
+Putting it all together
+We can execute all the SQL statements above with the following code snippet:
+mysql --user=root <<_EOF_
+UPDATE mysql.user SET Password=PASSWORD('${db_root_password}') WHERE User='root';
+DELETE FROM mysql.user WHERE User='';
+DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');
+DROP DATABASE IF EXISTS test;
+DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';
+FLUSH PRIVILEGES;
+_EOF_

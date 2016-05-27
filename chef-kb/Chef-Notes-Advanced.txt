@@ -1,0 +1,373 @@
+CHEF ADVANCED NOTES
+
+OVERVIEW - Manage Nodes in Chef Environment
+https://learn.chef.io/manage-a-node/rhel/
+
+KITCHEN
+
+We need standard folders for nodes, roles, cookbooks etc.  Knife’s kitchen create option can create that structure – which is a kitchen!
+
+knife solo init .  (where . is the current directory)
+It is better to create it under C:/Users/myusername (if installing git-bash, berks etc under it)  OR under /root/chef-repo.
+If you want to use the cookbook directory created for knife.rb of chef-starter.zip, then be careful to edit knife.rb appropriately.
+
+LIBRARIAN-CHEF
+This is a librarian for cookbooks
+Can get cookbooks from git and other sources like opscode
+
+To install – gem install librarian-chef  << not complete >>
+To use - http://leopard.in.ua/2013/01/04/chef-solo-getting-started-part-1/
+
+LOGON TO A VAGRANT MACHINE WITH NAT USING SSH
+Setup port forwarding for the NAT network adapter of the Vagrant machine so that a port like 2222 on host machine (localhost) 
+maps to 22 (TCP port) on guest machine.
+To logon to guest, in git-bash,  ssh user@localhost -p 2222
+
+BOOTSTRAP
+Configure Knife on workstation to know the Chef Server
+
+Steps with starter.zip:
+https://learn.chef.io/manage-a-node/rhel/set-up-your-chef-server/
+https://learn.chef.io/manage-a-node/rhel/bootstrap-your-node/
+
+Remote bootstrap: 
+http://www.bonusbits.com/main/HowTo:Deploy_-_BootStrap_Chef_Client_to_Remote_Linux_Host
+http://www.bonusbits.com/main/HowTo:Configure_Knife_on_Linux
+
+Other:
+https://docs.chef.io/knife_bootstrap.html
+https://docs.chef.io/chef_private_keys.html
+http://gettingstartedwithchef.com/introducing-chef-server.html
+https://www.digitalocean.com/community/tutorials/how-to-install-a-chef-server-workstation-and-client-on-ubuntu-vps-instances
+http://thornelabs.net/2013/09/16/install-the-open-source-chef-server-setup-knife-on-your-workstation-and-bootstrap-your-first-client-server.html
+http://stackoverflow.com/questions/24788920/chef-clients-and-validators
+http://stackoverflow.com/questions/14917640/chef-11-regenerate-validation-key
+http://ask.xmodulo.com/access-nat-guest-from-host-virtualbox.html
+
+
+From your workstation:  
+(this actually failed because workstation (laptop) could not ping guest as guest has only NAT network.  However, these are the steps, but will try when we actually get a client machine)
+1.	Navigate to the chef web-UI :  chef-uat.company .com
+2.	Login using your userid and password
+3.	Select your organization.
+4.	Select Starter Kit from the menu 
+5.	Click the Download Starter Kit button
+6.	Unzip the kit file chef-starter.zip in a temporary location 
+7.	Find .chef folder in it
+8.	It contains knife.rb, username.pem (myusername.pem), organization-validator.pem (myorg-validator.pem)
+9.	Copy them to ~/myusername/.chef folder
+10.	Upload a cookbook to test the setup
+1.	Go to cookbooks folder (may not be needed as knife.rb should have the cookbooks folder in it)
+2.	knife cookbook upload node1 (where node1 is a cookbook)
+11.	Bootstrap your VM << NEED TO FIGURE OUT AND FILL IN HERE>>
+1.	This failed because host cannot do ssh or ping to guest with NAT networking
+2.	Therefore, do this directly from guest
+
+Bootstrapping directly from guest:
+1.	Download chef-starter.zip into ~/cookbooks/<node cookbook folder> like ~/cookbooks/node1
+2.	Logon to client VM by ‘vagrant ssh’
+3.	Sudo to ‘root’ in client
+4.	Unzip chef-starter.zip into /root folder
+5.	This will create chef-repo under /root and  .chef folder under /root/chef-repo, and knife.rb, 
+			the pem files etc will be placed under that .chef folder
+6. BOOTSTRAP:  Go to /root/chef-repo folder
+	a.	Bootstrap without runlist:   
+				Run knife bootstrap 10.0.2.15  –ssh-user root –ssh-password root –node-name node1  
+	b.	Bootstrap with runlist:  
+				knife bootstrap 10.0.2.15 –ssh-user root –ssh-password root –node-name node1 –run-list ‘recipe[recipe1]’
+8.	On client recipes are synched to /var/chef/cache/cookbooks (or /root/chef-repo/cookbooks/ ??)
+
+Incorrect steps (not really incorrect, but there is more elegant way with chef_starter.zip)
+On workstation - find the file ~/.chef/knife.rb
+Take a backup of it.
+
+Run ‘knife configure’
+Give response to questions:
+It asks to overwrite  knife.rb – say yes as we have a backup
+Chef Server URL:  https://chef-uat.company.com:443
+Existing username/client name for the API :  [myusername]   use the default for now
+Validation clientname:  [chef-validator]  use the default
+Location for Validation key: /Users/myusername/.chef/chef-validator.pem
+Path to a chef-repository: Users/myusername(chef-toolchain creates .chef and cookbooks folder under C:/Users/myusername itself)
+
+Then a message comes:
+You must place your client key in:  c:/Users/myusername/.chef/myusername.pem
+You must place your validation key in:  c:/Users/myusername/.chef/chef-validator.pem
+Before generating instance data with knife.
+Configuration file written to  C:/Users/myusername/.chef/knife.rb
+
+Then, manually add the bootstrap_proxy line from original knife.rb to this new file.
+
+Verify the contents in C:/Users/myusername/.chef/knife.rb:
+log_level                :info
+log_location             STDOUT
+node_name                'myusername'
+client_key               'c:/Users/myusername/.chef/myusername.pem'
+validation_client_name   'chef-validator'
+validation_key           'c:/Users/myusername/.chef/chef-validator.pem'
+chef_server_url          'https://chef-uat.company.com:443'
+syntax_check_cache_path  'c:/Users/myusername/.chef/syntax_check_cache'
+cookbook_path [ 'c:/Users/myusername/cookbooks' ]
+knife[:bootstrap_proxy] = “http://proxy-mmmm.company.com:8080”
+
+Note:  the myusername.pem and chef-validator.pem will be created during first bootstrap
+NODE OPERATIONS
+REMOVE A NODE
+https://docs.chef.io/knife_node.html
+
+knife node delete <nodename>
+Example – knife node delete node1
+
+knife node bulk delete <regexp>
+Example – knife node bulk delete node*
+CREATE A NODE
+https://docs.chef.io/knife_node.html
+
+knife node create node1
+
+CAUTION:  Not clear what this is for and how …
+VIEW NODE INFORMATION
+http://www.programmersparadox.com/2013/02/05/viewing-chef-node-attributes-with-knife/
+Show basic info about the node, truncated and nicely formated:
+knife node show <node_name>
+
+Show all the information about a node, nicely formated:
+knife node show -l <node_name>
+ 
+Three ways to list node information, in the raw json form (note the -l or –long option is needed to return all node data for knife node show so that all node attribute data is included)
+knife node show -l -F json <node_name>
+knife node show -l --format=json <node_name>
+knife raw /nodes/<node_name>
+ 
+How to list a single node attribute:
+knife node show <node_name> -a <attribute_name>
+
+EDIT RUN LIST  OF A NODE
+https://docs.chef.io/server_manage_nodes.html
+https://docs.chef.io/knife_node.html
+
+In Chef-server web-UI, choose the node
+Choose ‘Edit Runlist’ from left hand pane
+Edit as needed
+
+Removing run-list:
+knife node run_list remove NODE_NAME RUN_LIST_ITEM
+knife node run_list remove node 'recipe[COOKBOOK::RECIPE_NAME]'
+
+Setting a run-list:
+knife node run_list set NODE_NAME RUN_LIST_ITEM
+
+VARIOUS RUN-LIST OPERATIONS
+Add a role
+To add a role to a run-list, enter:
+$ knife node run_list add node 'role[ROLE_NAME]'
+
+Add roles and recipes
+To add roles and recipes to a run-list, enter:
+$ knife node run_list add node1 'recipe[COOKBOOK::RECIPE_NAME],recipe[COOKBOOK::RECIPE_NAME],role[ROLE_NAME]'
+
+Add a recipe with a FQDN
+To add a recipe to a run-list using the fully qualified format, enter:
+$ knife node run_list add node1.dt.com  'recipe[COOKBOOK::RECIPE_NAME]'
+
+Add a recipe with a cookbook
+To add a recipe to a run-list using the cookbook format, enter:
+$ knife node run_list add node1 'COOKBOOK::RECIPE_NAME'
+
+Add the default recipe
+To add the default recipe of a cookbook to a run-list, enter:
+$ knife node run_list add node1 'COOKBOOK'
+UPLOAD COOKBOOK TO CHEF SERVER
+https://docs.chef.io/knife_cookbook.html
+
+From workstation - knife cookbook upload cookbookname
+
+Verify – logon to chef server, and look under ‘policy’
+RUN COOKBOOKS
+RUN COOKBOOK USING RUN-LIST ON COMMAND LINE
+https://www.linkedin.com/groups/i-need-execute-particular-cookbook-3751378.S.201433563
+
+On client machine run chef-client commands :
+
+Run one cookbook :
+	chef-client --runlist ‘recipe[linuxtasks ::createdir]’  (can be single or double quotes)
+chef-client -o “recipe[linuxtasks ::createdir]” (can be single or double quotes)
+
+Run more than one cookbook:
+chef-client -- runlist “recipe[linuxtasks ::createdir]”,”recipe[linuxtasks2::createdir]” 
+ can be single or double quotes
+chef-client -o “recipe[linuxtasks ::createdir]”,”recipe[linuxtasks2::createdir]” 
+ can be single or double quotes
+
+RUN COOKBOOK WITH JSON FILE CONTAINING RUN-LIST
+
+Syntax:   chef-client -j PATH, --json-attributes PATH
+The path to a file that contains JSON data.
+Use this option to define a run_list object. For example, a JSON file similar to:
+"run_list": [
+  "recipe[base]",
+  "recipe[foo]",
+  "recipe[bar]",
+  "role[webserver]"
+],
+may be used by running chef-client -j path/to/file.json.
+In certain situations this option may be used to update normal attributes.
+
+LAB – RUNLIST WITH JSON, WITHOUT ROLE
+On client machine:
+Create a file runlist.json in /root/chef-repo/json-filers (could be any other folder)
+Create a file runlist.json with the following content:
+{
+"run_list": [
+  "recipe[linuxtasks::createdir]",
+  "recipe[linuxtasks2::createdir]",
+]
+}
+Run chef client:  chef-client –j /root/chef-repo/json-files/runlist.json
+
+
+LAB – RUN-LIST LAB -  MANUAL NO JSON
+Start with no run-list for node1.
+check in chef-server and confirm
+
+On client machine node1:
+chef-client --runlist “recipe[linuxtasks ::createdir]” 
+runs the cookbook and sets this as run-list as well.  Refresh the node screen in chef-server webui and confirm
+
+Edit runlist in webui and add linuxtasks2::createdir recipe to node1’s runlist
+
+On client machine node1:
+run command:  chef-client (just run chef-client without any arguments) 
+runs the newly added cookbook as well
+recognizes that the old cookbook has not changed and does not run it
+
+Edit runlist in webui and remove linuxtasks::createdir recipe from node1’s runlist
+
+On client machine node1:
+run command:  chef-client (just run chef-client without any arguments) 
+recognizes that the remaining cookbook has not changed and does not run it
+does not run the removed cookbook, but does not undo what that cookbook earlier did on the client machine
+
+Update cookbook linuxtasks:  On workstation with some additional code into recipe createdir.rb
+Upload cookbook: On workstation
+
+Download cookbook ‘linuxtasks’ to check update:
+	knife cookbook download linuxtasks
+	This downloads it as linuxtasks-0.1.0 where -0.1.0 is the version	
+	The recipe file createdir.rb reflects the changes done and uploaded
+	Chef-server webui shows the changes in createdir.rb file in Chrome browser – not in IE browser
+
+Run chef-client on the client machine to test if new code reflects
+	It did recognize the new code and ran the new code and created the additional directories
+	Not sure why it is not showing in webui
+POLLING
+Polling can be set by –i option: chef-client –i 300
+However, that runs in foreground.
+So, we have to either run it with nohup-background with –i or in crontab without –i.
+Or, there is a possibility of doing it with a chef-client cookbook https://www.linkedin.com/groups/Chef-Client-Service-interval-time-3751378.S.5874809985963143168
+http://blog.lusis.org/blog/2012/05/24/configuration-drift-and-next-gen-cm/
+opscode-cookbooks/chef-client · GitHub
+
+ROLE
+https://docs.chef.io/roles.html
+https://www.digitalocean.com/community/tutorials/how-to-use-roles-and-environments-in-chef-to-control-server-configurations
+
+Roles can be created in chef-server to have nodes perform specific run-lists based on the purpose of those nodes.
+Role can have run-lists, default attributes and override attibutes.
+
+CREATE ROLE – in chef-server webui:
+In chef-server webui - go to policy tab
+Choose Roles
+Choose Create
+Enter the role-name and enter comment  (Example: linuxtasks-machine)
+Create runlist choosing cookbooks and/or recipes (Example:  linuxtasks::createdir,  linuxtasks2::createdir)
+Enter default attributes
+Enter override attributes
+Click  create
+
+LAB - CREATE ROLE USING KNIFE
+On workstation:
+Set EDITOR environment variable (like export EDITOR=vi did not work in git-bash on windows.  Therefore, export EDITOR=notepad)
+Create role:  knife role create role1
+This will create a basic role json text and place in editor
+Save the file to ~/roles/role1.json  (in git-bash setup it is /c/Users/myusername/roles/role1.json)
+NOTE:  knife role list now shows this new role also.  However, it is not yet really added to chef-server
+Add the role to chef-server:  knife role from file /c/Users/myusername/roles/role1.json  (https://www.digitalocean.com/community/tutorials/how-to-use-roles-and-environments-in-chef-to-control-server-configurations)
+Verfiy in chef-server webui whether this role has gotten added to chef server
+
+NOTE: Roles can be coded in ruby with .rb file also (https://www.digitalocean.com/community/tutorials/how-to-use-roles-and-environments-in-chef-to-control-server-configurations)
+
+NOTE: To add a role to a node and then build out the run-list for that node, use the knife node sub-command and its run_list add argument.
+
+ASSIGN ROLE TO NODE
+Method 1: In chef-server webui, edit run-list to include role instead of recipes/cookbooks.  You can also add recipes as well along with roles.
+
+Method 2: To add a role to a node and then build out the run-list for that node, use the knife node sub-command and its run_list add argument. (https://docs.chef.io/knife_role.html)
+
+Method 3: https://www.digitalocean.com/community/tutorials/how-to-use-roles-and-environments-in-chef-to-control-server-configurations
+Create json of the node:
+On workstation:
+Export EDITOR=notepad (or vi in Unix)
+Do ‘knife node edit nodeName’  (example knife node edit node1)
+It will open a notepad or vi session with json of the node
+Save it in C:/Users/username/nodes/node1.json or /root/chef-repo/nodes/node1.json
+It will have content similar to the following –
+{
+  "name": "node1",
+  "chef_environment": "_default",
+  "normal": {"tags":[]},
+  "run_list": ["recipe[linuxtasks::createdir]","recipe[linuxtasks2::createdir]"]
+}
+
+Edit the file changing the run_list to a role instead of recipes as follows –
+{
+  "name": "node1",
+  "chef_environment": "_default",
+  "normal": {"tags":[]},
+  "run_list": ["role[role1]"]
+}
+
+Update chef-server with role-assignment to the node:
+knife node from file C:/Users/myusername/nodes/node1.json
+
+Verify in chef-server whether the run-list is reflected by role now
+Verify with command ‘knife node show node1’ – this  shows the role ‘role1’ for runlist
+
+Search nodes in chef-server belonging to a role:  
+knife search “role:role1” –a name
+This shows node1 as the node having role role1
+
+ATTRIBUTE PRECEDENCE
+Attributes are always applied by the chef-client in the following order:
+1.	A default attribute located in a cookbook attribute file
+2.	A default attribute located in a recipe
+3.	A default attribute located in an environment
+4.	A default attribute located in role
+5.	A force_default attribute located in a cookbook attribute file
+6.	A force_default attribute located in a recipe
+7.	A normal attribute located in a cookbook attribute file
+8.	A normal attribute located in a recipe
+9.	An override attribute located in a cookbook attribute file
+10.	An override attribute located in a recipe
+11.	An override attribute located in a role
+12.	An override attribute located in an environment
+13.	A force_override attribute located in a cookbook attribute file
+14.	A force_override attribute located in a recipe
+15.	An automatic attribute identified by Ohai at the start of the chef-client run
+
+
+DATA BAG
+http://docs.chef.io/data_bags.html
+
+ENVIRONMENT
+https://www.digitalocean.com/community/tutorials/how-to-use-roles-and-environments-in-chef-to-control-server-configurations
+
+BERKSFILE
+
+RAKE
+
+KITCHEN.YML
+
+
+
+

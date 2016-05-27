@@ -1,0 +1,203 @@
+COMPARISON OF VARIOUS DATABASE TECHNOLOGIES
+
+LINKS
+http://kkovacs.eu/cassandra-vs-mongodb-vs-couchdb-vs-redis
+
+DATABASES
+Oracle
+SQL Server
+UDB/DB2
+Teradata
+Neteezza
+mySQL
+Cassandra
+Hadoop
+Mongo DB
+Neo 4J
+
+ASPECTS
+Datatype support
+Unstructured data
+Columnar data store
+In-Memory
+Large memory
+Replication
+'ACID'
+Security
+Java
+JSon
+REST API
+Backup and recovery
+
+=========
+CASSANDRA
+=========
+
+------------
+Architecture
+------------
+
+http://docs.datastax.com/en/cassandra/2.1/cassandra/architecture/architectureTOC.html
+  
+Basic Info
+  Large workloads across multiple nodes
+  No single point of failure
+  All data stored in all nodes - can query from any node in any 'datacenter'
+  --> however, eventual consistency means queried data may be stale - depending upon whether the node got updated or not
+  Eventual consistency - which Cassandra extends to 'tunable consistency'
+    --> NOT GOOD FOR ACID unless 'ALL' tunable consistency is used
+  Tunable consistency - various levels of consistency balanced versus availability
+  Datacenter - a group of related nodes
+
+Internode communication
+  Gossip tool
+  Failure detection
+  
+Topology
+  Simple Strategy
+    Use only for a single data center, with one or multiple nodes
+  Network Toplogy Strategy
+     Cluster deployed across multiple data centers. This strategy specify how many replicas you want in each data center
+     
+Data Hashing and Replication
+  Rows are hashed by partition key - and then distributed across nodes
+    Then the latest data is replicated on to replica nodes
+  Each node is made 'responsible' for certain hash-ranges (consistent hashing)
+
+Virtual nodes (read more of the first link below)
+  http://www.datastax.com/dev/blog/virtual-nodes-in-cassandra-1-2
+  http://docs.datastax.com/en/cassandra/2.1/cassandra/architecture/architectureDataDistributeVnodesUsing_c.html
+  Node add/remove is easy
+  A newly added node assumes responsibility of getting data on to it and bears query/update loads
+  Upon removal of a node load is distributed equally across remaining nodes
+  Rebuilding dead node is faster because all other nodes participate in it
+
+Partitioners
+  Murmur3Partitioner is the latest and for all new nodes
+  Older partitioners like RandomPartitiner and ByteOrderPartitioner exist for backward compatibility
+
+Snitch (read more at http://docs.datastax.com/en/cassandra/2.1/cassandra/architecture/architectureSnitchesAbout_c.html)
+  A snitch determines which data centers and racks nodes belong to. 
+  They inform Cassandra about the network topology so that requests are routed efficiently 
+  and allows Cassandra to distribute replicas by grouping machines into data centers and racks. 
+  
+Client Requests
+  Client can request data from any node
+  That node acts as the coordinator and routes the request to nodes containing data in an efficient manner
+  Queried data may be stale if the node serving the client does not have synched up data
+  
+Security
+  Users with passwords
+  Object permissions
+  SSL for client-server communication/data-transfer
+  JMX authentication
+  Various ports for SSH, OpsCenter, inter-node (with and without SSL), JMX monitoring
+
+------------
+DB internals
+------------
+http://docs.datastax.com/en/cassandra/2.1/cassandra/dml/dmlDatabaseInternalsTOC.html
+
+>Storage engine
+  Writes 'updates' to rows in a sequential manner - that is, it does not find-and-read the row and update it in-place
+    Instead, it groups updates and inserts and sequentially writes as 'append' - (???what will happen to old data in rows???)
+  This is avoiding 'read before write' - improves io performance, and suites HDD as well as SSD disks
+  Updates are stored in new 'sstable' while old versions of rows are in the current 'sstable'.
+  Deletes do not deleted from  current sstable, instead markers called 'tombstones' are kept in new sstable.
+  
+>Table storage
+  Stores tables in separate directories as subdirectories of a directory for each key-space
+  /data/data/ks1/cf1-5be396077b811e3a3ab9dc4b9ac088d/ks1-cf1-hc-1-Data.db
+  Can move table folders to different type of IO devices (SSD/HDD) and create links in the keyspace directory
+
+>Write path
+  Every write is simultaneously written to a 'memtable' in memory and 'commit log' on disk (similar to redologs)
+  At set threshold, data is flushed from memtable to sstable 
+  Memtables and sstables are created for each table. 
+
+>Compaction
+  Periodically, SSTables for a table are merged - removing old rows and tombstoned-deleted-rows and retaining new rows.
+  After compaction, storage usage reduces.
+  Compaction is fast as rows are stored ordered by partition key and timestamp, and latest only will  be retained.
+  Compaction strategies (set at table level)
+  
+  SizeTieredCompactionStrategy
+    Default strategy.  Triggers a minor compaction when sstables of same size reach a threshold count.
+    That minor compaction may involve only such tables and not all in a keyspace.
+  DateTieredCompactionStrategy 
+    Keep first hr data in one SStable, next 4 hrs in another and so on. Compact when a threshold of sstable count is reached.
+    Also, if data is set to 'expire' after some time, Cassandra can move such to a SSTable and drop it than compact it.
+    Also read subproperties of the table for this 
+      - http://docs.datastax.com/en/cql/3.1/cql/cql_reference/compactSubprop.html#compactSubprop__compactionSubpropertiesDTCS
+  LeveledCompactionStrategy --> (also read http://leveldb.googlecode.com/svn/trunk/doc/impl.html)
+    SSTables are grouped into levels, higher levels having sstables 10 times larger than lower level.
+    Younger rows are in lower level tables, and are periodically compacted to higher levels
+    Cassandra can determine which level to search in, providing faster searches
+    
+>Indexes
+  Indexes are stored as a hidden table similar to data
+  Use indexes for low cardinality - not for high cardinality columns
+  (also, info - tables are denormalized as joins are not allowed)
+
+>Updates
+  Latest updated column values are flushed to sstble
+  
+>Deletes
+  (CHECK??? - Are there regular DELETE statements???)
+  Delete by 'expire' marks the rows for removal after time to live (TTL) and places a 'tombstone' as a marker.
+  Grace period is set so that if a replica node is down, delete will be propagated to the replica 
+  if it comes back in the grace period --> However, this is a problem as well, if the node does not come back soon, 
+  then deletes will not happen and rows re-appear.
+  Rows are removed from the disk during compaction.
+
+>Hinted handoff
+  If a node goes down, another node can pick up the updates to a replica in that node and send them later when it is up.
+  (it is not as simple as that, read more at http://docs.datastax.com/en/cassandra/2.1/cassandra/dml/dml_about_hh_c.html)
+  In two-node situation, with replication factor 1, if one node goes down, other cannot keep the hint as cassandra cannot 
+  read it with any consistency level.
+  However, in three node cluster, with replication factor 2, if one replica goes down (of nodes 1 and 2), a write can 
+  happen with an interim replication from node1 to node3 with hint kept in node1.  When the node2 comes back up, 
+  the third sends the hinted rows to it.
+  
+>Reads (TBD)
+http://docs.datastax.com/en/cassandra/2.1/cassandra/dml/dml_reads.html onwards
+>Concurrency (TBD)
+>Consistency (TBD)
+  
+--------
+Security (TBD)
+--------
+http://docs.datastax.com/en/cassandra/2.1/cassandra/security/securityTOC.html
+
+---------------
+CQL (FOR LATER)
+---------------
+http://docs.datastax.com/en/cql/3.1/cql/cql_intro_c.html
+http://docs.datastax.com/en/cql/3.1/cql/ddl/ddlCQLDataModelingTOC.html
+
+http://mechanics.flite.com/blog/2013/11/05/breaking-down-the-cql-where-clause/
+
+No joins
+No group by
+No arbitrary where clauses
+No abitrary order by clauses
+
+---------------
+CONFIGURATION (TBD)
+---------------
+http://docs.datastax.com/en/cassandra/2.1/cassandra/configuration/configTOC.html
+
+--------------
+BACUP/RESTORE
+--------------
+http://docs.datastax.com/en/cassandra/2.1/cassandra/operations/ops_backup_restore_c.html
+
+----
+Operations
+----
+http://docs.datastax.com/en/cassandra/2.1/cassandra/operations/operationsTOC.html
+
+---
+Tools
+---
+http://docs.datastax.com/en/cassandra/2.1/cassandra/tools/toolsTOC.html

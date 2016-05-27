@@ -1,0 +1,50 @@
+ORACLE 12C - 
+CONNECTING TO PDB:
+(NOTE - To connect as sys or other elevated local users, use the same methods as below, but use 'as sysdba' where necessary)
+
+Method 1:  
+alter session set container = pdbName;
+
+For other methods, you need to know the service-name for the PDB:
+Get the service name for the PDB:
+SELECT name || ' '|| pdb
+  FROM   v$services
+  ORDER BY name;
+
+or by doing "lsnrctl services LISTENER" and locating service for the  PDB.
+
+Method 2a:  Using host and port without SCAN
+connect user/pass@//host:port/pdbServiceName 
+or 
+sqlplus user/pass@//host:port/pdbServiceName 
+
+Method 2b:  Using host and port with SCAN
+Unix$> sqlplus localuser/password@//cluster-scan:scanPort/pdbServiceName
+SQL> connect localuser/password@//cluster-scan:scanPort/pdbServiceName
+
+Method 3:  Using tns entry
+Make Tns entry - with hostname or scan:
+With hostname and non-scan listener:
+PDB1 =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = hostname)(PORT = 1521))
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = pdbServiceName)
+    )
+  )
+
+With Scan:
+PDB1 =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = scan-name)(PORT = 1522))
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = pdbServiceName)
+    )
+  )
+
+Then connect as follows:
+“connect user/pass@PDB1” where PDB1 is the TNS alias
+or “sqlplus  user/pass@PDB1”
+

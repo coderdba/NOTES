@@ -1,0 +1,117 @@
+========================================================
+            KEY MANAGEMENT NOTES
+========================================================
+Two main topics:
+1. Key format conversion (the very first section)
+2. For various entities like servers, git, chef, jenkins, scroll down further
+
+
+===============================================
+CONVERTING KEYS BETWEEN PEM AND OTHER FORMATS
+===============================================
+INFO-SITE1:
+Note: this has conflicting/incorrect info.  However, it has a formula that can be probably used somewhere.
+http://serverfault.com/questions/653543/chef-ssh-without-password
+
+INFO-SITE2:
+http://ipswitchft.force.com/kb/articles/FAQ/How-to-convert-an-SSH-key-to-other-formats
+
+INFO-SITE3:
+http://stackoverflow.com/questions/1011572/convert-pem-key-to-ssh-rsa-format
+
+1. I have a certificate in der format, from it with this command I generate a public key:
+
+openssl x509 -inform der -in ejbcacert.cer -noout -pubkey > pub1key.pub
+Which results in this:
+
+-----BEGIN PUBLIC KEY-----
+MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC7vbqajDw4o6gJy8UtmIbkcpnk
+O3Kwc4qsEnSZp/TR+fQi62F79RHWmwKOtFmwteURgLbj7D/WGuNLGOfa/2vse3G2
+eHnHl5CB8ruRX9fBl/KgwCVr2JaEuUm66bBQeP5XeBotdR4cvX38uPYivCDdPjJ1
+QWPdspTBKcxeFbccDwIDAQAB
+-----END PUBLIC KEY-----
+
+2. How can I obtain a public key like this? Either from certificate or from this public key?
+
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAAgQC7vbqajDw4o6gJy8UtmIbkcpnkO3Kwc4qsEnSZp/TR+fQi62F79RHWmwKOtFmwteURgLbj7D/WGuNLGOfa/2vse3G2eHnHl5CB8ruRX9fBl/KgwCVr2JaEuUm66bBQeP5XeBotdR4cvX38uPYivCDdPjJ1QWPdspTBKcxeFbccDw==
+This was obtained with this command:
+
+ssh-keygen -y -f private_key1.pem > public_key1.pub
+
+===================
+SERVER KEYS - FOR PASSWORDLESS LOGON
+===================
+Private - Laptop
+Public - in $USER_HOME/.ssh/authorized_keys
+
+========
+GIT KEYS
+========
+Private - on laptop
+Public - on github
+Location in Bill's Kitchen - O:\home\.ssh
+Location in Windows C drive - C:\Users\<username>\.ssh
+
+==================================
+CHEF KEYS 
+==================================
+
+https://docs.chef.io/chef_private_keys.html
+https://docs.chef.io/server_manage_clients.html
+https://docs.chef.io/server_users.html
+
+READ THIS FIRST:
+When you download starter kit for an organization, you get two PRIVATE keys and one config file with it: (and some other stuff too)
+1. username.pem --> to use for authenticating your workstation to chef server
+2. organization-validator.pem --> for authenticating your commands to the organization
+3. And, you will get a file knife.rb
+All these files are to be copied to .chef on your workstation - to run bootstraps, knife commands etc.
+
+Carefully read the following:
+The item 1 above is needed for you to be authenticated to chef server. You can reset it in chef-server UI and get a new one.
+HOWEVER, you can use a common key across the team as well with one of the following methods:  
+a. Create a service account and use its key by all.
+b. Create a 'client' in the chef server 'within an organization' 
+    (need not be an actual client machine) and use its private key that gets generated
+    If using this method 'b' - then change in knife.rb on workstation as follows 
+                                  - change the 'node_name' to this newly created 'client' name
+                                  - change the client_key to the pem file of this client's private key
+   (NOTE: The organization itself also shows up as a client - do not get confused - its key is the org-validator.pem key)
+
+
+----------------------------------
+1. user.pem and org-validator.pem
+----------------------------------
+Private - on workstation/laptop and nodes
+Public - on chef server
+
+Source - chef startup kit (dont keep re-downloading it)
+Location - In .chef on laptop or if bootstrapping from node, then in .chef on the node
+After bootstrap, a 'client.pem' file will be created in /etc/chef
+These are all private keys.  Public part is kept in the chef-server.
+
+----------------------
+2. NODE ROOT USER KEYS - to use in bootstrapping
+----------------------
+Private - on workstation/laptop
+Public - in $USER_HOME/.ssh/authorized_keys
+
+Key-Policy:
+Keys need not be generated specifically for each node - it could be a key generated elsewhere and copied over
+IDEALLY - make a given set of keys for yourself, and sets of nodes and use them as above
+
+Usage:
+In the .ssh folder of nodes/clients we dont need to keep their private or public key files - id_rsa and id_rsa.pub
+Just add id_rsa.pub contents into $USER_HOME/.ssh/authorised_keys file (like /root/.ssh)
+Use the private key in the workstation for --identity-file directive
+--> This applies whether it is root user or your own user that can do sudo to root
+--> This applies to other key based authentication also - like for Git, Jenkins etc (read their specific usage elsewhere)
+
+==============================
+JENKINS JOBS
+==============================
+Private - in Jenkins server master
+Public - in slaves authorized_keys file
+
+This kind of looks anamalous compared to other entities like git, chef etc.  
+However, note that Jenkins Master is the controller here and keeps the private keys.

@@ -1,0 +1,153 @@
+=======================================================
+          CAMEL OVERVIEW NOTES
+=======================================================
+
+----------------------------
+ENDPOINTS SUPPORTED BY CAMEL
+----------------------------
+http://camel.apache.org/book-getting-started.html
+Camel provides out-of-the-box support for endpoints implemented with many different communication technologies. 
+Here are some examples of the Camel-supported endpoint technologies.
+A JMS queue.
+A web service.
+A file. 
+  A file may sound like an unlikely type of endpoint, until you realize that 
+  in some systems one application might write information to a file and, later, 
+  another application might read that file.
+An FTP server.
+An email address. 
+  A client can send a message to an email address, and a server can read an incoming message from a mail server.
+A POJO (plain old Java object).
+
+----------------------------
+CamelContext
+----------------------------
+http://camel.apache.org/book-getting-started.html
+A CamelContext object represents the Camel runtime system. You typically have one CamelContext object in an application. 
+A typical application executes the following steps.
+Create a CamelContext object.
+Add endpoints – and possibly Components, which are discussed in Section 4.5 ("Components") – to the CamelContext object.
+Add routes to the CamelContext object to connect the endpoints.
+Invoke the start() operation on the CamelContext object. 
+  This starts Camel-internal threads that are used to process the sending, receiving and processing of messages in the endpoints.
+Eventually invoke the stop() operation on the CamelContext object.
+  Doing this gracefully stops all the endpoints and Camel-internal threads.
+
+----------------------------
+CamelTemplate
+----------------------------
+Camel used to have a class called CamelClient, but this was renamed to be CamelTemplate to be similar to a 
+naming convention used in some other open-source projects, such as the TransactionTemplate and JmsTemplate classes in Spring.
+The CamelTemplate class is a thin wrapper around the CamelContext class. It has methods that send a Message or Exchange.
+
+------------------------------------
+URN
+------------------------------------
+http://camel.apache.org/book-getting-started.html
+A URI (uniform resource identifier) is a URL or a URN. 
+URN is "urn:<scheme-name>:<unique-identifier>". A URN uniquely identifies a resource, such as a book, person or piece of equipment. 
+By itself, a URN does not specify the location of the resource. Instead, it is assumed that a registry provides a mapping from a
+resource's URN to its location. The URN specification does not state what form a registry takes, but it might be a database, 
+a server application, a wall chart or anything else that is convenient. Some hypothetical examples of URNs are 
+"urn:employee:08765245", "urn:customer:uk:3458:hul8" and "urn:foo:0000-0000-9E59-0000-5E-2". 
+The <scheme-name> ("employee", "customer" and "foo" in these examples) part of a URN implicitly defines how to parse and interpret 
+the <unique-identifier> that follows it. An arbitrary URN is meaningless unless: (1) you know the semantics implied by the 
+<scheme-name>, and (2) you have access to the registry appropriate for the <scheme-name>. A registry does not have to be 
+public or globally accessible. For example, "urn:employee:08765245" might be meaningful only within a specific company.
+
+To date, URNs are not (yet) as popular as URLs. For this reason, URI is widely misused as a synonym for URL.
+
+-----------------------
+Components
+-----------------------
+Component is confusing terminology; EndpointFactory would have been more appropriate because a Component is a factory for 
+creating Endpoint instances. For example, if a Camel-based application uses several JMS queues then the application will 
+create one instance of the JmsComponent class (which implements the Component interface), and then the application invokes 
+the createEndpoint() operation on this JmsComponent object several times. Each invocation of JmsComponent.createEndpoint() 
+creates an instance of the JmsEndpoint class (which implements the Endpoint interface). Actually, application-level code does 
+not invoke Component.createEndpoint() directly. Instead, application-level code normally invokes CamelContext.getEndpoint();
+internally, the CamelContext object finds the desired Component object (as I will discuss shortly) and then invokes 
+createEndpoint() on it.
+
+Consider the following code.
+myCamelContext.getEndpoint("pop3://john.smith@mailserv.example.com?password=myPassword");
+
+--------------------------------------
+Routes, RouteBuilders and Java DSL
+--------------------------------------
+A route is the step-by-step movement of a Message from an input queue, through arbitrary types of decision making 
+(such as filters and routers) to a destination queue (if any). Camel provides two ways for an application developer 
+to specify routes. 
+One way is to specify route information in an XML file. 
+The other way is through what Camel calls a Java DSL (domain-specific language).
+
+--------------------------------------
+Camel Java DSL
+--------------------------------------
+
+The Camel "Java DSL" is a class library that can be used in a way that looks almost like a DSL, except that it has a bit of Java
+syntactic baggage. You can see this in the example below.
+
+Example of Camel's "Java DSL"
+RouteBuilder builder = new RouteBuilder() {
+    public void configure() {
+        from("queue:a").filter(header("foo").isEqualTo("bar")).to("queue:b");
+        from("queue:c").choice()
+                .when(header("foo").isEqualTo("bar")).to("queue:d")
+                .when(header("foo").isEqualTo("cheese")).to("queue:e")
+                .otherwise().to("queue:f");
+    }
+};
+CamelContext myCamelContext = new DefaultCamelContext();
+myCamelContext.addRoutes(builder);
+
+The first line in the above example creates an object which is an instance of an anonymous subclass of RouteBuilder 
+with the specified configure() method.
+The CamelContext.addRoutes(RouterBuilder builder) method invokes builder.setContext(this) – so the RouteBuilder object 
+knows which CamelContext object it is associated with – and then invokes builder.configure(). 
+The body of configure() invokes methods such as from(), filter(), choice(), when(), isEqualTo(), otherwise() and to().
+
+-----------------------------------
+EXAMPLES
+-----------------------------------
+One - http://camel.apache.org/cxf-tomcat-example.html
+All - http://camel.apache.org/examples.html
+
+With servlets (no spring) - http://camel.apache.org/servlet-tomcat-example.html
+With servlets (no spring) - http://camel.apache.org/servlet-tomcat-no-spring-example.html
+-----------------------------------
+MORE INFO, KNOWLEDGE
+-----------------------------------
+http://camel.apache.org/enterprise-integration-patterns.html
+http://camel.apache.org/architecture.html
+http://camel.apache.org/commercial-camel-offerings.html
+
+-----------------------------------
+TUTORIALS
+-----------------------------------
+http://camel.apache.org/tutorials.html
+http://camel.apache.org/tutorial-on-using-camel-in-a-web-application.html (with spring)
+
+http://www.tutorialspoint.com/jboss_fuse/jboss_fuse_apache_camel.htm
+
+-----------------------------------
+DOWNLOADS
+-----------------------------------
+http://camel.apache.org/download.html
+http://camel.apache.org/camel-2171-release.html --> windows and Linux available
+
+Getting the Binaries using Maven 2
+-----------------------------------
+To use this release in your maven project, the proper dependency configuration that you should use in your Maven POM is:
+<dependency>
+  <groupId>org.apache.camel</groupId>
+  <artifactId>camel-core</artifactId>
+  <version>2.17.1</version>
+</dependency>
+
+Git Tag Checkout
+-----------------------------------
+git clone https://git-wip-us.apache.org/repos/asf/camel.git
+cd camel
+git checkout camel-2.17.1
+

@@ -1,0 +1,645 @@
+==================================
+        VAGRANT
+==================================
+
+Go by chef-toolchain for the most part.
+
+Another great site: http://www.bogotobogo.com/DevOps/Chef/Chef_Virtual_Machine_via_Vagrant_with_Chef_Client_Provision.php
+A multi-server example: https://programmaticponderings.wordpress.com/2014/02/27/multi-vm-creation-using-vagrant-and-json/
+ssl certificate issue (not solved): http://stackoverflow.com/questions/9224298/how-do-i-fix-certificate-errors-when-running-wget-on-an-https-url-in-cygwin
+
+===========================
+INITIAL PASSWORD
+===========================
+For 'vagrant' user in the VM, the initial password is 'vagrant'
+This user can sudo to any user:  sudo su - root,  sudo su - oracle ...
+
+Usually vagrant copies keys to VM and password will not be needed.
+If it asks or starts to ask password suddenly, add the following to Vagrantfile:
+  config.ssh.password = 'vagrant'
+
+=============================
+DOWNLOADED BOX IMAGE LOCATION
+=============================
+
+Vagrant keeps a local copy of downloaded box images to avoid re-downloading.
+It is kept under .vagrant.d\boxes.
+
+Example:
+C:\Local\chef_toolchain-2.4\chef_toolchain\home\.vagrant.d\boxes\bento-VAGRANTSLASH-ubuntu-14.04\2.2.2\virtualbox
+
+=============================
+SHARED FOLDERS
+=============================
+The cookbook folder contents on host where Vagrantfile is kept for the kitchen is mounted on /vagrant in the VM.
+For example, if O:/cookbooks/oel650 is the cookbook folder containing Vagrantfile, then /vagrant shows the contents of it.
+HOW TO USE IT: If you want to copy software bundles etc from host to guest, you can copy the file to here 
+                and guest can then copy or view it.
+
+=======================
+NETWORKING - VIRTUALBOX
+=======================
+'internal' networking intnet - will allow communication between VM's while bypassing physical NIC (more secure)
+--> Internal configuration is in the vagrantfile example below
+https://docs.vagrantup.com/v2/virtualbox/networking.html
+
+  #config.vm.network :private_network, type: 'dhcp'
+  config.vm.network "private_network", ip: "192.168.10.100", virtualbox__intnet: true
+  config.vm.network "private_network", ip: "192.168.10.200", virtualbox__intnet: true
+
+============================
+BERKSHELF FOLDERS
+============================
+If using berkshelf, its 'shelves' will be in folder as follows:
+O:\cookbooks\node1>vagrant provision
+==> default: Loading Berkshelf datafile...
+==> default: Sharing cookbooks with VM
+==> default: Updating Vagrant's Berkshelf...
+==> default: Resolving cookbook dependencies...
+==> default: Fetching 'node1' from source at .
+==> default: Using node1 (0.1.0) from source at .
+==> default: Vendoring node1 (0.1.0) to O:/home/.berkshelf/vagrant-berkshelf/shelves/berkshelf20151030-14044-1isdt0u-default/node1
+
+==============================
+SSL CERTIFICATES INSTALL IN VM
+==============================
+Chef install errors out in VM upon 'vagrant up' if ca-certificates are not in the box image.
+To avoid that error, try the following:  (may or may not work)
+
+1. Install vagrant plugin 'vagrant-ca-certificates'
+http://stackoverflow.com/questions/32859587/vagrant-plugin-load-order
+
+vagrant plugin install vagrant-ca-certificates
+
+2. Install ca certificates manually after VM creation and then again do 'vagrant provision'
+$ cd /etc/ssl/certs
+$ sudo wget http://curl.haxx.se/ca/cacert.pem
+
+3. Try installing chef client using a wrapper shell like bootstrap.sh
+https://programmaticponderings.wordpress.com/tag/vagrant/
+
+
+=============================
+ONE-MACHINE PER VAGRANTFILE
+=============================
+
+Example Vagrantfile:
+-------------------
+
+# -*- mode: ruby -*-                                                                                               
+# vi: set ft=ruby :                                                                                                
+                                                                                                                   
+# Vagrantfile API/syntax version. Don't touch unless you know what you're doing!                                   
+VAGRANTFILE_API_VERSION = '2'                                                                                      
+                                                                                                                   
+Vagrant.require_version '>= 1.5.0'                                                                                 
+                                                                                                                   
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|                                                             
+  # All Vagrant configuration is done here. The most common configuration                                          
+  # options are documented and commented below. For a complete reference,                                          
+  # please see the online documentation at vagrantup.com.                                                          
+                                                                                                                   
+  config.vm.hostname = 'node0'                                                                                     
+                                                                                                                   
+  # Set the version of chef to install using the vagrant-omnibus plugin                                            
+  # NOTE: You will need to install the vagrant-omnibus plugin:                                                     
+  #                                                                                                                
+  #   $ vagrant plugin install vagrant-omnibus                                                                     
+  #                                                                                                                
+  if Vagrant.has_plugin?("vagrant-omnibus")                                                                        
+    config.omnibus.chef_version = '12.0.3'                                                                         
+  end                                                                                                              
+                                                                                                                   
+  # Every Vagrant virtual environment requires a box to build off of.                                              
+  # If this value is a shorthand to a box in Vagrant Cloud then                                                    
+  # config.vm.box_url doesn't need to be specified.                                                                
+  config.vm.box = 'bento/ubuntu-14.04'                                                                             
+                                                                                                                   
+  # Assign this VM to a host-only network IP, allowing you to access it                                            
+  # via the IP. Host-only networks can talk to the host machine as well as                                         
+  # any other machines on the same network, but cannot be accessed (through this                                   
+  # network interface) by any external networks.                                                                   
+  #config.vm.network :private_network, type: 'dhcp'   
+  config.vm.network "private_network", ip: "192.168.50.101", virtualbox__intnet: true
+  #config.vm.network "private_network", ip: "192.168.50.101
+                                                                                                                   
+  # Create a forwarded port mapping which allows access to a specific port                                         
+  # within the machine from a port on the host machine. In the example below,                                      
+  # accessing "localhost:8080" will access port 80 on the guest machine.                                           
+                                                                                                                   
+  # Share an additional folder to the guest VM. The first argument is                                              
+  # the path on the host to the actual folder. The second argument is                                              
+  # the path on the guest to mount the folder. And the optional third                                              
+  # argument is a set of non-required options.                                                                     
+  # config.vm.synced_folder "../data", "/vagrant_data"                                                             
+                                                                                                                   
+  # Provider-specific configuration so you can fine-tune various                                                   
+  # backing providers for Vagrant. These expose provider-specific options.                                         
+  # Example for VirtualBox:                                                                                        
+  #                                                                                                                
+  # config.vm.provider :virtualbox do |vb|                                                                         
+  #   # Don't boot with headless mode                                                                              
+  #   vb.gui = true                                                                                                
+  #                                                                                                                
+  #   # Use VBoxManage to customize the VM. For example to change memory:                                          
+  #   vb.customize ["modifyvm", :id, "--memory", "1024"]                                                           
+  # end                                                                                                            
+  #                                                                                                                
+  # View the documentation for the provider you're using for more                                                  
+  # information on available options.                                                                              
+                                                                                                                   
+  # The path to the Berksfile to use with Vagrant Berkshelf                                                        
+  # config.berkshelf.berksfile_path = "./Berksfile"                                                                
+                                                                                                                   
+  # Enabling the Berkshelf plugin. To enable this globally, add this configuration                                 
+  # option to your ~/.vagrant.d/Vagrantfile file                                                                   
+  config.berkshelf.enabled = true                                                                                  
+                                                                                                                   
+  # An array of symbols representing groups of cookbook described in the Vagrantfile                               
+  # to exclusively install and copy to Vagrant's shelf.                                                            
+  # config.berkshelf.only = []                                                                                     
+                                                                                                                   
+  # An array of symbols representing groups of cookbook described in the Vagrantfile                               
+  # to skip installing and copying to Vagrant's shelf.                                                             
+  # config.berkshelf.except = []                                                                                   
+                                                                                                                   
+  config.vm.provision :chef_solo do |chef|                                                                         
+    chef.json = {                                                                                                  
+      mysql: {                                                                                                     
+        server_root_password: 'rootpass',                                                                          
+        server_debian_password: 'debpass',                                                                         
+        server_repl_password: 'replpass'                                                                           
+      }                                                                                                            
+    }                                                                                                              
+                                                                                                                   
+    chef.run_list = [                                                                                              
+                                                                                                                   
+      'recipe[node0::default]'                                                                                     
+    ]                                                                                                              
+  end                                                                                                              
+                                                                                                                   
+end          
+
+=================================
+MULTIPLE-MACHINES PER VAGRANTFILE
+=================================
+https://docs.vagrantup.com/v2/multi-machine/
+
+NOTE: Actual example down below in this section
+
+Vagrant can define and control multiple guest machines per Vagrantfile. This is known as a "multi-machine" environment.
+  Accurately modeling a multi-server production topology, such as separating a web and database server.
+  Modeling a distributed system and how they interact with each other.
+  Testing an interface, such as an API to a service component.
+  Disaster-case testing: machines dying, network partitions, slow networks, inconsistent world views, etc.
+  
+Example vagrantfiles:
+https://github.com/debops/examples/blob/master/vagrant-multi-machine/Vagrantfile
+http://thornelabs.net/2013/09/19/multi-machine-vagrantfile-for-virtualbox-or-vmware-fusion.html
+In Jason format: http://thornelabs.net/2014/11/13/multi-machine-vagrantfile-with-shorter-cleaner-syntax-using-json-and-loops.html
+
+Listing of one Example Vagrantfile:
+----------------------------------
+https://github.com/debops/examples/blob/master/vagrant-multi-machine/Vagrantfile
+# -*- mode: ruby -*-
+# vim: ft=ruby
+
+
+# ---- Configuration variables ----
+
+GUI               = false # Enable/Disable GUI
+RAM               = 128   # Default memory size in MB
+
+# Network configuration
+DOMAIN            = ".nat.example.com"
+NETWORK           = "192.168.50."
+NETMASK           = "255.255.255.0"
+
+# Default Virtualbox .box
+# Source: https://github.com/ginas/vagrant-debian-wheezy-64
+BOX               = 'debian-wheezy-amd64-netinst'
+BOX_URL           = 'https://dl.dropboxusercontent.com/u/55426468/20140317/debian-wheezy-amd64-netinst.box'
+
+
+HOSTS = {
+   "web" => [NETWORK+"10", RAM, GUI, BOX],
+   "db" => [NETWORK+"11", RAM, GUI, BOX],
+}
+
+ANSIBLE_INVENTORY_DIR = 'ansible/inventory'
+
+# ---- Vagrant configuration ----
+
+Vagrant.configure(2) do |config|
+  HOSTS.each do | (name, cfg) |
+    ipaddr, ram, gui, box = cfg
+
+    config.vm.define name do |machine|
+      machine.vm.box     = box
+      machine.vm.box_url = BOX_URL
+      machine.vm.guest = :debian
+      machine.vm.provider "virtualbox" do |vbox|
+        vbox.gui    = gui
+        vbox.memory = ram
+      end
+
+      machine.vm.hostname = name + DOMAIN
+      machine.vm.network 'private_network', ip: ipaddr, netmask: NETMASK
+    end
+  end # HOSTS-each
+
+  config.vm.provision "vai" do |ansible|
+    ansible.inventory_dir=ANSIBLE_INVENTORY_DIR
+    # optional: add a group listing all vagrant machines
+    ansible.groups = {
+      'secondGroup' => [ "db" ],
+    #  '_provided_by_vagrant_'=> HOSTS.keys,
+    }
+  end
+end
+  
+------------------------------
+COMMUNICATION BETWEEN MACHINES
+------------------------------
+Use private-network as NAT will not allow communication between machines
+
+---------------------------------------------
+VAGRANT COMMANDS IN MULTI-MACHINE ENVIRONMENT
+---------------------------------------------
+vagrant ssh, now require the name of the machine to control. 
+vagrant ssh web or vagrant ssh db --> where web and db are the machines defined in Vagrantfile
+
+------------------------------
+ACTUAL MULTI-MACHINE TEST DONE - without chef install step (vagrant-omnibus)
+------------------------------
+
+Create kitchen using Berkshelf:
+--------------
+o:\cookbooks\> berks cookbook multi1
+
+Edit Vagrantfile to include multi-machine:
+----------------
+O:\cookbooks\multi1>cat Vagrantfile
+        # -*- mode: ruby -*-
+        # vi: set ft=ruby :
+        
+        #--------------------
+        #
+        # Items to cover
+        #
+        # box(es)
+        # host name(s)
+        # network
+        # shared folders
+        # chef omnibus install
+        # recipes to call
+        #
+        #--------------------
+        
+        
+        # Vagrantfile API/syntax version. Don't touch unless you know what you're doing!
+        VAGRANTFILE_API_VERSION = '2'
+        
+        # Vagrant version
+        Vagrant.require_version '>= 1.5.0'
+        
+        
+        # CONFIGURATION - START
+        
+        Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+        
+          #  ------  GLOBAL SETTINGS BEGIN ------
+          #  These will apply for all servers created by this file
+          #
+        
+          # Box
+          config.vm.box = 'bento/ubuntu-14.04'
+        
+          # Box override  if using vmware_fusion
+          config.vm.provider "vmware_fusion" do |v, override|
+            override.vm.box = 'bento/ubuntu-14.04'
+          end
+        
+          # Shared folders
+          #config.vm.synced_folder ".", "/vagrant", id: "vagrant-root", disabled: true
+          #config.vm.synced_folder "../data", "/vagrant_data"
+        
+          #  ------  GLOBAL SETTINGS END ------
+          #
+        
+          #  ------  SERVER DEFINITIONS BEGIN  -----------------
+          #  Specify for either provider - will pickup whatever is relevant in the environment
+        
+        
+           # Begin server1
+        
+             # Begin server1
+            config.vm.define "server1" do |server1|
+        
+              # hostname
+              server1.vm.hostname = "server1"
+        
+              # customization syntax for vmware
+              server1.vm.provider "vmware_fusion" do |v|
+                  v.vmx["numvcpus"] = "1"
+                  v.vmx["memsize"] = "512"
+              end
+        
+              # customization syntax for virtualbox
+              server1.vm.provider "virtualbox" do |v|
+                  v.customize [ "modifyvm", :id, "--cpus", "1" ]
+                  v.customize [ "modifyvm", :id, "--memory", "512" ]
+              end
+        
+              # Network
+              #server1.vm.network "private_network", ip: "192.168.205.10" , virtualbox__intnet: true
+        
+              # Provisioning steps
+
+              # Shell provisioner
+              server1.vm.provision :shell, inline: 'echo server1 shell provision echo'
+        
+              # Chef provisioner (TBD)
+              # QUESTION - WHERE TO PLACE CHEF-OMNIBUS 
+              
+            end
+        
+           # End server1
+        
+           # Begin server2
+            config.vm.define "server2" do |server2|
+              server2.vm.hostname = "server2"
+        
+              server2.vm.provider "vmware_fusion" do |v|
+                  v.vmx["numvcpus"] = "1"
+                  v.vmx["memsize"] = "512"
+              end
+        
+              server2.vm.provider "virtualbox" do |v|
+                  v.customize [ "modifyvm", :id, "--cpus", "1" ]
+                  v.customize [ "modifyvm", :id, "--memory", "512" ]
+              end
+        
+              # Network
+              #server2.vm.network "private_network", ip: "192.168.205.11" , virtualbox__intnet: true
+        
+              # Provisioning steps
+
+              # Shell provisioner
+              server2.vm.provision :shell, inline: 'echo server2 shell provision echo'
+        
+              # Chef provisioner (TBD)
+              # QUESTION - WHERE TO PLACE CHEF-OMNIBUS
+        
+            end
+            # End server2
+        
+            #  ------  SERVER DEFINITIONS END  -----------------
+        
+        end
+        # CONFIGURATION - END
+
+Create the VMs:
+--------------
+O:\cookbooks\multi1>vagrant up
+
+Destroy the VMs:
+---------------
+O:\cookbooks\multi1>vagrant destroy
+    server2: Are you sure you want to destroy the 'server2' VM? [y/N] y
+==> server2: Forcing shutdown of VM...
+==> server2: Destroying VM and associated drives...
+    server1: Are you sure you want to destroy the 'server1' VM? [y/N] y
+==> server1: Forcing shutdown of VM...
+==> server1: Destroying VM and associated drives...
+
+ssh to VMs:
+----------
+This requires server-name argument
+
+O:\cookbooks\multi1>vagrant ssh server1
+server1 $>
+
+===============================
+RUNNING MULTIPLE PROVISIONERS
+===============================
+http://jtimberman.housepub.org/blog/2012/08/10/vagrant-multiple-provisioners/
+
+SYNTAX - see the Vagrantfile in the actual example before 
+Also see http://stackoverflow.com/questions/25063156/vagrant-provisioning-multi-machine-environments
+
+PROVISIONER PRCEDENCE --> outside-in --> https://docs.vagrantup.com/v2/multi-machine/
+
+TO PROVISION:
+ALL - vagrant provision
+ONE VM AT A TIME - vagrant provision server1
+
+==========================
+VAGRANT FOR OPENSTACK
+==========================
+http://elastx.se/blogg/spin-up-coreos-on-openstack-using-vagrant#.VvAGHeJ97IU
+
+Installing the plugin
+There are a few different Vagrant Openstack plugin choices like vagrant-openstack and vagrant-openstack-plugin 
+all available to be installed. 
+The one to use are however vagrant-openstack-provider.
+
+To install:
+$ vagrant plugin install vagrant-openstack-provider
+
+To use:  TBD - follow the link above for now
+
+============================
+KITCHEN.YML AND VAGRANTFILE
+============================
+For more see vagrant-and-kitchen.txt
+How to make kitchen use Vagrantfile:
+http://stackoverflow.com/questions/21297541/is-there-a-way-to-get-kitchen-to-use-the-vagrantfile
+https://github.com/test-kitchen/kitchen-vagrant#-vagrantfile_erb
+https://github.com/test-kitchen/kitchen-vagrant/blob/master/templates/Vagrantfile.erb
+
+========================
+ADDING A BOX MANUALLY
+========================
+http://stackoverflow.com/questions/28399324/download-vagrant-box-file-locally-from-atlas-and-configuring-it
+
+Box location examples: 
+https://atlas.hashicorp.com/ubuntu/boxes/trusty64/versions/14.04/providers/virtualbox.box
+https://atlas.hashicorp.com/laravel/boxes/homestead/versions/0.2.6/providers/virtualbox.box
+
+Download it to /path/to/vagrant-box.box
+  $ vagrant box add foo-box /path/to/vagrant-box.box
+  $ vagrant init foo-box
+  $ vagrant up
+
+Alternative:
+vagrant box add mybox  https://insecureserver.com/mybox.box [--insecure]
+
+========================
+DOWNLOAD BOX INSECURELY - when certificate/proxy issues are encountered
+========================
+
+https://github.com/mitchellh/vagrant/pull/1712
+Option1: 
+vagrant box add mybox  https://insecureserver.com/mybox.box --insecure
+
+Option2: In Vagrantfile:
+  Vagrant.configure("2") do |config|
+    config.vm.box = "mybox"
+    config.vm.box_url = "https://insecureserver.com/mybox.box"
+    config.vm.box_download_insecure = true
+  end
+
+================================
+ADD MORE DISKS TO VM
+================================
+https://gist.github.com/leifg/4713995
+
+file_to_disk = './tmp/large_disk.vdi'
+
+Vagrant::Config.run do |config|
+  config.vm.box = 'base'
+
+  config.vm.customize ['createhd', '--filename', file_to_disk, '--size', 500 * 1024]
+  config.vm.customize ['storageattach', :id, '--storagectl', 'SATA Controller', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', file_to_disk]
+end
+
+==============================================
+CREATE A VAGRANT BOX FROM A VM (virtualbox vm)
+==============================================
+http://abhishek-tiwari.com/hacking/creating-a-new-vagrant-base-box-from-an-existing-vm
+
+Find the full name of the VM:
+$ vboxmanage list vms
+--> in the output, take the first column
+
+Create the box:
+$ vagrant package --base cbmariadb_default_1456397400172_99830 --output O:\temp\mybox.box
+  
+Add the box to virtualbox:
+$ vagrant box add oraclelinux-7-x86_64-chef O:\temp\mybox.box
+This will create the following directory and contents:
+ Directory of O:\home\.vagrant.d\boxes\oraclelinux-7-x86_64-chef\0\virtualbox
+
+02/25/2016  07:22 PM    <DIR>          .
+02/25/2016  07:22 PM    <DIR>          ..
+02/25/2016  07:22 PM       753,470,976 box-disk1.vmdk
+02/25/2016  07:22 PM            13,709 box.ovf
+02/25/2016  07:22 PM                25 metadata.json
+02/25/2016  07:22 PM               516 Vagrantfile
+
+Delete the box if not needed anymore (like if you dont need to upload it somewhere as a box source)
+$ rm O:\temp\mybox.box
+
+- - - - - >> TROUBLESHOOTING AND APPENDICES HERE ONWARDS << - - - - - - - 
+
+==============================================
+TROUBLESHOOTING
+==============================================
+
+-------------------
+SHARED FOLDER ISSUE
+-------------------
+
+vagrant up or vagrant provision may give the following error:
+Shared folders that Chef requires are missing on the virtual machine.
+This is usually due to configuration changing after already booting the
+machine. The fix is to run a `vagrant reload` so that the proper shared
+folders will be prepared and mounted on the VM.
+
+------
+To fix: http://stackoverflow.com/questions/27975541/vagrant-chef-error-in-provision-shared-folders-that-chef-requires-are-missin
+------
+        O:\cookbooks\node0\.vagrant\machines\default\virtualbox>cat synced_folders
+        {"virtualbox":{"/vagrant":{"guestpath":"/vagrant","hostpath":"O:/cookbooks/node0","disabled":false},"vagrant-cache":{"id":"vagrant-cache","guestpath":"/tmp/vagrant-cache","hostpath":"O:/home/.vagrant.d/cache/bento/ubuntu-14.04","disabled":false},"v-csc-1":{"id":"v-csc-1","guestpath":"/tmp/vagrant-chef/35a0f50bb4f43104e6bb0782df3cdbe4/cookbooks","hostpath":"O:/home/.berkshelf/vagrant-berkshelf/shelves/berkshelf20151030-20284-3wvyzf-default","disabled":false}}}
+        
+        O:\cookbooks\node0\.vagrant\machines\default\virtualbox>mv synced_folders synced_folders.orig
+        
+        O:\cookbooks\node0\> vagrant reload
+        
+        O:\cookbooks\node0\> vagrant provision
+
+--------------------------
+VAGRANT BOX CREATION ISSUE
+--------------------------
+
+ISSUE:  vagrant package fails on undefined method 'join'
+
+    O:\>vagrant package --base oel65_default_1446868828671_89994
+    ==> oel65_default_1446868828671_89994: Attempting graceful shutdown of VM...
+    Text will be echoed in the clear. Please install the HighLine or Termios libraries to suppress echoed text.
+    vagrant@127.0.0.1's password:vagrant
+        oel65_default_1446868828671_89994:
+        oel65_default_1446868828671_89994: Vagrant insecure key detected. Vagrant will automatically replace
+        oel65_default_1446868828671_89994: this with a newly generated keypair for better security.
+        oel65_default_1446868828671_89994:
+        oel65_default_1446868828671_89994: Inserting generated public key within guest...
+        O:/tools/vagrant/HashiCorp/Vagrant/embedded/gems/gems/vagrant-1.7.2/plugins/communicators/ssh/communicator.rb:171:in 
+            `ready?': undefined method `join' for nil:NilClass (NoMethodError)
+
+FIX: https://github.com/mitchellh/vagrant/issues/5070
+
+    Workaround for vagrant 1.7.2 :
+    In file Vagrant/embedded/gems/gems/vagrant-1.7.2/plugins/communicators/ssh/communicator.rb
+    (ACTUALLY: O:\tools\vagrant\HashiCorp\Vagrant\embedded\gems\gems\vagrant-1.7.2\plugins\communicators\ssh\communicator.rb)
+    
+    line 171 : add .env after @machine :
+    @machine.env.data_dir.join("private_key").open("w+") do |f|
+    
+    Test OK :
+    $ vagrant package --output ac-centos66.box --base ac-centos66
+    ==> ac-centos66: Attempting graceful shutdown of VM...
+    ac-centos66:
+    ac-centos66: Vagrant insecure key detected. Vagrant will automatically replace
+    ac-centos66: this with a newly generated keypair for better security.
+    ac-centos66:
+    ac-centos66: Inserting generated public key within guest...
+    ac-centos66: Removing insecure key from the guest if its present...
+    ac-centos66: Key inserted! Disconnecting and reconnecting using new SSH key...
+    ...
+
+-------------------------------------------
+COOKBOOK NOT FOUND ISSUE
+-------------------------------------------
+http://stackoverflow.com/questions/27687647/vagrant-chef-cookbook-not-found
+http://stackoverflow.com/questions/19441847/berkshelf-cookbooks-are-not-being-copied-to-the-vagrant-directory
+https://github.com/mitchellh/vagrant/issues/5199
+
+This worked:
+From cookbook folder, go to .vagrant\machines\default\<nodename>virtualbox
+Rename synched_folders file - mv synched_folders synched_folders.x
+Reload by 'vagrant reload'
+Run proivision - 'vagrant provision <vm name>'
+
+-----------------------------------
+VAGRANT UP SAYS MACHINE NOT CREATED
+-----------------------------------
+https://github.com/mitchellh/vagrant/issues/1755
+
+Find the GUID of the VM:
+Go to cookbook folder - W:\cookbooks\oel65\.vagrant\machines\default\virtualbox>
+$ vboxmanage list vms
+"oel65_default_1456345066028_7326" {bf6502ed-0642-49c2-bef7-bce98c03607c}
+
+Get the GUID - the second column with flower brackets in the output above
+
+Edit the machines file of vagrant
+cd .vagrant/machines/virtualbox - W:\cookbooks\oel65\.vagrant\machines\default\virtualbox
+Create or update a file 'id' in that folder with GUID entry as follows - 
+bf6502ed-0642-49c2-bef7-bce98c03607c
+
+IF there are multiple machines, probably add the serial number and GUID
+1 bf6502ed-0642-49c2-bef7-bce98c03607c
+2 sdfd-dfsd-454-dfs-sdfs
+
+--------------------------------------------
+VAGRANT SUDDENLY STARTS ASKING FOR PASSWORD
+--------------------------------------------
+
+Fix1 - unclear - https://github.com/puphpet/puphpet/issues/1253
+
+Workaround - Usually vagrant copies keys to VM and password will not be needed.
+If it asks or starts to ask password suddenly, add the following to Vagrantfile:
+  config.ssh.password = 'vagrant'
+  
+

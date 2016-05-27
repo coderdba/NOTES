@@ -1,0 +1,457 @@
+GOLDEN GATE CONFIGURATION WITH ACTIVE-DATA-GUARD (ADG) AS SOURCE
+
+<< In progress now >>
+
+CONFIGURATION
+SRC-ADG-D20E-PRIM-ON-4, D20C-STBY-ON-5
+DEST-REGULAR-PRIM-STBY-D21E-PRIM-ON-4, NO STBY AS OF NOW
+
+KEY THINGS
+https://docs.oracle.com/goldengate/1212/gg-winux/GIORA/classic_capture.htm#GIORA998
+You must connect to the primary database from GGSCI to add TRANDATA or SCHEMATRANDATA because this is done on the primary database.
+
+DDL triggers cannot be used on the standby database, in order to support DDL replication (except ADDTRANDATA). You must install the Oracle GoldenGate DDL package on the primary database.
+
+DDL ADDTRANDATA is not supported in ADG mode; you must use ADDSCHEMATRANDATA for DDL replication.
+
+When adding extract on the standby database, you must specify the starting position using a specific SCN value, timestamp, or log position. Relative timestamp values, such as NOW, become ambiguous and may lead to data inconsistency.
+
+When adding extract on the standby database, you must specify the number of threads that will include all of the relevant threads from the primary database.
+
+During or after failover or switchover, no thread can be added or dropped from either primary or standby databases.
+
+Classic Extract will only use one intervening RESETLOG operation.
+
+If you do not want to relocate your Oracle GoldenGate installation, then you must position it in a shared space where the Oracle GoldenGate installation directory can be accessed from both the primary and standby databases.
+
+If you are moving capture off of an ADG standby database to a primary database, then you must point your net alias to the primary database and you must remove the TRANLOG options.
+
+Classic Extract cannot use the DBLOGREADER option. Use ASMUSER (there is approximately a 20gb/hr read limit) or move the online and archive logs outside of the Application Security Manager on both the primary and the standby databases.
+
+GENERAL
+http://jinyuwang.weebly.com/oracle-goldengate/whats-new-in-oracle-goldengate-for-oracle-121210
+  Capture from Active Data Guard (ADG) Standby with Classic Extract - The new TRANLOGOPTIONS MINEFROMACTIVEDG 
+  option allows classic extracts to mine online redo logs shipped to the Oracle Active Data Guard standby system. 
+  Oracle GoldenGate connects to the standby database to get metadata and other required data as needed. 
+
+How to Configure Extract on Standalone Active Data Guard System if Primary is RAC Multipe Nodes(Doc ID 1962336.1)
+
+
+GOLDENGATE 12C - CLASSIC MODE - INSTALL-CONFIG
+ADG - says asm logs are not allowed - http://geekdom-uk.blogspot.in/2012/01/oracle-goldengate-extracting-from.html
+
+Classic - non-ASM - http://www.ahmedbaraka.com/computer/docs/oracle_gg.pdf
+Classic - ASM and THREADS errors - http://myoracleproduct.blogspot.in/2013/11/oracle-goldengate-replication-oracle-to.html
+Classic - RAC, ASM other specifics - http://docs.oracle.com/goldengate/1212/gg-winux/GIORA/classic_capture.htm#GIORA263
+
+INSTALLATION
+This is same as for integrated capture.
+Refer to the other document on Integrated install/config.
+
+<< scratchpad >>
+
+https://docs.oracle.com/goldengate/1212/gg-winux/GIORA/setup.htm#GIORA983
+  Issue the ADD TRANDATA command.
+  ADD TRANDATA [container.]schema.table [, COLS (columns)] [, NOKEY] [, ALLCOLS | NOSCHEDULINGCOLS]
+
+<< scratchpad/ >>
+
+CONFIGURATION
+
+>> Source Primary - Enable goldengate replication in the database
+SQL> alter system set ENABLE_GOLDENGATE_REPLICATION=true scope=both;
+
+>> Source Primary - Add supplemental logging
+  This sets a 'minimum db level supplemental logging' at DB level.  
+  Additional TRANDATA, SCHEMATRANDATA etc is set at GG level.
+  SQL> ALTER DATABASE ADD SUPPLEMENTAL LOG DATA;
+  SQL> SELECT supplemental_log_data_min, force_logging FROM v$database;
+  SQL> ALTER SYSTEM SWITCH LOGFILE;
+
+>> Source Primary - Create GG user
+  create tablespace goldengate datafile '+DATA_DG01'; -- GG user in source needs its own tablespace for handling DDLs
+  -- GG user should have its own tablespace in destination to support marker, ddl etc
+  create user oggusersc identified by oggusersc
+  default tablespace goldengate temporary tablespace temp;
+
+  grant create session to oggusersa;
+  grant connect to oggusersa;
+  grant resource to oggusersa;
+  grant alter system to oggusersa;
+  EXEC DBMS_GOLDENGATE_AUTH.GRANT_ADMIN_PRIVILEGE('OGGUSERSC');
+  --grant dba to oggusersa; -- see if it is really required
+  --grant execute on sys.dbms_internal_clkm -- for TDE
+  grant select any transaction to oggusersa;
+  grant select any dictionary to oggusersq;
+  grant select any table to oggusersq; --> this was necessary for extract/pump to know the table via dictionary
+
+» Source Primary - Add supplemental log data for update operations.
+    SQL> ALTER DATABASE ADD SUPPLEMENTAL LOG DATA;
+    SQL> SELECT supplemental_log_data_min, force_logging FROM v$database;
+          SUPPLEME FOR
+          -------- ---
+          YES      YES
+    SQL> ALTER SYSTEM SWITCH LOGFILE;
+
+>> Source Primary - Create wallet, credential store and userid alias for primary 
+                    (use same user, same alias but different tns alias)
+    $ ggsci
+    ggsci> create wallet
+    Created wallet at location 'dirwlt'.
+    Opened wallet at location 'dirwlt'.
+    
+    ggsci> Add CredentialStore                                      
+    Credential store created in ./dircrd/.
+    
+    ggsci> Alter CredentialStore Add User oggusersa@TNS_ALIAS_SOURCE_PRIMARY Password password Alias oggusersa
+    Credential store in ./dircrd/ altered.
+    
+    ggsci> info credentialstore
+    Will list the alias and userid with tns alias
+
+    ggsci> DBLogin UserIDAlias oggusersa
+    
+>> Source Standby - Create wallet, credential store and userid alias for standby
+                     (use same user, same alias but different tns alias)
+    $ ggsci
+    ggsci> create wallet
+    Created wallet at location 'dirwlt'.
+    Opened wallet at location 'dirwlt'.
+    
+    ggsci> Add CredentialStore                                      
+    Credential store created in ./dircrd/.
+    
+    ggsci> Alter CredentialStore Add User oggusersa@TNS_ALIAS_SOURCE_STANDBY Password password Alias oggusersa
+    Credential store in ./dircrd/ altered.
+    
+    ggsci> info credentialstore
+    Will list the alias and userid with tns alias
+
+    ggsci> DBLogin UserIDAlias oggusersa
+
+>> Source Primary - Create test source schema 
+  create user oggsoa identified by oggsoa
+  default tablespace users temporary tablespace temp;
+  alter user oggsoa quota unlimited on users;
+  
+  grant create session, resource, create table to oggsoa;
+
+  create table oggsoa.table1
+  (empid number(5) primary key,
+   empname varchar2(20));
+  
+  grant flashback on oggsoa.table1 to oggusersa;
+  grant select on oggsoa.table1 to oggusersa;
+
+>> Source Standby - Configure mgr process
+NOTE: Trailfiles can have only two-letter prefix.  So, e1 for extract1 is used here (or 'in' as in Orcle integrated tutorial)
+NOTE: This 'modification' is not necessary - actually it can hamper work of multiple ext processes on same server - Tutorial said ./dirdat/* --> now modified to match with exttrail 'in'
+CHECK- What should be purgeoldextracts policy - * or something else
+CHECK- Minkeephours or minimum logs to keep
+CHECK- Autostart extract or not
+CHECK- Autostart only some extracts or all
+
+    $ ggsci
+    ggsci> edit param mgr
+      PORT 7809
+      DynamicPortList 20000-20099
+      PurgeOldExtracts ./dirdat/*, UseCheckPoints, MinKeepHours 2
+      Autostart Extract E*
+      AUTORESTART Extract *, WaitMinutes 1, Retries 3  
+      << save with :wq if editor was vi >>
+    ggsci> stop mgr
+    ggsci> start mgr
+    
+>> Source Primary - Setup TRANDATA (new in 12c)
+This is further to setting up supplemental logging. Before you can start capturing real-time data, 
+the Oracle database must be set to log the table key values whenever it logs a rows change, 
+so that they are available to Oracle GoldenGate in Redo. By default, the database logs only those column 
+values that change. This is required so Oracle GoldenGate can locate the correct row on the target 
+for update and delete operations.
+NOTE:  This can be done for all tables, specific tables, all columns, specific columns
+CHECK- should we do it for ALLCOLS or some columns only?
+CHECK- can we exclude long and lob
+
+    ggsci> DBLogin UserIDAlias oggusersa
+    ggsci> Add TranData OGGSOA.TABLE1  ALLCOLS   (or, OGGSOA.* for all tables)
+    ggsci> Info TranData OGGSOA.*
+    Logging of supplemental redo log data is enabled for table OGGSOA.TABLE1.
+    Columns supplementally logged for table OGGSOA.TABLE1: ALL.
+    
+>> Source Standby - Add ASM tns entry
+ASM=
+   (DESCRIPTION =
+       (ADDRESS = (PROTOCOL = TCP)(HOST = host-vip1) (PORT = 1521))
+       (CONNECT_DATA =
+              (SID=+ASM1)
+       )
+   )
+
+
+» Source Standby - Create an Extract parameter file on source Unix system.
+This will create a file dirprm/ea1.prm for the extract process.
+NOTE: Added tranlogoption MINEFROMACTIVEDG to direct extract process to mine from standby side
+NOTE: Removed SETENV (ORACLE_SID='SOURCE_ORACLE_SID') which was in the tutorial. Instead, useridalias has connect string.
+NOTE: Naming e for extract, a for ADG, 1 is a serial number
+NOTE: Trail name e for extract, a for ADG
+NOTE: (DBLOGREADER is not supported in ADG) DBLOGREADER API is available with better performance in 11.2+,  use DBLOGREADERBUFSIZE instead of ASMBUFSIZE.
+NOTE: Add DDL LATER - it is slightly different from regular classic mode in ADG
+
+Modified: Removed DDL, removed DBLOGREADER, added ASMUSER, NOTE: sys@ASM has ASM which is the tns alias added earlier
+    ggsci> edit param ea1
+    Extract ea1
+    UserIdAlias oggusersa
+    TRANLOGOPTIONS MINEFROMACTIVEDG, ASMUSER sys@ASM, ASMPASSWORD password
+    Exttrail ./dirdat/ea
+    LOGALLSUPCOLS
+    UPDATERECORDFORMAT COMPACT
+    Table OGGSOA.table1;
+
+
+Original:
+    ggsci> edit param ea1
+    Extract ea1
+    UserIdAlias oggusersa
+    TranlogOptions MINEFROMACTIVEDG DBLOGREADER DBLOGREADERBUFSIZE 1M
+    Exttrail ./dirdat/ea
+    LOGALLSUPCOLS
+    UPDATERECORDFORMAT COMPACT
+    DDL INCLUDE MAPPED OBJNAME OGGSOA.table1
+    Table OGGSOA.table1;
+
+= = = = CHECK/START HERE = = = = (currently, facing error at 'register extract' step
+--> Also note: Classic Extract cannot use the DBLOGREADER option. Use ASMUSER 
+(there is approximately a 20gb/hr read limit) or move the online and archive 
+logs outside of the Application Security Manager on both the primary and the standby databases.
+
+NOTE: skipped the 'register step' and directly did begin now and start - it seemed to start well
+======
+» Source Standby - Register Extract in database
+    This will register the extract, but not start extract yet
+
+    NOTE - In this, if you get an error "enable_goldengate_replication is not set to true" 
+             then set the following:   alter system set ENABLE_GOLDENGATE_REPLICATION=true scope=both;
+    NOTE - 'begin now' can be replaced with 'begin scn <scn number>'
+    NOTE: Megabytes 10 is optional - default is 100
+
+    ggsci> dblogin useridalias oggusersa
+    ggsci> register extract ea1 database
+    ERROR: Cannot register or unregister EXTRACT EA1 because of the following SQL error: OCI Error 1,109.
+    instead of success:
+    Extract EA1 successfully registered with database at SCN 1328963.
+
+    ggsci> add extract ea1, tranlog, threads 2, begin now 
+    
+
+    ggsci> add exttrail ./dirdat/ea, extract ea1, megabytes 10
+    EXTTRAIL added.
+    
+    ggsci> start extract ea1
+
+    Sending START request to MANAGER ...
+    EXTRACT EA1 starting
+    
+    NOTE: The info below is different from what you see in 'integrated' extract process' info
+    ggsci> info ea1
+    
+>> Source Standby - Configure data-pump
+
+    NOTE: The remote_hostname is the destination host, or localhost (or local host's hostname) 
+            if both source and dest are same host
+    CHECK: What about RAC - how do we give SID and HOST in the case of RAC - how to handle failover to other nodes??
+    
+    NOTE:  The data pump reads from the local trail file in and writes to the remote trail file pn. 
+            The remote trail file that will be created will be named dirdat/pn000000, then when that one 
+            fills up the next will be dirdat/pn000001, then dirdat/pn000002, and so on.
+
+    In this step, the secondary Extract will be created and configured, but not started. 
+    NOTE: Replace 'remote_hostname' below with the remote hostname or localhost if local
+    NOTE: Removed SETENV ORACLE_SID as dbuseralias has the connect string
+    NOTE: Need to change remote_hostname when instance/site switchover happens
+    
+        ggsci> Edit Param pa1
+          Extract  pa1
+          UserIdAlias oggusersa
+          rmthost remote_hostname, mgrport 7809
+          rmttrail ./dirdat/pa
+          table OGGSOA.table1;
+        
+        GGSCI> add extract pa1, exttrailsource ./dirdat/ea
+        EXTRACT added.
+        
+        GGSCI> add rmttrail ./dirdat/pa, extract pa1, megabytes 10
+        RMTTRAIL added.
+
+>> Dest Primary - Create GG user
+  create user ogguserdc identified by ogguserda
+  default tablespace users temporary tablespace temp;
+  
+  grant create session to ogguserda;
+  grant connect to ogguserda;
+  grant resource to ogguserda;
+  EXEC DBMS_GOLDENGATE_AUTH.GRANT_ADMIN_PRIVILEGE('OGGUSERDA');
+  grant select any dictionary to ogguserda;
+  --insert, update, delete on target tables -- do separately
+  --alter on target tables -- do separately
+  grant create table to ogguserda;
+
+>> Dest - Create wallet, credential store and userid alias
+    $ ggsci
+    ggsci> create wallet
+    Created wallet at location 'dirwlt'.
+    Opened wallet at location 'dirwlt'.
+    
+    ggsci> Add CredentialStore                                      
+    Credential store created in ./dircrd/.
+    
+    ggsci> Alter CredentialStore Add User ogguserda@TNS_ALIAS_DEST_PRIMARY Password password Alias ogguserda 
+    Credential store in ./dircrd/ altered.
+    
+    ggsci> info credentialstore
+    Will list the alias and userid with tns alias
+
+    ggsci> DBLogin UserIDAlias ogguserda
+
+>> Dest Primary - Create test dest schema
+  create user oggdoc identified by oggdoa
+  default tablespace users temporary tablespace temp;
+  alter user oggdoa quota unlimited on users;
+
+  grant create session, resource, create table to oggdoa;
+
+  create table oggdoa.table1
+  (empid number(5) primary key,
+  empname varchar2(20));
+
+  -- grant insert, update, delete on the destination tables to ogguserdc
+  grant select, insert, update, delete on oggdoa.table1 to ogguserda;
+  
+  -- grant alter on the destination tables to ogguserdc (for DDL support)
+  grant alter on oggdoa.table1 to ogguserda;
+
+>> Dest Primary - Configure mgr process (see Oracle's tutorial)
+NOTE: If running on the same server, then it is only the additional setup of adding dirdat/p1, replicat stuff etc
+NOTE: Tutorial said ./dirdat/pe* --> now modified to match with rmttrail 'pc'.  
+      Probably it should be just * to accomodate multiple processes.
+
+    $ ggsci
+    ggsci> edit param mgr
+    Port 7909 --> why not 7809 (I set 7809 itself)
+    DynamicPortList 20100-20199 --> why different from source (I set same ports as source)
+    PurgeOldExtracts ./dirdat/*, UseCheckPoints, MinKeepHours 2
+    Autostart Replicat R*
+    AUTORESTART Replicat *, WaitMinutes 1, Retries 3 
+    << save with :wq if editor was vi >>
+
+>> Dest Primary - Configure Repcat process
+NOTE: Removed SETENV(ORACLE_SID='DEST_ORACLE_SID') as useridalias has tns alias
+NOTE: Removed DBOPTIONS INTEGRATEDPARAMS(parallelism 6) as classic does not support parallel
+NOTE: Exttrail here is 'pc' which is pump file and not 'ec' which is extract process' trail
+NOTE: Added checkpoint table that is needed for classic extract
+NOTE: Removed 'integrated' directive in 'add replicat'
+NOTE:::  we can still use integrated repcat though extract is classic
+
+    First: alter system set enable_goldengate_replication=true scope=both;
+    
+    ggsci> edit param ra1
+    Replicat ra1
+    AssumeTargetDefs
+    DiscardFile ./dirrpt/ra1.dsc, Purge
+    UserIdAlias ogguserda
+    Map oggsoa.*, target oggdoa.*;
+        
+    GGSCI> DBlogin UserIdAlias ogguserda 
+    Successfully logged into database.
+    
+    GGSCI> ADD CHECKPOINTTABLE GG_C_CKPT
+    Successfully created checkpoint table GG_C_CKPT.
+        
+    GGSCI> Add Replicat ra1 exttrail ./dirdat/pa, CHECKPOINTTABLE GG_C_CKPT          
+    REPLICAT added.
+        
+    GGSCI> Start Replicat ra1
+        
+    Sending START request to MANAGER ...
+    REPLICAT RA1 starting
+    
+>> Source/Dest: Display all info
+
+Source: (extract, pump)
+ggsci> info ea1
+ggsci> info pa1
+
+Dest: (replicat)
+ggsci> info ra1
+
+
+>> Source - Verify GG setup from data-dictionary
+
+    select apply_name,queue_name from DBA_APPLY;
+    
+    APPLY_NAME                     QUEUE_NAME
+    ------------------------------ ------------------------------
+    OGG$EC1                        OGG$Q_EC1
+
+        
+>> Dest - Verify GG setup from data-dictionary
+
+------  NOTE - THESE ARE NOT SHOWING RA1 PROCESS ------ probably because it is classic? -----
+        select apply_name,queue_name from DBA_APPLY; (list below is from an integrated replicat setup)
+              APPLY_NAME                     QUEUE_NAME
+              ------------------------------ ------------------------------
+              OGG$RPRJA                      OGGQ$RPRJA
+        
+        select replicat_name,server_name from DBA_GOLDENGATE_INBOUND;
+              REPLICAT_NAME
+              --------------------------------------------------------------------------------
+              SERVER_NAME
+              ------------------------------
+              RPRJA
+              OGG$RPRJA
+
+>> OTHER USERS REQUIRED  < not fully understood/done >
+  https://docs.oracle.com/goldengate/1212/gg-winux/GIORA/user_assignment.htm#GIORA551
+  4.1.3 Other Oracle GoldenGate Users
+  A user is required in the source database for the Manager process if you are using Oracle GoldenGate DDL support. This user performs maintenance on the Oracle GoldenGate database objects that support DDL capture.
+  A user is required in either the source or target database for the DEFGEN utility. The location depends on where the data definition file is being generated. This user performs local metadata queries to build a data-definitions file that supplies the metadata to remote Oracle GoldenGate instances. For more information about the data-definitions file, see Administering Oracle GoldenGate for Windows and UNIX.
+  Additional users or privileges may be required to use the following features, if Extract will run in classic capture mode:
+  •RMAN log retention (see Section 11.4.2, "Log Retention Options")
+  •TDE support (see Chapter 11, "Configuring Oracle TDE Data in Classic Capture Mode")
+  •ASM (see Chapter 11, "Mining ASM-stored Logs in Classic Capture Mode")
+
+= = = = START HERE = = =  
+=======================================================
+CONFIGURE DDL REPLICATION - 11g DB with 12c GG software
+=======================================================
+http://www.vitalsofttech.com/configure-goldengate-ddl-replication/ --> has 10g, 11g, 12c db setup
+http://gavinsoorma.com/2010/02/oracle-goldengate-tutorial-7-configuring-ddl-synchronization/ --> has 12c db
+
+>> Source: 11g DB - Setup DB
+NOTE: ogguser should have its own default tablespace - ensure that before running ddl_setup.
+NOTE: Give ogguser of source DB (oggusersc) for all gg user these scripts ask for
+$ sqlplus / as sysdba
+SQL> @marker_setup.sql
+SQL> @ddl_setup.sql
+SQL> @role_setup.sql 
+SQL> grant ggs_ggsuser_role to oggusersc;
+SQL> @ddl_enable
+SQL> @ddl_pin oggusersc;
+
+>> Source: Edit extract parmeter file to add ddl line
+ggsci> edit param ea1
+DDL INCLUDE MAPPED OBJNAME OGGSOA.table1
+
+>> Source: Stop and start extract process
+ggsci> stop ec1
+ggsci> start ec1
+
+>> Source/Dest: Test it
+Add a column to source table1 --> this should reflect in destination soon
+Drop the same column from source table1 --> this should reflect in destination soon
+Re-add a column to source table1 --> this should reflect in destination soon
+Do DML upon new structure table --> should reflect in destination soon
+
+
+
+
+

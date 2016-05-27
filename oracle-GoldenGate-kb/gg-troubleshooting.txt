@@ -1,0 +1,81 @@
+GOLDENGATE TROUBLESHOOTING
+--> also look up https://deciphercorp.wordpress.com/2010/07/03/oracle-goldengate-best-practices-and-tips/
+      --> there is a mention of upcoming troubleshooting doc in it
+
+Sections in this document:
+USEFUL COMMANDS AND TRICKS
+TROUBLESHOOTING
+=============================
+USEFUL COMMANDS AND TRICKS
+=============================
+VIEW EXTENDED ERROR AND CONFIG REPORT
+ggsci> view report ec1
+This gives much configuration and hardware o/s setup info 
+AND gives extended error message at end like the following:
+
+The message below was not in ggserr.log
+  2015-08-25 19:17:15  ERROR   OGG-00664  OCI Error beginning session 
+  (status = 257-ORA-00257: archiver error. Connect internal only, until freed.)
+  2015-08-25 19:17:15  ERROR   OGG-01668  PROCESS ABENDING.
+
+
+=============================
+TROUBLESHOOTING
+=============================
+ORA-1950 - INSUFFICIENT PERMISSIONS ON SYSAUX TABLESPACE
+>>Reason- Logminer objects are owned by SYSTEM mostly, and some are by SYS
+Those objects are in SYSAUX.  By default SYSTEM may not have sufficient quota/unlimited tablespace on SYSAUX.
+>>Fix- GRANT UNLIMITED TABLESPACE TO SYSTEM;
+
+GG DOES NOT START/STOP
+>>Reason1- software or directory (dirprm etc if centrally located) may be 100% full
+Clear some useless files to make space
+
+>>Reason2 - DB may be halted due to archiver error
+Clear some archivelogs or back them up to tape or make space in FRA/archlog-destination
+
+LAG WHILE NO REAL LAG
+GG may show last-record-lag due to stray long-running transactions
+Use the instructions here:  http://www.pythian.com/blog/how-to-correlate-oracle-database-transaction-with-goldengate/
+
+======================================================
+CORRELATE DATABASE TRANSACTION WITH GOLDENGATE LAG
+======================================================
+http://www.pythian.com/blog/how-to-correlate-oracle-database-transaction-with-goldengate/
+
+Sometimes, GG seems to show a lag, while it is actually still moving ahead.
+This could be because of a long running transaction.
+To find the transaction in the DB:
+
+>Find the XID (also gives additional info on oldest redolog necessary to restart transaction)
+ggsci> send eigowa, showtrans duration 10m  (DURATION is optional)
+
+Sending showtrans request to EXTRACT ESAN ...
+Oldest redo log file necessary to restart Extract is:
+Redo Log Sequence Number 196, RBA 4955152
+------------------------------------------------------------
+XID:                  3.29.673
+Items:                1
+Extract:              ESAN
+Redo Thread:          1
+Start Time:           2014-07-21:10:41:41
+SCN:                  0.1652053 (1652053)
+Redo Seq:             196
+Redo RBA:             4955152
+Status:               Running
+
+>Now, run the folowing SQL
+
+-- trans.sql
+set lines 200 pages 1000
+col xid for a16
+col username for a18
+col schemaname for a18
+col osuser for a12
+select t.start_time, t.xidusn||'.'||t.xidslot||'.'||t.xidsqn xid, s.status,
+s.sid,s.serial#,s.username,s.status,s.schemaname,
+decode(s.sql_id,null,s.prev_sql_id) sqlid, decode(s.sql_child_number,null,s.prev_child_number) child
+from v$transaction t, v$session s
+where s.saddr = t.ses_addr
+order by t.start_time
+;

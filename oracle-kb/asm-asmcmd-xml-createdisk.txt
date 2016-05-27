@@ -1,0 +1,52 @@
+=============================================
+ASMCMD AND XML TO CREATE DISK AND DISK GROUPS
+=============================================
+
+http://www.dbaexpert.com/blog/new-ways-to-create-disk-groups-in-oracle-database-11g-release-2/
+
+[oracle@jin1 ~]$ asmcmd mkdg dg_high.xml
+ 
+[oracle@jin1 ~]$ cat dg_high.xml
+<dg name="dg_high" redundancy="high">
+  <fg name="fg1">
+    <dsk string="ORCL:HIGH1" />
+  </fg>
+  <fg name="fg2">
+    <dsk string="ORCL:HIGH2" />
+  </fg>
+  <fg name="fg3">
+    <dsk string="ORCL:HIGH3" />
+  </fg>
+  <a name="compatible.asm" value="11.2"/>
+  <a name="compatible.rdbms" value="11.2"/>
+</dg>
+
+
+ASMCMD> dropdg dg_high
+
+Now, let’s create the disk group with asmca command line interface:
+
+[oracle@jin1 ~]$ ksh cr_dg_high.txt
+ 
+DiskGroup dg_high created successfully.
+ 
+[oracle@jin1 ~]$ cat cr_dg_high.txt
+asmca -silent -createDiskGroup \
+-diskgroupname dg_high \
+-redundancy high \
+-disk 'ORCL:HIGH1' -disk 'ORCL:HIGH2' -disk 'ORCL:HIGH3' \
+-failuregroup fg1 \
+-failuregroup fg2 \
+-failuregroup fg3 \
+-au_size 64  \
+-compatible.asm '11.2.0.0.0'  \
+-compatible.rdbms '11.2.0.0.0'  \
+-compatible.advm '11.2.0.0.0' 
+
+Using asmcmd, we will create the dg_external diskgroup:
+
+[oracle@jin1 ~]$ asmcmd mkdg dg_external.xml
+Alternatively, you can create the diskgroup in a single inline command as shown here:
+
+ASMCMD> mkdg '<dg name="dg_external" redundancy="external">  <dsk string="ORCL:HIGH1" /> <dsk string="ORCL:HIGH2" /> <dsk string="ORCL:HIGH3" /> <a name="compatible.asm" value="11.2"/> <a name="compatible.rdbms" value="11.2"/>  <a name="compatible.advm" value="11.2"/> </dg>'
+

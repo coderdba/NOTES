@@ -1,0 +1,53 @@
+http://www.dba-oracle.com/t_goldengate_checkpoint_table.htm
+
+GoldenGate Checkpoint table tips
+
+GoldenGate Tips by Burleson Consulting
+
+April 6, 2014
+Creating a GoldenGate checkpoint table
+
+The default and best-practice checkpoint for the delivery group is a database table, and we use the GGSCI add checkpointtable command to create the checkpoint table. An alternative is the use of checkpoint file by specifying nocheckpointtble  parameter. 
+ 
+Next we issue the command to create the checkpoint table using the option of specifying the checkpoint table on the GLOBALS parameter file. Before executing the GGSCI add checkpointtable, you must exist GGSCI and re-start it to activate the added parameters.
+ 
+GGSCI (ggs-target) 2> DBLOGIN USERID ggs_admin, PASSWORD oracle
+Successfully logged into database.
+ 
+GGSCI (ggs-target) 2> ADD CHECKPOINTTABLE
+ 
+No checkpoint table specified. Using GLOBALS specification (ggs_admin.chkpttab)...
+ 
+Successfully created checkpoint table ggs_admin.chkpttab.
+ 
+GGSCI (ggs-target) 3>
+
+Creating a GoldenGate Checkpoint Table
+
+Oracle GoldenGate processes extract and replicat processes perform checkpoint operations, in the event of failure, the checkpoint file or database table ensures extract and replicat re-start from the point failure avoiding re-capture and re-apply of transactions. The GGSCI command below create the checkpoint table specifying the database schema and table name.
+
+ 
+
+GGSCI (edmr1s35) 11> add checkpointtable ggs_admin.ggschkpt
+ 
+Successfully created checkpoint table GGS_ADMIN.GGSCHKPT. 
+ 
+An alternative to the above method is to add the parameter CHECKPOINTTABLE ggs_admin.ggschkpt to the GLOBALS parameter file, then execute the command without specifying ggs_admin.ggschkpt. To activate new parameters added to GLOBALS file, exit and re-start GGSCI. The example below drop and recreate the checkpoint table.
+
+ 
+GGSCI (edmr1s35) 13> delete checkpointtable ggs_admin.ggschkpt
+ 
+This checkpoint table may be required for other installations.  Are you sure you want to delete this checkpoint table? yes
+ 
+Successfully deleted checkpoint table GGS_ADMIN.GGSCHKPT.
+ 
+GGSCI (edmr1s35) 1> dblogin userid ggs_admin, password oracle
+Successfully logged into database.
+ 
+GGSCI (edmr1s35) 2> add checkpointtable
+ 
+No checkpoint table specified, using GLOBALS specification (ggs_admin.ggschkpt)...
+ 
+Successfully created checkpoint table GGS_ADMIN.GGSCHKPT.
+ 
+GGSCI (edmr1s35) 3>

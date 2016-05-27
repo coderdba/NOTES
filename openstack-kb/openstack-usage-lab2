@@ -1,0 +1,139 @@
+==============================================
+OPENSTACK USAGE LAB
+==============================================
+
+LOGON
+Logon to openstack site - in browser
+It first shows the limits and usage pie-charts
+
+CREATE NETWORK
+Name- nw0
+Subnet- sn0 (or nw0-sn0)
+IP- 192.168.0.0/24 - in CIDR format
+IPV version- IPV4
+Gateway - 192.168.0.1 (earlier, had disabled initiallly)
+Enable DHCP (earlier, had disabled DHCP)
+Allocation pool- 192.168.0.100,192.168.0.199
+
+Now, in the Network Topology view, you should see nw0
+
+CREATE ROUTER
+Step1: Choose the external vlan network to use - like 1770 (used one ending with 0 to use with nw0)
+  Now, in the Network Topology view, you should see the router showing attached to the external-vlan
+
+Step2: In the topology view, click/hover on the router image
+Choose 'add interface'
+Choose nw0
+NOTE: Without this, you cannot associate a machine with a floating IP (you will get error 'no ports available')
+
+CREATE SECURITY GROUP
+Go to 'compute' section
+Go to 'Access & Security' --> 'Security Groups'
+Create a new security group - 'custom1'
+Set it such that SSH, HTTP and all TCP, all ICMP are open for 'ingress' (that is, incoming traffic)
+
+CREATE KEY PAIR
+Go to compute --> Access & security --> Key Pairs
+Choose 'import key pair' (as I want to use an existing key pair)
+Give it a name
+Copy and paste the existing public-key
+
+NOTE:  Later, chose the option of Openstack to create a key-pair by itself - it downloaded the private key, did not give the public key on the screen.
+Copied the keys to C:\osct --> where the client tools have been installed
+
+ALLOCATE A FLOATING IP
+(for use with a machine later)
+Go to compute --> Access & security --> Floating IPs
+Click 'allocate IP to project'
+Choose the 'pool' - one of the external-vlan's choosen earlier for the router
+(allocate one or more IPs for use later)
+
+API ACCESS
+Go to compute --> Access & security --> API Access
+Download Openstack RC file
+Download EC2 credential
+Save these files in some place on your laptop
+
+Then, 'view credentials'
+Note down what you see if necessary
+
+CREATE A VM - LINUX
+Compute --> Instances
+Click 'Launch Instance'
+
+Details section:
+Choose availability zone (like 'any')
+Give an instance name - rhel1 (machine name)
+Choose flavor
+Choose boot from image
+Choose image of RHEL version
+
+Access & Security section:
+Choose key pair to use
+Choose security group to use - custom1 group
+
+Networking section:
+Choose nw0 (or other if you have created)
+
+Post Creation section:
+Paste the script or provide the file to run (did not choose any as no need now)
+
+Advanced Options section:
+Disk Partition - left it as automatic
+
+Click 'launch' - vm should be ready in a few minutes
+
+ASSIGN FLOATING IP TO VM
+Go to compute --> instances 
+Choose the 'Action' - Associate Floating IP
+Choose one of the IPs created earlier
+Choose the network port in the port box
+
+RETRIEVE PASSWORD  (TBD - NOT WORKING)
+(somehow this is not working - it is not showing the encrypted password and where to enter they private key)
+http://dev.cloudwatt.com/en/blog/horizon-icehouse-retrieve-a-password-generated-by-an-instance.html
+
+nova get-password <machine name> <private key file name>
+--> This is not working from CMD prompt --> gives NULL on screen
+
+LOGON TO LINUX MACHINE - VIA SSH FROM GIT-BASH
+*** THIS WORKED ***
+Syntax: ssh -i <keyfile name> cloud-user or ec2-user@<floatingip>
+NOTE: cloud-user or ec2-user or other such user would have been set up in the image already - CHECK FROM YOUR OPENSTACK ADMIN
+
+ssh -i openstack1.pem cloud-user@10.20.30.40 (or other IP)
+--> This will take you to the 'cloud-user' account
+--> From it, you can 'sudo su - root' without password
+
+LOGON TO LINUX MACHINE - VIA CONSOLE ON OPENSTACK WEB-UI
+Click on the instance name in the instances view
+Click on 'console' --> Click here to show only console
+
+--> You will get the black Login: screen now
+--> However, cloud-user's password is not known - so cannot logon yet
+
+LOGON TO LINUX MACHINE - VIA PUTTY (TBD)
+
+PING LINUX MACHINE
+It was already pingable via floating IP
+
+PING WINDOWS MACHINE
+Initially it was not pingable via floating IP
+Logged on to the console and set the firewall rule for 'public' network to allow all incoming connections
+
+LOGON TO WINDOWS MACHINE - VIA CONSOLE
+Click on the instance name in the instances view
+Click on 'console' --> Click here to show only console
+
+--> This will take you to Windows server console - ALREADY LOGGED ON as 'Administrator'
+--> Now, use Start --> Control Panel - to create new users (created one 'username' user  with a password)
+
+LOGON TO WINDOWS MACHINE - VIA MSTSC OR RDP (TBD)
+At present the floating IP is not pingable from laptop
+
+
+
+
+
+
+

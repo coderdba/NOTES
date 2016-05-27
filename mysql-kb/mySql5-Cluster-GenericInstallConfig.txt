@@ -1,0 +1,321 @@
+=====================================================
+MYSQL CLUSTER - GENERIC LINUX TAR-BALL INSTALL/CONFIG
+=====================================================
+http://downloads.mysql.com/tutorials/cluster/mysql_wp_cluster_quickstart_linux.pdf
+
+NOTE: Both single and multi-node clusters are covered in this document
+
+Single node lab server:  D14-1
+Multi node lab servers:  L04-1,2
+
+===========================
+DOWNLOAD AND UNZIP SOFTWARE
+===========================
+Download the 'generic' 64bit version of mysql cluster
+It comes as a zip file
+Unzip it - it gives a gz file
+Gunzip the gz file - it gives a tar file
+
+================
+INSTALL SOFTWARE
+================
+NOTE: You dont need to be 'root' or have elevated privileges
+
+Create directory /home/username/mysql
+Change directory to that directory
+Untar - tar xvfp mysql-cluster-advanced-7.4.7-linux-glibc2.5-x86_64.tar
+It will untar to /home/username/mysql/mysql-cluster-advanced-7.4.7-linux-glibc2.5-x86_64
+
+Create a link to this directory for ease of use:
+ln -s /home/username/mysql/mysqlc /home/username/mysql/mysql-cluster-advanced-7.4.7-linux-glibc2.5-x86_64
+
+====================
+CONFIGURATION - ALL-IN-ONE CLUSTER (ALL NODES ON ONE MACHINE)
+====================
+Create directories:
+/home/username/mysql/cluster0 (0 denotes all-in-one on single machine)
+/home/username/mysql/cluster0/conf
+/home/username/mysql/cluster0/mysqld_data
+/home/username/mysql/cluster0/ndb_data
+
+Create my.cnf in that directory with the following content:
+  [mysqld]
+  ndbcluster
+  datadir=/home/username/mysql/cluster0/mysqld_data
+  basedir=/home/username/mysql/mysqlc
+  port=5000  # this is optional
+
+Create config.ini in that directory with the following content:
+  [ndb_mgmd]
+  hostname=localhost
+  datadir=/home/username/mysql/cluster0/ndb_data
+  NodeId=1
+
+  [ndbd default]
+  noofreplicas=2
+  datadir=/home/username/mysql/cluster0/ndb_data
+
+  [ndbd]
+  hostname=localhost
+  NodeId=3
+
+  [ndbd]
+  hostname=localhost
+  NodeId=4
+
+  [mysqld]
+  NodeId=50
+
+---------------
+START PROCESSES
+---------------
+
+NDB_MGMD:
+--------
+/home/username/mysql/mysqlc/bin/ndb_mgmd -f /home/username/mysql/cluster0/conf/config.ini --initial --configdir=/home/username/mysql/cluster0/conf
+
+You should see message like:
+MySQL Cluster Management Server mysql-5.6.25 ndb-7.4.7
+
+NDB:
+---
+Run twice (on the same server) for the two replicas
+
+ndbd -c localhost or localhost:1186
+ndbd -c localhost or localhost:1186
+
+You should see these messages:
+
+2015-10-06 03:59:49 [ndbd] INFO     -- Angel connected to 'localhost:1186'
+2015-10-06 03:59:49 [ndbd] INFO     -- Angel allocated nodeid: 3
+
+2015-10-06 03:59:54 [ndbd] INFO     -- Angel connected to 'localhost:1186'
+2015-10-06 03:59:54 [ndbd] INFO     -- Angel allocated nodeid: 4
+
+VERIFY:
+------
+
+$ ndb_mgm -e show
+
+Connected to Management Server at: localhost:1186
+
+Cluster Configuration
+---------------------
+[ndbd(NDB)]     2 node(s)
+id=3    @127.0.0.1  (mysql-5.6.25 ndb-7.4.7, Nodegroup: 0, *)
+id=4    @127.0.0.1  (mysql-5.6.25 ndb-7.4.7, Nodegroup: 0)
+
+[ndb_mgmd(MGM)] 1 node(s)
+id=1    @127.0.0.1  (mysql-5.6.25 ndb-7.4.7)
+
+[mysqld(API)]   1 node(s)
+id=50 (not connected, accepting connect from any host)
+
+MYSQLD:
+------
+
+IMPORTANT:
+  When you start mysqld, if you get error like "Table mysql.user doesn't exist"
+  then follow section INSTALL MYSQLD SYSTEM TABLES DATABASE
+
+Start mysqld:
+  nohup mysqld --defaults-file=/home/username/mysql/cluster0/conf/my.cnf &
+
+
+Got this error:
+2015-10-06 04:15:16 5724 [Note] NDB: Could not find database 'mysql'
+2015-10-06 04:15:16 5724 [ERROR] Fatal error: Can't open and lock privilege tables: Table 'mysql.user' doesn't exist
+  Did not help: http://stackoverflow.com/questions/9083408/fatal-error-cant-open-and-lock-privilege-tables-table-mysql-host-doesnt-ex
+  http://dba.stackexchange.com/questions/115701/mysql-5-6-error-table-mysql-user-doesnt-exist-when-started-as-a-daemon
+  https://bbs.archlinux.org/viewtopic.php?id=137365
+
+-------------------------------------
+INSTALL MYSQLD SYSTEM TABLES DATABASE:
+-------------------------------------
+First start of 'mysqld' expects system tables be present.
+The system tables DB can be installed using /home/username/mysql/mysqlc/scripts/mysql_install_db as follows:
+
+mysql_install_db --basedir=/home/username/mysql/mysqlc --datadir=/home/username/mysql/cluster0/mysqld_data
+
+Installing MySQL system tables...2015-10-06 04:41:48 0 [Warning] TIMESTAMP with implicit DEFAULT value is deprecated. Please use --explicit_defaults_for_timestamp server option (see documentation for more details).
+2015-10-06 04:41:48 0 [Note] /home/username/mysql/mysqlc/bin/mysqld (mysqld 5.6.25-ndb-7.4.7-cluster-commercial-advanced) starting as process 36801 ...
+2015-10-06 04:41:48 36801 [Note] InnoDB: Using atomics to ref count buffer pool pages
+2015-10-06 04:41:48 36801 [Note] InnoDB: The InnoDB memory heap is disabled
+2015-10-06 04:41:48 36801 [Note] InnoDB: Mutexes and rw_locks use GCC atomic builtins
+2015-10-06 04:41:48 36801 [Note] InnoDB: Memory barrier is not used
+2015-10-06 04:41:48 36801 [Note] InnoDB: Compressed tables use zlib 1.2.3
+2015-10-06 04:41:48 36801 [Note] InnoDB: Using Linux native AIO
+2015-10-06 04:41:48 36801 [Note] InnoDB: Using CPU crc32 instructions
+2015-10-06 04:41:48 36801 [Note] InnoDB: Initializing buffer pool, size = 128.0M
+2015-10-06 04:41:48 36801 [Note] InnoDB: Completed initialization of buffer pool
+2015-10-06 04:41:48 36801 [Note] InnoDB: Highest supported file format is Barracuda.
+2015-10-06 04:41:48 36801 [Note] InnoDB: 128 rollback segment(s) are active.
+2015-10-06 04:41:48 36801 [Note] InnoDB: Waiting for purge to start
+2015-10-06 04:41:48 36801 [Note] InnoDB: 5.6.25 started; log sequence number 1600607
+2015-10-06 04:41:48 36801 [Note] RSA private key file not found: /home/username/mysql/cluster0/mysqld_data//private_key.pem. Some authentication plugins will not work.
+2015-10-06 04:41:48 36801 [Note] RSA public key file not found: /home/username/mysql/cluster0/mysqld_data//public_key.pem. Some authentication plugins will not work.
+2015-10-06 04:41:48 36801 [Note] Binlog end
+2015-10-06 04:41:48 36801 [Note] InnoDB: FTS optimize thread exiting.
+2015-10-06 04:41:48 36801 [Note] InnoDB: Starting shutdown...
+2015-10-06 04:41:50 36801 [Note] InnoDB: Shutdown completed; log sequence number 1625987
+OK
+
+Filling help tables...2015-10-06 04:41:50 0 [Warning] TIMESTAMP with implicit DEFAULT value is deprecated. Please use --explicit_defaults_for_timestamp server option (see documentation for more details).
+2015-10-06 04:41:50 0 [Note] /home/username/mysql/mysqlc/bin/mysqld (mysqld 5.6.25-ndb-7.4.7-cluster-commercial-advanced) starting as process 36827 ...
+2015-10-06 04:41:50 36827 [Note] InnoDB: Using atomics to ref count buffer pool pages
+2015-10-06 04:41:50 36827 [Note] InnoDB: The InnoDB memory heap is disabled
+2015-10-06 04:41:50 36827 [Note] InnoDB: Mutexes and rw_locks use GCC atomic builtins
+2015-10-06 04:41:50 36827 [Note] InnoDB: Memory barrier is not used
+2015-10-06 04:41:50 36827 [Note] InnoDB: Compressed tables use zlib 1.2.3
+2015-10-06 04:41:50 36827 [Note] InnoDB: Using Linux native AIO
+2015-10-06 04:41:50 36827 [Note] InnoDB: Using CPU crc32 instructions
+2015-10-06 04:41:50 36827 [Note] InnoDB: Initializing buffer pool, size = 128.0M
+2015-10-06 04:41:50 36827 [Note] InnoDB: Completed initialization of buffer pool
+2015-10-06 04:41:50 36827 [Note] InnoDB: Highest supported file format is Barracuda.
+2015-10-06 04:41:50 36827 [Note] InnoDB: 128 rollback segment(s) are active.
+2015-10-06 04:41:50 36827 [Note] InnoDB: Waiting for purge to start
+2015-10-06 04:41:50 36827 [Note] InnoDB: 5.6.25 started; log sequence number 1625987
+2015-10-06 04:41:50 36827 [Note] RSA private key file not found: /home/username/mysql/cluster0/mysqld_data//private_key.pem. Some authentication plugins will not work.
+2015-10-06 04:41:50 36827 [Note] RSA public key file not found: /home/username/mysql/cluster0/mysqld_data//public_key.pem. Some authentication plugins will not work.
+2015-10-06 04:41:50 36827 [Note] Binlog end
+2015-10-06 04:41:50 36827 [Note] InnoDB: FTS optimize thread exiting.
+2015-10-06 04:41:50 36827 [Note] InnoDB: Starting shutdown...
+2015-10-06 04:41:52 36827 [Note] InnoDB: Shutdown completed; log sequence number 1625997
+OK
+
+To start mysqld at boot time you have to copy
+support-files/mysql.server to the right place for your system
+
+PLEASE REMEMBER TO SET A PASSWORD FOR THE MySQL root USER !
+To do so, start the server, then issue the following commands:
+
+  /home/username/mysql/mysqlc/bin/mysqladmin -u root password 'new-password'
+  /home/username/mysql/mysqlc/bin/mysqladmin -u root -h hostname password 'new-password'
+
+Alternatively you can run:
+
+  /home/username/mysql/mysqlc/bin/mysql_secure_installation
+
+which will also give you the option of removing the test
+databases and anonymous user created by default.  This is
+strongly recommended for production servers.
+
+See the manual for more instructions.
+
+You can start the MySQL daemon with:
+
+  cd . ; /home/username/mysql/mysqlc/bin/mysqld_safe &
+
+You can test the MySQL daemon with mysql-test-run.pl
+
+  cd mysql-test ; perl mysql-test-run.pl
+
+Please report any problems at http://bugs.mysql.com/
+
+The latest information about MySQL is available on the web at
+
+  http://www.mysql.com
+
+Support MySQL by buying support/licenses at http://shop.mysql.com
+
+New default config file was created as /home/username/mysql/mysqlc/my.cnf and
+will be used by default by the server when you start it.
+You may edit this file to change server settings
+
+WARNING: Default config file /etc/my.cnf exists on the system
+This file will be read by default by the MySQL server
+If you do not want to use this, either remove it, or use the
+--defaults-file argument to mysqld_safe when starting the server
+
+========================
+CONFIGURATION - MULTI-SERVER CLUSTER
+========================
+Create directories:
+/home/username/mysql/cluster
+/home/username/mysql/cluster/conf
+/home/username/mysql/cluster/mysqld_data
+/home/username/mysql/cluster/mysqld_data
+
+Create Config file config.ini:
+/home/username/mysql/cluster/conf/config.ini
+
+Create password file for mysqld 'root' user:
+/home/username/mysql/pwfile
+  with contents as follows: (with mysql or other string as password)
+  SET PASSWORD FOR 'root'@'localhost' = PASSWORD('mysql');
+
+[ndb_mgmd]
+hostname=server1
+datadir=/home/username/mysql/cluster/ndb_data
+NodeId=1
+
+[ndbd default]
+noofreplicas=2
+datadir=/home/username/mysql/cluster/ndb_data
+
+[ndbd]
+hostname=server1
+NodeId=11
+
+[ndbd]
+hostname=server2
+NodeId=12
+
+[mysqld]
+hostname=server1
+NodeId=21
+
+[mysqld]
+hostname=server2
+NodeId=22
+
+Create configuration file my.cnf:
+/home/username/mysql/cluster/conf/my.cnf
+
+[ndbd]
+ndb-connectstring=server1
+
+[mysqld]
+ndbcluster
+ndb-connectstring=server1
+datadir=/home/username/mysql/cluster/mysqld_data
+basedir=/home/username/mysql/mysqlc
+#port=5000
+
+[mysqld_cluster]
+ndb-connectstring=server1
+
+Start ndb_mgmd:
+On server1 run the following command.
+ndb_mgmd -f /home/username/cluster/conf/config.ini --initial --configdir=/home/username/mysql/cluster/conf
+
+Start ndb:
+On both servers run the following command.
+ndbd --defaults-file=/home/username/mysql/cluster/conf/my.cnf
+
+Create initial mysql metadata database:
+On both servers run the following command.
+mysqlc/scripts/mysql_install_db --basedir=/home/username/mysql/mysqlc --datadir=/home/username/mysql/cluster/mysqld_data
+
+Start mysqld:
+On both servers run the following command.
+
+nohup mysqld --defaults-file=/home/username/mysql/cluster/conf/my.cnf --init-file=/home/username/mysql/pwfile &
+
+Verify:
+On server1,
+ndb_mgm -e show
+
+Connected to Management Server at: localhost:1186
+Cluster Configuration
+---------------------
+[ndbd(NDB)]     2 node(s)
+id=11   @<node1 IP>  (mysql-5.6.25 ndb-7.4.7, Nodegroup: 0, *)
+id=12   @<node2 IP>  (mysql-5.6.25 ndb-7.4.7, Nodegroup: 0)
+
+[ndb_mgmd(MGM)] 1 node(s)
+id=1    @<node1 IP>  (mysql-5.6.25 ndb-7.4.7)
+
+[mysqld(API)]   2 node(s)
+id=21   @<node1 IP>  (mysql-5.6.25 ndb-7.4.7)
+id=22   @<node2 IP>  (mysql-5.6.25 ndb-7.4.7)

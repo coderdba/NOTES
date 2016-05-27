@@ -1,0 +1,245 @@
+==============================
+CAMEL - SIMPLE FILECOY PROJECT
+==============================
+http://kevinboone.net/cameltest.html
+
+==========================
+SETUP MAVEN PROJECT
+==========================
+Archetype - maven-archetype-quickstart
+Add external jar - camel-core-2.17.1.jar
+GroupId - com.maven.camel
+ArtifactId - FileCopier
+Create new package - com.maven.camel.FileCopier (actually it gets automatically created for this archetype)
+(Also, a default file called App.java is created in the package - remove it as we dont need it)
+
+Add the dependency of camel-core in pom.xml as an external jar in camel unzipped folder:
+NOTE: This probably can be defined to be downloaded from Maven/other web repository - but did a local one as it was already on laptop.
+CAUTION: Maven does not like hardcoding the systemPath - it has to be variable defined in the beginning part of pom.xml
+          See the wrarning messages during build.
+          
+    <dependency>
+        <groupId>Camel-Core</groupId>
+        <artifactId>camel-core</artifactId>
+        <version>2.17.1</version>
+        <scope>system</scope>
+        <systemPath>C:\Opt\apache-camel-2.17.1\lib\camel-core-2.17.1.jar</systemPath>
+    </dependency>
+    
+        <dependency>
+	<groupId>org.slf4j</groupId>
+	<artifactId>slf4j-log4j12</artifactId>
+	<version>1.7.21</version>
+        </dependency>
+
+Warnings during build due to hardcoding of the jar file directory:
+[WARNING] 
+[WARNING] Some problems were encountered while building the effective model for com.maven.camel:FileCopier:jar:0.0.1-SNAPSHOT
+[WARNING] 'dependencies.dependency.systemPath' for Camel-Core:camel-core:jar should use a variable instead of a hard-coded path C:\Opt\apache-camel-2.17.1\lib\camel-core-2.17.1.jar @ line 30, column 21
+[WARNING] 
+[WARNING] It is highly recommended to fix these problems because they threaten the stability of your build.
+[WARNING] 
+[WARNING] For this reason, future Maven versions might no longer support building such malformed projects.
+[WARNING] 
+
+During runtime, kept getting the following error:
+C:\Data\PROGRAMMING\JAVA\OwnJars>java -classpath C:\Opt\slf4j-1.7.21\slf4j-api-1.7.21.jar;C:\Opt\apache-log4j-1.2.17\log4j.1.2.17.jar;.  -jar C:\Data\PROGRAMMING\JAVA\OwnJars\FileCopier.jar
+no main manifest attribute, in C:\Data\PROGRAMMING\JAVA\OwnJars\FileCopier.jar
+
+To fix, added the following lines to pom.xml on the advice of 
+  http://stackoverflow.com/questions/19126636/maven-eclipse-plugin-and-mvn-not-including-main-class-with-pom-xml-setup
+  
+However, that did not help either.  It did not generate a manifest file.
+FINALLY - CREATE IT AS AN EXECUTABLE JAR FILE (not just a jar file) - MANIFEST.MF WILL BE THERE IN ONLY EXECUTABLE JAR
+
+  <build>
+     <plugins>
+         <plugin>
+             <groupId>org.apache.maven.plugins</groupId>
+                 <artifactId>maven-jar-plugin</artifactId>
+                    <configuration>
+                        <archive>
+                            <manifest>
+                                <mainClass>com.maven.camel.FileCopier.FileCopier</mainClass>
+                             </manifest>
+                        </archive>
+                 </configuration>
+         </plugin>
+    </plugins>
+
+============================
+HOW TO RUN THIS
+============================
+
+-------------------------------------------
+IF COMPILED ONLY AS CLASS AS IN THE WEBSITE
+-------------------------------------------
+Run it as given in the website
+
+--------------------------------------
+IF JAR IS WITHOUT DEPENDENCIES
+--------------------------------------
+java -cp FileCopier.jar;C:\Opt\apache-camel-2.17.1\lib\camel-core-2.17.1.jar;C:\Opt\apache-camel-2.17.1\lib\camel-context-2.17.1.jar;C:\Opt\slf4j-1.7.21\slf4j-api-1.7.21.jar;C:\Opt\apache-log4j-1.2.17\log4j-1.2.17.jar;C:\Opt\apache-log4j-1.2.17\slf4j-log4j12-1.7.21 com.maven.camel.FileCopier.FileCopier
+
+--------------------------------------
+IF JAR IS WITH DEPENDENCIES INCLUDED
+--------------------------------------
+java -jar FileCopier.jar
+
+============================
+TEST
+============================
+Run as above - it will run for 5 minutes as set up in the code.
+
+It will create /tmp/in folder by itself.
+Create a file in /tmp/in
+It will be copied by this program into /tmp/out
+
+
+============================
+EXAMPLE DETAILS FROM WEBSITE
+============================
+http://kevinboone.net/cameltest.html
+
+Creating an Apache Camel route in Java from the ground up
+This article describes how to use the Apache Camel integration framework to carry out a simple message routing operation. 
+The operation is specified in Java but, to be honest, there isn't much actual Java coding involved. In fact, the example 
+I use is the same copy-files-between-directories sample found in many books and articles on Camel, with one difference — 
+I describe a step-by-step procedure that uses nothing more than command-line tools and a text editor to accomplish the task. 
+You don't need Maven, you don't need Ant, you don't need an IDE. Of course, I've got nothing against IDEs and sophisticated tools,
+but I do feel they are a hindrance to education. So much is done automatically that the developer is relieved of the need to
+understand anything deeply. Working with nothing more than a text editor and a command prompt, you really have to understand 
+what's going on.
+The specific command-line examples I give are for Linux, because that's what I use for development work. However, they should 
+work on other platforms, provided you know how to run java and javac at the command line.
+
+I'm assuming that the reader has a good working knowledge of Java, and at least a vague idea of how Apache Camel works.
+
+Obtaining and setting up Camel
+
+The latest release of Camel can be obtained from the Camel Web site. For this example I'm using the binary (not source) distribution
+for Linux, version 2.12.1.
+
+To use Camel you'll also need the logging facade SLF4J (available here), and the logger log4j (available here). 
+Again, binary distributions are fine for this example. In fact, you can manage without log4j, and just use the built-in 
+logger in SLF4J; however this logged appears (so far as I can tell) to be non-configurable, which is not very helpful if 
+you have complicated debugging needs.
+
+Installation consists of nothing more than unpacking the Camel, SLF4J, and log4j binary bundles into convenient directores. 
+There are no executables, just libraries, configuration, and samples. You need to note where the lib directories for these 
+three components are, because you'll need them for building and running code.
+
+It goes without saying that you'll need a Java compiler and JVM to run Camel; happily Camel is not hugely fussy about which 
+Java version or vendor you use, provided it's reasonably up-to-date.
+
+Interlude — Camel routes
+
+The main purpose of Camel is to implement routes. A route is a flow of data from one or more endpoints, to one or more other 
+endpoints, optionally with transformations and conversions in between. Camel has built-in support for FTP, JMS, and HTTP endpoints,
+among many others, as well as simple file readers and writers, which we'll be using in this example. Many different types of data 
+and format conversin are also built in, but new ones can easily be added.
+Camel allows routes to be specified in a variety of domain specific languages; it is possible to specify very sophisticated routing
+using just XML, for example. The advantage of using Java is that allows for customer data processing, as a later article will
+demonstrate.
+
+The Camel distribution provides a runtime engine that processes routes according to the developer's specification. In this example, we
+will use this built-in engine although, very often, in production settings the Camel routing is integrated into a general-purpose OSGi
+container like Apache ServiceMix or Eclipse Equinox. A later article will demonstrate this also.
+
+Coding and compiling the route
+
+Here is the Java source code for our basic file copier route; it is a single Java source file called FileCopier.java.
+/*
+Simple Camel file copier 
+
+(c)2013 Kevin Boone
+*/
+import org.apache.camel.*;
+import org.apache.camel.impl.*;
+import org.apache.camel.builder.*;
+
+public class FileCopier
+  {
+  public static void main(String args[]) throws Exception
+    {
+    CamelContext context = new DefaultCamelContext();
+    context.addRoutes(new RouteBuilder()
+      {
+      public void configure()
+        {
+        // Set up the route — from the intput directory, to
+        //  the output directory, with no other processing
+        from ("file:/tmp/in?noop=true").to("file:/tmp/out");
+        }
+      });
+    //
+    // Start the Camel route
+    context.start();
+
+    // Wait five minutes, then stop
+    Thread.sleep (60*5*1000);
+    context.stop ();
+    }
+  }
+This code obtains a CamelContext — a representation of the Camel routing engine — and adds a route to it. The route is specified in
+the form of an anonymous class that implements the RouteBuilder interface. The route itself consists of one line of code:
+from ("file:/tmp/in?noop=true").to("file:/tmp/out");
+
+which sets up an assication between two directory endpoints. The action happens from as soon as we call context.start() and continues
+until (you guessed it) the call to context.stop(). The relevant directories are /tmp/in and /tmp/out; of course you can change these
+if necessary.
+To compile this route, we simply compile this Java source, with a class search path that references the camel-core JAR. For Camel
+version 2.12.1, the relevant JAR is called camel-core-2.12.1.jar, in the Camel lib directory.
+
+To compile the class at the command line:
+
+$ javac -classpath=/path/to/camel/lib/camel-core-2.12.1.jar FileCopier.java
+This should produce FileCopier.class.
+Testing the route
+
+If you've successfully compiled the route class, it's time to test it. The route will copy files between a pair of directories; you
+can create these first if you like, but Camel will create them on demand if they do not exist.
+
+Starting the route
+If you want to be able to configure the amount of logging produced by Camel, I would recommend that you run the Camel route with log4j
+as the logging engine, and create a log4j.properties file to configure it. If you're not bothered about logging you can use the
+default logger supplied with SLF4J — just refer to the JAR file slf4j-simple.jar on the class search path, rather than the slf4j-log4j
+.jar in the examples below. If you do use log4j, the following log4j.properties file will enable debug-level logging for Camel, which
+you'll probably need at some point.
+
+log4j.rootLogger=INFO, out
+log4j.logger.org.apache.camel=DEBUG
+log4j.appender.out=org.apache.log4j.ConsoleAppender
+log4j.appender.out.layout=org.apache.log4j.PatternLayout
+log4j.properties needs to be on the class search path somewhere, otherwise the logger will not be able to find it. Alternatively, 
+you can add a system property to the java command line to indicate where this file is:
+java -Dlog4j.configuration=/path/to/log4j.properties"
+In general, to run the Camel route, the class search path will need to indicate: your own compiled classes, the log4j logger JAR, 
+the SLF4J class JAR that interfaces to log4j, the SLF4J API JAR, and the core Camel JAR. For this simple example, the following
+command-line should do the trick, assuming that log4j.properties is in the current directory.
+java \
+  -classpath /path/to/log4j/log4j-1.2.17.jar:\
+  /path/to/slf4j/slf4j-log4j12-1.7.5.jar:\
+  /path/to/camel/lib/camel-core-2.12.1.jar\
+  /path/to/camel/lib/slf4j-api-1.6.6.jar:. FileCopier
+Of course, this command should be on one long line; I've just split it up for clarity. You'll need to replace the /path/to... 
+entries with the actual paths of this software components on your system, and possibly change the version numbers also.
+
+Testing the route
+To test the route, just copy a file to the 'in' directory. A short while later, it should appear in the 'out' directory. 
+I've used a file called MYTEST; with debug-level logging, you should see output similar to the following in the console:
+[-1) thread #0 - file:///tmp/in] FileConsumer                   
+  DEBUG About to process file: GenericFile[/tmp/in/MYTEST] using exchange: Exchange[MYTEST]
+[-1) thread #0 - file:///tmp/in] SendProcessor                  
+  DEBUG Endpoint[file:///tmp/out] Exchange[MYTEST]
+[-1) thread #0 - file:///tmp/in] FileOperations                 
+  DEBUG Using FileChannel to write file: /tmp/out/MYTEST
+[-1) thread #0 - file:///tmp/in] GenericFileProducer            
+  DEBUG Wrote [/tmp/out/MYTEST] to [Endpoint[file:///tmp/out]]
+[-1) thread #0 - file:///tmp/in] GenericFileOnCompletion        
+  DEBUG Done processing file: GenericFile[/tmp/in/MYTEST] using exchange: Exchange[MYTEST]
+Summary
+
+There is, of course, a huge amount more to Camel than this. In practice, it's quite difficult to manage a complex Camel project 
+(or any software project) using just the command line; hopefully, however, illustrating the individual steps like this has provided
+some better idea of what's actually happening at a technical level.

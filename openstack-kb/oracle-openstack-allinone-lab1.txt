@@ -1,0 +1,133 @@
+================================================================================
+OPENSTACK LAB WITH ORACLE ALL-IN-ONE DOWNLOADED VM IMAGE
+================================================================================
+
+Download Virtualbox VM from - http://www.oracle.com/technetwork/server-storage/openstack/linux/downloads/index.html
+                              --> Oracle OpenStack for Oracle Linux VirtualBox VM (download image for Hands-on lab - short version)
+
+How to start this VM - http://www.oracle.com/technetwork/server-storage/openstack/linux/documentation/openstack-virtualbox-instruction-2301761.pdf
+
+Lab manual - http://www.oracle.com/technetwork/systems/hands-on-labs/hol-openstack-linux-ovm-2399741.html
+
+==================================
+VM IMAGE DOWNLOAD AND STARTUP
+==================================
+
+---------------------
+Download and Unzip VM
+---------------------
+Download the VM image OpenStackHOL.gz
+Copy the image file to a standard directory for VMs: C:\Local\Openstack\Oracle-VM-allInOne-1
+(Copying to the Virtualbox's default VM location C:\Users\username\VirtualBox itself will not really help any better - 
+  as Virtualbox actually creates vmdk etc in a folder in this default location itself)
+Unzip using express-zip or other unzip tool into a subfolder OpenStackHOL
+Rename the unzipped file OpenStackHOL in that subfolder adding the extension 'ova' OpenStackHOL.ova
+(this rename is necessary for Virtualbox to recognize it)
+
+-----------------
+Startup VM
+-----------------
+Double-click on it (assuming it has gotten recognized by virtualbox - otherwise go to Virtualbox and open that file with it)
+It will bring up an "Appliance Settings" page - note down if needed, and then click to proceed
+--> need to add another network (leave first one NAT as is) 
+    - use host-only or internal (when we dont have local-admin-rights)
+
+This will kind of extract the file into vmdk etc into the Virtualbox default folder (takes a few min)
+--> C:\Users\username\VirtualBox VMs\OpenStackHOL --> probably I could have renamed it in the "appliance settings" page
+
+Startup VM in virtualbox 
+- Upon startup, it wont immediately give login screen - Alt-F2 for login screen
+
+Configuration (default): VM name - OpenStakHOL, RAM 4GB, one network adapter, two hard disk controller
+                          Oracle VM Server 3.3.1,  Oracle Linux???
+
+NOTE: This may have keyboard capture enabled.  Right-ctrl is the release key.
+      --> Upon release you can toggle-back and forth and it will not capture until you click the screen again
+
+-------------
+Login
+-------------
+Upon startup, it wont immediately give login screen 
+- Alt-F2 for login screen
+
+Username: root,  Password: password
+
+$ uname -a
+--> shows VM server version info
+$ hostname
+--> shows localhost.localdomain
+
+------------------------
+SETUP IP ADDRESS
+------------------------
+http://www.cloudibee.com/network-bonding-modes/
+
+The image-how-to-use document says 'get ip address of bond0'.
+However ifconfig does not show any IP address. That is because bond0 is configured for DHCP which we dont have now.
+
+Edit the file /etc/sysconfig/network-scripts/ifcfg-bond0 with the following lines:
+  Comment out BOOTPROT="dhcp"
+  
+  Add:
+  IPADDR=192.168.10.10
+  NETMASK=255.255.255.0
+  BOOTPROTO=none
+  
+  Keep:
+  ONBOOT=yes and other settings
+  
+
+Edit eth0 - /etc/sysconfig/network-scripts/ifcfg-eth0
+  NOTE: All these settings already existed
+  DEVICE=eth0 
+  BOOTPROTO=none 
+  HWADDR="whatever there is"
+  ONBOOT=yes 
+  # Settings for Bond 
+  MASTER=bond0 
+  SLAVE=yes
+
+Restart network
+$ modprobe bonding
+$ service network restart
+
+Check IP Address
+$ ifconfig
+
+bond0 shows IP as 192.168.10.10 and broadcast as 192.168.10.255
+eth0 does not show any IP - use bond0 IP
+
+------------------------
+Enable console
+------------------------
+To be able to see the instance console we will need to update Nova with the
+bond0 IP, to do that we need to run the following commands:
+$ openstack-config --set /etc/nova/nova.conf DEFAULT novncproxy_base_url http://<BOND0 IP>:6080/vnc_auto.html
+$ service openstack-nova-compute restart
+
+------------------------
+Openstack Admin Password
+------------------------
+Open the file keystonerc_admin to get passwords and URLs etc
+
+OS Username = admin
+OS tenant name = admin
+OS password = 2b28b42bf62e49cc --> default value (how to change it???)
+OS Auth URL = http://127.0.0.1:5000/v2.0/
+
+-----------------------
+Changing admin password
+-----------------------
+Logon to the console using the initial password.
+
+This is not working right: http://stackoverflow.com/questions/16768272/openstack-change-admin-password-for-the-dashboard
+  $ export OS_SERVICE_TOKEN=$servicetoken(/etc/keystone/keystone.conf)
+  $ export OS_SERVICE_ENDPOINT=$http://ipoftheserver/v2.0
+  then use this syntax to change the password
+  $ keystone user-password-update --pass <password> <user id>
+
+-----------------
+To Shutdown
+-----------------
+# halt
+

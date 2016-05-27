@@ -1,0 +1,199 @@
+MYSQL VERSION 5 INSTALL, CONFIG ON OEL6 (Oracle Linux 6)
+
+DOWNLOAD
+http://www.mysql.com/downloads/ --> will direct to download from Oracle's website
+MySQL DB and Cluster are different downloads 
+(However, if you choose 'cluster' aka "MySQL Cluster Carrier Grade Edition" and in it "MySQL Database Server",
+ then zip files for both cluster and server are displayed in two lists)
+The DB Server and client are in the same download
+Download is a zip file 
+Stored in host machine folder /u01/stage/software/mysql/mySQL5.6
+
+HELP
+RPM Install commands: http://www.ozzu.com/unix-linux-forum/how-install-rpm-files-linux-t32377.html
+Access denied issue: http://ubuntuforums.org/showthread.php?t=1985847
+User creation: http://www.cyberciti.biz/faq/mysql-user-creation/
+Tutorial: 
+
+INSTALLATION
+https://dev.mysql.com/doc/refman/5.6/en/installing.html
+https://dev.mysql.com/doc/refman/5.6/en/linux-installation.html
+
+Unzip the zip file (MySQL-V76360-01.zip)
+Following files get extracted from zip to the local folder:
+      MySQL-client-advanced-5.6.25-1.el6.x86_64.rpm
+      MySQL-devel-advanced-5.6.25-1.el6.x86_64.rpm
+      MySQL-embedded-advanced-5.6.25-1.el6.x86_64.rpm
+      MySQL-server-advanced-5.6.25-1.el6.x86_64.rpm
+      MySQL-shared-advanced-5.6.25-1.el6.x86_64.rpm
+      MySQL-shared-compat-advanced-5.6.25-1.el6.x86_64.rpm
+      MySQL-test-advanced-5.6.25-1.el6.x86_64.rpm
+      README.txt
+      
+Check if an older version exists:      
+      rpm -qa |grep -i mys
+            mysql-libs-5.1.71-1.el6.x86_64
+            mysql-5.1.71-1.el6.x86_64
+            mysql-devel-5.1.71-1.el6.x86_64
+            
+      yum list mysql
+
+Remove the packages
+      yum remove mysql
+      yum remove mysql-server
+      (left mysql-libs without removing)
+
+Install the RPMs
+Installed all of them, but not all are required.
+Mainly the following are required:
+      MySQL-server-advanced-5.6.25-1.el6.x86_64.rpm
+      MySQL-client-advanced-5.6.25-1.el6.x86_64.rpm
+      
+rpm -ivh <<rpm file name>> 
+In the case there are conflicts, check what they are.  If not harmful conflicts, then use --force alongwith -ivh.
+
+When MySQL-server-advanced-5.6.25-1.el6.x86_64.rpm is installed, a user 'mysql' also gets created.
+
+START MYSQL
+/etc/init.d/mysql start
+Check - service mysql status
+
+SET PASSWORDS FOR ROOT USERS
+Used instructions from here:  http://ubuntuforums.org/showthread.php?t=1985847
+https://dev.mysql.com/doc/refman/5.6/en/default-privileges.html
+
+First logon to mysql denied access:  (note- this 'root' is mysql's own root user - not to confuse with unix root user)
+$ mysql -u root -p --> this gave error that root is unauthorized
+
+To fix, follow these steps: (as unix 'root' user)
+Stop mysql:  $ sudo /etc/init.d/mysql stop  -- OR --  service mysqld stop
+Restrt mysql in a different mode:  $ /usr/sbin/mysqld --skip-grant-tables --skip-networking &
+
+Logon as root now, which will be now allowed:  (initial password of 'root' is null)
+$ mysql -u root
+mysql> FLUSH PRIVILEGES;
+
+Update password of 'root' connecting from localhost (same user, but connecting from localhost IP):
+mysql> SET PASSWORD FOR root@'localhost' = PASSWORD('xxxxxxxx');
+
+Update password of 'root' connections from other locations than locahost as well:
+mysql> UPDATE mysql.user SET Password=PASSWORD('newpwd') WHERE User='root';
+mysql> FLUSH PRIVILEGES;
+mysql> exit;
+
+Restart mysql:
+$ service mysql stop  (if this does not work, then kill all mysql unix processes)
+$ service mysql start
+
+Logon again:
+$ mysql -u root -p
+Enter password: 
+mysql>
+
+SECURE THE INSTALLATION EVEN FURTHER
+Used instructions from:  https://oracle-base.com/articles/mysql/mysql-installation-on-linux
+For mysql security best practices: www.greensql.com/articles/mysql-security-best-practices
+For how to run mysql as a normal user: http://dev.mysql.com/doc/refman/5.6/en/changing-mysql-user.html
+For selinux and mysql: https://blogs.oracle.com/jsmyth/entry/selinux_and_mysql
+
+** More details and TODO's here:  https://dev.mysql.com/doc/refman/5.6/en/default-privileges.html **
+
+$ /usr/bin/mysql_secure_installation
+      NOTE: RUNNING ALL PARTS OF THIS SCRIPT IS RECOMMENDED FOR ALL MySQL
+            SERVERS IN PRODUCTION USE!  PLEASE READ EACH STEP CAREFULLY!
+      
+      In order to log into MySQL to secure it, we'll need the current
+      password for the root user.  If you've just installed MySQL, and
+      you haven't set the root password yet, the password will be blank,
+      so you should just press enter here.
+      
+      Enter current password for root (enter for none): 
+      ERROR 1045 (28000): Access denied for user 'root'@'localhost' (using password: NO)
+      Enter current password for root (enter for none): 
+      OK, successfully used password, moving on...
+      
+      Setting the root password ensures that nobody can log into the MySQL
+      root user without the proper authorisation.
+      
+      You already have a root password set, so you can safely answer 'n'.
+      
+      Change the root password? [Y/n] n
+       ... skipping.
+      
+      By default, a MySQL installation has an anonymous user, allowing anyone
+      to log into MySQL without having to have a user account created for
+      them.  This is intended only for testing, and to make the installation
+      go a bit smoother.  You should remove them before moving into a
+      production environment.
+      
+      Remove anonymous users? [Y/n] Y
+       ... Success!
+      
+      Normally, root should only be allowed to connect from 'localhost'.  This
+      ensures that someone cannot guess at the root password from the network.
+      
+      Disallow root login remotely? [Y/n] n  (kept this feature for testing,  better disallow in live systems)
+       ... skipping.
+      
+      By default, MySQL comes with a database named 'test' that anyone can
+      access.  This is also intended only for testing, and should be removed
+      before moving into a production environment.
+      
+      Remove test database and access to it? [Y/n] n  (kept just as it is not harmful)
+       ... skipping.
+      
+      Reloading the privilege tables will ensure that all changes made so far
+      will take effect immediately.
+      
+      Reload privilege tables now? [Y/n] Y
+       ... Success!
+      
+      All done!  If you've completed all of the above steps, your MySQL
+      installation should now be secure.
+      
+      Thanks for using MySQL!
+      Cleaning up...
+      
+CONFIGURATION FILES and DIRECTORIES
+
+/etc/my.cnf
+      [mysqld]
+      datadir=/var/lib/mysql --> default databases directory
+      socket=/var/lib/mysql/mysql.sock --> socket for mysql process
+      user=mysql --> Unix user for running mysql (could be other user as well)
+      # Disabling symbolic-links is recommended to prevent assorted security risks
+      symbolic-links=0
+      
+      [mysqld_safe]
+      log-error=/var/log/mysqld.log --> Log file
+      pid-file=/var/run/mysqld/mysqld.pid  -->  PID file
+      
+Directory /etc/my.cnf.d --> not sure what this is for
+
+Databases directory:  /var/lib/mysql --> Under this folders for each DB will be placed
+
+PERMISSIONS FOR DIRECTORIES
+Reference - https://dev.mysql.com/doc/refman/5.6/en/data-directory-initialization.html
+
+/var/lib/mysql - base directory for mysql database and configurtion components.
+--> This is already made owned by mysql, so, no need to follow the chown steps in the reference document above
+
+/usr/bin - binaries folder
+--> The binaries are owned by root and permission 755 - leave it as it is. There is no need to change owner to mysql.
+
+/usr/sbin - contains mysqld and mysqld-debug
+--> Both binaries are owned by root and permission 755 - leave the permissions as they are.
+
+CHANGING MYSQL USER
+http://dev.mysql.com/doc/refman/5.6/en/changing-mysql-user.html
+
+
+
+
+
+
+
+
+
+
+

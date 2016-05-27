@@ -1,0 +1,38 @@
+======
+TKPROF
+======
+
+------------------
+TIMED STATISTICS (prep)
+------------------
+Whole DB: timed_statistics                     boolean     TRUE
+Whole DB: timed_os_statistics                  integer     0  (not necessary for sql analysis)
+
+Whole DB:         ALTER SYSTEM SET timed_statistics = TRUE|FALSE;
+Current Session:  ALTER SESSION SET timed_statistics = TRUE|FALSE;
+
+---------------------
+TRACE FILE PROPERTIES (prep)
+---------------------
+_trace_files_public = true
+max_dump_FILE_SIZE=10m
+
+If trace files really start filling up and wwe dont want to lose info:
+CONNECT / AS SYSDBA
+ORADEBUG SETORAPID <pid>
+ORADEBUG UNLIMIT
+
+------------------
+SET TRACE
+------------------
+Whole DB:         sql_trace=true 
+Current Session:  ALTER SESSION SET sql_trace = TRUE|FALSE;
+Current Session:  ALTER SESSION /* Module glpost.c */ SET sql_trace = TRUE; (with a module marker)
+Specific Session: EXECUTE SYS.dbms_system.set_sql_trace_in_session (<SID>, <serial#>, TRUE|FALSE);
+
+----------------------
+RUN TKPROF
+----------------------
+tkprof <trace file> <output file> [explain=<username/password>] [sys=n] [insert=<filename>] [record=<filename>] [sort=<keyword>]
+
+

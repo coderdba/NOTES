@@ -1,0 +1,103 @@
+# -*- mode: ruby -*-                                                                                                                 
+# vi: set ft=ruby :                                                                                                                  
+                                                                                                                                     
+#--------------------                                                                                                                
+#                                                                                                                                    
+# Items to cover                                                                                                                     
+#                                                                                                                                    
+# box(es)                                                                                                                            
+# host name(s)                                                                                                                       
+# network                                                                                                                            
+# shared folders                                                                                                                     
+# chef omnibus install                                                                                                               
+# recipes to call                                                                                                                    
+#                                                                                                                                    
+#--------------------                                                                                                                
+                                                                                                                                     
+                                                                                                                                     
+# Vagrantfile API/syntax version. Don't touch unless you know what you're doing!                                                     
+VAGRANTFILE_API_VERSION = '2'                                                                                                        
+                                                                                                                                     
+# Vagrant version                                                                                                                    
+Vagrant.require_version '>= 1.5.0'                                                                                                   
+                                                                                                                                     
+                                                                                                                                     
+# CONFIGURATION - START                                                                                                              
+                                                                                                                                     
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|                                                                               
+                                                                                                                                     
+  #  ------  GLOBAL SETTINGS BEGIN ------                                                                                            
+  #  These will apply for all servers created by this file                                                                           
+  #                                                                                                                                  
+                                                                                                                                     
+  # Box                                                                                                                              
+  config.vm.box = 'bento/ubuntu-14.04'                                                                                               
+                                                                                                                                     
+  # Box override  if using vmware_fusion                                                                                             
+  config.vm.provider "vmware_fusion" do |v, override|                                                                                
+    override.vm.box = 'bento/ubuntu-14.04'                                                                                           
+  end                                                                                                                                
+                                                                                                                                     
+  # Shared folders                                                                                                                   
+  #config.vm.synced_folder ".", "/vagrant", id: "vagrant-root", disabled: true                                                       
+  #config.vm.synced_folder "../data", "/vagrant_data"                                                                                
+                                                                                                                                     
+  #  ------  GLOBAL SETTINGS END ------                                                                                              
+  #                                                                                                                                  
+                                                                                                                                     
+  #  ------  SERVER DEFINITIONS BEGIN  -----------------                                                                             
+  #  Specify for either provider - will pickup whatever is relevant in the environment                                               
+                                                                                                                                     
+                                                                                                                                     
+   # Begin server1                                                                                                                   
+                                                                                                                                     
+     # Begin server1                                                                                                                 
+    config.vm.define "server1" do |server1|                                                                                          
+                                                                                                                                     
+      # hostname                                                                                                                     
+      server1.vm.hostname = "server1"                                                                                                
+                                                                                                                                     
+      # customization syntax for vmware                                                                                              
+      server1.vm.provider "vmware_fusion" do |v|                                                                                     
+          v.vmx["numvcpus"] = "1"                                                                                                    
+          v.vmx["memsize"] = "512"                                                                                                   
+      end                                                                                                                            
+                                                                                                                                     
+      # customization syntax for virtualbox                                                                                          
+      server1.vm.provider "virtualbox" do |v|                                                                                        
+          v.customize [ "modifyvm", :id, "--cpus", "1" ]                                                                             
+          v.customize [ "modifyvm", :id, "--memory", "512" ]                                                                         
+      end                                                                                                                            
+                                                                                                                                     
+      # Network                                                                                                                      
+      #server1.vm.network "private_network", ip: "192.168.205.10"                                                                    
+                                                                                                                                     
+    end                                                                                                                              
+                                                                                                                                     
+   # End server1                                                                                                                     
+                                                                                                                                     
+   # Begin server2                                                                                                                   
+    config.vm.define "server2" do |server2|                                                                                          
+      server2.vm.hostname = "server2"                                                                                                
+                                                                                                                                     
+      server2.vm.provider "vmware_fusion" do |v|                                                                                     
+          v.vmx["numvcpus"] = "1"                                                                                                    
+          v.vmx["memsize"] = "512"                                                                                                   
+      end                                                                                                                            
+                                                                                                                                     
+      server2.vm.provider "virtualbox" do |v|                                                                                        
+          v.customize [ "modifyvm", :id, "--cpus", "1" ]                                                                             
+          v.customize [ "modifyvm", :id, "--memory", "512" ]                                                                         
+      end                                                                                                                            
+                                                                                                                                     
+      # Network                                                                                                                      
+      #server2.vm.network "private_network", ip: "192.168.205.11"                                                                    
+                                                                                                                                     
+    end                                                                                                                              
+    # End server2                                                                                                                    
+                                                                                                                                     
+    #  ------  SERVER DEFINITIONS END  -----------------                                                                             
+                                                                                                                                     
+end                                                                                                                                  
+# CONFIGURATION - END                                                                                                                
+                                                                                                                                     

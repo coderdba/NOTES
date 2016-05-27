@@ -1,0 +1,114 @@
+Hadoop Node Build using Chef
+VM Details:
+VM Hostname	vm-hadoop1
+IP Address	10.0.2.15
+Host IP (laptop)	10.0.2.2
+
+Environment:
+Vagrant, Berkshelf, Chef-solo 
+
+Create VM:
+Go to ~/cookbooks and do:   berks cookbook vm-hadoop2	
+Go to ~/cookbooks/vm-hadoop2 and edit Vagrantfile:
+Comment the line of config.vm.network :private_network (as it did not seem to work due to lack of LAR)
+Uncomment virtualbox configuration section and reduce memory to 512 from 1024
+Edit hostname to vm-hadoop2 from vm-hadoop2-berkshelf
+
+Edit box image details: 
+Change config.vm.box line which says “xxxxxxx” to “yyy-xxxxx”
+Add line config.vm.box_download_insecure = “yyy-xxxx”
+
+Change config.vm.box_url to the latest in repository.
+Go to  ~/cookbooks/vm-hadoop2
+Do ‘vagrant up’
+
+Do ‘vagrant ssh’ to logon to the box and validate creation
+Check in virtualbox if the machine has come up	
+Vagrant user in the VM:
+/etc/sudoers on the VM has the following line for vagrant user:
+vagrant ALL=(ALL)   NOPASSWORD:ALL
+That is, vagrant user can do root and other users operations without password	
+
+Copy Hadoop distribution:
+Download hadoop installer file
+
+Copy it to ~/cookbooks/vm-hadoop2 folder
+
+This folder will show up in the VM as /vagrant and the VM now can access it for installation
+	
+
+Create Hadoop Install Recipe:
+
+Recipes are created in ~/cookbooks/vm-hadoop2/recipes	
+Create a file hadoop-swinstall.rb in recipes folder with the following content:
+
+group hadoop
+
+user ‘hadoop’ do
+  comment ‘Hadoop software owner’
+  gid 'hadoop'
+  home '/home/hadoop'
+  shell '/bin/bash'
+  password 'hadoop’
+end
+
+bash 'install_hadoop' do
+  user 'root'
+  cwd '/usr/local'
+
+  code <<-EOF
+  
+  tar -zxf /vagrant/hadoop-2.6.0.tar.gz
+  dir=`ls –l | grep hadoop | tail -1`
+
+ chown –R hadoop:hadoop $dir
+
+  rm -i hadoop
+  ln –s $dir hadoop
+ 
+  EOF
+end
+
+bash ‘config_hadoop_user_env’ do
+  user 'hadoop'
+  cwd '/home/hadoop’
+
+  code <<-EOF
+  
+# Set the Hadoop Related Environment variables
+echo “export HADOOP_HOME=/usr/local/hadoop” >> .bashrc
+echo “export HADOOP_STREAMING=$HADOOP_HOME/share/hadoop/tools/lib/Hadoop-streaming-2.6.0.jar” >> .bashrc
+echo “export PATH=$PATH:$HADOOP_HOME/bin” >> .bashrc
+
+  EOF
+end
+
+	https://docs.chef.io/resource_bash.html - for embedding cd, untar etc
+bash 'install_something' do
+  user 'root'
+  cwd '/tmp'
+  code <<-EOH
+  wget http://www.example.com/tarball.tar.gz
+  tar -zxf tarball.tar.gz
+  cd tarball
+  ./configure
+  make
+  make install
+  EOH
+end
+
+Run the recipe:
+Edit vagrantfile adding the run list:
+On the laptop, edit ~/cookbooks/vm-hadoop2/Vagrantfile to reflect run-list:
+
+chef.run_list = [“recipe[vm-hadoop2::default]”, “recipe[vm-hadoop2::hadoop-swinstall]”]
+	
+Run the recipe:
+In ‘cookbooks/vm-hadoop2’ folder, do ‘vagrant provision’	
+Check in the hadoop VM if install was successful:
+Go to ‘cookbooks/vm-hadoop2’
+Logon to the VM by ‘vagrant ssh’
+Go to the /usr/local folder on the VM and check for the hadoop installation folder and soft-link	
+
+Bootstrap the node to chef server:
+Steps general reference:  Follow document Chef-Lab-Advanced.doc	

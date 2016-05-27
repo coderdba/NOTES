@@ -1,0 +1,204 @@
+JENKINS NOTES
+
+SITES
+https://jenkins-ci.org/
+http://pkg.jenkins-ci.org/redhat/
+
+Two ways of install/use Jenkins- as a Java WAR file (seems easier to configure), 
+and as a Unix RPM later run as a service.
+(good one covers both - http://www.yolinux.com/TUTORIALS/Jenkins.html)
+http://yakiloo.com/setup-jenkins-and-windows/
+http://www.5ops.com/how-we-make-software-deployment-easier-at-site5/ 
+    (How We Use Github, Jenkins, Vagrant, and Yum to Make Software)
+
+https://github.com/mitchellh/vagrant/issues/5438 --> using ssh instead of vagrant ssh
+
+Using WAR file:
+https://wiki.jenkins-ci.org/display/JENKINS/Starting+and+Accessing+Jenkins
+http://yakiloo.com/setup-jenkins-and-windows/
+
+Using as a native service:
+https://wiki.jenkins-ci.org/display/JENKINS/Installing+Jenkins+on+Red+Hat+distributions
+
+https://wiki.jenkins-ci.org/display/JENKINS/Meet+Jenkins
+    Building/testing software projects continuously, just like CruiseControl or DamageControl. In a nutshell, Jenkins provides an easy-to-use so-called continuous integration system, making it easier for developers to integrate changes to the project, and making it easier for users to obtain a fresh build. The automated, continuous build increases the productivity.
+    Monitoring executions of externally-run jobs, such as cron jobs and procmail jobs, even those that are run on a remote machine. For example, with cron, all you receive is regular e-mails that capture the output, and it is up to you to look at them diligently and notice when it broke. Jenkins keeps those outputs and makes it easy for you to notice when something is wrong.
+
+https://wiki.jenkins-ci.org/display/JENKINS/Use+Jenkins
+
+https://jenkins-ci.org/views/hudson-tutorials
+
+Plugins: https://wiki.jenkins-ci.org/display/JENKINS/Plugins
+Git Plugin: https://wiki.jenkins-ci.org/display/JENKINS/Git+Plugin
+
+
+Chef testing with Jenkins: http://blog.bscott.me/2012/12/08/Chef-Testing-Part-2.html
+
+http://erichelgeson.github.io/blog/2014/05/10/automating-your-automation-federated-jenkins-with-chef/
+http://www.slideshare.net/dstine4/jenkins-and-chef-infrastructure-ci-and-automated-deployment
+
+Java builds:
+http://www.yolinux.com/TUTORIALS/Jenkins-Java-builds.html
+http://www.vogella.com/tutorials/Jenkins/article.html
+
+============================================
+INSTALL JENKINS – ON WINDOWS USING WAR FILE
+============================================
+
+Download Jenkins:
+    Jenkins.war 'Jenkins Web Archive' from https://jenkins-ci.org/ to some location – like c:\opt\Jenkins
+
+Run Jenkins:
+    Go to DOS/CMD prompt
+    Locate your Java program location – like C:\Program Files(x86)\Java\Jre\bin\java.exe
+    Run java to install Jenkins from war file – java –jar c:\opt\Jenkins\jenkins.war
+    
+    This will extract files into c:\Users\myusername\.jenkins and install
+    (NOTE: You can first set JENKINS_HOME environment variable in DOS prompt to another directory also)
+    
+    This will also start a web server at port 8080
+    This will also start sshd at port 58682
+    
+    NOTE:  You have to keep the DOS prompt up all the time.  
+            If it is closed or if you logoff the system, then re-start Jenkins with the java command as above
+
+    NOTE: You can make Jenkins a windows service – option available in ‘manage jenkins’ page in Jenkins main page.  
+            However, that needs local admin rights.  If you don’t have admin rights, use the java-war method
+
+PROXY - When Jenkins has to poll Git, proxy may impede.  Try doing this:
+http://i4t.org/2007/05/04/java-http-proxy-settings/
+$ java -Dhttp.proxyHost=proxyhostURL -Dhttp.proxyPort=proxyPortNumber -Dhttp.proxyUser=someUserName -Dhttp.proxyPassword=somePassword -jar jenkins.war
+
+--------------
+ACCESS JENKINS 
+--------------
+In browser go to http://localhost:8080 to get Jenkins main page
+
+--------------------
+CONFIGURE SLAVE NODE - LINUX/UNIX VM
+--------------------
+http://yakiloo.com/setup-jenkins-and-windows/
+https://pineapple.java.net/pineapple-plugins/pineapple-ssh-plugin/examples/install-jenkins-linux-vagrant.html
+http://www.yolinux.com/TUTORIALS/Jenkins.html
+https://wiki.jenkins-ci.org/display/JENKINS/Step+by+step+guide+to+set+up+master+and+slave+machines
+
+Go to ‘Manage Jenkins’ -  ‘Manage Nodes’ – ‘New Node’
+Give a node name – node1-vagrant-vm
+Remote directory - /opt/jenkins
+Labels – node1 (or other – these labels are attached to jobs and projects so that builds of those projects/jobs happen on nodes with those labels)
+Launch method – “Launch slave agents on Unix machines via SSH”
+Host – localhost ('localhost' if vagrant VM with NAT or actual hostname or IP Address if not NAT) (with vagrant VMs, 'localhost' here, and port 2222 in 'advanced' will enable Jenkins to go to one VM.  Not sure how it handles if multiple VMs with same NAT IP are on the
+same host machine)
+Add credential – root and root password
+Click ‘advanced’ – port 2222 (or other forwarded port for NAT) or 22 or other or leave blank as needed
+Java Path – give java path on the slave machine
+
+This now shows the node in the manage-node dashboard
+
+Click your node
+Click ‘Launch slave agent’ button to install slave software on the node and connect it to Jenkins server
+
+--------------
+INSTALL PLUGINS
+--------------
+Manage Jenkins – Manage Plugins – Available – now choose what you need and click install without restart
+
+I guess we mainly need git, github, maven, ant mainly.  Others are listed below.
+
+Jenkins Plugins (http://blog.bscott.me/2012/12/08/Chef-Testing-Part-2.html#par13)
+MultiJob Plugin - http://wiki.jenkins-ci.org/display/JENKINS/Multijob+Plugin
+Dashboard View - http://wiki.jenkins-ci.org/display/JENKINS/Dashboard+View
+Warning Plugin - http://wiki.jenkins-ci.org/x/G4CGAQ
+Git Plugin - http://wiki.jenkins-ci.org/display/JENKINS/Git+Plugin
+Github Plugin - http://wiki.jenkins-ci.org/display/JENKINS/Github+Plugin
+AntExec Plugin - 
+Maven IntegrationPlugin - 
+Jenkins Ruby Metrics - http://wiki.jenkins-ci.org/display/JENKINS/Ruby+Metrics+Plugin+Plugin>
+Build Pipeline Plugin - https://code.google.com/p/build-pipeline-plugin
+Jenkins Adaptive Plugin - http://wiki.jenkins-ci.org/display/JENKINS/Jenkins+Adaptive+Plugin
+Also – Ruby plugin, Chef Plugin, Chef Identity plugin, Chef tracking plugin
+
+------------------------------------
+Configure JDK, Ant, SSH, Keys etc
+------------------------------------
+Go to home page --> Manage Jenkins --> Configure  System
+Home Directory - C:\Users\<username>\.jenkins  (leave it as it is)
+
+Maven Configuration - leave defaults as they are
+
+
+
+> JDK
+Click "Add JDK"
+Name - JDK 8
+JAVA_HOME - C:\Program Files\Java\jdk1.8.0_31
+Do not check 'Install Automatically'
+
+> Git
+Path to executable - git.exe - already entered, test running git.exe in windows command line, and leave it as it is
+
+> Ant
+Click "add ant"
+Name - Ant 1.9.6 (or other)
+Ant Home - C:\opt\apache-ant-1.9.6 (or other)
+
+> Maven
+Click "add maven"
+Name - Maven 3.3.3 (or other)
+Maven Home - C:\opt\apache-maven-3.3.3 (or other)
+
+> Maven Project Configuration
+Leave defaults as they are
+Locak Maven Repository - ~/.m2/repository - default, leave as is 
+
+> Jenkins Location
+URL - http://localhost:8080/ - default, leave as is
+
+> CVS (rsa key)
+Private Key location - C:\Users\username/.ssh/id_rsa - default, leave as is
+Private key password - *** - leave as is (enter passphrase if entered while creating)
+Known Hosts Location - C:\Users\username/.ssh/known_hosts - default, leave as is
+
+> Other sections
+--> leave as they are
+
+================================================================================
+CHEF AND JENKINS – WITH A NODE CONFIGURED ON A CHEF-SERVER
+================================================================================
+http://geekblood.com/2014/12/22/chef-12-jenkins-and-aws-provisioning-part-2/
+https://issues.jenkins-ci.org/browse/JENKINS-26972
+
+Click ‘new item’
+Give an item name – which is the project/job name – ‘node1-chef-client-run-Freestyle’
+Choose ‘Freestyle Project’ (or other, but this example is for freestyle project)
+Choose ‘restrict where this project can be run’ – and add the labels of nodes that must run this project (like node1 label entered 
+for node1 earlier)
+Source Code Management  -  choose None
+In Build steps section,  choose ‘Execute Shell’
+Provide the command /usr/bin/chef-client which is the command to run (this will run chef-client command, which makes the node get 
+the latest run-list from chef-server and run the runlist)
+NOTE:  Do not choose ‘run chef client on remote host’ (you can choose it if you want to run specific recipes)
+Save
+Then click ‘build now’ and it will run chef-client which will do the needful
+
+================================================================================
+GIT AND JENKINS 
+================================================================================
+Documented in another article in jenkins repository
+
+================================================================================
+CONFIGURE MY LAPTOP AS A NODE - NOT SUCCESSFUL 
+================================================================================
+This was not actually successful - need to figure out why.
+HOWEVER, NOTE: The local laptop is actually in the node-list already as 'master' node
+
+Go to ‘Manage Jenkins’ -  ‘Manage Nodes’ – ‘New Node’
+Give a node name – laptop-hostname
+Remote directory - c:\opt\jenkins
+Labels – << leave blank >> 
+Usage - Utilize this node as much as possible
+Launch method – “Launch slave agents via Java Web Start”
+Click ‘advanced’ – << did not enter tunnel and jvm info >>
+Availability - Keep this slave on-line as much as possible
+Save it
+

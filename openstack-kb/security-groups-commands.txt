@@ -1,0 +1,71 @@
+======================================
+SECURITY GROUPS MANAGEMENT
+======================================
+
+Use Nova or Neutron to manage security groups: 
+  http://docs.openstack.org/openstack-ops/content/security_groups.html
+  http://docs.openstack.org/openstack-ops/content/associate_security_groups.html
+  
+=====================================
+CREATE SECURITY GROUPS
+=====================================
+----------------------------------
+BASIC GROUP - ALLOW SSH AND PINGS
+----------------------------------
+Create:
+openstack security group create Basic1 --description 'Allow SSH and pings'
+
+Allow SSH:
+openstack security group rule create Basic1 --proto tcp --dst -port 22:22
+
+Allow Ping:
+openstack security group rule create Basic1 --proto icmp --dst-port -1
+
+====================================================
+ASSOCIATE/DISASSOCIATE INSTANCE WITH SECURITY GROUPS
+====================================================
+
+Associate during creation
+openstack server create --flavor aFlavor --image ubuntu-latest --security-group MySecGroup --nic net-id=MyNetwork --key-name MyKey myInstanceHostName
+
+Associate after creation
+nova add-secgroup <server> <securitygroup>
+
+Dissociate after creation
+nova remove-secgroup <server> <securitygroup>
+
+=================================
+EXAMPLE SECURITY GROUP SETTINGS
+=================================
+default:  (modified adding more settings)
+ALLOW IPv6 from default
+ALLOW IPv4 80/tcp from 0.0.0.0/0
+ALLOW IPv4 to 0.0.0.0/0
+ALLOW IPv4 22/tcp from 0.0.0.0/0
+ALLOW IPv4 1-65535/tcp from default
+ALLOW IPv4 1-65535/tcp from 0.0.0.0/0
+ALLOW IPv4 from default
+ALLOW IPv6 to ::/0
+ALLOW IPv4 icmp from 0.0.0.0/0
+
+custom1:
+ALLOW IPv4 to 0.0.0.0/0
+ALLOW IPv4 22/tcp from 0.0.0.0/0
+ALLOW IPv4 icmp from 0.0.0.0/0
+ALLOW IPv6 to ::/0
+ALLOW IPv4 80/tcp from 0.0.0.0/0
+ALLOW IPv4 1-65535/tcp from 0.0.0.0/0
+
+Basic1: ('icmp' is for pings, 22/tcp is for ssh)
+ALLOW IPv6 to ::/0
+ALLOW IPv4 icmp from 0.0.0.0/0
+ALLOW IPv4 22/tcp from 0.0.0.0/0
+ALLOW IPv4 to 0.0.0.0/0
+
+
+Open for internal: (note 'from 192.168...')
+ALLOW IPv6 to ::/0
+ALLOW IPv4 tcp from 192.168.10.0/24
+ALLOW IPv4 to 0.0.0.0/0
+
+

@@ -1,0 +1,132 @@
+CASSANDRA - DATASTAX DISTRIBUTION - INSTALL AND CONFIG
+
+INFO, TUTORIALS
+Local install - https://www.digitalocean.com/community/tutorials/how-to-install-cassandra-and-run-a-single-node-cluster-on-a-ubuntu-vps
+Local install - http://www.tutorialspoint.com/cassandra/cassandra_installation.htm
+http://wiki.apache.org/cassandra/GettingStarted
+
+Configuration:  http://docs.datastax.com/en/archived/cassandra/1.0/docs/  (probably older version)
+
+INSTALL JAVA 8 (1.8)
+Download java rpm package from Oracle site. (jdk-8u51-linux-x64.rpm) 
+--> http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html
+Install from the rpm. (rpm -Uvh jdk-8u51-linux-x64.rpm)
+Open /etc/profile, and set the java paths, save it.
+Check the java installation path, and java version, with the commands: which java, java -version
+
+EDIT /etc/profile
+https://www.digitalocean.com/community/tutorials/how-to-install-cassandra-and-run-a-single-node-cluster-on-a-ubuntu-vps
+NOTE: THIS STEP MAY NOT BE NEEDED
+JAVA_HOME=/usr/java/jdk1.8.0_51
+PATH=$PATH:$HOME/bin:$JAVA_HOME/bin
+JRE_HOME=/usr/java/jdk1.8.0_51
+PATH=$PATH:$HOME/bin:$JRE_HOME/bin
+export JAVA_HOME
+export JRE_HOME
+export PATH
+
+=====================================================================================
+INSTALL CASSANDRA 2.1 OF DATASTAX using YUM on RHEL
+http://docs.datastax.com/en/cassandra/2.1/cassandra/install/installRHEL_t.html
+(after this, do multi-node using http://docs.datastax.com/en/cassandra/2.1/cassandra/initialize/initializeSingleDS.html)
+=====================================================================================
+
+Check which version of Java is installed - should be 1.8 or at least 1.7
+$ java -version
+
+Add the DataStax Community repository to the /etc/yum.repos.d/datastax.repo:
+
+[datastax] 
+name = DataStax Repo for Apache Cassandra
+baseurl = http://rpm.datastax.com/community
+enabled = 1
+gpgcheck = 0
+
+Install the packages:
+$ yum install dsc21
+OR
+$ yum --disablerepo="*" --enablerepo="datastax" install dsc21
+    ================================================================================
+    
+     Package              Arch            Version           Repository         Size
+    ================================================================================
+    
+    Installing:
+     dsc21                noarch          2.1.8-1           datastax          1.9 k
+    Installing for dependencies:
+     cassandra21          noarch          2.1.8-1           datastax           21 M
+    
+    Transaction Summary
+    ================================================================================
+    
+    Install       2 Package(s)
+
+$ sudo yum install cassandra21-tools ## Installs optional utilities.
+
+The DataStax Community distribution of Cassandra is ready for configuration.
+
+START CASSANDRA
+http://wiki.apache.org/cassandra/GettingStarted
+https://www.digitalocean.com/community/tutorials/how-to-install-cassandra-and-run-a-single-node-cluster-on-a-ubuntu-vps
+
+WITH COMMAND - As root, 
+$ cassandra
+
+This will show some messages on the screen and then comes back to command prompt.
+Cassandra now is running in the background.
+
+AS SERVICE
+service cassandra start
+
+CASSANDRA IN FOREGROUND
+$ cassandra -f
+
+STOP CASSANDRA
+service cassandra stop
+
+If started as foreground, do a control-c in that screen.
+
+        OTHER INSTALL/UNINSTALL INFO
+                INSTALL CASSANDRA 2.2 USING TARBALL ON RHEL
+                http://docs.datastax.com/en/cassandra/2.2/cassandra/install/installTarball.html
+                http://docs.datastax.com/en/cassandra/2.2/cassandra/install/referenceInstallLocateTar.html
+                
+                INSTALLING PRIOR VERSIONS
+                http://docs.datastax.com/en/cassandra/2.2/cassandra/install/installPriorVersions.html
+                
+                UNINSTALL - DIFFERENT METHODS IF USED YUM OR TARBALL
+                http://docs.datastax.com/en/cassandra/2.1/cassandra/install/installRemove.html
+
+CONFIGURATION - BASICS
+http://www.tutorialspoint.com/cassandra/cassandra_installation.htm
+
+MAIN DIRECTORY
+/var/lib/cassandra
+/var/lib/cassandra/data - data files - change in cassandra.yaml
+/var/lib/cassandra/commitlog
+/var/lib/cassandra/saved_caches
+
+CONFIGURATOIN FILES
+/etc/cassandra
+/etc/cassandra/default.conf/cassandra.yaml (http://docs.datastax.com/en/cassandra/1.2/cassandra/configuration/configCassandra_yaml_r.html)
+/etc/cassandra/default.conf/cassandra-env.sh
+
+LOG FILES
+/var/log/cassandra
+
+CQLSH
+Logon as cassandra unix user.
+$ cqlsh
+cqlsh>
+
+NOTE: This may give error that connection refused by locahost.
+First - check if cassandra is running, and if not, start it
+Next - follow instructions in http://www.liquidweb.com/kb/error-failed-to-connect-to-127-0-0-17199-connection-refused-cassandra-solved/ -->  In /etc/cassandra/default.conf/cassandra-env.sh, uncomment the line "JVM_OPTS=”$JVM_OPTS -Djava.rmi.server.hostname=<public name>”" and replace <public name> by localhost or 127.0.0.1 or hostname/IP of the machine.
+
+=====================================
+MULTINODE SETUP
+=====================================
+http://docs.datastax.com/en/cassandra/2.1/cassandra/initialize/initializeSingleDS.html
+
+<< to be done >>
+

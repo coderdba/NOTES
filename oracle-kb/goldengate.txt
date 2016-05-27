@@ -1,0 +1,91 @@
+Tutorial 11gR2 - www.ahmedbaraka.com/computer/docs/oracle_gg.pdf
+Tutorial 12c - http://dbasolved.com/2013/10/17/installing-oracle-golden-gate-12c-12-1-2-along-side-oracle-database-12c-12-1-0-1/
+
+Oracle corp tutorials:
+12c Installation - http://www.oracle.com/webfolder/technetwork/tutorials/obe/fmw/goldengate/12c/OGG12c_Installation/index.html
+12c Setup replication - http://www.oracle.com/webfolder/technetwork/tutorials/obe/fmw/goldengate/12c/OGG12c_Integrated_Replicat/index.html
+11g replication - http://www.oracle.com/webfolder/technetwork/tutorials/obe/fmw/goldengate/11g/orcl_orcl/index.html
+
+Metalink docs:
+Oracle GoldenGate 12c Tutorial Oracle to Oracle Replication with Oracle Multitenant Version 12.1 (Doc ID 1960719.1)
+Master Note - OGG TCP Port Usage (Doc ID 1300117.1)
+Oracle GoldenGate -- Oracle RDBMS Server Recommended Patches (Doc ID 1557031.1)
+Main Note - Oracle GoldenGate - Installation (Doc ID 1304564.1)
+Master Note for Oracle GoldenGate for Filtering and Transformation Data(Doc ID 1450495.1)
+GoldenGate Performance Tuning, Configuration Attributes & Monitoring (Doc ID 1455566.1)
+
+Good Tutorials:
+http://gavinsoorma.com/oracle-goldengate-veridata-web/
+http://gavinsoorma.com/2010/02/goldengate-installation-oracle-11g-on-red-hat-linux/
+http://gavinsoorma.com/2010/02/goldengate-concepts-and-architecture/
+
+THROUGHPUT MEASUREMENT
+http://database.com.mk/wordpress/2012/10/18/measuring-operational-throughput-of-oracle-golden-gate-replicate-process/
+
+BOOKS
+https://www.safaribooksonline.com/library/view/oracle-goldengate-11g/9781849686143/ch06s08.html
+
+CONSULTANTS
+https://www.cintra.com/goldengate#3081,SW,59
+
+PERFORMANCE TUNING
+- repliate Commit nowait
+- multiple processs, row ranges, TCPBUFSIZE of RMTHOST, use replicat or a data-pump for filtering and conversion, other stuff - http://docs.oracle.com/goldengate/1212/gg-winux/GWUAD/wu_performance.htm#GWUAD1131
+- COMPRESS in extract or pump -  (Doc ID 1455566.1)
+- BATCHSQL in replicat -  (Doc ID 1455566.1)
+- IO Tuning (Doc ID 1455566.1) - CHECKPOINTSECS - increase, GROUPTRANSOPS - increase 
+            - reduces number of Replicat transactions, 
+            - writes to the checkpoint file EOFDELAY/EOFDELAYSECS - Note 1064552.1
+- Gain network bandwidth - parallel data pumps (Doc ID 1455566.1)
+- Using Parallel Replicats - Use parallel replicat groups on a target system which can be further sub-divided for really hot tables using @RANGE as per Note 1450495.1  (Doc ID 1455566.1)
+- TCPBUFSIZE, TIMEOUT, TCPFLUSHBYTES - https://docs.oracle.com/goldengate/1212/gg-winux/GWURF/gg_parameters137.htm#GWURF635
+
+Log dump
+
+TRANSHIST
+
+
+
+GG vs Standby - http://www.oracle.com/au/products/database/dataguardgoldengate-096557.html
+Schema replication setup - http://easyoradba.com/2012/08/23/schema-replication-oracle-goldengate-11g/
+
+Oracle Support Document 1960719.1 ( Oracle GoldenGate 12c Tutorial   Oracle to Oracle Replication with Oracle Multitenant Version12.1 ) can be found at:  
+https://support.oracle.com/epmos/faces/DocumentDisplay?id=1960719.1
+
+Capture modes - Integrated, Classic
+
+Filtering - using FILTER, COMPUTE and SQLEXEC - http://gavinsoorma.com/2010/07/2661/
+Mapping and Filtering - http://gavinsoorma.com/2010/02/oracle-goldengate-tutorial-8-filtering-and-mapping-data/
+
+Upgrades without downtime using GG - http://www.oracle.com/technetwork/middleware/goldengate/overview/ggzerodowntimedatabaseupgrades-174928.pdf
+
+GG indexes, purging etc in target DB - http://www.postseek.com/meta/b9601f5488cc4df4a4eb0ea58364bc7f
+  More indexes, different keys can be created in destination DB
+  
+GG Tuning - 
+https://www.packtpub.com/books/content/oracle-goldengate-11g-performance-tuning
+http://www.oracle.com/technetwork/database/availability/maa-gg-performance-1969630.pdf
+
+Handle collisions (data missing in destination or already existing in destination) - HANDLECOLLISIONS and REPERROR - http://www.vitalsofttech.com/when-to-use-handlecollisions-in-goldengate-replicat/
+  ON SOURCE	ON TARGET	CONDITION	ACTION
+  INSERTS	INSERTS	Duplicate INSERTS	Converted to UPDATES
+  UPDATES	UPDATES	Updated in source but row not present in target	Ignored
+  DELETES	DELETES	Deleted in source but row not present in target	Ignored
+
+GG with standby as source - 
+  
+http://gavinsoorma.com/2010/11/goldengate-what-is-supported-and-what-is-not/
+You can configure the Extract process to read exclusively from the archived logs. This is known as Archived Log Only (ALO) mode. In this mode, Extract only reads from archived logs that are stored in a specified location. ALO mode allows Oracle GoldenGate to use production log files that are shipped over to a standby database as a data source for Oracle GoldenGate. The online logs will not be used.
+Oracle GoldenGate will connect to the secondary database to get metadata and other required data as needed. Supplemental logging at the table level and the database level must be enabled for the tables from the source database.
+
+http://geekdom-uk.blogspot.in/2012/01/oracle-goldengate-extracting-from.html
+https://docs.oracle.com/goldengate/1212/gg-winux/GIORA/classic_capture.htm#GIORA250
+
+PERFORMANCE RELATED
+https://minersoracleblog.wordpress.com/2013/12/18/goldengate-process-memory-usage/
+
+SWITCHING FROM CLASSIC TO INTEGRATED
+http://dbasolved.com/2014/04/22/move-from-classic-capture-to-integrated-capture/
+
+LAG ISSUE, RECOVERY CHECKS
+http://yetanotheroracledbablog.blogspot.in/2013/12/goldengate-lag-issue.html

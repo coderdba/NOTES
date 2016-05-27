@@ -1,0 +1,189 @@
+=================================================
+CREATE AN OPENSTACK INSTANCE USING KITCHEN
+=================================================
+
+NOTE: Refers to O drive of Bill's kitchen.  You can change it to other drive as appropriate.
+
+=====================================
+INSTALL GEMS
+=====================================
+This needs kitchen-openstack gem
+
+Install:
+O:\> gem install kitchen-openstack
+
+Also, it needs test-kitchen 1.4 and above for certain thing to work right
+
+=====================================
+CREATE A COOKBOOK
+=====================================
+O:\cookbooks> berks cookbook cbko
+(cbko means cookbook-kitchen-openstack)
+
+In Gemfile add the following:
+    source 'https://rubygems.org'
+    
+    gem 'berkshelf'
+    
+    # Uncomment these lines if you want to live on the Edge:
+    #
+    # group :development do
+    #   gem "berkshelf", github: "berkshelf/berkshelf"
+    #   gem "vagrant", github: "mitchellh/vagrant", tag: "v1.6.3"
+    # end
+    #
+    # group :plugins do
+    #   gem "vagrant-berkshelf", github: "berkshelf/vagrant-berkshelf"
+    #   gem "vagrant-omnibus", github: "schisamo/vagrant-omnibus"
+    # end
+    
+    gem "test-kitchen"
+    gem "kitchen-vagrant"
+    gem "kitchen-openstack"
+
+--------------------------
+BUNDLE INSTALL
+--------------------------
+You may need to do a bundle install to install dependent gems
+
+O:\cookbooks\cbko\> bundle install
+
+=====================================
+SET ENVIRONMENT WITH OPENSTACK VALUES
+=====================================
+
+The private key is the private key whose public key was uploaded to Openstack project for the keypair.
+
+rem - delete from registry if set in registry
+
+rem - otherwise, just set them in local environment
+set OPNESTACK_KEYPAIR=myKeyPair
+set OPNESTACK_AUTH_URL=https://openstack.company.com:5000/<v2.0 or other such>
+set OPNESTACK_CACERT=C:\certificates\cacert.company
+set OPNESTACK_TENANT_ID=dfsdf898udfosadifu09
+set OPNESTACK_TENANT_NAME=myTenant
+set OPNESTACK_USERNAME=myusername
+set OPNESTACK_PASSWORD=myPassword
+set OPENSTACK_PRIVATE_KEY=O:\home\.ssh\id_rsa.private
+
+====================================
+CREATE/EDIT .KITCHEN.YML
+====================================
+
+Edit O:\cookbooks\cbko\.kitchen.yml
+
+---
+driver:
+  name: vagrant
+
+provisioner:
+  name: chef_zero
+
+platforms:
+
+  - name: rhel7
+    driver:
+      name: openstack
+      openstack_username: <%= ENV['OPENSTACK_USERNAME'] %>
+      openstack_api_key: <%= ENV['OPENSTACK_PASSWORD'] %>
+      openstack_auth_url: <%= "#{ENV['OPENSTACK_URL']}/tokens" %>
+      require_chef_omnibus: latest
+      image_ref: rhel7-xxx-yyy
+      network_ref: nw0
+      flavor_ref: xsmem-1vcpu
+      openstack_tenant: <%= ENV['OPENSTACK_TENANT_NAME'] %>
+      floating_ip_pool: ext_vlan0001
+      disable_ssl_validation: true
+      server_name: rhel71
+      key_name: myKeyPair
+      private_key_path: <%= ENV['OPENSTACK_PRIVATE_KEY'] %>
+    transport:
+      username: cloud-user
+      ssh_key: <%= ENV['OPENSTACK_PRIVATE_KEY'] %>
+      
+suites:
+
+  #
+  # - name: dummysuite
+  # 
+  # This just a dummy suite
+  # Recipe is the empty default recipe
+  # Attributes are dummy here
+  #
+
+  - name: dummysuite
+    run_list:
+      - recipe[cbko::default]
+    attributes:
+      softwarePackage:
+        version: "1.0"
+
+===============================
+CREATE THE NODE/INSTANCE
+===============================
+NOTE: If on Windows, do 'bundle exec kitchen create' and not just 'kitchen create'
+
+O:\cookbooks\cbko>bundle exec kitchen create rhel
+-----> Starting Kitchen (v1.7.3)
+-----> Creating <dummysuite-rhel7>...
+       OpenStack instance with ID of <dfssd-oier3-dsfsdf908u-dcdioxdfc> is ready.
+       Attaching floating IP from <ext_vlan0001> pool
+       Attaching floating IP <10.50.60.70>
+       Waiting for server to be ready...
+       Waiting for SSH service on 10.50.60.70:22, retrying in 3 seconds
+       Waiting for SSH service on 10.50.60.70:22, retrying in 3 seconds
+       Waiting for SSH service on 10.50.60.70:22, retrying in 3 seconds
+       [SSH] Established
+       Adding OpenStack hint for ohai
+       Finished creating <dummysuite-rhel7> (2m6.35s).
+-----> Kitchen is finished. (2m12.60s)
+
+========================================
+INSTALL CHEF CLIENT AND RUN THE RUN-LIST
+========================================
+
+O:\cookbooks\cbko>bundle exec kitchen converge
+
+-----> Starting Kitchen (v1.7.3)
+-----> Converging dummysuite-rhel7-20160215-33>...
+       Preparing files for transfer
+       Preparing dna.json
+       Resolving cookbook dependencies with Berkshelf 3.2.3...
+       Removing non-cookbook files before transfer
+       Preparing validation.pem
+       Preparing client.rb
+-----> Installing Chef Omnibus (always install latest version)
+       Downloading https://www.chef.io/chef/install.sh to file /tmp/install.sh
+       Trying curl...
+       Download complete.
+       el 7 x86_64
+       Getting information for chef stable  for el...
+       downloading https://omnitruck-direct.chef.io/stable/chef/metadata?v=&p=el&pv=7&m=x86_64
+         to file /tmp/install.sh.989/metadata.txt
+       trying curl...
+       sha1     5907edce1a3b0f7bd42359fe64960da8833385e9
+       sha256   1c3e680f106ab6829c3713307e447116f7bb3f2d9c30fd3943638b01d6246fe2
+       url      https://packages.chef.io/stable/el/7/chef-12.9.38-1.el7.x86_64.rpm
+       version  12.9.38
+       downloaded metadata file looks valid...
+       downloading https://packages.chef.io/stable/el/7/chef-12.9.38-1.el7.x86_64.rpm
+         to file /tmp/install.sh.989/chef-12.9.38-1.el7.x86_64.rpm
+       trying curl...
+       Comparing checksum with sha256sum...
+
+       WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING
+
+       You are installing an omnibus package without a version pin.  If you are installing
+       on production servers via an automated process this is DANGEROUS and you will
+       be upgraded without warning on new releases, even to new major releases.
+       Letting the version float is only appropriate in desktop, test, development or
+       CI/CD environments.
+
+       WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING
+
+       Installing chef
+       installing with rpm...
+       warning: /tmp/install.sh.989/chef-12.9.38-1.el7.x86_64.rpm: Header V4 DSA/SHA1 Signature, key ID 83ef826a: NOKEY
+       Preparing...                          ################################# [100%]
+       Updating / installing...
+            1:chef-12.9.38-1.el7               ################################# [ 50%]

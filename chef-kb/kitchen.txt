@@ -1,0 +1,322 @@
+http://kitchen.ci/
+http://misheska.com/#kitchen-ssh-kitchenyml-example - good tutorial, has ssh aspects
+https://docs.chef.io/kitchen.html
+https://docs.chef.io/ctl_kitchen.html
+
+VERY GOOD OVERVIEW AND TUTORIAL
+
+What is Test Kitchen?
+Test Kitchen is a test harness tool to execute your configured code on one or more platforms in isolation. 
+A driver plugin architecture is used which lets you run your code on various cloud providers and virtualization 
+technologies such as Amazon EC2, Blue Box, CloudStack, Digital Ocean, Rackspace, OpenStack, Vagrant, Docker, 
+LXC containers, and more. Many testing frameworks are already supported out of the box including Bats, 
+shUnit2, RSpec, Serverspec, with others being created weekly.
+
+For Chef workflows, cookbook dependency resolver tools such as Berkshelf and Librarian-Chef are supported or 
+you can simply have a cookbooks/ directory and Test Kitchen will know what to do. Support for Test Kitchen is 
+already included in many Chef community cookbooks such as the MySQL, nginx, Chef Server, and runit cookbooks.
+
+=================================
+CREATE A KITCHEN AND A VM FROM IT
+=================================
+
+------------------
+CREATE THE KITCHEN
+------------------
+
+O:\cookbooks\ mkdir dummy1
+cd O:\cookbooks\dummy1\
+
+O:\cookbooks\dummy1>kitchen init
+   identical  .kitchen.yml
+Successfully installed kitchen-vagrant-0.19.0
+Parsing documentation for kitchen-vagrant-0.19.0
+Installing ri documentation for kitchen-vagrant-0.19.0
+1 gem installed
+
+NOTE: This will also install kitchen-vagrant --> which may conflict with existing one
+Then, do 
+gem uninstall kitchen-vagrant -v <version like 0.19.0)
+O:\cookbooks\dummy1>gem uninstall kitchen-vagrant -v 0.19.0
+Successfully uninstalled kitchen-vagrant-0.19.0
+
+-------------------------------------------
+SPECIFY THE VM TYPE REQUIRED IN KITCHEN.YML
+-------------------------------------------
+CHANGES DONE: Removed -name: centos-6.4
+
+---                             
+driver:                         
+  name: vagrant                 
+                                
+provisioner:                    
+  name: chef_solo               
+                                
+platforms:                      
+  - name: ubuntu-12.04          
+  - name: centos-6.4 --> REMOVE THIS LINE      
+                                
+suites:                         
+  - name: default               
+    run_list:                   
+                                
+    attributes:         
+
+---------------------------------
+CREATE VM INSTANCE USING CONVERGE
+---------------------------------
+
+NOTE: Used 'converge' - could have used 'create' instead.
+NOTE: Chef did not get installed (see messages above)
+(Does it attempt chef-install with 'converge' only or with 'create' also?)
+
+O:\cookbooks\dummy1>kitchen converge  (can also use kitchen create statement)
+O:\cookbooks\dummy1>kitchen converge                                                                                                                   
+-----> Starting Kitchen (v1.3.1)                                                                                                                       
+-----> Creating <default-ubuntu-1204>...                                                                                    
+       Bringing machine 'default' up with 'virtualbox' provider...                                                                  ==> default: Box 'opscode-ubuntu-12.04' could not be found. Attempting to find and install...                                   default: Box Provider: virtualbox                                                                                             default: Box Version: >= 0                                                                                               ==> default: Adding box 'opscode-ubuntu-12.04' (v0) for provider: virtualbox                                                     default: Downloading: https://opscode-vm-bento.s3.amazonaws.com/vagrant/virtualbox/opscode_ubuntu-12.04_chef-provisionerless.box            
+    default: Progress: 100% (Rate: 571k/s, Estimated time remaining: --:--:--)                                                      ==> default: Successfully added box 'opscode-ubuntu-12.04' (v0) for 'virtualbox'!                                            ==> default: Importing base box 'opscode-ubuntu-12.04'...                                                             ==> default: Matching MAC address for NAT networking...                                                                             ==> default: Setting the name of the VM: default-ubuntu-1204_default_1446115007512_35476                                     ==> default: Fixed port collision for 22 => 2222. Now on port 2200.                                                          ==> default: Clearing any previously set network interfaces...                                                               ==> default: Preparing network interfaces based on configuration...                                                              default: Adapter 1: nat                                                                                                  ==> default: Forwarding ports...                                                                                                 default: 22 => 2200 (adapter 1)                                                                                          ==> default: Booting VM...                                                                                                   ==> default: Waiting for machine to boot. This may take a few minutes...                                                         default: SSH address: 127.0.0.1:2200                                                                                         default: SSH username: vagrant                                                                                               default: SSH auth method: private key                                                                                        default: Warning: Connection timeout. Retrying...                                                                            default: Warning: Connection timeout. Retrying...                                                                            default: Warning: Connection timeout. Retrying...                                                                            default: Warning: Connection timeout. Retrying...                                                                            default:                                                                                                                     default: Vagrant insecure key detected. Vagrant will automatically replace                                                   default: this with a newly generated keypair for better security.                                                            default:                                                                                                                      default: Inserting generated public key within guest...                                                                     default: Removing insecure key from the guest if its present...                                                             default: Key inserted! Disconnecting and reconnecting using new SSH key...                                                ==> default: Machine booted and ready! 
+       ==> default: Checking for guest additions in VM... 
+           default: The guest additions on this VM do not match the installed version of    
+           ...
+           ...
+           default: Guest Additions Version: 5.0.6     
+           default: VirtualBox Version: 4.3           
+       ==> default: Setting hostname...      
+       ==> default: Mounting shared folders...     
+           default: /tmp/vagrant-cache => O:/home/.vagrant.d/cache/opscode-ubuntu-12.04 
+       ==> default: Configuring cache buckets...                       
+       ==> default: Machine not provisioning because `--no-provision` is specified.   
+       Vagrant instance <default-ubuntu-1204> created.              
+       Finished creating <default-ubuntu-1204> (13m42.80s).        
+-----> Converging <default-ubuntu-1204>...    
+       Preparing files for transfer           
+       Preparing dna.json          
+       Berksfile, Cheffile, cookbooks/, or metadata.rb not found so Chef will run with effectively no cookbooks. Is this intended?                     
+       Removing non-cookbook files before transfer  
+       Preparing solo.rb         
+-----> Installing Chef Omnibus (install only if missing)  
+       downloading https://www.chef.io/chef/install.sh    
+         to file /tmp/install.sh                      
+       trying perl...       
+       Can't locate LWP/Simple.pm in @INC (@INC contains: /etc/perl /usr/local/lib/perl/5.14.2 /usr/local/share/perl/5.14.2 /usr/lib/perl5 /usr/share/p
+erl5 /usr/lib/perl/5.14 /usr/share/perl/5.14 /usr/local/lib/site_perl .) at -e line 1.                                                                 
+       BEGIN failed--compilation aborted at -e line 1.  
+       trying python...                  
+       Traceback (most recent call last):  
+         File "<string>", line 1, in <module> 
+         File "/usr/lib/python2.7/urllib2.py", line 126, in urlopen  
+           return _opener.open(url, data, timeout)                  
+         File "/usr/lib/python2.7/urllib2.py", line 406, in open   
+           response = meth(req, response)                        
+         File "/usr/lib/python2.7/urllib2.py", line 519, in http_response 
+           'http', request, response, code, msg, hdrs)             
+         File "/usr/lib/python2.7/urllib2.py", line 444, in error  
+           return self._call_chain(*args)                       
+         File "/usr/lib/python2.7/urllib2.py", line 378, in _call_chain   
+       result = func(*args)                                              
+         File "/usr/lib/python2.7/urllib2.py", line 527, in http_error_default  
+       raise HTTPError(req.get_full_url(), code, msg, hdrs, fp)  
+       .HTTPError: HTTP Error 401: Unauthorized                                                                                                        
+>>>>>> wget, curl, fetch, perl or python not found on this instance.    
+       Transferring files to <default-ubuntu-1204>                 
+       sudo: /opt/chef/bin/chef-solo: command not found                                                                                                
+>>>>>> Converge failed on instance <default-ubuntu-1204>.                                                                                              
+>>>>>> Please see .kitchen/logs/default-ubuntu-1204.log for more details                                                                               
+>>>>>> ------Exception-------                                                                                                                          
+>>>>>> Class: Kitchen::ActionFailed                                                                                                                    
+>>>>>> Message: SSH exited (1) for command: [sh -c '                                                                                                   
+sudo -E /opt/chef/bin/chef-solo --config /tmp/kitchen/solo.rb --log_level auto --force-formatter --no-color --json-attributes /tmp/kitchen/dna.json    
+']                                                                                                                                                     
+------------------------
+Verify VM Created or not
+------------------------
+NOTE: Chef did not get installed (see messages above)
+
+O:\cookbooks\dummy1>kitchen list all
+Instance             Driver   Provisioner  Last Action
+default-ubuntu-1204  Vagrant  ChefSolo     Created
+
+--------------------------
+LOGON TO VM AND CHECK
+--------------------------
+http://kitchen.ci/docs/getting-started/manually-verifying
+(also http://www.ryanchapin.com/fv-b-4-787/Connecting-To-a-Test-Kitchen-Instance-Via-SFTP--SSH--or-SCP.html)
+
+O:\cookbooks\dummy1> kitchen login default-ubuntu-1204
+
+Welcome to Ubuntu 12.04.5 LTS (GNU/Linux 3.13.0-32-generic x86_64)
+ 
+ * Documentation:  https://help.ubuntu.com/
+New release '14.04.3 LTS' available.
+Run 'do-release-upgrade' to upgrade to it.
+
+Last login: Thu Oct 29 10:39:12 2015 from 10.0.2.2
+vagrant@default-ubuntu-1204:~$ which curl
+vagrant@default-ubuntu-1204:~$ which perl
+/usr/bin/perl
+vagrant@default-ubuntu-1204:~$ which python
+/usr/bin/python
+vagrant@default-ubuntu-1204:~$ which wget
+/usr/bin/wget
+vagrant@default-ubuntu-1204:~$ logout
+Connection to 127.0.0.1 closed.
+
+-------------------
+STOP THE VM
+-------------------
+Not sure if there is a kitchen command to stop the VM.  Used vagrant instead for now.
+
+O:\cookbooks\dummy1>vagrant-global-status
+'vagrant-global-status' is not recognized as an internal or external command,
+operable program or batch file.
+
+O:\cookbooks\dummy1>vagrant global-status
+id       name    provider   state   directory
+-----------------------------------------------------------------------------------------------------
+65e9085  default virtualbox running O:/cookbooks/node0
+02cff6a  default virtualbox running O:/cookbooks/dummy1/.kitchen/kitchen-vagrant/default-ubuntu-1204
+
+The above shows information about all known Vagrant environments
+on this machine. This data is cached and may not be completely
+up-to-date. To interact with any of the machines, you can go to
+that directory and run Vagrant, or you can use the ID directly
+with Vagrant commands from any directory. For example:
+"vagrant destroy 1a2b3c4d"
+
+O:\cookbooks\dummy1>vagrant halt 02cff6a
+==> default: Removing cache buckets symlinks...
+==> default: Attempting graceful shutdown of VM...
+
+---------------------------------------
+CREATE THE VM INSTANCE USING CREATE
+---------------------------------------
+
+
+O:\cookbooks\dummy1>kitchen create
+-----> Starting Kitchen (v1.3.1)
+-----> Creating <default-ubuntu-1204>...
+       Bringing machine 'default' up with 'virtualbox' provider...
+       ==> default: Importing base box 'opscode-ubuntu-12.04'...
+==> default: Matching MAC address for NAT networking...
+       ==> default: Setting the name of the VM: default-ubuntu-1204_default_1446126021570_10151
+       ==> default: Clearing any previously set network interfaces...
+       ==> default: Preparing network interfaces based on configuration...
+           default: Adapter 1: nat
+       ==> default: Forwarding ports...
+           default: 22 => 2222 (adapter 1)
+       ==> default: Booting VM...
+       ==> default: Waiting for machine to boot. This may take a few minutes...
+           default: SSH address: 127.0.0.1:2222
+           default: SSH username: vagrant
+           default: SSH auth method: private key
+           default: Warning: Connection timeout. Retrying...
+           default:
+           default: Vagrant insecure key detected. Vagrant will automatically replace
+           default: this with a newly generated keypair for better security.
+           default:
+           default: Inserting generated public key within guest...
+           default: Removing insecure key from the guest if its present...
+           default: Key inserted! Disconnecting and reconnecting using new SSH key...
+       ==> default: Machine booted and ready!
+       ==> default: Checking for guest additions in VM...
+           default: The guest additions on this VM do not match the installed version of
+           default: VirtualBox! In most cases this is fine, but in rare cases it can
+           default: prevent things such as shared folders from working properly. If you see
+           default: shared folder errors, please make sure the guest additions within the
+           default: virtual machine match the version of VirtualBox you have installed on
+           default: your host and reload your VM.
+           default:
+           default: Guest Additions Version: 5.0.6
+           default: VirtualBox Version: 4.3
+       ==> default: Setting hostname...
+       ==> default: Mounting shared folders...
+           default: /tmp/vagrant-cache => O:/home/.vagrant.d/cache/opscode-ubuntu-12.04
+       ==> default: Configuring cache buckets...
+       ==> default: Machine not provisioning because `--no-provision` is specified.
+       Vagrant instance <default-ubuntu-1204> created.
+       Finished creating <default-ubuntu-1204> (1m25.47s).
+-----> Kitchen is finished. (1m26.07s)
+
+
+--------------------------------------------
+CONVERGE AFTER CREATE 
+--------------------------------------------
+NOTE - this worked when ran from home - was it due to converge and create being separated, or due to proxy differences 
+         at home vs at office???
+         
+O:\cookbooks\dummy1>kitchen converge
+-----> Starting Kitchen (v1.3.1)
+-----> Converging <default-ubuntu-1204>...
+       Preparing files for transfer
+       Preparing dna.json
+       Berksfile, Cheffile, cookbooks/, or metadata.rb not found so Chef will run with effectively no cookbooks. Is this intended?
+       Removing non-cookbook files before transfer
+       Preparing solo.rb
+-----> Installing Chef Omnibus (install only if missing)
+       downloading https://www.chef.io/chef/install.sh
+         to file /tmp/install.sh
+
+       Downloading Chef  for ubuntu...
+       downloading https://www.chef.io/chef/metadata?v=&prerelease=false&nightlies=false&p=ubuntu&pv=12.04&m=x86_64
+         to file /tmp/install.sh.1457/metadata.txt
+       trying wget...
+       url      https://opscode-omnibus-packages.s3.amazonaws.com/ubuntu/12.04/x86_64/chef_12.5.1-1_amd64.deb
+       md5      d8fec2da288e94a7e2d649803a9d70f4
+       sha256   656a4c4a8fd64d74d1d970fb0d07076d6f1d8230d37d751f2c3698a52d82c070
+       downloaded metadata file looks valid...
+       downloading https://opscode-omnibus-packages.s3.amazonaws.com/ubuntu/12.04/x86_64/chef_12.5.1-1_amd64.deb
+         to file /tmp/install.sh.1457/chef_12.5.1-1_amd64.deb
+       trying wget...
+       Comparing checksum with sha256sum...
+
+       WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING
+
+       You are installing an omnibus package without a version pin.  If you are installing
+       on production servers via an automated process this is DANGEROUS and you will
+       be upgraded without warning on new releases, even to new major releases.
+       Letting the version float is only appropriate in desktop, test, development or
+       CI/CD environments.
+
+       WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING
+
+       Installing Chef
+       installing with dpkg...
+       Selecting previously unselected package chef.
+(Reading database ... 24522 files and directories currently installed.)
+       Unpacking chef (from .../chef_12.5.1-1_amd64.deb) ...
+       Setting up chef (12.5.1-1) ...
+       Thank you for installing Chef!
+       Transferring files to <default-ubuntu-1204>
+       Starting Chef Client, version 12.5.1
+       Compiling Cookbooks...
+       Converging 0 resources
+
+       Running handlers:
+       Running handlers complete
+       Chef Client finished, 0/0 resources updated in 03 seconds
+       Finished converging <default-ubuntu-1204> (4m34.30s).
+-----> Kitchen is finished. (4m35.08s)
+
+
+-------------------------------------
+REMOVING MACHINE THAT FAILED CREATION
+-------------------------------------
+NOTE:  All this may not sometime remove the machine.  Keep trying kitchen create and it may hit a sweet spot.
+
+From virtualbox GUI remove the machine with files
+Look for VM folders and files in C:\Users\username\VirtualBox VMs
+Then find the VM id and destroy it
+
+O:\cookbooks\dummy1>vagrant global-status
+id       name    provider   state    directory
+------------------------------------------------------------------------------------------------------
+65e9085  default virtualbox running  O:/cookbooks/node0
+53ec58e  default virtualbox poweroff O:/cookbooks/dummy1/.kitchen/kitchen-vagrant/default-ubuntu-1204
+
+O:\cookbooks\dummy1>vagrant destroy 53ec58e
+    default: Are you sure you want to destroy the 'default' VM? [y/N] y
+    
+Kill the vboxheadless process related to this VM and then do a remove in Vbox UI and destroy with Kitchen
+
+Remove entry for the machine in C:\Users\username\Virtualbox.xml

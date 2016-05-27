@@ -1,0 +1,77 @@
+# -*- mode: ruby -*-
+
+# vi: set ft=ruby :
+
+# http://thornelabs.net/2013/09/19/multi-machine-vagrantfile-for-virtualbox-or-vmware-fusion.html
+
+# MULTI-MACHINE
+# VMWARE, VIRTUALBOX
+# NO CHEF RECIPES TO CALL
+ 
+VAGRANTFILE_API_VERSION = "2"
+ 
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+ 
+  config.vm.box = "base"
+
+  config.vm.provider "vmware_fusion" do |v, override|
+    override.vm.box = "base"
+  end
+ 
+  # Turn off shared folders
+  config.vm.synced_folder ".", "/vagrant", id: "vagrant-root", disabled: true
+ 
+  # Begin server1
+  config.vm.define "server1" do |server1|
+    server1.vm.hostname = "server1"
+
+    server1.vm.provider "vmware_fusion" do |v|
+        v.vmx["numvcpus"] = "1"
+        v.vmx["memsize"] = "1024"
+    end
+ 
+    server1.vm.provider "virtualbox" do |v|
+        v.customize [ "modifyvm", :id, "--cpus", "1" ]
+        v.customize [ "modifyvm", :id, "--memory", "1024" ]
+    end
+
+    server1.vm.network "private_network", ip: "192.168.205.10"
+  end
+  # End server1
+ 
+  # Begin server2
+  config.vm.define "server2" do |server2|
+    server2.vm.hostname = "server2"
+ 
+    server2.vm.provider "vmware_fusion" do |v|
+        v.vmx["numvcpus"] = "2"
+        v.vmx["memsize"] = "1024"
+    end
+ 
+    server2.vm.provider "virtualbox" do |v|
+        v.customize [ "modifyvm", :id, "--cpus", "2" ]
+        v.customize [ "modifyvm", :id, "--memory", "1024" ]
+    end
+
+    server2.vm.network "private_network", ip: "192.168.205.11"
+  end
+  # End server2
+ 
+  # Begin server3
+  config.vm.define "server3" do |server3|
+    server3.vm.hostname = "server3"
+ 
+    server3.vm.provider "vmware_fusion" do |v|
+        v.vmx["numvcpus"] = "2"
+        v.vmx["memsize"] = "2048"
+    end
+ 
+    server3.vm.provider "virtualbox" do |v|
+        v.customize [ "modifyvm", :id, "--cpus", "2" ]
+        v.customize [ "modifyvm", :id, "--memory", "2048" ]
+    end
+
+    server3.vm.network "private_network", ip: "192.168.205.12"
+  end
+  # End server3
+end

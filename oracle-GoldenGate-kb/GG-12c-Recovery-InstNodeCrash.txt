@@ -1,0 +1,37 @@
+GOLDENGATE - DB INSTANCE/NODE CRASH RECOVERY
+
+INSTANCE/DB STOPPING
+====================
+DBUserAlias uses TNS entry which uses scan - so, ideally, GG should be instance agnostic
+Instance stops - one of multiple instances
+GG mgr keeps running
+GG processes (extract, repcat) abend - pump continues to run
+Instance restarts
+GG mgr retries to start those processes
+After some time processes restart and connect well 
+-Depends upon mgr parameters 
+- AUTORESTART Extract *, WaitMinutes 1, Retries 10
+- AUTORESTART Replicat *, WaitMinutes 1, Retries 10
+- For Pump, there is no auto-restart - it does not actually stop upon inst/db stop
+- CHECK- For pump, we need to place a monitor/restart script in the case it crashes
+NOTE: This behavior of re-connection is similar with instance and DB stop and restart
+NOTE: Stop/abend of extract/replicat happen because they are connected to any one instance at a time
+
+$ srvctl stop instance -d DB_UNIQUE_NAME -i INSTANCE_NAME
+ggsci> info all
+Program     Status      Group       Lag at Chkpt  Time Since Chkpt
+MANAGER     RUNNING
+EXTRACT     ABENDED     EC1         00:00:00      00:02:44
+EXTRACT     RUNNING     PC1         00:00:00      00:00:02 --> Pump does not go down
+REPLICAT    ABENDED     RA1         00:00:00      00:02:47
+REPLICAT    ABENDED     RC1         00:00:00      00:02:47
+
+$ srvctl start instnace -d DB_UNIQUE_NAME -i INSTANCE_NAME
+ggsci> info all
+Program     Status      Group       Lag at Chkpt  Time Since Chkpt
+MANAGER     RUNNING
+EXTRACT     RUNNING     EC1         00:00:00      00:00:06
+EXTRACT     RUNNING     PC1         00:00:00      00:00:03
+REPLICAT    ABENDED     RA1         00:00:00      00:08:48 --> somehow this did not start, manually restarted it
+REPLICAT    RUNNING     RC1         00:00:00      00:00:08
+

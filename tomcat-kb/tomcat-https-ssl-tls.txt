@@ -1,0 +1,79 @@
+==========================================================
+ENABLE HTTPS - SSL/TLS IN TOMCAT
+==========================================================
+https://www.mulesoft.com/tcat/tomcat-ssl --> this is a better one - shows how to create keystore file in non-default folder
+http://www.avajava.com/tutorials/lessons/how-do-i-set-up-ssl-on-tomcat.html --> this is very compact and good
+https://tomcat.apache.org/tomcat-8.0-doc/ssl-howto.html - Tomcat's official doc --> more detailed, but mentions keystore 
+                                                            to be in default location, but you can change it to your 
+                                                            preferred location
+
+===========================================================
+ENABLE SSL IN TOMCAT USING SELF-SIGNED CERTIFICATE
+===========================================================
+
+--------------
+CREATE RSA KEY
+--------------
+Use keytool available in JDK or JRE bin directory.
+  The generated keyfile will be in the following 'default' location: (you can give a different location in keytool command)
+    Windows - C:\Users\yourUsername\.keystore (default location)
+    Unix - TBD
+
+Create a RSA key using the steps below.
+  Usual password for the file is 'changeit' - use the same or a different one
+  Give same password for the Tomcat key or a different one
+
+Steps (for default location of keystore)
+NOTE:  You can give the name, organization name etc - so that when users have to accept this certificate, they know what that is for.
+    C:\>cd jdk*
+    C:\jdk1.5.0_09>cd bin
+    C:\jdk1.5.0_09\bin>keytool -genkey -alias tomcat -keyalg RSA -keystore [/preferred/keystore/path]
+    NOTE:  I used the path <tomcat installdir>/conf (see /conf/.keystore in server.xml - which is a relative path)
+    
+    Enter keystore password:  changeit
+    What is your first and last name?
+      [Unknown]:  teamcakes
+    What is the name of your organizational unit?
+      [Unknown]:  
+    What is the name of your organization?
+      [Unknown]:  
+    What is the name of your City or Locality?
+      [Unknown]:  
+    What is the name of your State or Province?
+      [Unknown]:  
+    What is the two-letter country code for this unit?
+      [Unknown]:  
+    Is CN=teamcakes, OU=Unknown, O=Unknown, L=Unknown, ST=Unknown, C=Unknown correct?
+      [no]:  yes
+    Enter key password for <tomcat>
+    	(RETURN if same as keystore password):  
+    C:\jdk1.5.0_09\bin>
+
+-----------------------------
+EXIT TOMCAT SERVER.XML in tomcat-installdir/conf
+-----------------------------
+This is for JSSE implementation - second para below
+(TBD - what is JSSE and how it is different from APR implementation)
+
+    <!-- Define a SSL/TLS HTTP/1.1 Connector on port 8443
+         This connector uses the NIO implementation that requires the JSSE
+         style configuration. When using the APR/native implementation, the
+         OpenSSL style configuration is required as described in the APR/native
+         documentation -->
+    <!-- -->
+    <Connector port="8443" protocol="org.apache.coyote.http11.Http11NioProtocol"
+               maxThreads="150" SSLEnabled="true" scheme="https" secure="true"
+               keystoreFile="/conf/.keystore" keystorePass="changeit"
+               clientAuth="false" sslProtocol="TLS" />
+    <!-- -->
+
+========================================================
+TROUBLESHOOTING
+========================================================
+-----------------------------------
+ISSUE WITH CHROME AND POSTMAN
+-----------------------------------
+Chrome and Postman do not recognize this self-signed certificate immediately. 
+To fix it:
+http://blog.getpostman.com/2014/01/28/using-self-signed-certificates-with-postman/
+

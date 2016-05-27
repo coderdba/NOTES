@@ -1,0 +1,100 @@
+Foreign Keys, Indexes and Locking (Doc ID 1945574.1)	To BottomTo Bottom	
+
+In this Document
+Purpose
+Scope
+Details
+ 	Locking differences in earlier versions
+References
+APPLIES TO:
+
+Oracle Database - Enterprise Edition - Version 10.1.0.2 and later
+Information in this document applies to any platform.
+PURPOSE
+
+ This document outlines and provides references to information regarding Foreign Key Indexes and Locking
+
+SCOPE
+
+ Database Administrators, System Designers
+
+DETAILS
+
+The indexing of foreign key constraints is a common topic and is clearly documented in the manual. Oracle recommends that foreign key should be indexed. See:
+
+Oracle® Database Concepts
+Oracle 12c Release 1 (12.1)
+Chapter 5 Data Integrity
+Indexes and Foreign Keys
+https://docs.oracle.com/database/121/CNCPT/datainte.htm#CNCPT1660
+For an explanation of the differences in the locking strategy with and without foreign key indexes, see:
+
+Oracle® Database Concepts
+Oracle 12c Release 1 (12.1)
+Chapter 9 Data Concurrency and Consistency
+Locks and Foreign Keys
+https://docs.oracle.com/database/121/CNCPT/consist.htm#CNCPT1340
+ 
+
+Locking differences in earlier versions
+
+Although the advice to index foreign keys is standard across versions, there are some differences in the way in which the locking behaves without indexes on Foreign Key columns in different versions. In Oracle 10g Release 10.2 (including 10.2.0.5 and below) the behavior was different to 11g and above (including 11.1.0.6) as follows:
+
+<= 10.2: when there is no index on Foreign Key column : a row exclusive lock is taken
+>= 11.1: when there is no index on Foreign Key column : a full table lock is taken
+The differences are outlined in the manuals:
+
+
+In 11g Release 2 (11.2) ( and Oracle 12c Release 1 (12.1) ) :
+
+Oracle® Database Concepts
+11g Release 2 (11.2)
+E25789-01
+Chapter 9 Data Concurrency and Consistency
+Locks and Foreign Keys
+http://docs.oracle.com/cd/E25054_01/server.1111/e25789/consist.htm#CNCPT88978
+
+Locks and Foreign Keys
+
+Locks and Unindexed Foreign Keys
+
+When both of the following conditions are true, the database acquires a full table lock on the child table:
+
+No index exists on the foreign key column of the child table.
+A session modifies a primary key in the parent table (for example, deletes a row or modifies primary key attributes) or merges rows into the parent table. Inserts into the parent table do not acquire table locks on the child table.
+Locks and Indexed Foreign Keys
+
+When both of the following conditions are true, the database does not acquire a full table lock on the child table:
+
+A foreign key column in the child table is indexed.
+A session modifies a primary key in the parent table (for example, deletes a row or modifies primary key attributes) or merges rows into the parent table.
+A lock on the parent table prevents transactions from acquiring exclusive table locks, but does not prevent DML on the parent or child table during the primary key modification. This situation is preferable if primary key modifications occur on the parent table while updates occur on the child table. 
+"
+
+
+
+In 10g Release 2 (10.2) :
+
+Oracle® Database Concepts
+10g Release 2 (10.2)
+B14220-02
+Chapter 21 Data Integrity
+Concurrency Control, Indexes, and Foreign Keys
+http://docs.oracle.com/cd/B19306_01/server.102/b14220/data_int.htm#sthref3103
+
+Concurrency Control, Indexes, and Foreign Keys
+
+No Index on the Foreign Key
+
+Unindexed foreign keys cause DML on the primary key to get a share row exclusive table lock (also sometimes called a share-subexclusive table lock, SSX) on the foreign key table.This prevents DML on the table by other transactions.
+
+Index on the Foreign Key
+
+Indexed foreign keys cause a row share table lock (also sometimes called a sub-share table lock, SS). This prevents other transactions from exclusive locking the whole table, but it does not block DML on the parent or the child table.
+"
+One of the effects of this is outlined in the following document:
+
+Document 1570285.1 ORA-00060 Deadlock Due to Missing Indexes on Foreign Key Constraints Occurs in Oracle 11g R2 But Not in 10g
+Some changes were also made in Oracle 9i Release 2. For details see:
+
+Document 223303.1 Document Documentation Correction to 9.2.0 Foreign Key Constraint Locking Behaviour

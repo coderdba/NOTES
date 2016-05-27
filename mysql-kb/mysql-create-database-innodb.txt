@@ -1,0 +1,146 @@
+CREATE MYSQL DATABASE
+
+INTRODUCTION
+This document assumes using the default datadir setup during installation of mysql.  
+The doc referred is https://oracle-base.com/articles/mysql/mysql-installation-on-linux.
+
+For multiple data directories it seems multiple instances are needed. 
+For that check https://dev.mysql.com/doc/refman/5.6/en/multiple-servers.html
+
+ABOUT STORAGE TYPES
+http://dev.mysql.com/doc/refman/5.6/en/mysql-cluster-ndb-innodb-engines.html
+
+InnoDB is the default storage type.
+It creates files like .ibd in the datadir folder for storing tables.
+'show engines' command shows the engines (storage types) available for the installation.
+
+SETUP DATABASE FOLDER
+NOTE:  Though the above oracle-base doc uses a non-default data directory, that will not be done in this notes document.
+
+Retain the same datadir as in /etc/my.cnf which is /var/lib/mysql  (or other as in the relevant configuration file).
+
+CREATE DATABASE
+$ mysql -u root -p
+
+mysql> create database MYDB1;
+mysql> create database mydb1; --> it is case sensitive, so MYDB1 and mydb1 are two different ones
+
+DB folders are created: /var/lib/mysql/DB1 and /var/lib/mysql/db1
+
+In the folders, db.opt file contains database options. 
+Initial contents of db.opt:
+  default-character-set=latin1
+  default-collation=latin1_swedish_ci
+  (TODO - Know more about charactersets in mysql and try changing it)
+  
+CHOOSE/CONNECT TO A DATABASE
+
+mysql> use <dbname>;
+mysql> use MYDB1;
+mysql> select database(); --> to show the db in use
+
+CREATE USERS
+http://dev.mysql.com/doc/refman/5.7/en/create-user.html
+
+mysql> create user 'ausername' identified by 'password';
+mysql> show databases;  --> this will show only some default test and information_schema DB's created during install
+
+PROVIDE DB ACCESS TO USERS
+https://dev.mysql.com/doc/refman/5.6/en/grant.html
+http://www.cyberciti.biz/faq/mysql-user-creation/
+
+Try accessing a DB using ausername user: (without any DB grant)
+$ mysql -u ausername -p
+password:
+mysql> use mydb1;
+ERROR 1044 (42000): Access denied for user 'ausername'@'%' to database 'mydb1';
+
+Now, give grant on the all contents of DB mydb1
+$ mysql -u root -p
+mysql> GRANT ALL ON mydb1.* to ausername;
+
+However, giving just grant as above does not allow 'ausername' user to grant privileges on mydb1 objects to others.
+To solve that, give the grant with grant option:
+mysql> GRANT ALL ON mydb1.* to ausername with grant option;
+
+Now connect to mydb1 as ausername and do some work
+$ mysql -u ausername -p
+mysql> connect mydb1;  (or use mydb1)
+mysql> select database();
++------------+
+| database() |
++------------+
+| mydb1      |
++------------+
+
+mysql> 
+
+RESTRICT ACCESS FROM USERS
+
+CREATE TABLES
+http://dev.mysql.com/doc/refman/5.6/en/create-table.html
+  MySQL represents each table by an .frm table format (definition) file in the database directory. 
+  The storage engine for the table might create other files as well.
+  File	             Purpose
+  tbl_name.frm	     Table format (definition) file
+  tbl_name.MYD/.ibd	 Data file
+  tbl_name.MYI	     Index file
+
+Creating a simple table:  (NOTE: Not going to the depths of disk/memory/ndb/tablespace etc)
+mysql> create table emp (empid integer(5), empname varchar(20), deptid integer(5));
+mysql> show tables; 
++-----------------+
+| Tables_in_mydb1 |
++-----------------+
+| emp             |
++-----------------+
+
+PROVIDE TABLE ACCESS TO USERS
+Create another user called user1.
+Grant access to the emp table created now:
+Logon as 'ausername'
+mysql> use mydb1;
+mysql> grant select on mydb1.emp to 'user1';
+(NOTE: ensure that ausername has grant on mydb1 with 'grant option' - otherwise cannot give grants to other users)
+
+RESTRICT TABLE ACCESS FROM USERS
+
+CREATE INDEXES
+http://dev.mysql.com/doc/refman/5.6/en/create-index.html
+Create a simple index: (NOTE: Not going through details of storage, btree/other etc)
+mysql> create index dept_pk on dept (deptid); --> NOTE: This does not actually mean a primary key (see below for PK)
+mysql> drop index dept_pk on dept; 
+mysql> alter table dept add primary key (deptid); --> NOTE: This adds a primary key
+mysql> create index dept_i1 on dept (deptid,deptname);
+
+NOTE: Every time an index is added the .ibd file seemed to grow
+
+AUTO-START-SHUT DATABASE
+
+CONTEXT DISPLAY COMMANDS
+mysql> select user();
++-------------------+
+| user()            |
++-------------------+
+| ausername@localhost |
++-------------------+
+1 row in set (0.02 sec)
+
+mysql> select version();
++---------------------------------------+
+| version()                             |
++---------------------------------------+
+| 5.6.25-enterprise-commercial-advanced |
++---------------------------------------+
+1 row in set (0.02 sec)
+
+mysql> select database();
++------------+
+| database() |
++------------+
+| mydb1      |
++------------+
+
+METADATA (DATA DICTIONARY) COMMANDS
+
+

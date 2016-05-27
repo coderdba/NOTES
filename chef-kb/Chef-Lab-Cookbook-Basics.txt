@@ -1,0 +1,128 @@
+Chef Lab – Cookbook Basics
+Environment
+Laptop/Desktop installed environment with berkshelf, vagrant, knife, chef-solo, git-bash.
+Using Knife to create cookbooks
+(We can use berks cookbook command also, but tried knife here)
+
+http://gettingstartedwithchef.com/first-steps-with-chef.html
+This site  has a good one with multiple recipes combination etc.
+However, using the basics there, this section does a limited test lab of simple functions
+
+Specify location of cookbooks to Knife:
+Do a ‘cd’ to go to home directory
+Create a folder .chef
+Create a file knife.rb in .chef
+Enter the cookbook folder path in it –
+Cookbook_path [‘/Users/myusername/cookbooks’]
+
+Note:  do not add /c/ before Users – then it will create a directory ‘c’ under C:
+Note:  If knife.rb is not present, it will create them under C:/chef/cookbooks by default
+
+Create the cookbook using knife:  (idea from http://reiddraper.com/first-chef-recipe/)
+knife cookbook create create_dir
+	Cd to cookbooks/create_dir/recipes
+
+	Edit default.rb so that it can create a directory c:/c/create_dir1 (note two ‘c’) - 
+		directory “/c/create_dir1”
+
+
+Create a file solo.rb to configure chef-solo folders:
+	Do a ‘cd’ to home directory
+	Edit solo.rb with the following –
+File_cache_path “/Users/myusername/chef-solo"
+Cookbook_path “/Users/myusername/cookbooks”
+
+Create the json file to run the recipes:
+	Do a ‘cd’ to home directory
+	Edit create_dir.json with the following –
+{
+    “run_list”: [“recipe[create_dir]”]
+}
+
+Run the json file:
+        chef-solo –c solo.rb –j create_dir.json
+
+NOTE :  Error stack trace are dumped into ~/chef-solo/ folder (that is /Users/username/chef-solo)
+
+Verify:
+Verify if C:/c/create_dir1 got created  (success)
+
+Add one more recipe and run both together:  (idea from http://gettingstartedwithchef.com/first-steps-with-chef.html for multi-recipe,  for directories and attributes  http://reiddraper.com/first-chef-recipe/)
+
+Create another cookbook to create a new directory and touch a file in it:
+In ~/cookbooks, run “knife cookbook create create_dir2”
+
+Set up an attribute for a new directory and a file in that directory:
+Go to ‘attributes’ directory under cookbooks/create_dir2 and create a default.rb 
+Edit default.rb with the following content –
+(syntax default[:cookbookname][:attributename] = “attributevalue”)
+default[:create_dir2][:dir] = “/c/create_dir2_dir”
+default[:create_dir2][:touchfilename] = “touchfile.txt”
+
+Create the recipe:
+In ~/cookbooks/recipes edit default.rb as follows –
+directory node[:create_dir2][:dir]
+file “#{node[:create_dir2][:dir]}/#node{node[:create_dir2][:touchfile]}”
+# NOTE the hash and curly brackets which are required to form a new string from various attributes
+#file node[:create_dir2][:touchfile] à however, this created the file in C:\Users\username\AppData\Local\VirtualStore and not in create_dir2_dir
+
+
+Edit ~/create_dir.json adding this new recipe along with the old one –
+{
+“run_list”: [“recipe[create_dir]”,  “recipe[create_dir2]”]
+}
+
+Remove the directory C:/c/create_dir1 created earlier so that the new run re-creates it
+
+Run the create_dir.json again
+
+Download a file using a cookbook
+
+https://docs.chef.io/resource_remote_file.html
+http://www.thegeekstuff.com/2012/04/curl-examples/
+http://www.thegeekstuff.com/2012/07/wget-curl/
+
+Curl did not seem to work well – should try again.
+è	It worked on command line in the VM with the following command
+è	curl --proxy-user username:password http://download.thinkbroadband.com/5MB.zip
+o	Username, password were important as proxy server was not letting download without them
+Found ‘source’ directive and ‘remote_file’ directive and used it.
+è	Local on laptop errored as it needs admin privileges
+è	Instead, added that as an additional recipe in Vagrantfile and did a ‘vagrant provision’ which was successful (see details below)
+Local on the laptop:
+
+NOTE: This errored out expecting admin privileges on the laptop to actually populate a file.  It creates/touches empty files, but does not download/echo into the file.
+
+Cd ~/cookbooks
+Run ‘knife cookbook create download_a_file’
+Edit recipes/default.rb with the following commands:
+remote_file "#{Chef::Config[:file_cache_path]}/large-file.tar.gz" do
+  source "http://www.example.org/large-file.tar.gz"
+end
+#curl https://www.utcourts.gov/resources/attorney/Convenience_Brief/instructions/Create_Enhanced_Brief.pdf
+
+Create the json file to run the recipes:
+	Do a ‘cd’ to home directory
+	Edit create_dir.json with the following –
+{
+    “run_list”: [“recipe[create_dir]”]
+}
+
+Run the json file:
+        chef-solo –c solo.rb –j create_dir.json
+
+Vagrant Provision:
+
+In recipes folder create download_file.rb with the following content:
+remote_file  ” /tmp/master.zip ” do
+source “some file in internet”
+end
+
+Add this recipe to chef.run_list in Vagrantfile
+Do ‘vagrant provision’
+Logon to the VM and verify if the file got downloaded à success (when proxy was not there at home), failed requiring proxy authentication when done in office
+o	Setting proxy credentials in client.rb somehow did not help
+
+Chef-Solo, Knife, Bundler
+
+http://leopard.in.ua/2013/01/04/chef-solo-getting-started-part-1/

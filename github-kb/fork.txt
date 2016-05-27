@@ -1,0 +1,133 @@
+FORK A COOKBOOK REPOSITORY AND ADD A NEW FILE TO IT
+
+<< TBD - NEED TO TEST THESE STEPS YET >>
+GET THE ADDRESS OF THE REPOSITORY
+git@github.com:coderdba/git-test.git
+
+CLONE
+O:\cookbooks>git  clone git@github.com:coderdba/git-test.git
+cd cookbooks/git-test
+O:\cookbooks\git-test>git remote add upstream git@github.com:coderdba/git-test.git
+
+To remove an upstream:  git remote remove upstream
+
+O:\cookbooks\git-test>git remote -v
+origin  git@github.com:coderdba/git-test.git (fetch)
+origin  git@github.com:coderdba/git-test.git (push)
+upstream        git@github.com:coderdba/git-test.git (fetch)
+upstream        git@github.com:coderdba/git-test.git (push)
+
+PULL
+Add a new file directly in Github and save it.
+Then do a pull: 'Pull' pulls the latest files from the repository - including others' add/modify/(deletes??).
+
+    O:\cookbooks\git-test>git pull upstream master
+    remote: Counting objects: 3, done.
+    remote: Compressing objects: 100% (2/2), done.
+    remote: Total 3 (delta 0), reused 0 (delta 0), pack-reused 0
+    Unpacking objects: 100% (3/3), done.
+    From github.com:git-test
+     * branch            master     -> FETCH_HEAD
+     * [new branch]      master     -> upstream/master
+    Updating 466a003..4a5cf2c
+    Fast-forward
+     new_filename_if_someone_meanwhile_added_it | 0
+     1 file changed, 0 insertions(+), 0 deletions(-)
+     create mode 100644 new_filename_if_someone_meanwhile_added_it
+
+CAUTION - PULL-OVERWRITE
+After the pull, if someone has pushed a new change to the pulled files (like doing an edit/push)
+then if I do another pull I will get error messages (see below).
+
+To simulate that, edit the same file newfile1.txt directly in github adding a new line and save it. Then do pull again.
+
+Message:
+  (because newfile1.txt was pulled, but also later modified in github directly)
+    O:\cookbooks\git-test>git pull upstream master
+    remote: Counting objects: 3, done.
+    remote: Compressing objects: 100% (3/3), done.
+    remote: Total 3 (delta 0), reused 0 (delta 0), pack-reused 0
+    Unpacking objects: 100% (3/3), done.
+    From github.com:coderdba/git-test
+     * branch            master     -> FETCH_HEAD
+       1ae5d92..c751e0b  master     -> upstream/master
+    Updating 1ae5d92..c751e0b
+    error: Your local changes to the following files would be overwritten by merge:
+            newfile1.txt
+    Please, commit your changes or stash them before you can merge.
+    Aborting
+<< TBD - HOW TO DO THE 'COMMIT' THAT IS MENTIONED IN THE MESSAGE ABOVE >>
+
+CHECKOUT
+git checkout –b <any branch name of our choice>
+
+git checkout -b coderdba1  (no underscores allowed?)
+    M       newfile1.txt
+    Switched to a new branch 'coderdba1'
+
+O:\cookbooks\git-test>git branch -v
+* coderdba1 1ae5d92 Create newfile1.txt
+  master   1ae5d92 [ahead 1] Create newfile1.txt
+  
+CREATE/MODIFY NEW FILE
+O:\cookbooks\git-test> Edit newfile1.txt locally adding a line (add a different line than the one you added in github directly.
+
+ADD CHANGES TO GIT
+O:\cookbooks\git-test>git add .
+
+COMMIT
+
+O:\cookbooks\git-test>git commit -m "modified newfile1.txt"
+[coderdba1 85b64bc] modified newfile1.txt
+ 1 file changed, 2 insertions(+)
+ 
+Message if a new file was added:
+        O:\cookbooks\git-test>git commit -m "modified newfile1.txt"
+        [coderdba1 3a72a60]  added a file
+         1 file changed, 1 insertion(+)
+         create mode 100644 My_Test_File
+
+PUSH
+O:\cookbooks\git-test>git push origin coderdba1
+Counting objects: 7, done.
+Delta compression using up to 4 threads.
+Compressing objects: 100% (3/3), done.
+Writing objects: 100% (3/3), 367 bytes | 0 bytes/s, done.
+Total 3 (delta 0), reused 0 (delta 0)
+To git@github.com:coderdba/git-test.git
+ * [new branch]      coderdba1 -> coderd ba1
+
+Go to https://www.github.com/coderdba/git-test and you will see a ‘compare and pull request’ button for the branch name ‘coderdba1’
+--> click that green button
+
+Then it pops up another page with a green button ‘create pull request’ at the bottom.  This is for pushing the final code to the real cookbook repository – FOR APPROVAL – will go to review with a select set of people
+
+Also, it will show below that section the two changes done to the file - one locally and one in github directly
+Click that 'create pull request' button
+
+It then says this:
+    This branch has conflicts that must be resolved
+    Use the command line to resolve conflicts before continuing.
+    You can also open this in GitHub Desktop or view command line instructions.
+
+Checkout via command line
+
+If you cannot merge a pull request automatically here, you have the option of checking it out via command line to resolve conflicts and perform a manual merge.
+ HTTPS
+ Git
+Patch
+
+https://github.com/coderdba/git-test.git
+
+Step 1: From your project repository, bring in the changes and test.
+
+git fetch origin
+git checkout -b coderdba1 origin/coderdba1
+git merge master
+Step 2: Merge the changes and update on GitHub.
+
+git checkout master
+git merge --no-ff coderdba1
+git push origin master
+
+Reviewer will see ‘pull requests’ – go to there and there will be a button ‘merge pull request’

@@ -1,0 +1,535 @@
+MYSQL CLUSTER WITH NDB - INSTALLATION AND CONFIGURATION
+
+https://dev.mysql.com/doc/refman/5.6/en/mysql-cluster-overview.html
+https://dev.mysql.com/doc/refman/5.6/en/mysql-cluster-install-linux-rpm.html
+https://dev.mysql.com/doc/refman/5.6/en/mysql.html
+http://downloads.mysql.com/tutorials/cluster/mysql_wp_cluster_quickstart_linux.pdf
+https://cyrenity.wordpress.com/2010/08/12/howto-setup-mysql-cluster-beginners-tutorial/
+https://dbperf.wordpress.com/tag/mysql-api-nodes-config/ (old version, good)
+
+Another more comprehensive tutorial: http://technopark02.blogspot.in/2008/08/setting-up-simple-mysql-cluster.html
+
+ALSO TRY - TBD - https://dev.mysql.com/doc/refman/5.6/en/mysql-cluster-config-example.html --> This shows my.cnf referencing location of config.ini as config-file=/etc/config.ini
+
+LAB SERVER LIST
+Note: 'cl' in the server names are for 'cluster'
+mysql5cl1 - 192.168.0.171 - Mgmt Node (also Data Node)
+mysql5cl2 - 192.168.0.172 - Data Node (also SQL Node)
+mysql5cl3 - 192.168.0.173 - SQL Node
+
+CLUSTER COMPONENTS INFORMATION
+Note: The 'mysqld' that comes with cluster-server is different from non-cluster mysqld which installed by the plain mysql-server.  They are not compatible with each other - from cluster-overview.html
+
+Data Nodes (ndbd) - Cluster server software only is needed
+              Although this installs all MySQL Cluster binaries, only the program ndbd or ndbmtd (both in /usr/sbin) 
+              is actually needed to run a MySQL Cluster data node.
+              
+SQL Nodes (mysqld - the mysqld with NDB support) - Cluster server AND MySql Client software are needed 
+                    This installs the "MySQL server binary (mysqld) with 'NDB storage engine support'" 
+                    in the /usr/sbin directory, as well as all needed MySQL Server support files. 
+                    It also installs the mysql.server and mysqld_safe startup scripts 
+                    (in /usr/share/mysql and /usr/bin, respectively)
+                    The mysql client is same as mysql command line tool.
+
+Management Server (ndb_mgmd) - Cluster server software only is needed
+                    Although this RPM installs many other files, only the management server binary 
+                    ndb_mgmd (in the /usr/sbin directory) is actually required for running a management node. 
+                    The server RPM also installs ndb_mgm, the NDB management client.
+                
+NOTE:  It also says "See Section 2.5.5, “Installing MySQL on Linux Using RPM Packages”, for general information about installing MySQL using RPMs supplied by Oracle. " --> should we then install the mysql server and client (regular non NDB also??)
+
+----------------------
+MORE INFO FROM https://dev.mysql.com/doc/refman/5.6/en/mysql-cluster-install-linux-rpm.html
+----------------------
+For a MySQL Cluster, one and possibly two RPMs are required:
+
+The server RPM (for example, MySQL-Cluster-server-gpl-7.3.12-1.sles11.i386.rpm or MySQL-Cluster-server-gpl-7.4.9-1.sles11.i386.rpm),
+which supplies the core files needed to run a MySQL Server with NDBCLUSTER storage engine support (that is, as a MySQL Cluster SQL
+node) as well as all MySQL Cluster executables, including the management node, data node, and ndb_mgm client binaries. This RPM is
+always required for installing MySQL Cluster.
+
+If you do not have your own client application capable of administering a MySQL server, you should also obtain and install the client
+RPM (for example, MySQL-Cluster-client-gpl-7.3.12-1.sles11.i386.rpm or MySQL-Cluster-client-gpl-7.4.9-1.sles11.i386.rpm), which
+supplies the mysql client
+
+========
+DOWNLOAD
+========
+It is "MySQL Cluster Carrier Grade Edition"  or  "MySQL CGE"
+http://www.mysql.com/downloads/
+Download from Oracle's edelivery site
+NOTE:
+Download only cluster --> One zip file contains Server and Client rpms
+  V97582-01.zip MySQL Cluster 7.4.8 RPM for Oracle Linux / RHEL 6 x86 (64bit)
+
+MySQL DB and Cluster are different downloads 
+(However, if you choose 'cluster' aka "MySQL Cluster Carrier Grade Edition" and in it "MySQL Database Server",
+ then zip files for both cluster and server are displayed in two lists)
+(I think the 'database server' is not needed)
+
+=======
+INSTALL
+=======
+
+NOTE: The initial root password will be in /root/.mysql_secret file.
+
+https://dev.mysql.com/doc/refman/5.6/en/mysql-cluster-install-linux-rpm.html
+-----------------
+INSTALL DATA NODE
+-----------------
+Lab server name: mysql5cl1 (also mgmt node), mysql5cl2 (also sql node)
+
+Creates the following key files:
+/usr/sbin/mysqld --> similar, but not the same as regular non-clusterd install mysqld
+/usr/sbin/mysqld-debug
+/etc/my.cnf
+/var/lib/mysql --> the datadir for non-clustered databases
+Also installs mysql.server and mysqld_safe startup scripts (in /usr/share/mysql and /usr/bin, respectively)
+NOTE: This install of only server does NOT install the 'mysql' client program
+
+[root@mysql5cln1 cluster]# rpm -Uhv --force MySQL-Cluster-server-advanced-7.4.6-1.el6.x86_64.rpm
+      Preparing...                
+      ########################################### [100%]
+         1:MySQL-Cluster-server-ad########################################### [100%]
+      warning: user mysql does not exist - using root
+      warning: group mysql does not exist - using root
+      2015-06-22 15:01:53 0 [Warning] TIMESTAMP with implicit DEFAULT value is deprecated. 
+      Please use --explicit_defaults_for_timestamp server option (see documentation for more details).
+      2015-06-22 15:01:53 0 [Note] /usr/sbin/mysqld (mysqld 5.6.24-ndb-7.4.6-cluster-commercial-advanced) 
+      starting as process 3060 ...
+      2015-06-22 15:01:53 3060 [Note] InnoDB: Using atomics to ref count buffer pool pages
+      2015-06-22 15:01:53 3060 [Note] InnoDB: The InnoDB memory heap is disabled
+      2015-06-22 15:01:53 3060 [Note] InnoDB: Mutexes and rw_locks use GCC atomic builtins
+      2015-06-22 15:01:53 3060 [Note] InnoDB: Memory barrier is not used
+      2015-06-22 15:01:53 3060 [Note] InnoDB: Compressed tables use zlib 1.2.3
+      2015-06-22 15:01:53 3060 [Note] InnoDB: Using Linux native AIO
+      2015-06-22 15:01:53 3060 [Note] InnoDB: Not using CPU crc32 instructions
+      2015-06-22 15:01:54 3060 [Note] InnoDB: Initializing buffer pool, size = 128.0M
+      2015-06-22 15:01:54 3060 [Note] InnoDB: Completed initialization of buffer pool
+      2015-06-22 15:01:54 3060 [Note] InnoDB: The first specified data file ./ibdata1 did not exist: 
+      a new database to be created!
+      2015-06-22 15:01:54 3060 [Note] InnoDB: Setting file ./ibdata1 size to 12 MB
+      2015-06-22 15:01:54 3060 [Note] InnoDB: Database physically writes the file full: wait...
+      2015-06-22 15:01:54 3060 [Note] InnoDB: Setting log file ./ib_logfile101 size to 48 MB
+      2015-06-22 15:01:57 3060 [Note] InnoDB: Setting log file ./ib_logfile1 size to 48 MB
+      2015-06-22 15:01:58 3060 [Note] InnoDB: Renaming log file ./ib_logfile101 to ./ib_logfile0
+      2015-06-22 15:01:58 3060 [Warning] InnoDB: New log files created, LSN=45781
+      2015-06-22 15:01:58 3060 [Note] InnoDB: Doublewrite buffer not found: creating new
+      2015-06-22 15:01:58 3060 [Note] InnoDB: Doublewrite buffer created
+      2015-06-22 15:01:58 3060 [Note] InnoDB: 128 rollback segment(s) are active.
+      2015-06-22 15:01:58 3060 [Warning] InnoDB: Creating foreign key constraint system tables.
+      2015-06-22 15:01:58 3060 [Note] InnoDB: Foreign key constraint system tables created
+      2015-06-22 15:01:58 3060 [Note] InnoDB: Creating tablespace and datafile system tables.
+      2015-06-22 15:01:58 3060 [Note] InnoDB: Tablespace and datafile system tables created.
+      2015-06-22 15:01:58 3060 [Note] InnoDB: Waiting for purge to start
+      2015-06-22 15:01:58 3060 [Note] InnoDB: 5.6.24 started; log sequence number 0
+      2015-06-22 15:01:58 3060 [Note] RSA private key file not found: /var/lib/mysql//private_key.pem. 
+      Some authentication plugins will not work.
+      2015-06-22 15:01:58 3060 [Note] RSA public key file not found: /var/lib/mysql//public_key.pem. 
+      Some authentication plugins will not work.
+      A random root password has been set. You will find it in '/root/.mysql_secret'.
+      2015-06-22 15:02:00 3060 [Note] Binlog end
+      2015-06-22 15:02:00 3060 [Note] InnoDB: FTS optimize thread exiting.
+      2015-06-22 15:02:00 3060 [Note] InnoDB: Starting shutdown...
+      2015-06-22 15:02:01 3060 [Note] InnoDB: Shutdown completed; log sequence number 1625977
+      
+      
+      2015-06-22 15:02:02 0 [Warning] TIMESTAMP with implicit DEFAULT value is deprecated. 
+      Please use --explicit_defaults_for_timestamp server option (see documentation for more details).
+      2015-06-22 15:02:02 0 [Note] /usr/sbin/mysqld (mysqld 5.6.24-ndb-7.4.6-cluster-commercial-advanced) 
+      starting as process 3085 ...
+      2015-06-22 15:02:02 3085 [Note] InnoDB: Using atomics to ref count buffer pool pages
+      2015-06-22 15:02:02 3085 [Note] InnoDB: The InnoDB memory heap is disabled
+      2015-06-22 15:02:02 3085 [Note] InnoDB: Mutexes and rw_locks use GCC atomic builtins
+      2015-06-22 15:02:02 3085 [Note] InnoDB: Memory barrier is not used
+      2015-06-22 15:02:02 3085 [Note] InnoDB: Compressed tables use zlib 1.2.3
+      2015-06-22 15:02:02 3085 [Note] InnoDB: Using Linux native AIO
+      2015-06-22 15:02:02 3085 [Note] InnoDB: Not using CPU crc32 instructions
+      2015-06-22 15:02:02 3085 [Note] InnoDB: Initializing buffer pool, size = 128.0M
+      2015-06-22 15:02:02 3085 [Note] InnoDB: Completed initialization of buffer pool
+      2015-06-22 15:02:02 3085 [Note] InnoDB: Highest supported file format is Barracuda.
+      2015-06-22 15:02:02 3085 [Note] InnoDB: 128 rollback segment(s) are active.
+      2015-06-22 15:02:02 3085 [Note] InnoDB: Waiting for purge to start
+      2015-06-22 15:02:02 3085 [Note] InnoDB: 5.6.24 started; log sequence number 1625977
+      2015-06-22 15:02:02 3085 [Note] RSA private key file not found: /var/lib/mysql//private_key.pem. 
+      Some authentication plugins will not work.
+      2015-06-22 15:02:02 3085 [Note] RSA public key file not found: /var/lib/mysql//public_key.pem. 
+      Some authentication plugins will not work.
+      2015-06-22 15:02:03 3085 [Note] Binlog end
+      2015-06-22 15:02:03 3085 [Note] InnoDB: FTS optimize thread exiting.
+      2015-06-22 15:02:03 3085 [Note] InnoDB: Starting shutdown...
+      2015-06-22 15:02:04 3085 [Note] InnoDB: Shutdown completed; log sequence number 1625987
+      
+      A RANDOM PASSWORD HAS BEEN SET FOR THE MySQL root USER !
+      You will find that password in '/root/.mysql_secret'.
+      
+      You must change that password on your first connect,
+      no other statement but 'SET PASSWORD' will be accepted.
+      See the manual for the semantics of the 'password expired' flag.
+      
+      Also, the account for the anonymous user has been removed.
+      
+      In addition, you can run:
+      
+        /usr/bin/mysql_secure_installation
+      
+      which will also give you the option of removing the test database.
+      This is strongly recommended for production servers.
+      
+      See the manual for more instructions.
+      
+      Please report any problems at http://bugs.mysql.com/
+      
+      The latest information about MySQL is available on the web at
+      
+        http://www.mysql.com
+      
+      Support MySQL by buying support/licenses at http://shop.mysql.com
+      
+      New default config file was created as /usr/my.cnf and
+      will be used by default by the server when you start it.
+      You may edit this file to change server settings
+      
+      WARNING: Default config file /etc/my.cnf exists on the system
+      This file will be read by default by the MySQL server
+      If you do not want to use this, either remove it, or use the
+      --defaults-file argument to mysqld_safe when starting the server
+
+----------------
+INSTALL SQL NODE
+----------------
+Lab Servers: mysql5cl2 (also data node), mysql5cl3
+1. Install cluster server as in the data node install
+2. Install mysql client (the mysql executable) using the client installer:
+rpm -Uvh --force MySQL-Cluster-client-advanced-7.4.6-1.el6.x86_64.rpm
+This installs /usr/sbin/mysql also
+
+-----------------------
+INSTALL MANAGEMENT NODE
+-----------------------
+Lab Server name: mysql5cl1 (also data node)
+Install the cluster-server software as done for data node
+
+=====
+CONFIGURATION - CAUTION - /ETC/HOSTS LOCALHOST ISSUE
+=====
+If the hostname is in the lines of 127.0.0.1 or :: lines will disallow connections between nodes.
+Therefore, remove the hostname from those lines
+
+=====
+CONFIGURATION - CAUTION - NDB-CONNECTSTRING FOR NDBD
+=====
+ndb-connectstring is necessary for each process - ndbd, ndb_mgmd, mysqld
+Just place the following line in my.cnf of data nodes:
+[ndb]
+ndb-connectstring=management_hostname
+(similarly this connect string should be placed under [mysqld] and [mysql_cluster] sections also)
+
+In the Mysql manuals, it is not at all given properly
+Need for it is mentioned in this: https://dev.mysql.com/doc/refman/5.6/en/mysql-cluster-connection-strings.html
+There is a confusing reference to it in this: http://dev.mysql.com/doc/refman/5.6/en/mysql-cluster-config-example.html
+  (it is mentioned as connect-string under [ndbd] in my.cnf in this site)
+  
+This tells the issue clearly: https://dev.mysql.com/doc/refman/5.6/en/mysql-cluster-programs-ndbd.html
+  To start ndbd, it may also be necessary to specify the host name of the management server and the port on 
+  which it is listening. Optionally, one may also specify the node ID that the process is to use.
+
+  shell> ndbd --connect-string="nodeid=2;host=ndb_mgmd.mysql.com:1186"
+
+  See Section 18.3.2.3, “MySQL Cluster Connection Strings”, for additional information about this issue. 
+  Section 18.4.27, “Options Common to MySQL Cluster Programs — Options Common to MySQL Cluster Programs”, 
+  describes other command-line options which can be used with ndbd. For information about data node 
+  configuration parameters, see Section 18.3.2.6, “Defining MySQL Cluster Data Nodes”. 
+
+More on commands' options: https://dev.mysql.com/doc/refman/5.6/en/mysql-cluster-program-options-common.html
+
+=============
+CONFIGURATION
+=============
+Use this - 
+https://dev.mysql.com/doc/refman/5.6/en/mysql-cluster-install-configuration.html
+AND THIS-
+https://dev.mysql.com/doc/refman/5.6/en/mysql-cluster-config-example.html
+
+Not this - http://dev.mysql.com/doc/refman/5.6/en/mysql-cluster-quick.html
+(use this for more details, however, initial setup part is not good in this) 
+
+https://docs.oracle.com/cd/E17952_01/refman-5.1-en/mysql-cluster-config-starting.html --> recommended initial configuartion settings
+
+For all parameters:  http://dev.mysql.com/doc/refman/5.6/en/mysql-cluster-mgm-definition.html
+
+---------------------------
+CONFIGURE MANAGEMENT SERVER
+---------------------------
+Edit /etc/hosts to reflect all data, sql and management nodes
+Create folder /var/lib/mysql-cluster
+Create folder /var/lib/mysql-cluster/data --> in the case mgmt node is also used as a data node
+
+In that folder create /var/lib/mysql-cluster/config.ini with the following content:
+NOTE: Sometimes you may get error like the following.  
+      In that case, try using IP address against hostname instead of host-name.
+      2015-11-19 14:30:04 [MgmtSrvr] ERROR    -- at line 38: Parse error
+      2015-11-19 14:30:04 [MgmtSrvr] ERROR    -- at line 38: Could not parse name-value pair in config file.
+      2015-11-19 14:30:04 [MgmtSrvr] ERROR    -- Could not load configuration from '/var/lib/mysql-cluster/config.ini'
+      2015-11-19 14:30:04 [MgmtSrvr] ERROR    -- Could not determine which nodeid to use for this node. 
+                                                  Specify it with --ndb-nodeid=<nodeid> on command line
+
+    # TCP settings
+    [tcp default]
+    #portnumber=2202 # This is the default port. And,it is recommended to comment out and allow it to use this default by default
+    
+    # Management Server settings
+    [ndb_mgmd default]
+    [ndb_mgmd]
+    HostName= mysql5cl1
+    datadir=/var/lib/mysql-cluster
+    NodeId=1
+    
+    # Data Node settings
+    [ndbd default]	# These are defaults to be used on each data node
+    NoOfReplicas= 2
+    DataMemory=80M
+    IndexMemory=18M
+    DataDir=/var/lib/mysql-cluster/data  --> use 'data' to denote data node (???if using mgmt node for data also???)
+
+    [ndbd]
+    HostName=mysql5cl1
+    NodeId=2
+    
+    [ndbd]
+    hostname=mysql5cl2
+    NodeId=3
+    
+    # SQL Node settings
+    [mysqld  default]
+    
+    [mysqld]	# node specific settings
+    hostname=mysql5cl2
+    NodeId=4
+    
+    [mysqld]
+    hostname=mysql5cl3
+    NodeId=5
+    
+Create /usr/mysql-cluster directory owned by root:root, permission 700.
+--------------------------------------------
+Inside it, create a link to /var/lib/mysql-cluster/config.ini
+
+Start /usr/sbin/ndb_mgmd as follows:
+------------------------------------
+$ ndb_mgmd -f /var/lib/mysql-cluster/config.ini --initial
+(All ndb_mgmd options:  https://dev.mysql.com/doc/refman/5.6/en/mysql-cluster-programs-ndb-mgmd.html)
+
+This will give a warning: (as we have mgmt node also act as a data node)
+MySQL Cluster Management Server mysql-5.6.24 ndb-7.4.6
+2015-10-03 16:57:42 [MgmtSrvr] WARNING  -- at line 33: Cluster configuration warning:
+  arbitrator with id 1 and db node with id 2 on same host mysql5cl1
+  Running arbitrator on the same host as a database node may
+  cause complete cluster shutdown in case of host failure.
+
+Verify:
+------
+$ ndb_mgm
+
+ndb_mgm> show
+Connected to Management Server at: mysql5cl1:1186
+Cluster Configuration
+---------------------
+[ndbd(NDB)]	2 node(s)
+id=2 (not connected, accepting connect from mysql5cl1)
+id=3 (not connected, accepting connect from mysql5cl2)
+
+[ndb_mgmd(MGM)]	1 node(s)
+id=1	@127.0.0.1  (mysql-5.6.24 ndb-7.4.6)
+
+[mysqld(API)]	2 node(s)
+id=4 (not connected, accepting connect from mysql5cl2)
+id=5 (not connected, accepting connect from mysql5cl3)
+
+Alternative way of starting ndb_mgmd:
+    Go to the directory /var/lib/mysql-cluster
+    Start the management server
+    $ ndb_mgmd  (this gave error - see below)
+        However, it did notrecognize the config.ini and tried to create a new mysql-cluster folder:
+        MySQL Cluster Management Server mysql-5.6.24 ndb-7.4.6
+        2015-06-22 18:09:35 [MgmtSrvr] INFO     -- The default config directory '/usr/mysql-cluster' does not exist.    
+        Trying to create it...
+        2015-06-22 18:09:35 [MgmtSrvr] INFO     -- Sucessfully created config directory
+        2015-06-22 18:09:35 [MgmtSrvr] ERROR    -- Could not determine which nodeid to use for this node. 
+                                                    Specify it with --ndb-nodeid=<nodeid> on command line
+    
+    Edit config.ini to add NodeId=1 for mgmt server and NodeId=2 for data node etc
+    
+    Run ndb_mgmd specifying the file to use explicitly
+    $ ndb_mgmd -f /var/lib/mysql-cluster/config.ini
+
+-------------------
+CONFIGURE DATA NODE  (do this on each data node)
+-------------------
+Edit /etc/hosts to reflect all mgmt and data nodes
+Create folder /var/lib/mysql-cluster 
+Create folder /var/lib/mysql-cluster/data
+
+This node does not need a config.ini similar to management server.
+Instead, edit /etc/my.cnf as follows:
+  NOTE: Save a copy of initial/current my.cnf for safety
+  
+For all parameters: https://dev.mysql.com/doc/refman/5.6/en/mysql-cluster-params-ndbd.html
+
+  [ndbd]
+  ndb-connectstring=mysql5cl1
+  
+  # Add the following of mysqld and mysql_cluster - if the node is also used as SQL node
+  [mysqld]
+  ndbcluster  # run NDB storage engine, not the other one
+  ndb-connectstring=mysql5cl1  # location of management server
+
+  [mysql_cluster]
+  ndb-connectstring=mysql5cl1  # location of management server
+
+Start 'ndb' on data node
+------------------------
+$ /usr/sbin/ndbd
+OR
+$ /usr/sbin/ndbd --defaults-file=/etc/my.cnf
+
+(for checking what parameters it is using and precedence of my.cnf run "ndbd --help")
+
+This initially may error saying it needs directory /usr/local/mysql/data
+-->To use your own data directory like /var/lib/mysql-cluster/data --> ensure it is mentioned so in config.ini in management node. Otherwise, create that /usr/local/mysql/data directory as root - which I do not prefer to do.
+
+It show now start and connect to management server:
+INFO -- Agnel connected to 'mysql5cl1:1186' --> connected to mgmt server
+INFO -- Angel allocated nodeid=2
+
+Logfile will be in /usr/local/mysql/data/ndb_2_out.log
+
+Verify:
+------
+On the mangagement server node run ndb_mgm show.
+Ensure hostnames are as you wanted
+IP's may for now show localhost IP 127.0.0.1 instead of real IP
+
+$ ndb_mgm
+ndb_mgm> show
+[root@mysql5cl1 mysql-cluster]# ndb_mgm
+-- NDB Cluster -- Management Client --
+ndb_mgm> show
+Connected to Management Server at: mysql5cl1:1186
+Cluster Configuration
+---------------------
+[ndbd(NDB)]	2 node(s)
+id=2	@127.0.0.1  (mysql-5.6.24 ndb-7.4.6, starting, Nodegroup: 0)
+id=3 (not connected, accepting connect from mysql5cl2)
+
+[ndb_mgmd(MGM)]	1 node(s)
+id=1	@127.0.0.1  (mysql-5.6.24 ndb-7.4.6)
+
+[mysqld(API)]	2 node(s)
+id=4 (not connected, accepting connect from mysql5cl2)
+id=5 (not connected, accepting connect from mysql5cl3)
+
+ndb_mgm> 
+
+------------------
+CONFIGURE SQL NODE
+------------------
+Edit /etc/hosts to reflect all mgmt and data nodes
+This node does not need a config.ini similar to management server.
+
+Instead, edit /etc/my.cnf as follows:
+NOTE: Save a copy of initial/current my.cnf for safety
+
+  # This ndbd line is necessary if this node is data node also
+  [ndbd]
+  ndb-connectstring=mysql5cl1
+ 
+  # Following mysqld and mysql_cluster sections are necessary for SQL nodes
+  [mysqld]
+  ndbcluster  # run NDB storage engine, not the other one
+  ndb-connectstring=mysql5cl1
+  
+  [mysql_cluster]
+  ndb-connectstring=mysql5cl1  # location of management server
+
+NOTE: Other files/folders to know
+/var/lib/mysql 
+/var/lib/mysql/host.err --> mysqld_safe logs to this file
+/var/lib/mysql/host.pid --> pid of mysqld process
+/var/lib/mysql/mysql.sock --> socket/lock file
+
+/var/log/mysql.log 
+/var/run/mysqld
+
+Start 'mysqld' daemon with the startup script as follows:
+--------------------------------------------------------
+Use - https://dev.mysql.com/doc/refman/5.6/en/mysqld-safe.html. 
+--> These specifics are not there in the cluster config instructions.
+
+$ /etc/init.d/mysql start  (this script calls mysqld_safe internally. It is also the rc script)
+OR
+$ mysqld_safe  (which is in /usr/bin)
+
+This will start mysqld daemon and exit
+
+Verify:
+------
+On SQL node:  ps -ef |grep mysqld
+
+On Management Node: 
+$ ndb_mgm
+ndb_mgm> show
+
+<< TBD - Initially THIS DID NOT SHOW THAT SQL NODE IS CONNECTING - NEED TO DEBUG WHY >>
+<<  HOWEVER, IT MAY BE BECAUSE OF 127.0.0.1 LINE CONTAINING THE HOSTNAME. UPON HOSTNAME REMOVAL, IT WORKED>>
+http://forums.mysql.com/read.php?25,295364,295404#msg-295404
+http://osxr.org/mysql/source/storage/ndb/src/kernel/blocks/qmgr/QmgrMain.cpp
+https://cyrenity.wordpress.com/2010/08/12/howto-setup-mysql-cluster-beginners-tutorial/
+https://blogs.oracle.com/jsmyth/entry/connection_failures_between_nodes_in
+https://dbperf.wordpress.com/tag/mysql-api-nodes-config/
+
+==============
+LOG LOCATIONS
+==============
+/var/lib/mysql-cluster --> for management nodes
+/var/lib/mysql-cluster/data --> for data nodes
+/var/lib/mysql --> for SQL nodes
+
+==============
+ADMINISTRATION
+==============
+Shutdown, restart:   http://dev.mysql.com/doc/refman/5.6/en/mysql-cluster-install-shutdown-restart.html
+Add node:  https://dev.mysql.com/doc/refman/5.6/en/mysql-cluster-online-add-node-example.html
+ndb_mgm commands: https://dev.mysql.com/doc/refman/5.6/en/mysql-cluster-mgm-client-commands.html
+mysqladmin - SQL/API client admin:  https://dev.mysql.com/doc/refman/5.6/en/mysqladmin.html
+Reset passwords/permissions: https://dev.mysql.com/doc/refman/5.6/en/resetting-permissions.html
+Reset root password: http://www.cyberciti.biz/faq/mysql-change-root-password/
+Config.ini settings: https://dev.mysql.com/doc/refman/5.6/en/mysql-cluster-ndbd-definition.html
+Config guide: https://docs.oracle.com/cd/E17952_01/refman-5.1-en/mysql-cluster-config-starting.html
+Config files: https://dev.mysql.com/doc/refman/5.1/en/option-files.html
+
+
+=============
+LOAD BALANCER
+=============
+https://www.null-byte.org/development/mysql-ndb-cluster-setup-on-ubuntu-12-04-lts/
+
+=======
+my.cnf
+=======
+https://blogs.oracle.com/rainy/entry/why_isn_t_mysql_using
+http://www.psce.com/blog/2012/04/01/how-to-find-mysql-configuration-file/
+https://dev.mysql.com/doc/refman/5.1/en/option-files.html
+http://stackoverflow.com/questions/2482234/how-to-know-mysql-my-cnf-location
+
+
+
+================
+TODO
+================
+PARTIAL CLUSTER START:
+In the initial startup, it waits until all data nodes are up --> ndb_mgm show shows 'waiting' status continuously
+until all data nodes are up.  
+Question: What if we just want to start only one data node to begin with?
+
+

@@ -1,0 +1,70 @@
+============================================
+TOMCAT INSTALLATION ON LINUX
+============================================
+https://www.mulesoft.com/tcat/tomcat-on-linux-installation-and-configuration
+https://tomcat.apache.org/tomcat-8.0-doc/setup.html
+
+---------
+DOWNLOAD
+---------
+Create a software-staging directory /stage/tomcat.
+Go in that directory, and download the software tar bundle.
+
+wget http://mirror.fibergrid.in/apache/tomcat/tomcat-8/v8.0.33/bin/apache-tomcat-8.0.33.tar.gz
+
+--------------
+INSTALLATION
+--------------
+Create a install directory like /opt/<username> or /opt/<project name>.
+Go into that folder
+Gunzip and Untar the gzip file
+This will create a directory like this: /opt/<project name>/apache-tomcat-8.0.33
+
+---------------------
+CHECK FIREWALL RULES
+---------------------
+https://linuxconfig.org/how-to-open-http-port-80-on-redhat-7-linux-using-firewall-cmd
+
+Tomcat uses ports 8080 for http and 8443 for https.
+They should be open to outside world for this instance to be accessible to outside world.
+
+Check as follows:  (as root)
+
+# iptables-save |grep 8080
+-A IN_public_allow -p tcp -m tcp --dport 8080 -m conntrack --ctstate NEW -j ACCEPT
+
+# iptables-save|grep 8443
+-A IN_public_allow -p tcp -m tcp --dport 8443 -m conntrack --ctstate NEW -j ACCEPT
+
+If outputs as above do not show up, fix them using firewall-cmd command:
+# firewall-cmd --zone=public --add-port=8080/tcp --permanent
+# firewall-cmd --reload
+
+# firewall-cmd --zone=public --add-port=8443/tcp --permanent
+# firewall-cmd --reload
+
+Verify with iptables-save command
+
+----------------
+STARTUP
+----------------
+NOTE: At this time it will be http on 8080 port.  Https on 8443 is not enabled yet
+Go to the folder /opt/<project name>/apache-tomcat-8.0.33/bin
+Run ./startup.sh
+That should startup Tomcat
+Check with the following methods:
+$ curl http://hostname:8080
+
+Or
+
+In a browser access http://hostname:8080
+
+---------------
+ENABLE SSL
+---------------
+Follow the steps in the other document on this topic.
+
+
+
+
+

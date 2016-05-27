@@ -1,0 +1,241 @@
+======================================================================
+MARIA DB INSTALLATION USING RPMS
+======================================================================
+
+=================
+BOX IMAGE TO USE
+=================
+config.vm.box_url = 'http://cloud.terry.im/vagrant/oraclelinux-7-x86_64.box'
+  
+=================
+OS PREREQUISITES
+=================
+Note - Yum may recognize these and auto-install also
+
+----------------------------------------------------------------------------------------------
+Extract from Chef install sourcing these pre-requisites (see the packages in square brackets):
+----------------------------------------------------------------------------------------------
+==> default:   * yum_package[boost-program-options] action install
+==> default:   * yum_package[unixODBC] action install
+==> default:   * yum_package[lsof] action install
+==> default:   * yum_package[perl-DBI] action install
+yum install boost-program-options
+yum install unixODBC
+yum install lsof
+yum install perl-DBI
+
+----------------------------------------------------------------------------------------------
+Here is a more detailed screen output from chef-based install:
+----------------------------------------------------------------------------------------------
+==> default: Converging 30 resources
+==> default: Recipe: cbmariadb::install_rpms
+==> default:   * yum_package[boost-program-options] action install
+==> default: [2016-05-10T23:54:29+10:00] INFO: yum_package[boost-program-options] installing boost-program-options-1.53.0-25.el7 from ol7_latest repository
+==> default: [2016-05-10T23:54:50+10:00] INFO: yum_package[boost-program-options] installed boost-program-options at 1.53.0-25.el7
+==> default:
+==> default:     - install version 1.53.0-25.el7 of package boost-program-options
+==> default:   * yum_package[unixODBC] action install
+==> default: [2016-05-10T23:54:50+10:00] INFO: yum_package[unixODBC] installing unixODBC-2.3.1-11.el7 from ol7_latest repository
+==> default: [2016-05-10T23:54:55+10:00] INFO: yum_package[unixODBC] installed unixODBC at 2.3.1-11.el7
+==> default:
+==> default:     - install version 2.3.1-11.el7 of package unixODBC
+==> default:   * yum_package[lsof] action install
+==> default: [2016-05-10T23:54:56+10:00] INFO: yum_package[lsof] installing lsof-4.87-4.el7 from ol7_latest repository
+==> default: [2016-05-10T23:55:00+10:00] INFO: yum_package[lsof] installed lsof at 4.87-4.el7
+==> default:
+==> default:     - install version 4.87-4.el7 of package lsof
+==> default:   * yum_package[perl-DBI] action install
+==> default: [2016-05-10T23:55:00+10:00] INFO: yum_package[perl-DBI] installing perl-DBI-1.627-4.el7 from ol7_latest repository
+==> default: [2016-05-10T23:55:09+10:00] INFO: yum_package[perl-DBI] installed perl-DBI at 1.627-4.el7
+==> default:
+==> default:     - install version 1.627-4.el7 of package perl-DBI
+
+===================================================
+REMOVE OLD MYSQL AND POSTFIX INSTALLATIONS
+===================================================
+NOTE - these may come from box images or RHEL/OEL installations
+
+Example error:
+==> default:    file /usr/share/mysql/charsets/macroman.xml from install of MariaDB-common-10.1.11-1.el7.centos.x86_64 conflicts with file from package mysql-community-common-5.6.23-3.el7.x86_64
+
+root@mariadb:/tmp/install.sh.5064# rpm -qa |grep -i my
+mysql-community-common-5.6.23-3.el7.x86_64
+mysql-community-libs-5.6.23-3.el7.x86_64
+root@mariadb:/tmp/install.sh.5064# rpm -e mysql
+error: package mysql is not installed
+root@mariadb:/tmp/install.sh.5064# rpm -e mysql-community-common
+error: Failed dependencies:
+        mysql-community-common(x86-64) = 5.6.23-3.el7 is needed by (installed) mysql-community-libs-5.6.23-3.el7.x86_64
+root@mariadb:/tmp/install.sh.5064# rpm -e mysql-community-libs
+error: Failed dependencies:
+        libmysqlclient.so.18()(64bit) is needed by (installed) postfix-2:2.10.1-6.0.1.el7.x86_64
+        libmysqlclient.so.18(libmysqlclient_18)(64bit) is needed by (installed) postfix-2:2.10.1-6.0.1.el7.x86_64
+root@mariadb:/tmp/install.sh.5064# rpm -e postfix
+root@mariadb:/tmp/install.sh.5064# rpm -e mysql-community-libs
+root@mariadb:/tmp/install.sh.5064# rpm -e mysql-community-common
+root@mariadb:/tmp/install.sh.5064# rpm -qa|grep -i mysq
+
+=================
+INSTRUCTIONS
+=================
+https://mariadb.com/kb/en/mariadb/installing-mariadb-with-the-rpm-tool/
+Other rpm install methods - https://mariadb.com/kb/en/mariadb/rpm/
+
+http://support.moonpoint.com/software/database/mysql/not-running-centos7.php --> to enable the service
+       
+=================       
+DOWNLOAD SOURCE
+=================
+http://mirror.fibergrid.in/mariadb/mariadb-10.1.11/yum/rhel6-amd64/rpms/
+
+=================
+DOWNLOAD THESE
+=================
+ /mariadb-rpms/galera-25.3.12-1.rhel7.el7.centos.x86_64.rpm
+ /mariadb-rpms/jemalloc-3.6.0-1.el7.x86_64.rpm
+ /mariadb-rpms/jemalloc-devel-3.6.0-1.el7.x86_64.rpm
+ /mariadb-rpms/MariaDB-10.1.11-centos7-x86_64-common.rpm
+ /mariadb-rpms/MariaDB-10.1.11-centos7-x86_64-client.rpm
+ /mariadb-rpms/MariaDB-10.1.11-centos7-x86_64-compat.rpm
+ /mariadb-rpms/MariaDB-10.1.11-centos7-x86_64-devel.rpm
+ /mariadb-rpms/MariaDB-10.1.11-centos7-x86_64-server.rpm
+ /mariadb-rpms/MariaDB-10.1.11-centos7-x86_64-connect-engine.rpm
+ /mariadb-rpms/MariaDB-10.1.11-centos7-x86_64-gssapi-client.rpm
+ /mariadb-rpms/MariaDB-10.1.11-centos7-x86_64-gssapi-server.rpm
+ /mariadb-rpms/MariaDB-10.1.11-centos7-x86_64-shared.rpm
+ /mariadb-rpms/MariaDB-10.1.11-centos7-x86_64-test.rpm
+
+
+
+Package Name, Description: (may not cover everything mentioned above)
+-------------------------
+MariaDB-client Client tools like mysql CLI, mysqldump, and others. 
+MariaDB-common Character set files and /etc/my.cnf 
+MariaDB-compat Old shared client libraries, may be needed by old MariaDB or MySQL clients 
+MariaDB-devel Development headers and static libraries. 
+MariaDB-server The server and server tools, like myisamchk and mysqlhotcopy are here. 
+MariaDB-shared Dynamic client libraries. 
+MariaDB-test mysql-client-test executable, and mysql-test framework with the tests. 
+
+From some old doc:
+MariaDB-server-5.2.5-99.el5.x86_64.rpm x
+MariaDB-client-5.2.5-99.el5.x86_64.rpm x
+MariaDB-shared-5.2.5-99.el5.x86_64.rpm x
+MariaDB-debuginfo-5.2.5-99.el5.x86_64.rpm (not available in ver 10)
+MariaDB-devel-5.2.5-99.el5.x86_64.rpm x
+MariaDB-test-5.2.5-99.el5.x86_64.rpm x
+
+M*common*64.rpm x
+M*compat*64.rpm x
+
+==================
+INSTALL AND SECURE
+==================
+https://mariadb.com/kb/en/mariadb/installing-mariadb-with-the-rpm-tool/
+Install using rpm -Uvh method 
+Secure the installation (change root password)
+
+This article describes how to download the RPM files and install them using the rpm command.
+
+It is highly recommended to Install MariaDB with yum where possible.
+
+Navigate to http://downloads.mariadb.org and choose the desired database version and then select the RPMs that match your Linux distribution and architecture.
+
+Clicking those links takes you to a local mirror. Choose the rpms link and download the desired packages. The packages will be similar to the following:
+
+MariaDB-client-5.2.5-99.el5.x86_64.rpm
+MariaDB-debuginfo-5.2.5-99.el5.x86_64.rpm
+MariaDB-devel-5.2.5-99.el5.x86_64.rpm
+MariaDB-server-5.2.5-99.el5.x86_64.rpm
+MariaDB-shared-5.2.5-99.el5.x86_64.rpm
+MariaDB-test-5.2.5-99.el5.x86_64.rpm
+For a standard server installation you will need to download at least the client, shared, and server RPM files. See About the MariaDB RPM Files for more information about what is included in each RPM package.
+
+Prior to installing MariaDB, be aware that it will conflict with an existing installation of MySQL. To check whether MySQL is already installed, issue the command:
+
+rpm -qa 'mysql*'
+If necessary, you can remove found MySQL packages before installing MariaDB.
+
+To install MariaDB, use the command:
+
+rpm -ivh MariaDB-*
+You should see output such as the following:
+
+Preparing...                ########################################### [100%]
+   1:MariaDB-shared         ########################################### [ 14%]
+   2:MariaDB-client         ########################################### [ 29%]
+   3:MariaDB-client         ########################################### [ 43%]
+   4:MariaDB-debuginfo      ########################################### [ 57%]
+   5:MariaDB-devel          ########################################### [ 71%]
+   6:MariaDB-server         ########################################### [ 86%]
+   
+   
+---
+AFTER THIS, START THE SERVICE AS IN THE 'START THE SERVICE' SECTION BELOW
+---
+
+PLEASE REMEMBER TO SET A PASSWORD FOR THE MariaDB root USER !
+To do so, start the server, then issue the following commands:
+
+/usr/bin/mysqladmin -u root password 'new-password'
+/usr/bin/mysqladmin -u root -h hostname password 'new-password'
+
+Alternatively you can run:
+/usr/bin/mysql_secure_installation
+
+which will also give you the option of removing the test
+databases and anonymous user created by default.  This is
+strongly recommended for production servers.
+
+See the MySQL manual for more instructions.
+
+Please report any problems with the /usr/bin/mysqlbug script!
+
+The latest information about MariaDB is available at http://www.askmonty.org/.
+You can find additional information about the MySQL part at:
+http://dev.mysql.com
+Support MariaDB development by buying support/new features from
+Monty Program Ab. You can contact us about this at sales@askmonty.org.
+Alternatively consider joining our community based development effort:
+http://askmonty.org/wiki/index.php/MariaDB#How_can_I_participate_in_the_development_of_MariaDB
+
+Starting MySQL....[  OK  ]
+Giving mysqld 2 seconds to start
+   7:MariaDB-test           ########################################### [100%]
+Be sure to follow the instructions given in the preceding output and create a password for the root user either by using mysqladmin or by running the /usr/bin/mysql_secure_installation script.
+
+Installing the MariaDB RPM files installs the MySQL tools in the /usr/bin directory. You can confirm that MariaDB has been installed by using the MySQL client program. Issuing the command mysql should give you the MariaDB cursor.
+
+=========================
+START THE SERVICE
+=========================
+http://support.moonpoint.com/software/database/mysql/not-running-centos7.php
+
+Enable the service:
+# systemctl enable mariadb.service
+
+Start the service:
+# service mariadb start
+(instead of mariadb use of mysql and mysqld also is ok - because there is a soft-link in the /etc/systemd/system folder)
+    
+    root@mariadb:/etc/systemd/system# ls -l
+    total 4
+    drwxr-xr-x. 2 root root   30 Jul 24  2014 basic.target.wants
+    lrwxrwxrwx. 1 root root   44 Jul 24  2014 dbus-org.freedesktop.Avahi.service -> /usr/lib/systemd/system/avahi-daemon.service
+    lrwxrwxrwx. 1 root root   46 Jul 24  2014 dbus-org.freedesktop.NetworkManager.service -> /usr/lib/systemd/system/NetworkManager.service
+    lrwxrwxrwx. 1 root root   57 Jul 24  2014 dbus-org.freedesktop.nm-dispatcher.service -> /usr/lib/systemd/system/NetworkManager-dispatcher.service
+    lrwxrwxrwx. 1 root root   37 Jul 24  2014 default.target -> /lib/systemd/system/multi-user.target
+    drwxr-xr-x. 2 root root   85 Jul 24  2014 default.target.wants
+    drwxr-xr-x. 2 root root   31 Jul 24  2014 getty.target.wants
+    drwxr-xr-x  2 root root   47 May 11 00:01 mariadb.service.d
+    drwxr-xr-x. 2 root root 4096 May 11 00:01 multi-user.target.wants
+    lrwxrwxrwx  1 root root   39 May 11 00:01 mysqld.service -> /usr/lib/systemd/system/mariadb.service
+    lrwxrwxrwx  1 root root   39 May 11 00:01 mysql.service -> /usr/lib/systemd/system/mariadb.service
+    drwxr-xr-x. 2 root root   80 Jul 24  2014 sockets.target.wants
+    drwxr-xr-x. 2 root root   86 Dec 17 10:52 sysinit.target.wants
+    drwxr-xr-x. 2 root root   43 Jul 24  2014 system-update.target.wants
+
+
+
+
+

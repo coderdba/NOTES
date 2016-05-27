@@ -1,0 +1,72 @@
+TUNING PLSQL (also SQL)
+https://docs.oracle.com/cd/B19306_01/appdev.102/b14261/tuning.htm#i48279
+
+REDUCE WORK AT ROW-FETCH TIME
+Costly - applies function to each row before doing distinct -  select distinct(function(lastname)) from emp;
+Cheaper- applies function to only distinct values already fetched - select funtion (lastname) from (select distinct lastname from  emp);
+
+REORDER CONDITIONAL EXPRESSIONS WITH CHEAPER FIRST
+Example:
+   IF (on_hand = 0) OR ((on_order / on_hand) < 5) THEN
+      DBMS_OUTPUT.PUT_LINE('On hand quantity is zero.');
+   END IF;
+   
+USE FORALL INSTEAD OF FOR
+CREATE TABLE parts1 (pnum INTEGER, pname VARCHAR2(15));
+CREATE TABLE parts2 (pnum INTEGER, pname VARCHAR2(15));
+DECLARE
+  TYPE NumTab IS TABLE OF parts1.pnum%TYPE INDEX BY PLS_INTEGER;
+  TYPE NameTab IS TABLE OF parts1.pname%TYPE INDEX BY PLS_INTEGER;
+  pnums  NumTab;
+  pnames NameTab;
+  iterations CONSTANT PLS_INTEGER := 500;
+  t1 INTEGER;
+  t2 INTEGER;
+  t3 INTEGER;
+BEGIN
+  FOR j IN 1..iterations LOOP  -- load index-by tables
+     pnums(j) := j;
+     pnames(j) := 'Part No. ' || TO_CHAR(j);
+  END LOOP;
+  t1 := DBMS_UTILITY.get_time;
+  FOR i IN 1..iterations LOOP  -- use FOR loop
+     INSERT INTO parts1 VALUES (pnums(i), pnames(i));
+  END LOOP;
+  t2 := DBMS_UTILITY.get_time;
+  FORALL i IN 1..iterations  -- use FORALL statement
+     INSERT INTO parts2 VALUES (pnums(i), pnames(i));
+  t3 := DBMS_UTILITY.get_time;
+  DBMS_OUTPUT.PUT_LINE('Execution Time (secs)');
+  DBMS_OUTPUT.PUT_LINE('---------------------');
+  DBMS_OUTPUT.PUT_LINE('FOR loop: ' || TO_CHAR((t2 - t1)/100));
+  DBMS_OUTPUT.PUT_LINE('FORALL:   ' || TO_CHAR((t3 - t2)/100));
+  COMMIT;
+
+USE BULK COLLECT FOR SELECT
+-- create a temporary table for this example
+CREATE TABLE emp_temp AS SELECT * FROM employees;
+
+DECLARE
+   TYPE empid_tab IS TABLE OF employees.employee_id%TYPE;
+   emp_sr empid_tab;
+-- create an exception handler for ORA-24381
+   errors NUMBER;
+   dml_errors EXCEPTION;
+   PRAGMA EXCEPTION_INIT(dml_errors, -24381);
+BEGIN
+   SELECT employee_id BULK COLLECT INTO emp_sr FROM emp_temp 
+         WHERE hire_date < '30-DEC-94';
+         
+         
+USE NATIVE DYNAMIC SQL THAN DBMS_SQL
+DECLARE
+   TYPE EmpCurTyp IS REF CURSOR;
+   emp_cv   EmpCurTyp;
+   v_ename VARCHAR2(15);
+   v_sal   NUMBER := 1000;
+   table_name VARCHAR2(30) := 'employees';
+BEGIN
+   OPEN emp_cv FOR 'SELECT last_name, salary FROM ' || table_name ||
+      ' WHERE salary > :s' USING v_sal;
+   CLOSE emp_cv;
+END;

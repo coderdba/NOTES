@@ -1,0 +1,353 @@
+Chef Notes
+Chef Development Kit
+https://github.com/opscode/chef-dk 
+Chef Development Kit (ChefDK) brings Chef and the development tools developed by the Chef Community together and acts as the consistent interface to this awesomeness. This awesomeness is composed of:
+
+Chef
+Berkshelf
+Test Kitchen
+ChefSpec
+Foodcritic
+This repository contains the code for the chef command. The full package is built via the 'chefdk' project in omnibus-chef.
+Chef
+https://docs.chef.io/ctl_chef.html
+chef (executable)
+
+The chef executable is a command-line tool that does the following:
+
+Generates applications, cookbooks, recipes, attributes, files, templates, and custom resources (LWRPs)
+Ensures that RubyGems are downloaded properly for the chef-client development environment
+Verifies that all components are installed and configured correctly
+Chef-Solo
+
+https://docs.chef.io/chef_solo.html
+chef-solo is an open source version of the chef-client that allows using cookbooks with nodes without requiring access to a Chef server. chef-solo runs locally and requires that a cookbook (and any of its dependencies) be on the same physical disk as the node. chef-solo is a limited-functionality version of the chef-client and does not support the following:
+
+Node data storage
+Search indexes
+Centralized distribution of cookbooks
+A centralized API that interacts with and integrates infrastructure components
+Authentication or authorization
+Persistent attributes
+
+Warning
+The chef-client now includes an option called local mode (--local-mode or -z), which runs the chef-client against the chef-repo on the local machine as if it were running against a Chef server. Local mode was added to the chef-client in the 11.8 release. If you are running that version of the chef-client (or later), you should consider using local mode instead of using chef-solo.
+
+Note
+chef-solo can be run as a daemon.
+
+Note
+chef-solo is configured using the chef-solo (executable).
+Knife
+
+http://docs.chef.io/chef/knife.html  (other - https://docs.chef.io/knife_client.html, https://docs.chef.io/knife_cookbook.html)
+‘knife’ is a command-line tool that provides an interface between a local chef-repo and the Chef server. knife helps users to manage:
+
+NOTE: Knife cookbook create command can be used to create standard cookbook folder structure
+
+Nodes
+Cookbooks and recipes
+Roles
+Stores of JSON data (data bags), including encrypted data
+Environments
+Cloud resources, including provisioning
+The installation of the chef-client on management workstations
+Searching of indexed data on the Chef server
+
+Working with Knife
+knife runs from a management workstation and sits in-between a Chef server and an organization’s infrastructure. knife interacts with a Chef server by using the same REST API that is used by a chef-client. Role-based authentication controls (RBAC) can be used to authorize changes when knife is run with Enterprise Chef. knife is configured during workstation setup, but subsequent modifications can be made using the knife.rb configuration file.
+
+knife has the following subcommands: bootstrap, client, configure, cookbook, cookbook site, data bag, delete, deps, diff, download, edit, environment, exec, index rebuild, list, node, recipe list, role, search, show, ssh, status, tag, upload, user, and xargs.
+
+The create argument is used to create a new cookbook directory on the local machine, including the following directories and files:
+
+cookbook/attributes
+cookbook/CHANGELOG.md
+cookbook/definitions
+cookbook/files/default
+cookbook/libraries
+cookbook/metadata.rb
+cookbook/providers
+cookbook/README.md (or .rdoc)
+cookbook/recipes/default.rb
+cookbook/resources
+cookbook/templates/default
+Chef Zero
+Vagrant
+http://blogs.isostech.com/technology/vagrant-virtualbox-vs-vmware-fusion/
+Vagrant is a toolset to provision VMs and run cookbooks on such provisioned VMs.
+
+Vagrant on a chef-server talks to the provisioned VM via ssl.
+
+‘knife ssl check’ is used by ‘vagrant provision’ command do check ssl connectivity to the VM.
+Use the knife ssl check subcommand to verify the SSL configuration for the Chef server or a location specified by a URL or URI. Invalid certificates will not be used by OpenSSL.
+When this command is run, the certificate files (*.crt and/or *.pem) that are located in the /.chef/trusted_certs directory are checked to see if they have valid X.509 certificate properties. A warning is returned when certificates do not have valid X.509 certificate properties or if the /.chef/trusted_certs directory does not contain any certificates.
+
+Connect to vagrant provisioned VM from windows:
+http://stackoverflow.com/questions/9885108/ssh-to-vagrant-box-in-windows
+
+vagrant ssh should work – it will logon as ‘vagrant’ with a ssl key already stored and an internally created ip address.  If it does not, then putty ..?
+
+use PuTTY to connect to Vagrant boxes on Windows7.
+Make sure you convert the %USERPROFILE%\.vagrant.d\insecure_private_key to .ppk using PuTTYGen
+use the .ppk key in your PuTTY session - configured in Connection > SSH > Auth > Private key file
+use host 127.0.0.1
+use port 2222 instead of 22
+you can set the default username (vagrant) under Connection > SSH > Auth > Private key for authentication
+
+LOGON TO A VAGRANT MACHINE WITH NAT USING SSH
+Setup port forwarding for the NAT network adapter of the Vagrant machine so that a port like 2222 on host machine (localhost) maps to 22 (TCP port) on guest machine.
+To logon to guest, in git-bash,  ssh user@localhost -p 2222
+
+Berkshelf 
+Chef-Bookshelf
+Kitchen
+
+Omnibus-Chef
+https://github.com/opscode/omnibus-chef
+
+Resources
+http://docs.chef.io/chef/resources.html
+
+
+------------ TUTORIALS AND LINKS BEGIN ---------------
+Tutorials and Links
+Example cookbooks:
+https://www.github.com/aririikonen/oracle   later version
+Installs and configures the Oracle RDBMS, patches it to the latest version, and creates databases.
+https://github.com/echaeu/echa-oracle   older version
+http://community.opscode.com/cookbooks/echa-oracle  older version
+
+Great ALL-in-ONE TUTORIAL:
+http://chef.leopard.in.ua/html/	
+http://leopard.in.ua/2013/02/17/chef-server-getting-started-part-1/
+http://leopard.in.ua/2013/09/01/chef-server-getting-started-part-2/
+
+
+Tutorial:
+http://nathenharvey.com/blog/2012/12/07/learning-chef-part-2/
+
+Roles:  (very good)
+https://www.digitalocean.com/community/tutorials/how-to-use-roles-and-environments-in-chef-to-control-server-configurations
+Install chef workstation, berkshelf:
+http://zanshin.net/2014/03/04/how-i-setup-my-chef-workstation/
+Chef Solo
+
+
+Tutorials
+http://docs.chef.io/
+http://learn.chef.io/rhel/make-your-recipe-more-manageable/  basic, good, directly ‘chef’ not knife
+http://reiddraper.com/first-chef-recipe/ - good (vagrant, create-dir and such)
+
+
+
+http://gettingstartedwithchef.com/first-steps-with-chef.html   chef solo (good)
+http://gettingstartedwithchef.com/introducing-chef-server.html   good – bootstrap
+http://gettingstartedwithchef.com/managing-multiple-nodes.html   multiple nodes, roles
+
+http://cloudacademy.com/blog/bootstrapping-ec2-instances-with-chef-2/  Bootstrapping, roles
+http://www.bonusbits.com/main/HowTo:Deploy_-_BootStrap_Chef_Client_to_Remote_Linux_Host  bootstrapping (and other links – this is a wiki)
+http://www.bonusbits.com/main/Automation:Deploy_ChefClient.sh  (This Bash script can be used to Deploy Chef Client on a Remote System from a Chef server registered workstation.) client deploy, bootstrap
+
+http://vialstudios.com/guide-authoring-cookbooks.html
+http://leopard.in.ua/2013/01/04/chef-solo-getting-started-part-1/   chef solo 
+
+http://tech.hulu.com/blog/2012/07/06/automating-system-provisioning-and-application-deployment-with-chef/
+http://vladigleba.com/blog/2014/08/12/provisioning-a-rails-server-using-chef-part-2-writing-the-recipes/ (good)
+https://docs.chef.io/resource_remote_file.html --> about downloading stuff into a local (remote) file
+
+partial runlists: http://code.chrisroberts.org/blog/2012/05/09/cooking-up-partial-run-lists-with-chef/
+
+http://xmodulo.com/how-to-create-and-start-virtualbox-vm-without-gui.html  Create virtualbox VM without GUI
+http://aruizca.com/steps-to-create-a-vagrant-base-box-with-ubuntu-14-04-desktop-gui-and-virtualbox/   Steps to create a Vagrant Base Box with Ubuntu 14.04 Desktop (GUI) and VirtualBox
+https://docs.vagrantup.com/v2/boxes/base.html - CREATING A BASE BOX
+https://scotch.io/tutorials/get-vagrant-up-and-running-in-no-time - Get VAGRANT UP and Running in No Time
+Vagrant
+Network configuration - http://stackoverflow.com/questions/12176159/connecting-to-a-vagrant-vm-externally
+Simple Linux VMs:  https://www.dmuth.org/node/1398/vagrant-101-simple-linux-vms
+Vagrant docs :  https://docs.vagrantup.com/v2/getting-started/networking.html
+How to find vagrant IP :  http://stackoverflow.com/questions/14870900/how-to-find-vagrant-ip
+Installing Foreman and Puppet Agent on Multiple VMs Using Vagrant and VirtualBox - https://programmaticponderings.wordpress.com/tag/vagrant/
+http://code.tutsplus.com/tutorials/vagrant-what-why-and-how--net-26500
+
+Deoplyment automation:
+http://www.quora.com/Whats-the-best-way-to-push-code-to-production-on-multiple-EC2-instances
+Mutable
+When you want to update existing Instances there are several great tools available
+•	Capistrano is a great ruby based tool that connects to your servers via ssh and let’s you perform complex actions to update your servers
+•	Fabric is like Capistrano, only in Python
+•	AWS Elastic Beanstalk is a PaaS service built on top of the available AWS resources. It works great, is really stable and supports many languages
+•	AWS Opsworks let's you manage your infrastructure on AWS through Chef.
+
+
+https://docs.chef.io/push_jobs.html
+http://tech.hulu.com/blog/2012/07/06/automating-system-provisioning-and-application-deployment-with-chef/
+http://comments.gmane.org/gmane.comp.sysutils.chef.user/1758
+http://rundeck.org/
+
+
+Chef Polling:
+https://sachinsharm.wordpress.com/2013/10/11/installsetup-and-configure-chef-serverworkstationnode-on-centosrhel-6-4/
+http://www.emilsoman.com/blog/2012/11/06/setting-up-chef-client/
+
+Deploy chef-client remotely :
+http://www.bonusbits.com/main/Automation:Deploy_ChefClient.sh
+Jenkins and chef-family :  https://www.cloudbees.com/sites/default/files/2014-0618-Boston-Dan_Stine-Jenkins_and_Chef.pdf
+
+Chef server:
+
+Chef server, bootstrapping, json, roles, amazon cloud … - http://gettingstartedwithchef.com/introducing-chef-server.html
+
+Chef and Git
+https://github.com/chef/supermarket/wiki/Deployment
+
+BOX VM Images
+https://atlas.hashicorp.com/chef
+
+------------ TUTORIALS AND LINKS END ---------------
+
+
+Chef Commands and Configuration
+Chef-client configuration file client.rb
+https://docs.chef.io/config_rb_client.html
+
+A client.rb file is used to specify the configuration details for the chef-client.
+
+•	This file is loaded every time this executable is run
+•	On UNIX- and Linux-based machines, the default location for this file is /etc/chef/client.rb; on Microsoft Windows machines, the default location for this file is C:\chef\client.rb; use the --config option from the command line to change this location
+•	This file is not created by default
+•	When a client.rb file is present in the default location, the settings contained within that client.rb file will override the default configuration settings	
+
+http Proxy configuration for client use
+https://docs.chef.io/config_rb_client.html
+Automatic Proxy Configuration with client.rb:  (if using vagrant, see below)
+If http_proxy, https_proxy, ftp_proxy, or no_proxy is set in the client.rb file, the chef-client will configure the ENV variable based on these (and related) settings. For example:
+
+http_proxy "http://proxy.example.org:8080"
+http_proxy_user "myself"
+http_proxy_pass "Password1"
+
+will be set to:
+
+ENV['http_proxy'] = http://myself:Password1@proxy.example.org:8080
+
+If using vagrant:
+http://superuser.com/questions/837889/how-to-provision-vagrant-to-set-a-proxy-and-use-it
+
+Install vagrant-proxyconf:
+vagrant plugin install vagrant-proxyconf
+
+Configure it (in $HOME/.vagrant.d/Vagrantfile for all Vagrant VMs):
+Vagrant.configure("2") do |config|
+  if Vagrant.has_plugin?("vagrant-proxyconf")
+    config.proxy.http     = "http://10.206.246.20:8080"
+    config.proxy.https    = "http://10.206.246.20:8080"
+    config.proxy.no_proxy = "localhost,127.0.0.1"
+  end
+end
+
+Also, to pass user/pass :
+http://stackoverflow.com/questions/19872591/how-to-use-vagrant-in-a-proxy-enviroment
+If your proxy requires authentication it is better to set the environment variable rather than storing your password in the Vagrantfile. Also your Vagrantfile can be used by others easily who are not behind a proxy.
+
+export http_proxy="http://user:password@host:port"
+vagrant plugin install vagrant-proxyconf
+then
+
+export VAGRANT_HTTP_PROXY=http://user:password@host:port  this did not work
+vagrant up
+‘resource’
+http://docs.chef.io/resource.html
+Resource is a configuration item or a ‘resource’ like user, directory, service, package etc.  It can be used to create users, directories, services … install packages etc.
+
+Note:  ‘execute’ also is a ‘resource’ which allows execution of a single command, with conditional action capability
+
+The Chef::Platform class maps providers to platforms (and platform versions). At the beginning of every chef-client run, Ohai verifies the platform and platform_version attributes on each node. The chef-client then uses those values to identify the correct provider, build an instance of that provider, identify the current state of the resource, do the specified action, and then mark the resource as updated (if changes were made).
+
+directory "/tmp/folder" do
+  owner 'root'
+  group 'root'
+  mode '0755'
+  action :create
+end
+
+package "tar"  installs default or latest version
+ 
+package "tar" do   the block below installs a specific version
+  version "1.16.1"
+  action :install
+end
+
+‘execute’ resource
+https://docs.chef.io/resource_execute.html
+Use the execute resource to execute a single command. Commands that are executed with this resource are (by their nature) not idempotent, as they are typically unique to the environment in which they are run. Use not_if and only_if to guard this resource for idempotence.
+
+execute 'bundle install' do
+  cwd '/myapp'
+  not_if 'bundle check' # This is not run inside /myapp
+end
+
+‘remote_file’ resource
+https://docs.chef.io/resource_remote_file.html
+The remote_file resource is used to download/copy file from one location to a file.  Though it is termed ‘remote’ it actually is the file on the client, getting its content from a remote source.
+
+There are ‘actions’ like create, delete, touch, create_if_missing.
+And are ‘attributes’ like backup, source (required), rights etc.
+
+remote_file "#{Chef::Config[:file_cache_path]}/large-file.tar.gz" do
+  source "http://www.example.org/large-file.tar.gz"
+end
+
+remote_file "name" do
+  attribute "value" # see attributes section below
+  ...
+  action :action # see actions section below
+end
+
+A different way of acting upon a file as a ‘resource’ by itself:
+resource "x.txt" do
+  rights :read, "Everyone"
+  rights :write, "domain\group"
+  rights :full_control, "group_name_or_user_name"
+  rights :full_control, "user_name", :applies_to_children => true
+end
+
+http://serverfault.com/questions/498683/one-off-use-of-http-proxy-in-a-chef-remote-file-resource
+In my sample code, below, I'm downloading a redmine bundle from rubyforge.org, which requires my servers to go through a corporate proxy. I came up with a ruby_block before and after the remote_file resource that sets the http_proxy and "unsets" it. I'm looking for a cleaner way to do this.
+
+ruby_block "setenv-http_proxy" do
+    block do
+        Chef::Config.http_proxy = node['redmine']['http_proxy']
+        ENV['http_proxy'] = node['redmine']['http_proxy']
+        ENV['HTTP_PROXY'] = node['redmine']['http_proxy']
+    end
+    action node['redmine']['rubyforge_use_proxy'] ? :create : :nothing
+    notifies :create_if_missing, "remote_file[redmine-bundle.zip]", :immediately
+end
+
+remote_file "redmine-bundle.zip" do
+    path "#{Dir.tmpdir}/redmine-#{attrs['version']}-bundle.zip"
+    source attrs['download_url']
+    mode "0644"
+    action :create_if_missing
+    notifies :decompress, "zipp[redmine-bundle.zip]", :immediately
+    notifies :create, "ruby_block[unsetenv-http_proxy]", :immediately
+end
+
+ruby_block "unsetenv-http_proxy" do
+    block do
+        Chef::Config.http_proxy = nil
+        ENV['http_proxy'] = nil
+        ENV['HTTP_PROXY'] = nil
+    end
+    action node['redmine']['rubyforge_use_proxy'] ? :create : :nothing
+end
+
+APACHE, DYNAMIC NODE ATTRIBUTES
+https://developer.ibm.com/urbancode/docs/passing-dynamic-values-chef-node-attributes/
+
+GOOD BASIC EXAMPLE
+http://reiddraper.com/first-chef-recipe/
+
+ATTRIBUTE PRECEDENCE
+https://christinemdraper.wordpress.com/2014/10/06/avoiding-the-possible-pitfalls-of-derived-attributes/

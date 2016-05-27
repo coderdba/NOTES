@@ -1,0 +1,190 @@
+============================================
+      CONNECTING TO MYSQL DATABASES
+============================================
+
+==================================
+GRANTING ACCESS FROM VARIOUS HOSTS
+==================================
+http://stackoverflow.com/questions/10236000/allow-all-remote-connections-mysql
+---------
+GRANT
+---------
+INITIALLY, there will be only one root user - root@localhost.
+mysql> select host,user from mysql.user where user='root';
++-----------+------+
+| host      | user |
++-----------+------+
+| localhost | root |
++-----------+------+
+
+mysql> GRANT ALL ON *.* to root@127.0.0.1 identified by 'root123_ROOT123';  --> Just this did not work for port-forwarded connections
+Query OK, 0 rows affected, 1 warning (0.03 sec)
+
+mysql> GRANT ALL ON *.* to root@% identified by 'root123_ROOT123'; --> this worked for port-forwarded connections
+ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '% identified by 'root123_ROOT123'' at line 1
+mysql> GRANT ALL ON *.* to root@'%' identified by 'root123_ROOT123';
+Query OK, 0 rows affected, 1 warning (0.00 sec)
+
+-------
+CHECK
+-------
+mysql> select host,user from mysql.user where user='root';
++-----------+------+
+| host      | user |
++-----------+------+
+| %         | root |
+| 127.0.0.1 | root |
+| localhost | root |
++-----------+------+
+
+mysql> SHOW GRANTS FOR root@localhost;
++---------------------------------------------------------------------+
+| Grants for root@localhost                                           |
++---------------------------------------------------------------------+
+| GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' WITH GRANT OPTION |
+| GRANT PROXY ON ''@'' TO 'root'@'localhost' WITH GRANT OPTION        |
++---------------------------------------------------------------------+
+
+mysql> SHOW GRANTS FOR root@127.0.0.1;
++---------------------------------------------------+
+| Grants for root@127.0.0.1                         |
++---------------------------------------------------+
+| GRANT ALL PRIVILEGES ON *.* TO 'root'@'127.0.0.1' |
++---------------------------------------------------+
+
+---------
+REVOKE
+---------
+mysql> revoke all on *.* from root@'%';
+Query OK, 0 rows affected (0.01 sec)
+
+--------------------------
+SAME NOTES AGAIN
+--------------------------
+First, verify that your root@localhost and/or root@127.0.0.1 users have access.
+
+
+You should see within the result set a line like GRANT ALL PRIVILEGES ON *.* to... Assuming that entry exists, you can safely remove the grant for root@'%' from the mysql database:
+
+REVOKE all on myDB.* from root@'%';
+FLUSH PRIVILEGES;
+Assuming you don't want the root@'%' user to exist either:
+
+DROP USER root@'%';
+
+========================================================================
+PORT FORWARDING FROM ANOTHER HOST (like from Laptop to VM hosting MySQL)
+--> Method 1 with Vagrantfile settings for vagrant machine
+========================================================================
+(example in another section below)
+https://www.namecheap.com/support/knowledgebase/article.aspx/1249/89/how-to-remotely-connect-to-mysql-database-located-on-our-shared-server
+https://www.digitalocean.com/community/questions/how-to-allow-remote-mysql-database-connection
+http://www.sequelpro.com/docs/Connecting_to_a_MySQL_Server_on_a_Remote_Host --> also has a good diagram of ssh tunneling
+http://dev.mysql.com/doc/refman/5.7/en/connecting.html
+  Mysql access denied - troubleshooting - 
+    http://serverfault.com/questions/230012/mysql-access-denied-for-user-rootx-x-x-x
+    http://serverfault.com/questions/614094/mysql-access-denied-error-when-connecting-via-ssh-tunnel
+    http://stackoverflow.com/questions/10236000/allow-all-remote-connections-mysql
+    
+--------------------------------
+EXAMPLE 1 for port-forwarding
+--------------------------------
+- Set up port forwarding in Vagrantfile: (assuming 3306 is the MySQL port in the VM)
+config.vm.network "forwarded_port", guest: 3306, host: 13306, protocol: "tcp"
+NOTE: There are other port-forwarding methods described in sites mentioned above
+
+- Try connecting (it wont work at this time)
+C:\Opt\MySql\mysql-5.7.12\bin>mysql -uroot -proot123_ROOT123 -P13306 -h127.0.0.1
+mysql: [Warning] Using a password on the command line interface can be insecure.
+ERROR 1045 (28000): Access denied for user 'root'@'gateway' (using password: YES)
+
+To fix, give grants and then connect as below.
+
+- Give grants to root to be able to connect from servers other than localhost (like the localhost of oneself of the VM)
+mysql> select host,user from mysql.user where user='root';
++-----------+------+
+| host      | user |
++-----------+------+
+| localhost | root |
++-----------+------+
+1 row in set (0.00 sec)
+
+mysql> GRANT ALL ON *.* to root@127.0.0.1 identified by 'root123_ROOT123';  --> Just this did not work
+Query OK, 0 rows affected, 1 warning (0.03 sec)
+
+mysql> GRANT ALL ON *.* to root@'%' identified by 'root123_ROOT123'; --> This worked (see notes below)
+Query OK, 0 rows affected, 1 warning (0.00 sec)
+Alternatively:
+mysql> grant all on *.* to root@'gateway' identified by 'root123_ROOT123'; --> used 'gateway' as root@gateway was denied before
+Query OK, 0 rows affected, 1 warning (0.01 sec)
+
+NOTE: Though this worked, this will end up giving all privileges to everything on the instance with GRANT ALL ON *.*.
+NOTE: Remote connection worked even after doing a 'revoke' as the root@'%' gets created as a user.
+        To altogether remove the user use command " drop user root@'%' ".
+        
+        
+mysql> select host,user from mysql.user where user='root';
++-----------+------+
+| host      | user |
++-----------+------+
+| %         | root |
+| 127.0.0.1 | root |
+| localhost | root |
++-----------+------+
+
+- Try connecting again
+C:\Opt\MySql\mysql-5.7.12\bin>mysql -uroot -proot123_ROOT123 -P3306 -h127.0.0.1
+mysql: [Warning] Using a password on the command line interface can be insecure.
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 16
+Server version: 5.7.12-enterprise-commercial-advanced-log MySQL Enterprise Server - Advanced Edition (Commercial)
+
+Copyright (c) 2000, 2016, Oracle and/or its affiliates. All rights reserved.
+
+Oracle is a registered trademark of Oracle Corporation and/or its
+affiliates. Other names may be trademarks of their respective
+owners.
+
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+mysql> --> Now you get the mysql command prompt
+
+- Try connecting without -P and -h --> will work if the laptop mapped port is also 3306 (otherwise, give port name)
+C:\Opt\MySql\mysql-5.7.12\bin>mysql -uroot -proot123_ROOT123
+mysql: [Warning] Using a password on the command line interface can be insecure.
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 8
+Server version: 5.7.12-enterprise-commercial-advanced-log MySQL Enterprise Server - Advanced Edition (Commercial)
+
+Copyright (c) 2000, 2016, Oracle and/or its affiliates. All rights reserved.
+
+Oracle is a registered trademark of Oracle Corporation and/or its
+affiliates. Other names may be trademarks of their respective
+owners.
+
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+mysql>
+
+========================================================================
+PORT FORWARDING FROM ANOTHER HOST (like from Laptop to VM hosting MySQL)
+--> Method 2 with putty based temporary tunneling
+========================================================================
+https://www.namecheap.com/support/knowledgebase/article.aspx/1249/89/how-to-remotely-connect-to-mysql-database-located-on-our-shared-server
+
+Assume that 2222 of your laptop is already forwarded to 22 of the vagrant VM (which is default vagrant up behavior).
+
+Open a putty session on the laptop
+In 'session' section:
+      Host Name = 127.0.0.1
+      Port = 22
+In SSH --> Tunnels section:
+      Source port = 3306 (of mysql running on the VM)
+      Destination = localhost:3306
+Then click 'add' which will add this new forwarded port into putty
+Come back to session section and save the settings with a name like 'localhost-mysql-tunnel'
+
+Connect to the VM now by clicking 'open' in Putty.
+Then as long as that putty session is open, 3306 to 3306 port forward will be open.
+You should be able to connect to MySQL as described in the previous section (upon giving right grants to root user).
+If the putty session terminates, you cannot connect to mysql from laptop to VM anymore.

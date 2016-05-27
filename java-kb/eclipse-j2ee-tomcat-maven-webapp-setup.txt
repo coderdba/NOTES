@@ -1,0 +1,231 @@
+JAVA OEM QUERY WAR MAVEN PROJECT IN ECLIPSE
+
+Tutorial base:  http://crunchify.com/how-to-create-dynamic-web-project-using-maven-in-eclipse/
+All-in-one tutorial: http://www.coreservlets.com/Apache-Tomcat-Tutorial/tomcat-7-with-eclipse.html
+    (has tomcat association, app creation, coding etc all included, and ROOT folder issue fix)
+
+==============================================================================
+==============================================================================
+IMPORTANT NOTES:
+
+> DEPLOY LOCATION
+https://github.com/OneBusAway/onebusaway/wiki/Setting-Up-a-Tomcat-Server-in-Eclipse
+By default, Eclipse will deploy your webapp to a folder in the following location:
+<path to Eclipse workspace directory>/.metadata/.plugins/org.eclipse.wst.server.core/tmp0
+
+That is unweildy to work with.
+You can change it by double clicking the server in the server-view and then
+changing 'Server Location' (I DID NOT CHANGE IT)
+However, upon starting Tomcat with Eclipse, browser gives 404 when accessing http://localhost:8080
+
+> FIX TOMCAT 404 ERROR
+http://stackoverflow.com/questions/14392207/http-error-404-when-running-tomcat-from-eclipse
+It is because there is no default ROOT web application. 
+When you create some web app and deploy it to Tomcat using Eclipse, then you will be able to access it 
+with the URL in the form of http://localhost:8080/YourWebAppName
+In deploy location 'server location' as in the previous section, you can choose 'Use Tomcat Installation' 
+    Tomcat installation has ROOT web app
+ALTERNATIVELY, you can copy ROOT from Tomcat location to eclipse's workspace .metadata directory as follows:
+Copy the ROOT (default) Web app into Eclipse. Eclipse forgets to copy the default apps (ROOT, examples, docs, etc.) 
+when it creates a Tomcat folder inside the Eclipse workspace. Go to C:\apache-tomcat-7.0.34\webapps and copy the ROOT folder.
+Then go to your Eclipse workspace, go to the .metadata folder, and search for "wtpwebapps". 
+You should find something like  
+C:\your-eclipse-workspace-location\.metadata\.plugins\org.eclipse.wst.server.core\tmp0\wtpwebapps 
+(or .../tmp1/wtpwebapps if you already had another server registered in Eclipse). 
+Go to the wtpwebapps folder and paste ROOT (say "yes" if asked if you want to merge/replace folders/files). 
+Then reload  http://localhost/ to see the Tomcat welcome page.
+==============================================================================
+==============================================================================
+
+==============================================================================
+ASSOCIATE ECLIPSE WITH TOMCAT SERVER
+==============================================================================
+http://www.coreservlets.com/Apache-Tomcat-Tutorial/tomcat-7-with-eclipse.html
+http://help.eclipse.org/juno/index.jsp?topic=%2Forg.eclipse.jst.ws.axis.ui.doc.user%2Ftopics%2Fttomcatserv.html
+http://help.eclipse.org/luna/index.jsp?topic=%2Forg.eclipse.stardust.docs.wst%2Fhtml%2Fwst-integration%2Fdeployment.html
+http://help.eclipse.org/luna/index.jsp?topic=%2Forg.eclipse.stardust.docs.wst%2Fhtml%2Fwst-integration%2Fconfiguration.html
+https://github.com/OneBusAway/onebusaway/wiki/Setting-Up-a-Tomcat-Server-in-Eclipse
+    This describes where Eclips deploys WAR/JAR etc and how to change the deploy directory to a better named folder
+
+File --> New --> Other --> Server
+Then add a server
+Choose the Tomcat 8.0 server
+Servers host name - localhost - leave as it is (or mention the actual host name)
+Server name - Tomcat v8.0 Server at localhost
+Server Runtime Environment - if not there already, click 'Add' next to it and add one
+    Choose the Tomcat version you have from  the list
+    Click Next
+    Enter tomcat install directory - C:\opt\apache-tomcat-8.0.24
+    
+    > JRE (for tomcat)
+    Click 'installed JRE's'
+    Choose the right or latest one (chose JRE 1.8 among JRE 1.8 and JDK 1.8 and JRE 1.7)
+
+Adding projects:
+Click Next at the last step
+In the project list you see, add projects from Available to Configured
+Click Finish
+
+Adding more projects later:
+In 'server view' right click --> Add and Remove --> then add and remove projects
+
+==============================================================================
+ADD TOMCAT, JRE ETC TO A PROJECT
+==============================================================================
+Go to project properties (right click --> properties)
+Targeted Runtimes --> New
+
+> TOMCAT
+Choose the Tomcat version you have from  the list
+Click Next
+Enter tomcat install directory - C:\opt\apache-tomcat-8.0.24
+
+> JRE (for tomcat)
+Click 'installed JRE's'
+Choose the right or latest one (chose JRE 1.8 among JRE 1.8 and JDK 1.8 and JRE 1.7)
+
+========  ACTUAL WORK HERE ====================
+=====================================================================================
+CREATE NEW MAVEN PROJECT IN ECLIPSE - DYNAMIC WEB PROJECT - WITH ARCHETYPE SELECTION
+=====================================================================================
+http://crunchify.com/how-to-create-dynamic-web-project-using-maven-in-eclipse/
+File --> Projects --> Other --> Maven --> Maven Project
+DO NOT checkbox check - 'Create a Simple Project'
+Workspace - Check default workspace (will take base directory from Eclipse's default set during Eclipse configuration)
+
+In the next screen, choose archetype:
+Filter by maven-archetype-webapp
+Choose org.apache.maven.archetypes - maven-archetype-webapp
+
+In the next screen, give project and package details:
+
+Group ID - mt.oem - group id identifies the project uniquely across all projects 
+                      (https://maven.apache.org/guides/mini/guide-naming-conventions.html)
+                      I choose mt.oem as this is my oem related project with related subprojects
+Artifact ID - OEMQueryWebApp - Artifact ID is the name of the jar/war without version number attached to it
+Version - 0.0.1-SNAPSHOT - Default value, left as it is. Can edit it the way we want
+Name - OEMQueryWebApp Maven Webapp (or other as you like)
+Package - mt.oem.OEMQueryWebApp - it is strung together from Group ID and Artifact ID - left as it is
+
+> Check what you created
+Click on pom.xml to see the group, artifact, project details
+See that this has created src/main/resources and src/main/webapp -- NO src/main/java and src/test/xxx
+
+>Associate it with correct java runtime
+Right click on project --> Build Path --> Java Build Path --> Add Library --> JRE System Library
+--> Choose the right JRE  - OR - Choose 'Workspace Default JRE'
+
+Associate it with correct server runtime (like J2EE libraries of Tomcat)
+Right click on project --> Build Path --> Java Build Path --> Add Library --> Server Runtime
+--> Choose Tomcat  (note - for this, the 'add server' at Eclipse level should have been completed)
+
+
+==============================================================================
+CREATE NEW MAVEN PROJECT IN ECLIPSE - 'SIMPLE PROJECT' WITH NO ARCHETYPE
+==============================================================================
+File --> Projects --> Other --> Maven --> Maven Project
+Checkbox check - 'Create a Simple Project'
+Workspace - Check default workspace (will take base directory from Eclipse's default set during Eclipse configuration)
+
+Group ID - mt.oem
+Artifact ID - OEMQueryWebAppSimple
+Version - 0.0.1-SNAPSHOT
+Packaging - war
+Name - OEM Query WebApp Simple with no archetypes (or other as you like)
+Description - OEM Query pages - compile in WAR format -  Maven Project in Eclipse
+
+A Git repository screen pops up, and starts doing some git checks --> not sure what this is, killed that process
+--> Later upon update to the name of the project it updated git at C:/Data/.git --> not sure if we can change git location
+
+> Check what you created
+Click on pom.xml to see the group, artifact, project details
+See that this has created src/main/resources and src/main/java -- NO src/main/webapp 
+See that this has created src/test/resources and src/test/java -- NO src/test/webapp 
+
+>Associate it with correct java runtime
+Right click on project --> Build Path --> Java Build Path --> Add Library --> JRE System Library
+--> Choose the right JRE  - OR - Choose 'Workspace Default JRE'
+
+Associate it with correct server runtime (like J2EE libraries of Tomcat)
+Right click on project --> Build Path --> Java Build Path --> Add Library --> Server Runtime
+--> Choose Tomcat  (note - for this, the 'add server' at Eclipse level should have been completed)
+
+==============================================================================
+DO AN INITIAL BUILD
+==============================================================================
+(Quick one - Right click project --> Run As --> Maven Clean)
+> Set up Maven build options 'clean' and 'install'
+Right clicn project --> Run As --> 6.Maven Build
+In 'Goals' enter 'clean install'
+Check 'Skip tests'
+Click 'apply'
+Click 'Run'
+It downloads some Maven stuff into C:\Users\username\.m2\repository
+and then builds the war into C:\Users\username\.m2\repository\mt (where mt is the top level qualifier of the package)
+
+Screen messages:
+
+    [INFO] Scanning for projects...
+    [INFO] 
+    [INFO] Using the builder org.apache.maven.lifecycle.internal.builder.singlethreaded.SingleThreadedBuilder with a thread count of 1
+    [INFO]                                                                         
+    [INFO] ------------------------------------------------------------------------
+    [INFO] Building OEMQueryWebApp Maven Webapp 0.0.1-SNAPSHOT
+    [INFO] ------------------------------------------------------------------------
+    [INFO] 
+    [INFO] --- maven-clean-plugin:2.5:clean (default-clean) @ OEMQueryWebApp ---
+    [INFO] Deleting C:\Data\HOME-TECH\DEV-SPACE\Java\Eclipse\OEMQueryWebApp\target
+    [INFO] 
+    [INFO] --- maven-resources-plugin:2.6:resources (default-resources) @ OEMQueryWebApp ---
+    [WARNING] Using platform encoding (Cp1252 actually) to copy filtered resources, i.e. build is platform dependent!
+    [INFO] Copying 0 resource
+    [INFO] 
+    [INFO] --- maven-compiler-plugin:2.5.1:compile (default-compile) @ OEMQueryWebApp ---
+    [INFO] No sources to compile
+    [INFO] 
+    [INFO] --- maven-resources-plugin:2.6:testResources (default-testResources) @ OEMQueryWebApp ---
+    [INFO] Not copying test resources
+    [INFO] 
+    [INFO] --- maven-compiler-plugin:2.5.1:testCompile (default-testCompile) @ OEMQueryWebApp ---
+    [INFO] Not compiling test sources
+    [INFO] 
+    [INFO] --- maven-surefire-plugin:2.12.4:test (default-test) @ OEMQueryWebApp ---
+    [INFO] Tests are skipped.
+    [INFO] 
+    [INFO] --- maven-war-plugin:2.2:war (default-war) @ OEMQueryWebApp ---
+    [INFO] Packaging webapp
+    [INFO] Assembling webapp [OEMQueryWebApp] in [C:\Data\HOME-TECH\DEV-SPACE\Java\Eclipse\OEMQueryWebApp\target\OEMQueryWebApp]
+    [INFO] Processing war project
+    [INFO] Copying webapp resources [C:\Data\HOME-TECH\DEV-SPACE\Java\Eclipse\OEMQueryWebApp\src\main\webapp]
+    [INFO] Webapp assembled in [117 msecs]
+    [INFO] Building war: C:\Data\HOME-TECH\DEV-SPACE\Java\Eclipse\OEMQueryWebApp\target\OEMQueryWebApp.war
+    [INFO] WEB-INF\web.xml already added, skipping
+    [INFO] 
+    [INFO] --- maven-install-plugin:2.4:install (default-install) @ OEMQueryWebApp ---
+    [INFO] Downloading: http://repo.maven.apache.org/maven2/org/codehaus/plexus/plexus-utils/3.0.5/plexus-utils-3.0.5.pom
+    [INFO] Downloaded: http://repo.maven.apache.org/maven2/org/codehaus/plexus/plexus-utils/3.0.5/plexus-utils-3.0.5.pom (3 KB at 0.9 KB/sec)
+    [INFO] Downloading: http://repo.maven.apache.org/maven2/org/codehaus/plexus/plexus-digest/1.0/plexus-digest-1.0.pom
+    [INFO] Downloaded: http://repo.maven.apache.org/maven2/org/codehaus/plexus/plexus-digest/1.0/plexus-digest-1.0.pom (2 KB at 1.5 KB/sec)
+    [INFO] Downloading: http://repo.maven.apache.org/maven2/org/codehaus/plexus/plexus-components/1.1.7/plexus-components-1.1.7.pom
+    [INFO] Downloaded: http://repo.maven.apache.org/maven2/org/codehaus/plexus/plexus-components/1.1.7/plexus-components-1.1.7.pom (5 KB at 11.4 KB/sec)
+    [INFO] Downloading: http://repo.maven.apache.org/maven2/org/codehaus/plexus/plexus/1.0.8/plexus-1.0.8.pom
+    [INFO] Downloaded: http://repo.maven.apache.org/maven2/org/codehaus/plexus/plexus/1.0.8/plexus-1.0.8.pom (8 KB at 17.0 KB/sec)
+    [INFO] Downloading: http://repo.maven.apache.org/maven2/org/codehaus/plexus/plexus-container-default/1.0-alpha-8/plexus-container-default-1.0-alpha-8.pom
+    [INFO] Downloaded: http://repo.maven.apache.org/maven2/org/codehaus/plexus/plexus-container-default/1.0-alpha-8/plexus-container-default-1.0-alpha-8.pom (8 KB at 18.0 KB/sec)
+    [INFO] Downloading: http://repo.maven.apache.org/maven2/org/codehaus/plexus/plexus-utils/3.0.5/plexus-utils-3.0.5.jar
+    [INFO] Downloaded: http://repo.maven.apache.org/maven2/org/codehaus/plexus/plexus-utils/3.0.5/plexus-utils-3.0.5.jar (226 KB at 82.0 KB/sec)
+    [INFO] Downloading: http://repo.maven.apache.org/maven2/org/codehaus/plexus/plexus-digest/1.0/plexus-digest-1.0.jar
+    [INFO] Downloaded: http://repo.maven.apache.org/maven2/org/codehaus/plexus/plexus-digest/1.0/plexus-digest-1.0.jar (12 KB at 27.4 KB/sec)
+    [INFO] Installing C:\Data\HOME-TECH\DEV-SPACE\Java\Eclipse\OEMQueryWebApp\target\OEMQueryWebApp.war to C:\Users\username\.m2\repository\mt\oem\OEMQueryWebApp\0.0.1-SNAPSHOT\OEMQueryWebApp-0.0.1-SNAPSHOT.war
+    [INFO] Installing C:\Data\HOME-TECH\DEV-SPACE\Java\Eclipse\OEMQueryWebApp\pom.xml to C:\Users\username\.m2\repository\mt\oem\OEMQueryWebApp\0.0.1-SNAPSHOT\OEMQueryWebApp-0.0.1-SNAPSHOT.pom
+    [INFO] ------------------------------------------------------------------------
+    [INFO] BUILD SUCCESS
+    [INFO] ------------------------------------------------------------------------
+    [INFO] Total time: 14.040 s
+    [INFO] Finished at: 2015-08-21T14:00:06+05:30
+    [INFO] Final Memory: 10M/127M
+[INFO] ------------------------------------------------------------------------
+
+
+  
+

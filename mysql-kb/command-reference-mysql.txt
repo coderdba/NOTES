@@ -1,0 +1,149 @@
+=========================================================================
+MYSQL COMMAND REFERENCE (most apply to MariaDB also - except where noted)
+=========================================================================
+
+REFERENCES
+http://www.linuxveda.com/2015/06/17/install-mysql-mariadb-secure-configure/
+
+RUNNING SQL FILE
+$ mysql < sql_filename
+mysql> source sql_filename
+mysql> \. sql_filename
+
+STORAGE ENGINES
+mysql> show engines;
+
+mysql> show engines/G;  --> also lists which one is default and more details of other engines
+
+      Engine: InnoDB
+     Support: DEFAULT --> note this
+     Comment: Percona-XtraDB, Supports transactions, row-level locking, foreign keys and encryption for tables
+Transactions: YES
+          XA: YES
+  Savepoints: YES
+
+CONNECTING
+http://dev.mysql.com/doc/refman/5.7/en/connecting.html
+
+CONNECTING - EMBEDDING PASSWORD IN CONFIG FILE
+http://stackoverflow.com/questions/8055694/how-to-execute-a-mysql-command-from-a-shell-script
+https://serverpilot.io/community/articles/how-to-access-mysql-with-the-mysql-root-user.html
+
+CONNECTING - SECURE CONNECTIONS
+http://dev.mysql.com/doc/refman/5.7/en/secure-connections.html
+
+RESETTING ROOT PASSWORD
+https://docs.oracle.com/cd/E17952_01/refman-5.6-en/resetting-permissions.html
+(ALSO LEARN mysql_secure_install)
+
+DATABASES
+http://www.linuxveda.com/2015/06/17/install-mysql-mariadb-secure-configure/
+mysql> show databases;
+mysql> create database dbname;
+mysql> use database dbname; -- go to a db to work on it
+mysql> SELECT DATABASE();  -- to list currently chosen db
+
+USERS
+http://dev.mysql.com/doc/refman/5.7/en/create-user.html
+http://dev.mysql.com/doc/refman/5.7/en/adding-users.html --> more examples here
+http://www.linuxveda.com/2015/06/17/install-mysql-mariadb-secure-configure/
+
+mysql> select user(); -- to list currently logged on user
+
+mysql> SELECT User FROM mysql.user; -- to list all users in the server
+
+-- User to connect from local machine only
+mysql> CREATE USER IF NOT EXISTS 'username'@'localhost' IDENTIFIED BY 'password';
+mysql> DROP USER IF EXISTS 'username'@'localhost';
+mysql> GRANT ALL PRIVILEGES ON dbname.* TO 'username'@'localhost';
+
+-- User to onnect from all remote servers
+mysql> CREATE USER IF NOT EXISTS 'username'@'%' IDENTIFIED BY 'password';
+
+-- User to onnect from specific servers
+mysql> CREATE USER IF NOT EXISTS 'username'@'servername.domainname.com' IDENTIFIED BY 'password';
+
+-- User to onnect from specific IP address
+mysql> CREATE USER IF NOT EXISTS 'username'@'10.196.2.2' IDENTIFIED BY 'password';
+
+TABLES
+mysql> SHOW CREATE TABLE tablename\G;  -- shows create table statement for a table
+
+CREATE TABLE IF NOT EXISTS dept (id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,  name VARCHAR(20));
+
+CREATE TABLE IF NOT EXISTS emp  (id INT NOT NULL AUTO_INCREMENT, name VARCHAR(20), address VARCHAR(60), phone_number VARCHAR(15),
+	PRIMARY KEY (id),
+	FOREIGN KEY (id) REFERENCES dept(id) ON UPDATE CASCADE ON DELETE RESTRICT,
+	INDEX (name)
+	);
+
+FOREIGN KEYS
+https://dev.mysql.com/doc/refman/5.7/en/create-table-foreign-keys.html
+CREATE TABLE IF NOT EXISTS emp  (id INT NOT NULL AUTO_INCREMENT, name VARCHAR(20), address VARCHAR(60), phone_number VARCHAR(15),
+	PRIMARY KEY (id),
+	FOREIGN KEY (id) REFERENCES dept(id) ON UPDATE CASCADE ON DELETE RESTRICT,
+	INDEX (name)
+	);
+
+STORED ROUTINES PROCEDURES
+
+TRIGGERS
+
+GRANTS
+Grants to root:
+	http://stackoverflow.com/questions/1708826/how-to-get-all-privileges-back-to-the-root-user-in-mysql
+	(on Ubuntu)
+	Stop MySQL server:		/etc/init.d/mysql stop
+	Start MySQL from the commandline: 	/usr/sbin/mysqld
+	In another terminal enter mysql and issue:  grant all privileges on *.* to 'root'@'%' with grant option;
+	You may also want to add: grant all privileges on *.* to 'root'@'localhost' with grant option;
+		and optionally use a password as well.
+	flush privileges;
+	and then exit your MySQL prompt and then kill the mysqld server running in the foreground. Restart with
+	/etc/init.d/mysql start  
+
+http://dev.mysql.com/doc/refman/5.7/en/grant.html
+CREATE USER 'jeffrey'@'localhost' IDENTIFIED BY 'mypass';
+GRANT ALL ON db1.* TO 'jeffrey'@'localhost';
+GRANT SELECT ON db2.invoice TO 'jeffrey'@'localhost';
+ALTER USER 'jeffrey'@'localhost' WITH MAX_QUERIES_PER_HOUR 90;
+GRANT SELECT (col1), INSERT (col1,col2) ON mydb.mytbl TO 'someuser'@'somehost';
+
+GRANT USAGE ON *.* TO 'someuser'@'somehost' WITH GRANT OPTION; --> USAGE means 'no privileges'
+
+GRANT CREATE ROUTINE ON mydb.* TO 'someuser'@'somehost';
+GRANT EXECUTE ON PROCEDURE mydb.myproc TO 'someuser'@'somehost';
+
+FIND SPACE INFO - FILES PER TABLE (innodb_file_per_table)
+http://stackoverflow.com/questions/22651656/any-way-to-check-if-innodb-file-per-table-is-set-in-mysql-5-5-per-table
+
+MariaDB [(none)]> SELECT NAME, SPACE FROM INFORMATION_SCHEMA.INNODB_SYS_TABLES;
++--------------------------+-------+
+| NAME                     | SPACE |
++--------------------------+-------+
+| SYS_DATAFILES            |     0 |
+| SYS_FOREIGN              |     0 |
+| SYS_FOREIGN_COLS         |     0 |
+| SYS_TABLESPACES          |     0 |
+| hr/dept                  |     9 |
+| hr/emp                   |    10 |
+| mysql/gtid_slave_pos     |     3 |
+| mysql/innodb_index_stats |     2 |
+| mysql/innodb_table_stats |     1 |
++--------------------------+-------+
+9 rows in set (0.00 sec)
+
+MariaDB [(none)]> SELECT DISTINCT TABLE_NAME, SPACE FROM INFORMATION_SCHEMA.INNODB_BUFFER_PAGE_LRU
+    -> WHERE TABLE_NAME IS NOT NULL AND TABLE_NAME NOT LIKE 'SYS%';
+
+RUNNING LIST
+show tables
+alter user 'hruserl'@'localhost' identified by 'hr123_HR123';
+describe dept
+insert into dept values (1, 'sales dept');
+select id, name from dept order by 1;
+select user() from dual;
+select database() from dual;
+CREATE USER IF  NOT EXISTS 'hruserl'@'localhost' identified by 'hr123_HR123';
+CREATE USER IF NOT EXISTS 'hruserr'@'%' identified by 'hr123_HR123';
+grant all privileges on *.* to 'root'@'%' with grant option;

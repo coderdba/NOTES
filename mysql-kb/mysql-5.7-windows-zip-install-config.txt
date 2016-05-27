@@ -1,0 +1,337 @@
+================================================
+MYSQL ON WINDOWS WITH ZIP (NON-INSTALLER)
+================================================
+
+http://dev.mysql.com/doc/refman/5.7/en/windows-installation.html
+http://dev.mysql.com/doc/refman/5.7/en/windows-install-archive.html
+
+=================
+DOWNLOAD
+=================
+Download Community edition 
+Server - http://dev.mysql.com/downloads/mysql/ --> choose the zip package
+
+Optional download - Fabric
+http://dev.mysql.com/downloads/fabric/ --> takes to http://dev.mysql.com/downloads/utilities/ -->  only MSI package available
+  MySQL Fabric provides a framework for managing farms of MySQL servers. MySQL Fabric provides two services which 
+  can be used individually or in combination:
+
+  High Availability - Building on top of MySQL Replication to provide automated failure detection and failover.
+  Sharding - Scaling out of both reads and writes by partitioning rows from selected tables into a number of shards.
+  
+Optional download - JDBC connector (like driver)
+http://dev.mysql.com/downloads/connector/j/
+
+Optional download - Other connectors
+http://dev.mysql.com/downloads/connector/
+
+Optional download - MySql Shell
+http://dev.mysql.com/downloads/shell/ 
+Probably like sqlplus
+
+=================
+Unzip
+=================
+Unzip the main MySQL zip to C:\Opt\MySql\mysql-5.7.12
+
+==================================
+Create data directory
+==================================
+Create data directory at C:\Opt\MySql\data
+
+=================
+Create my.ini
+=================
+C:\Opt\MySql\mysql-5.7.12\my.ini
+
+[mysqld]
+# set basedir to your installation path
+basedir=C:\\Opt\\MySql\\mysql-5.7.12
+# set datadir to the location of your data directory
+datadir=C:\\Opt\\MySql\\data
+
+==================================
+Initialize data directory
+==================================
+http://dev.mysql.com/doc/refman/5.7/en/data-directory-initialization-mysqld.html
+
+NOTE: Initialize (do insecure - see below),  (DANGER - IF DONE ON EXISTING CONTENT, THAT CONTENT WILL BE ERASED)
+      and then CHANGE ROOT PASSWORD immediately.
+      (this initialize insecure and root password change applies to MSI based installs also 
+          - HOWEVER, MSI INSTALLS INSTALL AN INITIAL SET OF FILES AND INITIAL ROOT PASSWORD - SO BE CAREFUL)
+      
+C:\Opt\MySql\mysql-5.7.12>.\bin\mysqld --initialize (or use --initialize-insecure so that an initial root password is not set)
+  mysqld: Could not create or access the registry key needed for the MySQL application
+  to log to the Windows EventLog. Run the application with sufficient
+  privileges once to create the key, add the key manually, or turn off
+  logging for that application.
+
+---------------------------------------------
+Check what all got created in data directory
+---------------------------------------------
+C:\Opt\MySql\mysql-5.7.12>cd ../data
+
+C:\Opt\MySql\data>dir
+ Volume in drive C is OS
+ Volume Serial Number is 1ED3-2B64
+
+ Directory of C:\Opt\MySql\data
+
+05/12/2016  10:39 PM    <DIR>          .
+05/12/2016  10:39 PM    <DIR>          ..
+05/12/2016  10:39 PM                56 auto.cnf
+05/12/2016  10:39 PM               931 DESKTOP-3E19JJ3.err
+05/12/2016  10:39 PM        12,582,912 ibdata1
+05/12/2016  10:39 PM               499 ib_buffer_pool
+05/12/2016  10:39 PM        50,331,648 ib_logfile0
+05/12/2016  10:39 PM        50,331,648 ib_logfile1
+05/12/2016  10:39 PM    <DIR>          mysql
+05/12/2016  10:39 PM    <DIR>          performance_schema
+05/12/2016  10:39 PM    <DIR>          sys
+               6 File(s)    113,247,694 bytes
+               5 Dir(s)  878,235,742,208 bytes free
+
+=======
+Startup
+=======
+This will run in foreground only - not as a 'service'.
+To make it a service: http://dev.mysql.com/doc/refman/5.7/en/windows-start-service.html
+
+NOTE: At this time, root password is not known yet.  Command 'mysql -u root' access denied without root password'
+See section on 'Reset Root Password' further down.
+
+--------------------------------
+CONSOLE option 
+--------------------------------
+Error logs to console
+NOTE: After startup, ctrl-c to shutdown.
+
+C:\Opt\MySql\mysql-5.7.12>.\bin\mysqld --console
+mysqld: Could not create or access the registry key needed for the MySQL application
+to log to the Windows EventLog. Run the application with sufficient
+privileges once to create the key, add the key manually, or turn off
+logging for that application.
+2016-05-12T17:23:38.517890Z 0 [Warning] TIMESTAMP with implicit DEFAULT value is deprecated. Please use --explicit_defaults_for_timestamp server option (see documentation for more details).
+2016-05-12T17:23:38.517890Z 0 [Warning] Insecure configuration for --secure-file-priv: Current value does not restrict location of generated files. Consider setting it to a valid, non-empty path.
+2016-05-12T17:23:38.518887Z 0 [ERROR] Cannot open Windows EventLog; check privileges, or start server with --log_syslog=0
+2016-05-12T17:23:38.518887Z 0 [Note] .\bin\mysqld (mysqld 5.7.12) starting as process 6348 ...
+2016-05-12T17:23:38.524077Z 0 [Note] InnoDB: Mutexes and rw_locks use Windows interlocked functions
+2016-05-12T17:23:38.524561Z 0 [Note] InnoDB: Uses event mutexes
+2016-05-12T17:23:38.524798Z 0 [Note] InnoDB: _mm_lfence() and _mm_sfence() are used for memory barrier
+2016-05-12T17:23:38.525136Z 0 [Note] InnoDB: Compressed tables use zlib 1.2.3
+2016-05-12T17:23:38.525136Z 0 [Note] InnoDB: Number of pools: 1
+2016-05-12T17:23:38.525817Z 0 [Note] InnoDB: Not using CPU crc32 instructions
+2016-05-12T17:23:38.559909Z 0 [Note] InnoDB: Initializing buffer pool, total size = 128M, instances = 1, chunk size = 128M
+2016-05-12T17:23:38.566603Z 0 [Note] InnoDB: Completed initialization of buffer pool
+2016-05-12T17:23:38.684521Z 0 [Note] InnoDB: Highest supported file format is Barracuda.
+2016-05-12T17:23:38.803251Z 0 [Note] InnoDB: Creating shared tablespace for temporary tables
+2016-05-12T17:23:38.803251Z 0 [Note] InnoDB: Setting file '.\ibtmp1' size to 12 MB. Physically writing the file full; Please wait ...
+2016-05-12T17:23:38.997732Z 0 [Note] InnoDB: File '.\ibtmp1' size is now 12 MB.
+2016-05-12T17:23:39.020384Z 0 [Note] InnoDB: 96 redo rollback segment(s) found. 96 redo rollback segment(s) are active.
+2016-05-12T17:23:39.021506Z 0 [Note] InnoDB: 32 non-redo rollback segment(s) are active.
+2016-05-12T17:23:39.023515Z 0 [Note] InnoDB: Waiting for purge to start
+2016-05-12T17:23:39.143786Z 0 [Note] InnoDB: 5.7.12 started; log sequence number 2523175
+2016-05-12T17:23:39.145795Z 0 [Note] Plugin 'FEDERATED' is disabled.
+2016-05-12T17:23:39.145795Z 0 [Note] InnoDB: Loading buffer pool(s) from C:\Opt\MySql\data\ib_buffer_pool
+2016-05-12T17:23:39.234224Z 0 [Warning] Failed to set up SSL because of the following SSL library error: SSL context is not usable without certificate and private key
+2016-05-12T17:23:39.289470Z 0 [Note] Server hostname (bind-address): '*'; port: 3306
+2016-05-12T17:23:39.290470Z 0 [Note] IPv6 is available.
+2016-05-12T17:23:39.291510Z 0 [Note]   - '::' resolves to '::';
+2016-05-12T17:23:39.294074Z 0 [Note] Server socket created on IP: '::'.
+2016-05-12T17:23:39.684081Z 0 [Note] InnoDB: Buffer pool(s) load completed at 160512 22:53:39
+2016-05-12T17:23:39.713116Z 0 [Note] Event Scheduler: Loaded 0 events
+2016-05-12T17:23:39.714122Z 0 [Note] .\bin\mysqld: ready for connections.
+Version: '5.7.12'  socket: ''  port: 3306  MySQL Community Server (GPL)
+2016-05-12T17:24:00.060897Z 0 [Note] .\bin\mysqld: Normal shutdown
+
+2016-05-12T17:24:00.112743Z 0 [Note] Giving 0 client threads a chance to die gracefully
+2016-05-12T17:24:00.113055Z 0 [Note] Shutting down slave threads
+2016-05-12T17:24:00.116981Z 0 [Note] Forcefully disconnecting 0 remaining clients
+2016-05-12T17:24:00.118159Z 0 [Note] Event Scheduler: Purging the queue. 0 events
+2016-05-12T17:24:00.120798Z 0 [Note] Binlog end
+2016-05-12T17:24:00.124428Z 0 [Note] Shutting down plugin 'ngram'
+2016-05-12T17:24:00.125459Z 0 [Note] Shutting down plugin 'partition'
+2016-05-12T17:24:00.128720Z 0 [Note] Shutting down plugin 'BLACKHOLE'
+2016-05-12T17:24:00.131796Z 0 [Note] Shutting down plugin 'ARCHIVE'
+2016-05-12T17:24:00.134186Z 0 [Note] Shutting down plugin 'PERFORMANCE_SCHEMA'
+2016-05-12T17:24:00.137155Z 0 [Note] Shutting down plugin 'MRG_MYISAM'
+2016-05-12T17:24:00.139405Z 0 [Note] Shutting down plugin 'MyISAM'
+2016-05-12T17:24:00.142372Z 0 [Note] Shutting down plugin 'INNODB_SYS_VIRTUAL'
+2016-05-12T17:24:00.144761Z 0 [Note] Shutting down plugin 'INNODB_SYS_DATAFILES'
+2016-05-12T17:24:00.147194Z 0 [Note] Shutting down plugin 'INNODB_SYS_TABLESPACES'
+2016-05-12T17:24:00.149919Z 0 [Note] Shutting down plugin 'INNODB_SYS_FOREIGN_COLS'
+2016-05-12T17:24:00.152701Z 0 [Note] Shutting down plugin 'INNODB_SYS_FOREIGN'
+2016-05-12T17:24:00.155509Z 0 [Note] Shutting down plugin 'INNODB_SYS_FIELDS'
+2016-05-12T17:24:00.157954Z 0 [Note] Shutting down plugin 'INNODB_SYS_COLUMNS'
+2016-05-12T17:24:00.160590Z 0 [Note] Shutting down plugin 'INNODB_SYS_INDEXES'
+2016-05-12T17:24:00.163590Z 0 [Note] Shutting down plugin 'INNODB_SYS_TABLESTATS'
+2016-05-12T17:24:00.166614Z 0 [Note] Shutting down plugin 'INNODB_SYS_TABLES'
+2016-05-12T17:24:00.168959Z 0 [Note] Shutting down plugin 'INNODB_FT_INDEX_TABLE'
+2016-05-12T17:24:00.171968Z 0 [Note] Shutting down plugin 'INNODB_FT_INDEX_CACHE'
+2016-05-12T17:24:00.174189Z 0 [Note] Shutting down plugin 'INNODB_FT_CONFIG'
+2016-05-12T17:24:00.176740Z 0 [Note] Shutting down plugin 'INNODB_FT_BEING_DELETED'
+2016-05-12T17:24:00.179763Z 0 [Note] Shutting down plugin 'INNODB_FT_DELETED'
+2016-05-12T17:24:00.185697Z 0 [Note] Shutting down plugin 'INNODB_FT_DEFAULT_STOPWORD'
+2016-05-12T17:24:00.187212Z 0 [Note] Shutting down plugin 'INNODB_METRICS'
+2016-05-12T17:24:00.189794Z 0 [Note] Shutting down plugin 'INNODB_TEMP_TABLE_INFO'
+2016-05-12T17:24:00.192291Z 0 [Note] Shutting down plugin 'INNODB_BUFFER_POOL_STATS'
+2016-05-12T17:24:00.195262Z 0 [Note] Shutting down plugin 'INNODB_BUFFER_PAGE_LRU'
+2016-05-12T17:24:00.197756Z 0 [Note] Shutting down plugin 'INNODB_BUFFER_PAGE'
+2016-05-12T17:24:00.200087Z 0 [Note] Shutting down plugin 'INNODB_CMP_PER_INDEX_RESET'
+2016-05-12T17:24:00.202908Z 0 [Note] Shutting down plugin 'INNODB_CMP_PER_INDEX'
+2016-05-12T17:24:00.205525Z 0 [Note] Shutting down plugin 'INNODB_CMPMEM_RESET'
+2016-05-12T17:24:00.208005Z 0 [Note] Shutting down plugin 'INNODB_CMPMEM'
+2016-05-12T17:24:00.210651Z 0 [Note] Shutting down plugin 'INNODB_CMP_RESET'
+2016-05-12T17:24:00.213236Z 0 [Note] Shutting down plugin 'INNODB_CMP'
+2016-05-12T17:24:00.216530Z 0 [Note] Shutting down plugin 'INNODB_LOCK_WAITS'
+2016-05-12T17:24:00.219004Z 0 [Note] Shutting down plugin 'INNODB_LOCKS'
+2016-05-12T17:24:00.221657Z 0 [Note] Shutting down plugin 'INNODB_TRX'
+2016-05-12T17:24:00.224181Z 0 [Note] Shutting down plugin 'InnoDB'
+2016-05-12T17:24:00.226833Z 0 [Note] InnoDB: FTS optimize thread exiting.
+2016-05-12T17:24:00.229413Z 0 [Note] InnoDB: Starting shutdown...
+2016-05-12T17:24:00.335304Z 0 [Note] InnoDB: Dumping buffer pool(s) to C:\Opt\MySql\data\ib_buffer_pool
+2016-05-12T17:24:00.338979Z 0 [Note] InnoDB: Buffer pool(s) dump completed at 160512 22:54:00
+2016-05-12T17:24:01.580617Z 0 [Note] InnoDB: Shutdown completed; log sequence number 2523203
+2016-05-12T17:24:01.581618Z 0 [Note] InnoDB: Removed temporary tablespace data file: "ibtmp1"
+2016-05-12T17:24:01.581618Z 0 [Note] Shutting down plugin 'MEMORY'
+2016-05-12T17:24:01.584048Z 0 [Note] Shutting down plugin 'CSV'
+2016-05-12T17:24:01.586892Z 0 [Note] Shutting down plugin 'sha256_password'
+2016-05-12T17:24:01.589644Z 0 [Note] Shutting down plugin 'mysql_native_password'
+2016-05-12T17:24:01.591876Z 0 [Note] Shutting down plugin 'binlog'
+2016-05-12T17:24:01.595687Z 0 [Note] .\bin\mysqld: Shutdown complete
+
+---------------------------
+NO-CONSOLE option specified
+---------------------------
+Errors go to .err file in data directory.
+NOTE: Shutdown via task-manager - ctrl-c does not work after no-console startup.
+
+C:\Opt\MySql\mysql-5.7.12>.\bin\mysqld
+mysqld: Could not create or access the registry key needed for the MySQL application
+to log to the Windows EventLog. Run the application with sufficient
+privileges once to create the key, add the key manually, or turn off
+logging for that application.
+
+============================
+Reset Root Password
+============================
+https://dev.mysql.com/doc/mysql-windows-excerpt/5.7/en/resetting-permissions-windows.html
+
+-------------------------------------------------------------------------------
+NOTE: YOU DO NOT NEED to do initialize or initialize-insecure for doing this.
+      YOU CAN do it anytime.
+-------------------------------------------------------------------------------
+
+Create an init file C:\Opt\MySql\mysql-5.7.12\rootpass.sql with the following contents:
+  ALTER USER 'root'@'localhost' IDENTIFIED BY 'MyNewPass';
+
+    If that does not work, use the following statement:
+    UPDATE mysql.user 
+        SET authentication_string = PASSWORD('MyNewPass'), password_expired = 'N'
+        WHERE User = 'root' AND Host = 'localhost';
+    FLUSH PRIVILEGES;
+
+Shutdown currently running mysqld process.
+
+Then, run the following command:
+  C:\Opt\MySql\mysql-5.7.12\bin>mysqld --init-file=C:\\Opt\\MySql\\mysql-5.7.12\rootpass.sql
+  mysqld: Could not create or access the registry key needed for the MySQL application
+  to log to the Windows EventLog. Run the application with sufficient
+  privileges once to create the key, add the key manually, or turn off
+  logging for that application.
+  
+  NOTE: This should stay running not coming back to command prompt
+
+Test:
+
+  C:\Opt\MySql\mysql-5.7.12\bin>mysql -u root -p
+  Enter password: *********
+  Welcome to the MySQL monitor.  Commands end with ; or \g.
+  Your MySQL connection id is 3
+  Server version: 5.7.12 MySQL Community Server (GPL)
+  
+  Copyright (c) 2000, 2016, Oracle and/or its affiliates. All rights reserved.
+  
+  Oracle is a registered trademark of Oracle Corporation and/or its
+  affiliates. Other names may be trademarks of their respective
+  owners.
+  
+  Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+  
+  mysql> SELECT User, Host, plugin FROM mysql.user;
+  +-----------+-----------+-----------------------+
+  | User      | Host      | plugin                |
+  +-----------+-----------+-----------------------+
+  | root      | localhost | mysql_native_password |
+  | mysql.sys | localhost | mysql_native_password |
+  +-----------+-----------+-----------------------+
+  2 rows in set (0.00 sec)
+
+  mysql> exit
+  Bye
+
+Restart mysqld and ensure you can connect again like above.
+
+=========================================
+TROUBLESHOOTING
+=========================================
+
+-------------------------------------
+SHUTDOWN AS SOON AS STARTUP
+-------------------------------------
+This can happen if there is another MYSQL installation (like one using MSI package - not zip).
+Then, mysqld of your zip unzip install may end up looking at that my.ini - which is possibly in C:\MYSQL.
+
+Therefore, make all file-locations explicit to point to zip-unzip install locations and do a clean startup as follows:
+1. clean up 'data' directory
+2. clean up 'log' directory
+3. clean up 'binlog' directory
+4. in my.ini change socket name from MYSQL to MYSQLZIP or something
+5. in my.ini change port from 3306 to another like 3307
+6. initialize as follows:  
+    Go to basedir
+    Ensure my.ini is in that location itself
+    bin\mysqld --initialize-insecure --defaults-file=my.ini
+7. check in datadir whether files and folders get created
+8. check in binlog dir whether a binary log and a binlog index file gets created
+9. restart mysql 
+    go to basedir
+    start mysqld as 'bin\mysqld --defaults-file=my.ini'
+    NOW THIS SHOULD STAY IN FOREGROUND INSTEAD OF IMMEDIATELY SHUTTING DOWN AND COMING BACK TO COMMAND PROMPT
+
+=======================
+MY.INI
+=======================
+[mysqld]
+# set basedir to your installation path
+basedir=C:\\Opt\\MySql\\mysql-5.7.12
+# set datadir to the location of your data directory
+datadir=C:\\Opt\\MySql\\data
+
+# The Pipe the MySQL Server will use
+socket=MYSQLZIP
+
+# The TCP/IP Port the MySQL Server will listen on
+port=3307
+
+# General and Slow logging.
+log-output=FILE
+general-log=1
+general_log_file="C:\\Opt\\MySql\\log\\mysql.gen.log"
+general_log_file="
+slow-query-log=1
+slow_query_log_file="C:\\Opt\\MySql\\log\\mysql.slowQuery.log"
+long_query_time=10
+
+# Binary Logging.
+log-bin="C:\\Opt\\MySql\\binlog\\binlog"
+log-bin-index = "C:\\Opt\\MySql\\binlog\\binlog.index"
+
+# Error Logging.
+log-error="C:\\Opt\\MySql\\log\\MYSQL.err.log"
+
+# Server Id.
+server-id=1
+
+# Secure File Priv.
+secure-file-priv="C:\\Opt\\MySql\\uploads"

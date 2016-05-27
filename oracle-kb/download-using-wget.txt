@@ -1,0 +1,99 @@
+
+
+http://www.pythian.com/blog/how-to-download-oracle-software-using-wget-or-curl/
+
+How to Download Oracle Software Using WGET or CURL
+
+by André Araújo
+November 11, 2013
+Posted in: Technical Track
+Tags: DBA Lounge, Oracle, Pythian, Technical Blog
+This is yet another blog post with tips and tricks to help you (and me) download Oracle software without the help of a Web browser. If you Google “how to download Oracle with wget” you’ll find heaps of posts with useful tips.
+
+I decided to write this post to compile the methods I’m aware of in a single page for future easy reference.
+
+If you have anything to complement this information, please let me know and I’ll update the post with it!
+
+
+Please note that the methods described below may work for some of the Oracle sites but not others. For each method, I list the sites that are known to work with it. I’ve tested the methods with the following sites:
+
+Oracle Technology Network (OTN)
+Oracle eDelivery
+My Oracle Support (MOS)
+Method 1: Use the download URL
+
+Works with: OTN, eDelivery and MOS
+
+I came across this method recently while googling for a blog post like this one. Google pointed in the direction of a video by David Ghedini demonstrating a very simple way to download files from Oracle.
+
+This method is very easy to use and the simplest way to download a single file since it doesn’t require exporting and copying cookies to the server. For multiple files, though, method 2 below may be a better option.
+
+Please watch David Ghedini’s video for details on using this method.
+
+It consists of initiating the download using your computer’s browser, pausing the download and copying the download URL, which contains the authentication token in it.
+With this URL you can download the file from the remote server using one of the following commands:
+
+wget "download_url" -O file_name
+OR
+curl "download_url" -o file_name
+
+Method 2: Export cookies
+
+Works with: OTN, eDelivery and MOS
+
+This method requires exporting the cookies from you browser to a file and copying that file to the remote server, so that we can use it for the download. The cookies file contains your session’s authentication token as well as the confirmation of the EULA acceptance.
+
+This is a handy method when you have to download multiple files at once.
+
+To use this method it’s necessary to have a tool to export the cookies from the Web browser to a text file. If you don’t already have one, I’d suggest one of the browser extensions below:
+
+For Firefox: Export Cookies
+For Chrome: cookies.txt export
+After installing the extension(s) above on the browser of your choice, follow the steps below:
+
+Initiate the download of the file you want (if downloading multiple files, you just need to do this for the first one)
+Once the download is initiated, cancel it.
+Export the cookies to a file (call it cookies.txt)
+If you’re using one of the extensions suggested above, this is how you do it:
+On Firefox: click on Tools -> “Export cookies…” and save the file
+On Chrome: click on the “cookies.txt export” icon in the toolbar (the icon is a blue “C” with an arrow inside), select the entire contents of the cookies and paste it into a text file.
+Copy the cookies.txt file to your remote server.
+Download the files you want with one of the following commands:
+wget --load-cookies=./cookies.txt --no-check-certificate "file_url" -O file_name
+OR
+curl --location --cookie ./cookies.txt --insecure "file_url" -o file_name
+
+Multiple files can be downloaded using the same cookies.txt file. The cookies are valid for 30 minutes and the download must be initiated during that period. After that you’ll have to repeat the process to re-export the cookies.
+
+Method 3: Basic Authentication
+
+Works with: MOS
+
+My Oracle Support (MOS) accepts Basic Authentication when downloading files. If you have a valid MOS account you can download files simply by executing the following:
+
+wget --http-user=araujo@pythian.com --ask-password "file_url" -O file_name
+OR
+curl --user araujo@pythian.com --cookie-jar cookie-jar.txt --location-trusted "file_url" -o file_name
+
+Last but not least: Verify your downloads!
+
+Regardless of the method you use, it’s good practice to verify the digest of the downloaded files to ensure they are indeed the original files and haven’t been tampered with.
+
+The Oracle download sites always provide digests for the available files in the form of checksums, SHA-1 or MD5 hashes. To verify that the downloaded files are ok, simply execute the corresponding command, as shown in the examples below, and compare the output string with the value shown on the download site:
+
+For checksum:
+
+[araujo@client test]$ cksum p17027533_121010_Linux-x86-64.zip
+4109851411 3710976 p17027533_121010_Linux-x86-64.zip
+
+For MD5:
+
+[araujo@client test]$ md5sum p17027533_121010_Linux-x86-64.zip
+48a4a957e2d401b324eb89b3f613b8bb p17027533_121010_Linux-x86-64.zip
+
+For SHA-1:
+
+[araujo@client test]$ sha1sum p17027533_121010_Linux-x86-64.zip
+43a70298c09dcd9d59f00498e6659063535fee52 p17027533_121010_Linux-x86-64.zip
+
+- See more at: http://www.pythian.com/blog/how-to-download-oracle-software-using-wget-or-curl/#sthash.i4sBtrp7.dpuf

@@ -1,0 +1,124 @@
+Oracle GoldenGate – Positioning a Read of Extract/Replicat Trail File or Oracle Redo Log
+
+https://deciphercorp.wordpress.com/2010/07/26/oracle-goldengate-positioning-a-read-of-extractreplicat-trail-file-or-oracle-redo-log/
+
+Positioning in Extract / Replicat Trail and Log
+
+In the event that there is ever a need to position an extract in the
+Transaction Log (aka redo log), extract trail file or replicat trail file,
+the following options can be used:
+
+INFO EXTRACT <groupname>,  DETAIL
+
+This will name your current redo log along with the RBA and sequence number and your extract trail name along with the RBA. RBA is the relative byte address of the record in the trail file at which the checkpoint was made
+
+INFO EXTRACT, SHOWCH
+
+Will show you your read checkpoint in the data source and write
+checkpoint in the trail files.
+
+Log Read Checkpoint File /orarac/oradata/racq/redo01.log  ß- Oracle redo
+2006-06-09 14:16:45 Thread 1, Seqno 47, RBA 68748800          info
+Log Read Checkpoint File /orarac/oradata/racq/redo04.log
+2006-06-09 14:16:19 Thread 2, Seqno 24, RBA 65657408
+Current Checkpoint Detail:
+Read Checkpoint #1
+Oracle RAC Redo Log
+Startup Checkpoint (starting position in data source):
+Sequence #: 47
+RBA: 68548112     ß– RBA offset of entry in redo log
+Timestamp: 2006-06-09 13:37:51.000000
+SCN: 0.8439720
+Redo File: /orarac/oradata/racq/redo01.log
+Recovery Checkpoint (position of oldest unprocessed transaction in
+data source):
+Sequence #: 47
+RBA: 68748304
+Timestamp: 2006-06-09 14:16:45.000000
+SCN: 0.8440969
+Redo File: /orarac/oradata/racq/redo01.log
+Current Checkpoint (position of last record read in
+the data source)
+
+Write Checkpoint #1
+GGS Log Trail       ß– start of GG Trail Information
+Current Checkpoint (current write position):
+Sequence #: 2
+RBA: 2142224       ß–  RBA offset of entry in Trail file
+Timestamp: 2006-06-09 14:16:50.567638
+Extract Trail: ./dirdat/eh
+Header:
+Version = 2
+Record Source = A
+Type = 6
+# Input Checkpoints = 2
+# Output Checkpoints = 1
+
+Once you have your checkpoint RBAs, you can use a few ggsci
+commands to help you debug:
+
+ADD EXTRACT <groupname>
+
+Allows creation of an extract from a specific position in a trail file or
+transaction log.
+Some useful options are:
+
+EXTTRAILSOURCE <trail name>
+Specifies a trail as the data source. For <trail name>, specify the
+fully qualified path name  of the trail, for example c:\ggs\dirdat\aa.
+
+BEGIN <begin spec> 
+Specifies a timestamp in the data source at which to begin
+processing.
+<begin spec>  value is either:
+□  NOW    –  the time at which the ADD EXTRACT command
+is issued.
+□   A date and time in the format of:
+yyyy-mm-dd [hh:mi:[ss[.cccccc]]]
+
+*** if you have a 4-node RAC cluster environment, use the
+“THREADS 4”  option to any command to which it applies.
+
+EXTRBA <relative byte address> 
+Specifies an RBA at which to start extracting.  This can be used to
+skip over a bad entry in a trail file.
+
+ALTER EXTRACT <group name>
+
+Allows changing the attributes of an extract file created by the ADD EXTRACT
+command and allows the incrementing of an extract to the  next file in the sequence.
+
+***Always  “STOP EXTRACT <group name>”  before using this command.
+
+You can use this command to make any changes using any of the options to the ADD EXTRACT command (above).  So, for example, you can ALTER EXTRACT an extract file to begin at a specific RBA for skipping over an entry in the extract file.
+Ex.:   ALTER EXTRACT finance, EXTSEQNO 26, EXTRBA 338
+
+You can change any of the attributes specified with the ADD EXTRACT command, except for the following:
+□ Altering an Extract specified with the EXTTRAILSOURCE
+option.
+□ Altering the number of RAC threads specified with the THREADS
+option.
+
+SEND EXTRACT
+
+Allows you to send commands to a running extract process.
+Some useful options are:
+
+GETLAG shows lag time between the extract and the data source
+
+LOGEND shows whether or not extract has processed all record in
+the data source
+
+ROLLOVER makes extract increment to the next file in the trail upon
+startup
+
+SHOWTRANS shows information about current transactions:
+□   Process Checkpoint
+□   Transaction ID
+□    Extract Group Name
+□    Redo Thread Number
+□    Timestamp of first transaction of extract
+□     System Change Number  (SCN)
+□     RBA and Redo Log Number
+□     STATUS ( commit after it has been forced by FORCETRANS
+(Pending Commit) or “running”)

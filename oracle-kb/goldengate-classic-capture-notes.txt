@@ -1,0 +1,66 @@
+GOLDENGATE CLASSIC CAPTURE - NOTES
+1. CLASSIC CAPTURE AND ASM, LOGS, RAC ETC
+2. CLASSIC CAPTURE WITH ACTIVE DATA GUARD (ADG)
+
+
+=========================================
+1. CLASSIC CAPTURE AND ASM, LOGS, RAC ETC
+=========================================
+
+http://docs.oracle.com/goldengate/1212/gg-winux/GIORA.pdf
+
+READING TRANSACTION LOGS THROUGH RDBMS
+Use the TRANLOGOPTIONS parameter with the DBLOGREADER option in the Extract parameter file 
+if the RDBMS is Oracle 11.1.0.7 or Oracle 11.2.0.2 or later 11g R2 versions.
+You can use the DBLOGREADERBUFSIZE option of TRANLOGOPTIONS to specify a buffer size.
+
+ASM CONNECTION FOR LOWER VERSIONS (11x??)
+(11.3.1.2 ASM Direct Connection from http://docs.oracle.com/goldengate/1212/gg-winux/GIORA.pdf)
+1.Create a user for the Extract process to access the ASM instance directly. Assign this user SYS or SYSDBA privileges in the ASM instance. Oracle GoldenGate does not support using operating-system authentication for the ASM user. See Table 11–2 for additional details.
+2.Add the ASM user credentials to the Oracle GoldenGate credential store by issuing the ALTER CREDENTIALSTORE command. See Reference for Oracle GoldenGate for Windows and UNIX for usage instructions and syntax.
+3.Specify the ASM login alias in the Extract parameter file by including the TRANLOGOPTIONS parameter with the ASMUSERALIAS option. For more information about TRANLOGOPTIONS, see Reference for Oracle GoldenGate for Windows and UNIX.
+
+ASM CONNECTIVITY - LISTENER
+11.3.2 Ensuring ASM Connectivity
+To ensure that the Oracle GoldenGate Extract process can connect to an ASM instance, list the ASM instance in the tnsnames.ora file. The recommended method for connecting to an ASM instance when Oracle GoldenGate is running on the database host machine is to use a bequeath (BEQ) protocol. The BEQ protocol does not require a listener. If you prefer to use the TCP/IP protocol, verify that the Oracle listener is listening for new connections to the ASM instance. The listener.ora file must contain an entry similar to the following.
+SID_LIST_LISTENER_ASM =
+(SID_LIST =
+(SID_DESC =
+(GLOBAL_DBNAME = ASM)
+(ORACLE_HOME = /u01/app/grid)
+(SID_NAME = +ASM1)
+)
+)
+
+LOG RETENTION - FOR EXTRACT TO CATCH-UP
+11.4.1 Log Retention Requirements per Extract Recovery Mode
+By default, the Bounded Recovery mode is in effect, and Extract requires access to the logs only as far back as twice the Bounded Recovery interval that is set with the BR parameter. This interval is an integral multiple of the standard Extract checkpoint interval, as controlled by the CHECKPOINTSECS parameter. These two parameters control the Oracle GoldenGate Bounded Recovery feature, which ensures that Extract can recover in-memory captured data after a failure, no matter how old the oldest open transaction was at the time of failure.
+
+Extract can be configured to work with Oracle Recovery Manager (RMAN) to retain the logs that Extract needs for recovery. You enable this feature when you issue the REGISTER EXTRACT command.
+Also do - exec dbms_goldengate_auth.grant_admin_privilege('user')
+
+When log retention is enabled, Extract retains enough logs to perform a Bounded Recovery, but you can configure Extract to retain enough logs through RMAN for a normal recovery by using the TRANLOGOPTIONS parameter with the LOGRETENTION option set to SR.
+
+HOW MUCH DATA TO RETAIN
+11.4.3 Determining How Much Data to Retain
+The recommended retention period is at least 24 hours worth of transaction data, including both online and archived logs. To determine the oldest log that Extract might need at any given point, issue the SEND EXTRACT command with the SHOWTRANS option. You might need to do some testing to determine the best retention time given your data volume and business requirements.
+
+SPECIFY ARCHLOG LOCATION
+11.4.5 Specifying the Archive Location
+If the archived logs reside somewhere other than the Oracle default directory, specify that directory with the ALTARCHIVELOGDEST option of the TRANLOGOPTIONS parameter in the Extract parameter file.
+You might also need to use the ALTARCHIVEDLOGFORMAT option of TRANLOGOPTIONS if the format that is specified with the Oracle parameter LOG_ARCHIVE_FORMAT contains sub-directories.
+
+=====================================================================
+2. CLASSIC CAPTURE WITH ACTIVE DATA GUARD (ADG)
+=====================================================================
+Go through section 11.6 and its sub-sections in http://docs.oracle.com/goldengate/1212/gg-winux/GIORA.pdf
+11.6 Configuring Classic Capture in Oracle Active Data Guard Only Mode
+You must explicitly specify ADG mode in your classic Extract parameter file to run extract on the standby database.
+-You must specify the database user and password to connect to the ADG system because fetch and other metadata resolution occurs in the database.
+-The number of redo threads in the standby logs in the standby database must match the number of nodes from the primary database.
+-No new RAC instance can be added to the primary database after classic Extract has been created on the standby database. If you do add new instances, the redo data from the new thread will not be captured by classic Extract.
+-Archived logs and standby redo logs accessed from the standby database will be an exact duplicate of the primary database. The size and the contents will match, including redo data, transactional data, and supplemental data. This is guaranteed by a properly configured ADG deployment.
+-You must connect to the primary database from GGSCI to add TRANDATA or SCHEMATRANDATA because this is done on the primary database.
+-DDL triggers cannot be used on the standby database, in order to support DDL replication (except ADDTRANDATA). You must install the Oracle GoldenGate DDL package on the primary database.
+-DDL ADDTRANDATA is not supported in ADG mode; you must use ADDSCHEMATRANDATA for DDL replication.
+-When adding extract on the standby database, you must specify the starting position using a specific SCN value, timestamp, or log position. Relative timestamp values, such as NOW, become ambiguous and may lead to data inconsistency.

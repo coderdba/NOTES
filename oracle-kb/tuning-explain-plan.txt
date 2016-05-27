@@ -1,0 +1,110 @@
+======================
+EXPLAIN PLAN - ORACLE
+======================
+
+http://www.dbspecialists.com/files/presentations/use_explain.html
+http://lefterhs.blogspot.in/2012/07/archived-log-generation-volume-and.html
+
+-----------------------
+EXPLAIN PLAN - METHOD 1
+-----------------------
+
+EXPLAIN PLAN [SET STATEMENT_ID = <string in single quotes>] 
+[INTO <plan table name>]
+FOR <SQL statement>;
+
+REM
+REM explain.sql
+REM
+
+SET VERIFY OFF
+SET PAGESIZE 100
+
+ACCEPT stmt_id CHAR PROMPT "Enter statement_id: "
+
+COL id          FORMAT 999
+COL parent_id   FORMAT 999 HEADING "PARENT"
+COL operation   FORMAT a35 TRUNCATE
+COL object_name FORMAT a30
+
+SELECT     id, parent_id, LPAD (' ', LEVEL - 1) || operation || ' ' ||
+           options operation, object_name
+FROM       plan_table
+WHERE      statement_id = '&stmt_id'
+START WITH id = 0
+AND        statement_id = '&stmt_id'
+CONNECT BY PRIOR
+           id = parent_id
+AND        statement_id = '&stmt_id';
+
+--------------------------
+EXPLAIN PLAN METHOD 2
+--------------------------
+In SQLPlus to automatically display execution plans and helpful statistics for each statement executed:
+SET AUTOTRACE OFF|ON|TRACEONLY [EXPLAIN] [STATISTICS]
+
+With this, SqlPlus runs the statement and shows resulting rows, AND, also displays plans and statistics as follows:
+
+Execution Plan
+----------------------------------------------------------
+   0      SELECT STATEMENT Optimizer=CHOOSE (Cost=4 Card=1 Bytes=39)
+   1    0   NESTED LOOPS (Cost=4 Card=1 Bytes=39)
+   2    1     NESTED LOOPS (Cost=3 Card=1 Bytes=27)
+   3    2       TABLE ACCESS (BY INDEX ROWID) OF 'INVOICE_ITEMS' (Cost=2 Card=1 Bytes=15)
+   4    3         INDEX (UNIQUE SCAN) OF 'INVOICE_ITEMS_PK' (UNIQUE) (Cost=1 Card=2)
+   5    2       TABLE ACCESS (BY INDEX ROWID) OF 'INVOICES' (Cost=1 Card=2 Bytes=24)
+   6    5         INDEX (UNIQUE SCAN) OF 'INVOICES_PK' (UNIQUE)
+   7    1     TABLE ACCESS (BY INDEX ROWID) OF 'CUSTOMERS' (Cost=1 Card=100 Bytes=1200)
+   8    7       INDEX (UNIQUE SCAN) OF 'CUSTOMERS_PK' (UNIQUE)
+
+Statistics
+----------------------------------------------------------
+          0  recursive calls
+          0  db block gets
+          8  consistent gets
+          0  physical reads
+          0  redo size
+        517  bytes sent via SQL*Net to client
+        424  bytes received via SQL*Net from client
+          2  SQL*Net roundtrips to/from client
+          0  sorts (memory)
+          0  sorts (disk)
+          1  rows processed
+
+--------------------------
+EXPLAIN PLAN METHOD 3
+--------------------------
+dbms_xplan.display
+
+--------------------------
+EXPLAIN PLAN METHOD 4
+--------------------------
+For a sql-id in AWR report:
+select * from table(dbms_xplan.display_awr('2kvg0g1kd8vmj'));
+
+--------------------------
+EXPLAIN PLAN METHOD 5
+--------------------------
+For historical plans for the same sql - query from v$sql_plan_history (check the name) instead of plan_table
+
+--------------------------
+EXPLAIN PLAN METHOD 6
+--------------------------
+Using - dbms_xplan.display
+
+EXPLAIN PLAN
+SET STATEMENT_ID = 'abc' FOR
+SELECT DISTINCT s.srvr_id
+FROM servers s, serv_inst i
+WHERE s.srvr_id = i.srvr_id;
+
+set pagesize 25
+set linesize 121
+SELECT * FROM TABLE(dbms_xplan.display('PLAN_TABLE','abc','BASIC'));
+SELECT * FROM TABLE(dbms_xplan.display('PLAN_TABLE','abc','TYPICAL'));
+SELECT * FROM TABLE(dbms_xplan.display('PLAN_TABLE','abc','ALL'));
+
+--------------------------
+EXPLAIN PLAN METHOD 7
+--------------------------
+dbms_xplan.display_cursor

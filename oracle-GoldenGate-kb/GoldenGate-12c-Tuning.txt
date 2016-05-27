@@ -1,0 +1,38 @@
+PASSTHRU - EXTRACT, PUMP
+PARALLEL - INTEGRATED EXTRACT, REPLICATE
+
+TCPBUFSIZE
+PASSTHRU
+NFS Buffer unset
+Autorestart all three processes
+BATCHSQL
+UPDATERECORDFORMAT
+LOGALLSUPCOLS
+
+MULTIPLE REPLICATs
+
+sga size
+streams pool
+
+Keep trails
+Keep ckpt records
+Keep archlogs
+
+Alert on down processes
+L2 training
+Build team at HQ training
+
+INCREASED LAG IN ARCHLOGONLY MODE:
+OGG How to address Extract Performance Issue When Reading Archive Logs stored in Oracle ASM (Doc ID 1363266.1)
+There is a processing overhead reading archive log data from ASM using a TNS connection to the ASM instance, which is the case when you specify TRANLOGOPTIONS ASMUSER and ASMPASSWORD  to provide access can cause throughput issues in a high volume transaction system.
+================================================================================================
+https://deciphercorp.wordpress.com/2010/07/03/oracle-goldengate-best-practices-and-tips/
+================================================================================================
+TCPBUFSIZE -> Not set currently, set to 5000000 per network suggestion
+
+BATCHSQL   -> 
+You can use BATCHSQL with the BATCHTRANSOPS option to tune array sizing. BATCHTRANSOPS controls the maximum number of batch operations that can be grouped into a transaction before requiring a commit. The default for non-integrated Replicat is 1000. The default for integrated Replicat is 50. If there are many wait dependencies when using integrated Replicat, try reducing the value of BATCHTRANSOPS. To determine the number of wait dependencies, view the TOTAL_WAIT_DEPS column of the V$GG_APPLY_COORDINATOR database view in the Oracle database.
+  -> Maintains referential integrity
+  -> Groups similar sqls (like inserts/updates to same table) and applies as one transaction
+  -> Smaller changes show bigger gains like 100bytes/row
+

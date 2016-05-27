@@ -1,0 +1,198 @@
+XML PARSING IN JAVA
+
+http://www.tutorialspoint.com/java_xml/index.htm
+http://www.tutorialspoint.com/java_xml/java_dom_parse_document.htm
+
+http://www.w3schools.com/xml/xml_tree.asp
+http://www.w3schools.com/xml/xml_dtd_elements.asp
+http://www.xmlbook.info/7-DTDs-Schema.phtml
+
+ATTLIST, CDATA/PCDATA etc: http://www.w3schools.com/xml/xml_dtd_building.asp
+http://www.rpbourret.com/xml/xmldtd.htm --> DTD for XML with child elements (Calso DATA and ATTLIST like Author="anonymous")
+https://xmlwriter.net/xml_guide/element_declaration.shtml --> DTD for XML with child elements
+http://www.xmlmaster.org/en/article/d01/c03/#dtd --> DTD for XML with child elements (very good)
+http://www.informit.com/articles/article.aspx?p=169516 --> DTD for XML with child elements (employee records itself!)
+
+Editing in Eclipse IDE: http://help.eclipse.org/juno/index.jsp?topic=%2Forg.eclipse.wst.xmleditor.doc.user%2Ftopics%2Ftxedttag.html
+
+EMPLOYEE DATA - REQUIRED FORMAT (achieve using remainig sections below)
+<Employees>
+  <Employee>
+    <name>Suresh/name>
+    <dept>DBA</dept>
+    <joindate>01-01-2001</joindate>
+  </Employee>
+  <Employee>
+    <name>Ramesh</name>
+    <dept>UNIX</dept>
+    <joindate>01-01-1991</joindate>
+  </Employee>
+</Employees>
+
+========================================
+CREATING AN XML FILE - USING ECLIPSE IDE
+========================================
+
+CREATE DTD FILE
+> First, create a DTD file - 'Document Type Definition' file
+Click the project where this file should go - in the Package Explorer.  
+Then, do the following:
+File --> New  --> XML --> DTD
+Give a filename Employee_BasicData.dtd
+Click Finish
+This creates the file under the project folder.
+
+> Edit DTD
+http://www.xmlmaster.org/en/article/d01/c03/#dtd
+http://www.informit.com/articles/article.aspx?p=169516
+
+Right click the file --> Open With --> DTD Editor
+
+Example: (actual DTD for 'employees' file after this)
+--> Note: Orderform is the order with customer details [1] and product(s) [2]
+          customer [3] occurs only once
+          product [7] occurs zero or multiple times (therefore product* has a start in [2]
+          
+<!ELEMENT orderform (customer,product*)>   [1][2]
+<!ELEMENT customer (name,address,tel)>      [3]
+<!ELEMENT name (#PCDATA)>                 [4]
+<!ELEMENT address (#PCDATA)>              [4]
+<!ELEMENT tel (portable | home)>           [5]
+<!ELEMENT portable (#PCDATA)>          [6]
+<!ELEMENT home (#PCDATA)>             [6]
+
+<!ELEMENT product (product_name,num)>          [7]
+<!ELEMENT product_name (#PCDATA)>         [8]
+<!ELEMENT num (#PCDATA)>                  [9]
+
+Actual: (enter this in the dtd file)
+<!ELEMENT Employees (Employee*)>
+<!ELEMENT Employee (name, dept, joindate)>
+<!ELEMENT name (#PCDATA)>
+<!ELEMENT dept (#PCDATA)>
+<!ELEMENT joindate (#PCDATA)>
+
+CREATE XML FILE
+Click on the project in which you want to keep the file
+File --> New --> XML --> XML File
+Give a file name Employee_data.xml
+
+In the XML editor 'design view' right click and choose "Add DTD Information"
+Root Element Name - Employees
+System ID - Employee_BasicData.dtd
+
+In the 'source' view you should now see: <?xml version="1.0" encoding="UTF-8"?><!DOCTYPE Employees SYSTEM "Employee_BasicData.dtd">
+
+In the source view, start the first edit after the first line: (start editing, and it will prompt)
+<Employees></Employees>
+
+After this, come to 'design' view, and with right clicks we can add child elements and edit their values
+
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE Employees SYSTEM "Employee_BasicData.dtd">
+<Employees>
+  <Employee>
+    <name>Rajesh</name>
+    <dept>DBA</dept>
+    <joindate>01-01-2001</joindate>
+  </Employee>
+  <Employee>
+    <name>Ramesh</name>
+    <dept>UNIX</dept>
+    <joindate>01-01-1991</joindate>
+  </Employee>
+  <Employee>
+  	<name>Suresh</name>
+  	<dept>NETWORKING</dept>
+  	<joindate>01-01-1981</joindate>
+  </Employee>
+</Employees>
+
+==============================
+PARSE WITH DOM PARSER 
+==============================
+Example from - http://www.tutorialspoint.com/java_xml/java_dom_parse_document.htm
+Document factory (full example code)- http://www.java2s.com/Code/JavaAPI/javax.xml.parsers/DocumentBuilderFactory.htm (this has a code for everything in Java)  (VERY GOOD)
+Another example (DOM  and SAX parser) - http://www.javacodegeeks.com/2013/05/parsing-xml-using-dom-sax-and-stax-parser-in-java.html
+
+/**
+ * 
+ */
+package mt.demo.hr;
+import org.w3c.dom.*;
+import javax.xml.parsers.*;
+import java.io.*;
+
+/**
+ * @author username
+ * 
+ * Parses XML file of employee data and outputs formatted report
+ *
+ */
+
+public class MEmpDataXMLParse {
+	
+	public static void main (String[] args) {
+		
+		try {
+			File inputFile = new File ("src/mt/demo/hr/Employee_Data.xml");
+			DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+			DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+			
+			// create a document object from the inputfile
+			Document doc = dBuilder.parse (inputFile);
+			
+			// normalize the document which internally removes unnecessary carriage returns within elements
+			doc.getDocumentElement().normalize();
+			
+			// find the root element (employees) and print it
+	        System.out.println("Root element :" + doc.getDocumentElement().getNodeName());
+	        
+	        // get the list of employee 'blocks' in the XML as a 'NodeList' (a list of objects of Node interface)
+	        // The Node interface is the primary datatype for the entire Document Object Model
+	        NodeList nodeList = doc.getElementsByTagName("Employee");
+	        
+	        // loop through nodes in the nodeList and print elements
+	        for (int i = 0; i < nodeList.getLength(); i++) {
+	        	
+	        	// get the node - aka employee record
+	        	Node currentNode = nodeList.item(i);
+	        	//System.out.println("\nCurrent Element:" + currentNode.getNodeName());
+	        	
+	        	// Get the remaining attributes of the node
+	        	if (currentNode.getNodeType() == Node.ELEMENT_NODE) {
+	        		Element nodeElement = (Element) currentNode;
+	        		
+		        	System.out.println("\nName :" + nodeElement.getElementsByTagName("name").item(0).getTextContent());
+		        	
+		        	//NOTE: The above line prints one value for a tag. If multiple tags are there, then loop through them
+		        	//      with another 'length' and loop - length with: nodeElement.getElementsByTagName("name").getLength()
+
+		        	System.out.println("Dept :" + nodeElement.getElementsByTagName("dept").item(0).getTextContent());
+		        	System.out.println("Join Date :" + nodeElement.getElementsByTagName("joindate").item(0).getTextContent());
+
+		        	
+	        	}
+	        		        	
+	        }
+	        
+	        
+		}
+		catch (Exception e) {
+	         e.printStackTrace();
+	      }
+	}
+
+}
+
+Create a new java program/class
+Click on the project where you want to create the class
+File --> New --> Class
+Name it MEmpDataXMLPrase.java (M is for class with 'main')
+
+In that, after the package name, import the following:
+import org.w3c.dom.*;
+import javax.xml.parsers.*;
+import java.io.*;
+
+
+

@@ -1,0 +1,87 @@
+============================================================
+        BOOTSTRAPPING OPENSTACK NODES TO CHEF
+============================================================
+
+==============================
+INITIAL SETUP
+==============================
+Install kitchen-openstack plugin
+After installing the plugin to get OpenStack support for Knife, 
+you need to append some lines to the Knife config file “~/.chef/knife.rb”:
+
+(The following lines source the values from the environment, if that does not work, you can hardcode the values)
+cat >> ~/.chef/knife.rb <<EOF
+# Knife OpenStack plugin setup
+knife[:openstack_auth_url] = "#{ENV['OS_AUTH_URL']}/tokens"
+knife[:openstack_username] = "#{ENV['OS_USERNAME']}"
+knife[:openstack_password] = "#{ENV['OS_PASSWORD']}"
+knife[:openstack_tenant] = "#{ENV['OS_TENANT_NAME']}"
+EOF
+
+What these lines do is to instruct Knife to use the contents of environment variables to authenticate with OpenStack when needed. 
+The environment variables are the ones you get when you source the OpenStack RC file of your project. 
+The RC file can be downloaded from the OpenStack web UI (Horizon) 
+by navigating to Access & Security -> API Access -> Download OpenStack RC file. 
+Sourcing the file makes sure the environment variables are part of the current shell environment.
+
+For Unix, it is a file <openstack project>-openrc.sh.
+It can be adapted for Windows as a bat or ps1 file.
+
+Source in the file (unix):
+$ . project-openrc.sh
+
+NOTE: Modify this file as needed in the case of Windows/DOS command prompt
+
+Example environment set by this file:
+O:\.chef>env |grep OS
+FP_NO_HOST_CHECK=NO
+OS=Windows_NT
+OS_AUTH_URL=https://openstack.company.com:5000/v2.0
+OS_CACERT=O:\openstack\company-certificate.crt
+OS_PASSWORD=<my lan/laptop password>
+OS_TENANT_ID=ef64cd7ad72543oijsdf82d54f831sdf1
+OS_TENANT_NAME=MY_PROJECT_NAME_IN_OPENSTACK
+OS_USERNAME=myusername
+
+===============================
+LINUX NODES - using key
+===============================
+Info inferred from http://arnesund.com/2015/03/01/how-to-configure-knife-and-test-kitchen-to-use-openstack/
+
+Find out which user is set up to interact with Openstack - like cloud-user or ec2-user
+When you create the VM/instance or later assign a key to it - public will be in Openstack, private with you
+(This key can be your own generated key)
+
+knife bootstrap <ip/hostname of the node> --ssh-user <my username> --sudo --identity-file '<my private key file>' --node-name <node name or hostname>
+knife bootstrap 10.60.16.20 --ssh-user cloud-user --sudo --identity-file 'my-id-rsa' --node-name rhel71
+
+If the cloud-user (or other user) needs a password to sudo to root, then it will ask for it.  
+Otherwise, it will just go through as is.
+
+==============
+WINDOWS NODES
+==============
+Certain key prep-steps are provided below.
+For more details - look into the bootstrap-from-workstation document in chef kb folder
+https://developer.rackspace.com/blog/step-by-step-walkthrough-to-using-chef-to-bootstrap-windows-nodes-on-the-rackspace-cloud/
+
+------------
+Prep steps:
+------------
+
+In Openstack:
+First - retrieve Administrator password for the node
+  $ nova get-password <node_name> <key with full path>
+  (or get it from the GUI - not a preferred method)
+
+Then - ensure that inbound ports required for winrm (http, https) and remote desktop are enabled in the security group of the node.
+(by default, only tcp/22 will be open, either allow specific ports like 5985,5986,3389 or a large range of ports)
+  Security group name - custom_sg:
+  ALLOW IPv4 to 0.0.0.0/0
+  ALLOW IPv4 22/tcp from 0.0.0.0/0 --> this is the default/basic allowed port
+  ALLOW IPv4 icmp from 0.0.0.0/0
+  ALLOW IPv6 to ::/0
+  ALLOW IPv4 80/tcp from 0.0.0.0/0
+  ALLOW IPv4 1-65535/tcp from 0.0.0.0/0 --> this is to allow other ports also
+
+

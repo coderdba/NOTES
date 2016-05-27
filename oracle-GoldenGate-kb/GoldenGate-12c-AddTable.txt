@@ -1,0 +1,82 @@
+ADD ANOTHER TABLE TO EXTRACT
+
+http://www.dbi-services.com/index.php/blog/entry/adding-new-tables-to-an-existing-oracle-goldengate-replication
+
+NOTE: IF ADDING EMPTY TABLE, then the exp/imp, temporary-add steps are not needed. You can go to PERMANENT-ADD itself.
+
+>>Source and Destination>>
+Stop the relevant extract, pump and replicate processes
+
+>>Source>> 
+
+Edit extract parameter file, and add the new table
+ggsci> edit param ec1
+table oggsoc.table2
+
+Logon to DB and add trandata for this table
+ggsci> dblogin useridalias oggusersc
+ggsci> add trandata oggsoc.table2
+Logging of supplemental redo data enabled for table OGGSOC.TABLE2.
+TRANDATA for scheduling columns has been added on table 'OGGSOC.TABLE2'.
+
+>>Source>>
+Edit pump parameter file, and add the new table
+ggsci> edit param pc1
+table oggsoc.table2;
+
+>>Source>> Export data for initial refresh
+First, get the current SCN for the DB:
+SQL> select current_scn from v$database;
+
+CURRENT_SCN
+-----------
+1234
+
+Then, do the export for this SCN as flashback SCN:
+
+Create parameter file: expdp_oggsoc_newtables.par
+
+flashback_scn=1234
+SCHEMAS=oggsoc
+DUMPFILE=expdp_oggsoc_newtables.dmp
+LOGFILE=expdp_oggsoc_newtables.log
+INCLUDE=TABLE:"IN('TABLE2')"
+DIRECTORY=DATAPUMPDIR
+
+Start the export from the above tables as user system or sys as sysdba
+$ expdp parfile=expdp_oggsoc_newtables.par
+
+Username: system or sys as sysdba
+Password:
+
+--> wait to complete the export
+
+>>Dest>>
+Import the tables into destination schema
+
+>>Dest>> TEMPORARILY add the tables to replicate
+Edit replicate parameter file, and add the new table WITH SCN number (which is called CSN in GG)
+ggsci> edit param rc1
+Map oggsoc.table2, target oggdoc2.table2, FILTER ( @GETENV ("TRANSACTION", "CSN") > 1234
+
+ggsci> start rc1
+
+-->Wait for synch to complete
+ggsci> info all
+Program Status Group Lag Time Since Chkpt
+MANAGER RUNNING
+REPLICAT RUNNING RC1 00:00:00 00:00:00  --> no lag shows synch is done
+
+>>Dest>> PERMANENTLY add the tables to replicate
+Stop replicate process
+ggsci> stop rc1
+
+Edit replicate parameter file, remove old entries with SCN, add the new tables WITHOUT SCN number
+ggsci> edit param rc1
+Map oggsoc.table2, target oggdoc2.table2;
+
+Start replicate process
+ggsci> start rc1
+
+
+

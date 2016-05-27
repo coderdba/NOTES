@@ -1,0 +1,444 @@
+-------------------------------------------------------------
+CHEF LAB NOTES - home lab
+-------------------------------------------------------------
+-------------------------------------------------------------
+
+CONTENTS
+
+ENVIRONMENT
+CHEF-CLIENT IN LOCAL MODE
+SIMPLE LABS
+CHEF-SERVER EXTERNAL HOSTED
+LABS WITH CHEF-SERVER
+
+
+<< items to cover - runlist, kitchen, knife, json files, attributes, parameter passing... >>
+<< for json files, look up chef_solo.html and chef_client.html in docs.chef.io>>
+
+-------------------------------------------------------------
+-------------------------------------------------------------
+
+ENVIRONMENT:
+    Virtual machine - chef01
+    O/S - Oracle Linux 6
+    Chef software - chef-dk  (chefdk-0.3.4-1.x86_64)
+    Install User - root
+
+Installed chef software:
+    chef-dk
+    with chef-solo, chef-client included
+    No chef-server installed
+
+Chef scripts directories:
+    /root/chef-repo --> recipes, cookbooks in Ruby
+    /root/chef-called-scripts --> for shell and other scripts called by chef-repo scripts
+
+Chef cache:
+    /var/chef/cache (https://groups.google.com/forum/#!topic/vagrant-up/UxCHe417KcE)
+        /root/.chef also has cache for local-mode runs
+
+Chef server location config file:
+    /root/.chef/knife.rb --> need to generate knife.rb from the chef-server (see down in this notes document)
+-------------------------------------------------------------
+
+CHEF-CLIENT IN LOCAL MODE
+http://docs.chef.io/ctl_chef_client.html#run-in-local-mode
+https://docs.chef.io/chef_solo.html
+http://serverfault.com/questions/628253/chef-solo-vs-chef-client-local-mode
+
+Run in Local Mode
+
+Local mode is a way to run the chef-client against the chef-repo on a local machine as if it were running against the Chef server. Local mode relies on chef-zero, which acts as a very lightweight instance of the Chef server. chef-zero reads and writes to the chef_repo_path, which allows all commands that normally work against the Chef server to be used against the local chef-repo.
+
+Local mode does not require a configuration file, instead it will look for a directory named /cookbooks and will set chef_repo_path to be just above that. (Local mode will honor the settings in a configuration file, if desired.) If the client.rb file is not found and no configuration file is specified, local mode will search for a knife.rb file.
+
+Local mode will store temporary and cache files under the <chef_repo_path>/.cache directory by default. This allows a normal user to run the chef-client in local mode without requiring root access.
+About chef-zero
+
+chef-zero is a very lightweight Chef server that runs in-memory on the local machine. This allows the chef-client to be run against the chef-repo as if it were running against the Chef server. chef-zero was originally a standalone tool; it is enabled from within the chef-client by using the --local-mode option. chef-zero is very useful for quickly testing and validating the behavior of the chef-client, cookbooks, recipes, and run-lists before uploading that data to the actual Chef server.
+
+
+SIMPLE LABS
+
+SIMPLE LAB 1 - Create a simple one step cookbook and run the recipe
+Generate a cookbook - 
+    Go to /root/chef-repo.
+    Run "chef generate cookbook <cookbookName>"
+    It will create a subfolder with the same name as <cookbookName>
+    In that there will be a folder 'recipes' with a ruby file default.rb
+    Edit default.rb with necessary commands
+
+Run the cookbook
+    Go back to /root/chef-repo
+    Run "chef-client --local-mode --runlist 'recipe[user_group_drop_and_create]' "
+
+Example:
+    chef generate cookbook create_dir
+    Edit content of /root/chef-repo/create_dir/recipes/default.rb as follows:
+        #
+        # Cookbook Name:: create_dir
+        # Recipe:: default
+        #
+        # Copyright (c) 2014 The Authors, All Rights Reserved.
+        
+        
+        #bash "create_dir" do
+        
+        directory "/tmp/chef-create-dir" do
+        user "oracle"
+        group "dba"
+        mode "0777"
+        end
+
+        chef-client --local-mode --runlist 'recipe[create_dir]'
+        Check if /tmp/chef-create-dir has been created, assigned oracle:dba ownership and 0777 permission
+
+
+CHEF SERVER (EXTERNAL HOSTED)
+Created external hosted chef server subscription from tutorial https://learn.chef.io/rhel/get-ready-to-add-another-server/
+which led to https://manage.chef.io/signup
+userid uid/pw, email gdba@xy.com
+Set up organization - at https://manage.chef.io/ - created organization gdba with shortname gdba
+Access the hosted chef server trial at https://manage.chef.io/
+Downloaded starter-kit - chef-starter.zip
+Extracted chef-starter.zip under /root
+It created/overwrote (in my case) chef-repo under /root
+It created .chef folder under /root/chef-repo and placed various files - knife.rb, uid.pem, gdba-validator.pem
+(uid is my username, gdba is my 'organization')
+NOTE: some main config files related to chef-server (http://nathenharvey.com/blog/2012/12/06/learning-chef-part-1/)
+    knife.rb - This configuration file can be downloaded from the Organizations page.
+    ORGANIZATION-validator.pem - This private key can be downloaded from the Organizations page.
+    USER.pem - This private key an be downloaded from the Change Password section of the Account Management page.
+
+LABS WITH CHEF SERVER
+
+CHEF SERVER LAB1
+a.Add a web server
+a1.Create a webpage template
+a2.Create a webpage using template
+b.Upload the cookbook to chef server
+c.Bootstrap client to server
+d.Update the cookbook with a change and re-upload
+e.Deploy on a client (the same machine also will do)
+f.See if modifications to cookbook appear on the client
+
+a. Add a web server and a web page - https://learn.chef.io/rhel/make-your-recipe-more-manageable/
+
+Go to /root/chef-repo/cookbooks
+
+Generate cookbook - Run command 'chef generate cookbook learn_chef_httpd'
+    This will create a subfolder learn_chef_httpd and many standard folders under it
+
+Generate webpage template - chef generate template learn_chef_httpd index.html
+    This will create index.html.erb under learn_chef_httpd/templates/default
+    Edit this template with the following text
+    <html>
+    <body>
+    <h1>hello world</h1>
+    </body>
+    </html>
+
+Edit recipes/default.rb with the following: 
+(NOTE: if package is installed or service-status is already as desired, then directives are ignored)
+
+    # Install webserver (Apache) - note that it comes with Oracle Linux anyway
+    package 'httpd'
+    
+    # Start webserver       
+    service 'httpd' do
+            action [:start, :enable]
+    end
+    
+    # Create index.html for the web server sourcing the template index.html.erb file
+    template '/var/www/html/index.html' do
+            source 'index.html.erb'
+    end
+    
+    # Stop firewall
+    service 'iptables' do
+            action :stop
+    end
+
+Run the cookbook:
+    chef-client --local-mode --runlist 'recipe[learn_chef_httpd]'
+
+    NOTE: As we are registered with the chef-server, it says 'starting chef run for 'gowrishms' '
+    However, chef-client run showed the following errors:
+    [2015-01-18T16:56:10+05:30] INFO: HTTP Request Returned 404 Not Found : Object not found: /reports/nodes/gowrishms/runs
+    --> probably because this client/node is not registered in the chef-server
+    ANYWAY - index.html was copied to right place, iptable stop etc were performed
+
+Verify:
+    Verify using 'curl':  curl localhost --> should display content of index.html
+        <html>
+        <body>
+        <h1>hello world</h1>
+        </body>
+        </html>
+
+    Verify by actually with a web-browser in the client machine: http://localhost --> shoud display the page
+
+b.Upload the cookbook
+
+    Run command 'knife cookbook upload learn_chef_httpd'
+
+        Logon to the chef-server with browser: https://manage.chef.io, userid uid/pw
+    Locate cookbooks uploaded under 'policy' tab
+    Click on the cookbook to bring in details page in the bottom
+    View the folders and files under 'content' tab
+     
+c.bootstrap the node (this was done logging on to the client itself.  However, this should be possible to do from a workstation also)
+Ran this command: knife bootstrap 192.168.0.101 --ssh-user root --ssh-password root --node-name chef01vm --run-list 'recipe[learn_chef_httpd]'
+It added the node chef01.dt.com as chef01vm with IP address as NAT IP of eth2 (tool 10.0.4.15 not the 192.168.0.101)
+Page manage.chef.io --> nodes shows the following:
+Node Name - chef01vm
+Platform - oracle (means oracle Linux)
+FQDN - chef01.dt.com
+IP Address - 10.0.4.15
+Environment - _default
+    
+    Errors with bootstrap command: Debug them sometime The following messages showed up which seem to have some errors (err 500)
+    [root@chef01]# knife bootstrap 192.168.0.101 --ssh-user root --ssh-password linux123 --node-name chef01vm --run-list 'recipe[learn_chef_httpd]'
+    Connecting to 192.168.0.101
+    192.168.0.101 Starting first Chef Client run...
+    192.168.0.101 [2015-01-18T18:04:32+05:30] WARN: 
+    192.168.0.101 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+    192.168.0.101 SSL validation of HTTPS requests is disabled. HTTPS connections are still
+    192.168.0.101 encrypted, but chef is not able to detect forged replies or man in the middle
+    192.168.0.101 attacks.
+    192.168.0.101 
+    192.168.0.101 To fix this issue add an entry like this to your configuration file:
+    192.168.0.101 
+    192.168.0.101 ```
+    192.168.0.101   # Verify all HTTPS connections (recommended)
+    192.168.0.101   ssl_verify_mode :verify_peer
+    192.168.0.101 
+    192.168.0.101   # OR, Verify only connections to chef-server
+    192.168.0.101   verify_api_cert true
+    192.168.0.101 ```
+    192.168.0.101 
+    192.168.0.101 To check your SSL configuration, or troubleshoot errors, you can use the
+    192.168.0.101 `knife ssl check` command like so:
+    192.168.0.101 
+    192.168.0.101 ```
+    192.168.0.101   knife ssl check -c /etc/chef/client.rb
+    192.168.0.101 ```
+    192.168.0.101 
+    192.168.0.101 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+    192.168.0.101 
+    192.168.0.101 Starting Chef Client, version 11.16.4
+    192.168.0.101 Creating a new client identity for chef01vm using the validator key.
+    192.168.0.101 [2015-01-18T18:05:25+05:30] ERROR: Server returned error 500 for https://api.opscode.com/organizations/gowrishdba/reports/nodes/chef01vm/runs, retrying 1/5 in 4s
+    192.168.0.101 resolving cookbooks for run list: ["learn_chef_httpd"]
+    192.168.0.101 Synchronizing Cookbooks:
+    192.168.0.101   - learn_chef_httpd
+    192.168.0.101 Compiling Cookbooks...
+    192.168.0.101 Converging 4 resources
+    192.168.0.101 Recipe: learn_chef_httpd::default
+    192.168.0.101   * package[httpd] action install (up to date)
+    192.168.0.101   * service[httpd] action start (up to date)
+    192.168.0.101   * service[httpd] action enable (up to date)
+    192.168.0.101   * template[/var/www/html/index.html] action create (up to date)
+    192.168.0.101   * service[iptables] action stop (up to date)
+    192.168.0.101 
+    192.168.0.101 Running handlers:
+    192.168.0.101 Running handlers complete
+    192.168.0.101 Chef Client finished, 0/5 resources updated in 98.474964977 seconds
+  
+            
+
+d.Update the cookbook with a change and re-upload
+Added a word 'change1' in the index.html.erb file
+knife upload learn_chef_httpd
+
+e.Deploy on a client (the same machine also will do)
+    Rename the cookbook directory:
+        [root@chef01 cookbooks]# mv learn_chef_httpd learn_chef_httpd-renamed
+        [root@chef01 cookbooks]# ls -l
+        total 16
+        -rw-r--r--. 1 root root  588 Jan 14 15:48 chefignore
+        drwxr-xr-x. 4 root root 4096 Jan 18 16:46 learn_chef_httpd-renamed
+        -rw-r--r--. 1 root root 3064 Jan 15 00:36 README.md
+        drwxr-xr-x. 6 root root 4096 Jan 14 15:48 starter
+
+    Rename the index.html file in /var/www/html to index.html.renamed
+
+    Rename cached cookbook (to ensure stuff now comes from server and not cache)
+        In /var/chef/cahe/cookbooks, rename learn_chef_httpd to learn_chef_httpd-renamed
+
+    Run chef-client (now NOT in local mode)
+
+    chef-client --runlist 'recipe[learn_chef_httpd]'
+    [2015-01-18T19:37:01+05:30] WARN: 
+    * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+    SSL validation of HTTPS requests is disabled. HTTPS connections are still
+    encrypted, but chef is not able to detect forged replies or man in the middle
+    attacks.
+    
+    To fix this issue add an entry like this to your configuration file:
+    
+    ```
+      # Verify all HTTPS connections (recommended)
+      ssl_verify_mode :verify_peer
+
+      # OR, Verify only connections to chef-server
+      verify_api_cert true
+    ```
+    
+    To check your SSL configuration, or troubleshoot errors, you can use the
+    `knife ssl check` command like so:
+    
+    ```
+      knife ssl check -c /etc/chef/client.rb
+    ```
+    
+    * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+    
+    Starting Chef Client, version 11.16.4
+    resolving cookbooks for run list: ["learn_chef_httpd"]
+    Synchronizing Cookbooks:
+      - learn_chef_httpd
+    Compiling Cookbooks...
+    Converging 4 resources
+    Recipe: learn_chef_httpd::default
+      * package[httpd] action install (up to date)
+      * service[httpd] action start (up to date)
+      * service[httpd] action enable (up to date)
+      * template[/var/www/html/index.html] action create
+        - create new file /var/www/html/index.html
+        - update content in file /var/www/html/index.html from none to 3c538c
+        --- /var/www/html/index.html    2015-01-18 19:37:59.385563353 +0530
+        +++ /tmp/chef-rendered-template20150118-5573-6s2o1x    2015-01-18 19:37:59.389563352 +0530
+        @@ -1 +1,6 @@
+        +<html>
+        +<body>
+        +<h1>hello world - by me - change 1</h1>
+        +</body>
+        +</html>
+        - restore selinux security context
+      * service[iptables] action stop (up to date)
+    
+    Running handlers:
+    Running handlers complete
+    Chef Client finished, 1/5 resources updated in 66.206700739 seconds    
+            
+f.See if modifications to cookbook appear on the client
+Check if /var/www/html got the new index.html file --> success
+Check if webpage refresh shows the new page --> success
+Check if chef-cache has the new cookbook --> success, also, the old renamed one was cleaned up automatically
+
+------------------------------------------
+DOWNLOAD COOKBOOKS FROM CHEF-SERVER (not default opscode server)
+
+knife download command usually goes to opscode site instead of own chef-server
+Therefore, generate knife.rb file for the organization in the knife-server management site
+    Go to https://manage.chef.io/
+    Go to 'Administration' tab
+    Choose the organization gdba
+    On left hand pane, click 'generate knife config'
+    It generates knife.rb and allows to download it
+    Either copy the downloaded file or its content to /root/.chef/knife.rb on the client machine
+
+Copy knife.rb into ~/.chef directory - that is to /root/.chef directory
+Content of generated knife.rb file:
+    # See https://docs.chef.io/config_rb_knife.html for more information on knife configuration options
+    
+    current_dir = File.dirname(__FILE__)
+    log_level                :info
+    log_location             STDOUT
+    node_name                "uid"
+    client_key               "#{current_dir}/uid.pem"
+    validation_client_name   "gdba-validator"
+    validation_key           "#{current_dir}/gdba-validator.pem"
+    chef_server_url          "https://api.opscode.com/organizations/coderdba"
+    cache_type               'BasicFile'
+    cache_options( :path => "#{ENV['HOME']}/.chef/checksums" )
+    cookbook_path            ["#{current_dir}/../cookbooks"]
+
+Now, download cookbook learn_chef_httpd available in chef-server 
+    NOTE: knife cookbook site download learn_chef_httpd was mentioned in the tutorial (https://learn.chef.io/rhel/get-ready-to-add-another-server/)
+        However, left out 'site' keyword to see how it goes - no issues happened - see below
+
+    [root@chef01 cookbooks]# knife cookbook download learn_chef_httpd
+    Downloading learn_chef_httpd cookbook version 0.1.0
+    Downloading resources
+    Downloading providers
+    Downloading recipes
+    Downloading definitions
+    Downloading libraries
+    Downloading attributes
+    Downloading files
+    Downloading templates
+    Downloading root_files
+    Cookbook downloaded to /root/chef-repo/cookbooks/learn_chef_httpd-0.1.0
+
+Edit the template index.html.erb to introduce a change - modify word change1 to change2
+
+Upload the updated cookbook
+First rename the folder from learn_chef_httpd-0.1.0 to learn_chef_httpd
+Then run the upload command - 'knife cookbook upload learn_chef_httpd'
+(this gave an error and seemed to work upon a self-retry - see below)
+    Uploading learn_chef_httpd [0.1.0]
+    ERROR: Server returned error 500 for https://api.opscode.com/organizations/gowrishdba/sandboxes/fbc2a836c98cc6960e11ecbf19f375e5, retrying 1/5 in 3s
+    Uploaded 1 cookbook.
+
+Re-install updated cookbook from server
+    Rename the cookbook directory again to ensure local cookbook is not picked up
+    Run command: chef-client --runlist 'recipe[learn_chef_httpd]'
+
+    [root@chef01 cookbooks]# chef-client --runlist 'recipe[learn_chef_httpd]'
+    [2015-01-18T20:07:57+05:30] WARN: 
+    * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+    SSL validation of HTTPS requests is disabled. HTTPS connections are still
+    encrypted, but chef is not able to detect forged replies or man in the middle
+    attacks.
+    
+    To fix this issue add an entry like this to your configuration file:
+    
+    ```
+      # Verify all HTTPS connections (recommended)
+      ssl_verify_mode :verify_peer
+    
+      # OR, Verify only connections to chef-server
+      verify_api_cert true
+    ```
+    
+    To check your SSL configuration, or troubleshoot errors, you can use the
+    `knife ssl check` command like so:
+    
+    ```
+      knife ssl check -c /etc/chef/client.rb
+    ```
+    
+    * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+    
+    Starting Chef Client, version 11.16.4
+    resolving cookbooks for run list: ["learn_chef_httpd"]
+    Synchronizing Cookbooks:
+      - learn_chef_httpd
+    Compiling Cookbooks...
+    Converging 4 resources
+    Recipe: learn_chef_httpd::default
+      * package[httpd] action install (up to date)
+      * service[httpd] action start (up to date)
+      * service[httpd] action enable (up to date)
+      * template[/var/www/html/index.html] action create
+        - update content in file /var/www/html/index.html from 3c538c to 4746c3
+        --- /var/www/html/index.html    2015-01-18 19:37:59.389563352 +0530
+        +++ /tmp/chef-rendered-template20150118-6024-15vmqcl    2015-01-18 20:08:46.410494952 +0530
+        @@ -1,6 +1,6 @@
+         <html>
+         <body>
+        -<h1>hello world - by me - change 1</h1>
+        +<h1>hello world - by me - change 2</h1>
+         </body>
+         </html>
+        - restore selinux security context
+      * service[iptables] action stop (up to date)
+    
+    Running handlers:
+    Running handlers complete
+    Chef Client finished, 1/5 resources updated in 57.319873645 seconds
+            
+Verify looking into the /var/www/html/index.html and refreshing the page in browser --> success!
+

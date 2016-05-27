@@ -1,0 +1,268 @@
+===========================================================
+INSTALL CONFIGURE APACHE (redhat)
+===========================================================
+
+SITES:
+http://serverfault.com/questions/547836/location-of-index-html-centos-6
+
+SECTIONS:
+Install using Yum
+Install specific versions by non-yum methods (TBD)
+Port forwarding from host to NAT networked VM guest that is running httpd
+Configuration
+PHP integration
+Multiple webservers (IP and/or port based differentiation)
+
+-----------------
+INSTALL USING YUM
+-----------------
+Note: This may not install the latest depending upon yum repositories
+
+$ yum install httpd
+
+------------------------------------
+INSTALLING USING SOURCE
+------------------------------------
+http://httpd.apache.org/docs/2.4/install.html
+
+Download source: http://httpd.apache.org/download.cgi#apache24
+  httpd-2.4.18.tar.bz2
+  
+Download APR and APR-Util: (info from http://stackoverflow.com/questions/9436860/apache-httpd-setup-and-installation)
+  http://apr.apache.org/download.cgi
+    APR       - apr-1.5.2.tar.bz2 
+    APR-Util  - apr-util-1.5.4.tar.bz2
+  
+Unpack Source to /tmp/httpd-2.4.18 (this is the httpd_source_tree_root below)
+Unpack APR to /httpd_source_tree_root/srclib/apr
+Unpack APR-Util to /httpd_source_tree_root/srclib/apr-util
+
+Install PCRE: (Perl Compatible Regular Expressions)
+  http://pcre.org/ -->
+  http://sourceforge.net/projects/pcre/files/ -->
+  http://sourceforge.net/projects/pcre/files/latest/download?source=files
+  
+
+Go to httpd_source_tree_root
+$ ./configure --with-included-apr
+$ make
+$ make install
+
+-------
+START
+-------
+$ service httpd start
+
+$ ps -ef |grep httpd
+
+-------------------
+CHECK-CHANGE PORT
+-------------------
+
+Check port used: (shows 80 by default)
+
+$ netstat -anp |head
+
+Active Internet connections (servers and established)
+Proto Recv-Q Send-Q Local Address               Foreign Address             State       PID/Program name
+tcp        0      0 0.0.0.0:22                  0.0.0.0:*                   LISTEN      1426/sshd
+tcp        0      0 127.0.0.1:25                0.0.0.0:*                   LISTEN      1502/master
+tcp        0      0 10.0.2.15:22                10.0.2.2:63078              ESTABLISHED 1596/sshd
+tcp        0      0 :::80                    :::*                        LISTEN      1709/httpd
+
+Change port:
+Edit /etc/httpd/conf/httpd.conf
+
+Change file entry as follows:
+  #Listen 80
+  Listen 50000
+
+Restart
+
+$ service httpd restart
+
+------------------------
+CONNECT
+------------------------
+
+In browser:
+http://localhost:5000
+
+--------------------------------------------
+PORT FORWARDING FROM HOST TO GUEST USING NAT
+--------------------------------------------
+This is for VMs that host Apache, and have only NAT networking.  NAT does not allow host to connect to guest directly.
+
+In Virtualbox, for the NAT adapter configure 'port forwarding'
+Add one or more rules
+Rule1 - for http  - Host port 80 (or other?)  - Guest port 50000 (or other that is set in VM)
+Rule2 - for https - Host port 443 (or other?) - Guest port 50500 (or other that is set in VM)
+
+Restart VM 
+
+-------------------
+CONNECT TO SITE
+-------------------
+Connect from host machine browser:
+http://localhost:80  --> this should take it to Apache or other default page in the VM httpd
+
+---------------------------------------------------
+SUPPRESS APACHE PAGE AND DISPLAY YOUR OWN MAIN PAGE
+---------------------------------------------------
+If index.html is not in /var/www/html then website will display /var/www/error/noindex.html which is the Apache page
+
+To suppress Apache page, do one of the following:
+1. Create an index.html in /var/www/html
+2. Edit /etc/httpd/conf.d/welcome.html and comment out the lines as per instructions in that file
+3. Restart httpd
+    $ service httpd restart
+
+--------------------------
+VIRTUAL HOSTS - QUICK ONE
+--------------------------
+Initially shows as follows, as here is no custom virtual host configured now.
+
+$ apachectl -S
+
+  httpd: Could not reliably determine the server's fully qualified domain name, using 192.168.65.51 for ServerName
+  VirtualHost configuration:
+  Syntax OK
+
+Edit httpd.conf for a new 'site':  (https://httpd.apache.org/docs/2.2/vhosts/examples.html)
+
+Step1: Mention that this will now be with virtual hosts by adding/uncommenting the following line in httpd.conf:
+  NameVirtualHost *:80 (or other port)
+  or
+  NameVirtualHost IP-Address:80 (or other port)
+
+Step2: Add virtual hosts to httpd.conf:
+  <VirtualHost *:50000>
+      ServerAdmin gdba@yahoo.com
+      DocumentRoot /var/www/coder.com/public_html
+      ServerName www.coder.com
+      ServerAlias coder.com
+      ErrorLog /var/www/coder.com/error.log
+      CustomLog /var/www/coder.com/requests.log common
+  </VirtualHost>
+
+Create index.html in /var/www/coder.com/public_html
+
+Connect to localhost (if to VM via  NAT) or the right IP of the httpd server, then you should see the new index.html in /var/www/coder.com/public_html
+
+List servers running:
+
+$ apachectl -S
+  httpd: Could not reliably determine the server's fully qualified domain name, using 192.168.65.51 for ServerName
+  VirtualHost configuration:
+  wildcard NameVirtualHosts and _default_ servers:
+  *:50000                www.coder.com (/etc/httpd/conf/httpd.conf:1013)
+  Syntax OK
+
+------------------------------
+CREATE VIRTUAL HOSTS 
+------------------------------
+http://httpd.apache.org/docs/2.4/vhosts/
+
+-----------------------
+NAME BASED VIRTUAL HOST
+-----------------------
+http://httpd.apache.org/docs/2.4/vhosts/name-based.html
+http://www.cyberciti.biz/faq/warn-_default_-virtualhost-overlap-port80-first-hasprecedence/ 
+      --> related to first getting precedence - needs NameVirtualHost line added/uncommented
+
+Mention that this will now be with virtual hosts by adding/uncommenting the following line in httpd.conf:
+  NameVirtualHost *:80 (or other port)
+  or
+  NameVirtualHost IP-Address:80 (or other port)
+
+Create a folder /var/www/sites to contain various sites' content:
+
+  Later, create subfolders for each site under this 
+    --> and each of those can contain the following subfolders
+      --> cgi-bin, error, html, icons (which are standard provided in /var/www when Apache gets installed)
+    
+Edit /etc/httpd/conf/httpd.conf with the following entries:
+
+<VirtualHost *:50001>
+    #ServerAdmin webmaster@dummy-host.example.com
+    DocumentRoot /var/www/sites/coderx.com/html
+    ServerName www.coderx.com
+    ServerAlias coderx.com
+    ErrorLog logs/coderx.com-error_log
+    CustomLog logs/coderx.com-access_log common
+</VirtualHost>
+
+<VirtualHost *:50001>
+    ##ServerAdmin webmaster@dummy-host.example.com
+    DocumentRoot /var/www/sites/coder.com/html
+    ServerName www.coder.com
+    ServerAlias coder.com
+    ErrorLog logs/coder.com-error_log
+    CustomLog logs/coder.com-access_log common
+</VirtualHost>
+
+Create index.html:
+In both DocumentRoot's above --> have slightly different content to distinguish
+
+Restart httpd:
+$ service httpd restart
+
+List the virtual hosts:
+  [root@webapp1 conf]# apachectl -S
+  httpd: Could not reliably determine the server's fully qualified domain name, using 192.168.65.51 for ServerName
+  VirtualHost configuration:
+  wildcard NameVirtualHosts and _default_ servers:
+  *:80                   is a NameVirtualHost
+           default server www.coderx.com (/etc/httpd/conf/httpd.conf:1016)
+           port 80 namevhost www.coderx.com (/etc/httpd/conf/httpd.conf:1016)
+                   alias coderx.com
+           port 80 namevhost www.coder.com (/etc/httpd/conf/httpd.conf:1025)
+                   alias coder.com
+  Syntax OK
+    
+  NOTE:  The numbers 1013, 1022 in the brackets above are line numbers in  httpd.conf for those virtual host configurations
+  
+Edit /etc/hosts of your browser machine (laptop or other machine like Kubuntu VM):
+  Point the IP address of the Apache server host to www.coder.com, coder.com, www.coderx.com, coderx.com
+  (If using port-forwarding, use 127.0.0.1 instead of Apache server host IP)
+  
+Connect to the host+port via browser: (if port is 80, port is not needed)
+http://ApaccheHost:50001 (or http://localhost:50001 --> assuming NAT port forwarding is via same port number for host and guest)
+
+http://host:port --> gives first Virtual Host active in the list
+http://virtualhost:port --> gives the virtual host if active
+
+-----------------------------------------------------------------------
+- - - - - >> CONFIGURATION INFORMATION HERE ONWARDS << - - - - -  
+
+----------------------------
+CONFIGURATION INFORMATION
+----------------------------
+
+Files and Directories:
+---------------------
+Configuration directory: /etc/httpd
+  drwxr-xr-x 2 root root 4096 Dec 13 10:07 conf
+  drwxr-xr-x 2 root root 4096 Dec 13 10:11 conf.d
+  lrwxrwxrwx 1 root root   19 Dec 12 08:00 logs -> ../../var/log/httpd
+  lrwxrwxrwx 1 root root   29 Dec 12 08:00 modules -> ../../usr/lib64/httpd/modules
+  lrwxrwxrwx 1 root root   19 Dec 12 08:00 run -> ../../var/run/httpd
+
+Configuration File:  /etc/httpd/conf/httpd.conf
+  Main html directory:  DocumentRoot "/var/www/html" --> mentioned in the configuration file
+  Main webserver document/image/program directory: /var/www
+      Subdirectories:
+      drwxr-xr-x 2 root root 4096 Aug 13  2013 cgi-bin
+      drwxr-xr-x 3 root root 4096 Dec 12 08:00 error
+      drwxr-xr-x 2 root root 4096 Aug 13  2013 html
+      drwxr-xr-x 3 root root 4096 Dec 12 08:00 icons
+    
+Directory - /etc/httpd/conf.d
+  Welcome page --> if no index.html is there, then a default Apache welcome page is displayed. 
+    /etc/httpd/conf.d/welcome.conf
+    To suppress it, comment out stuff in welcome.conf
+
+Log directory: /var/log/httpd
+
+Users and Groups:
+----------------

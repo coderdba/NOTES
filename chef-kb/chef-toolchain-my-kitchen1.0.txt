@@ -1,0 +1,314 @@
+========================================================================
+CHEF TOOLCHAIN - my KITCHEN
+========================================================================
+
+Based on Bill's kitchen framework.
+
+REFER TO chef-toolchain-2016.txt - for all tools essential and good-to-have
+
+===========================================
+PACKAGING FOR ZIP  BASED RE-DEPLOYMENT 
+===========================================
+Some installs are 'installer based' and need ADMIN privileges to install
+Some are unzips.  
+However, once installed, copying the folder off to another location seems to still work.
+
+----------------------------
+INSTALL
+----------------------------
+Install all tools in one folder
+  C:/Opt/Chef-Toolchain/my-kitchen-1.0/Tools as the base directory for all installs - whether installer or unzip
+Create auxiliary folders under C:/Opt/my-kitchen-1.0:
+  home --> will have .ssh, .chefdk, .gem, .vagrant.d
+  cookbooks --> will have cookbook folders
+  
+  
+----------
+PACKAGE
+----------
+Package my-kitchen-1.0 into a zip file - for distribution to other users
+
+------------------------------------------
+UNZIP - TO BE DONE BY USER OF THE ZIP FILE
+------------------------------------------
+Unzip it into C:/Opt/Chef-Toolchain resulting in C:/Opt/Chef-Toolchain/my-kitchen-1.0
+
+
+NEXT VERSION - try install directly into C:/Opt/Chef-Toolchain/my-kitchen-2.0 
+                and zip the full path Chef-Toolchain/my-kitchen2.0 for re-deploy elsewhere
+
+=====================================
+ESSENTIAL INSTALLS
+=====================================
+---------
+Core list - except Virtualbox: (These go into the chef-toolchain directory)
+---------
+Chef Development Kit (Chef DK)
+Vagrant
+Vagrant Plugins
+ConEmu
+Atom Editor
+Cygwin
+Portable Git
+Putty
+
+----------
+Virtualbox - NOTE - DO NOT INSTALL INTO chef-toolchain DIRECTORY - INSTALL ELSEWHERE OR STANDARD 'Program Files' location
+----------
+
+-------
+HELPERS
+-------
+7-zip
+
+----------------------------------------
+ADDITIONAL GEMS/PLUGINS TO INSTALL
+----------------------------------------
+gem - knife-windows
+gem - kitchen-ssh
+gem - kitchen-openstack
+
+plugin - vagrant-berkshelf
+
+=================================
+HIGH LEVEL STEPS
+=================================
+Create folders
+Install virtualbox
+Install essential installs
+Create environment file
+Open command-prompt
+Source environment file
+Install additional gems/plugins
+Copy cacerts.pem
+Test by creating a cookbook, vm and recipe
+
+===============================
+CREATE FOLDERS
+===============================
+C:\Opt
+C:\Opt\chef-toolchain
+C:\Opt\chef-toolchain\my-kitchen-1.0
+--> under this, create the following subfolders
+Tools
+home
+cookbooks
+
+Description:
+'root' directory: C:\Opt\chef-toolchain\my-kitchen-<version> 
+subfolder: 'tools' for all software like ChefDK, Vagrant, PortableGit...
+subfolder: 'cookbooks' (you may use a different one) for cookbooks
+subfolder: 'home' for workareas for tools, cacert.pem file etc
+
+NOTE: 'home'\.chefdk will be another subdirectory for chef-work area and additional gems to be installed
+- newly introduced (from 0.7.0) CHEFDK_HOME
+- all ChefDK commands that cache cookbooks, gems and other items now look for them in this location
+
+================================
+INSTALL
+================================
+Install Virtualbox 
+- NOT INTO c:\opt\chef-toolchain\my-kitchen-1.0 or c:\opt\chef-toolchain.
+- Install it as a standalone software into its standard location or to c:\Opt\Virtualbox and such.
+
+Install the core tools 
+- into c:\opt\chef-toolchain\my-kitchen-1.0\Tools (or my-kitchen-<version>)
+- Use installer or unzip as mandated by the individual tools
+
+Install Vagrant Plugins
+
+==================================
+CREATE ENVIRONMENT SETTING FILE
+==================================
+Create setenv.bat in c:\opt\chef-toolchain\my-kitchen-<version>
+- Contents in separate section SETENV.BAT below
+
+==================================
+INSTALL CACERT.PEM
+==================================
+Download cacert.pem from https://curl.haxx.se/docs/caextract.html
+--> https://curl.haxx.se/ca/cacert.pem
+
+Copy it to C:\Opt\chef-toolchain\my-kitchen-1.0\home\cacert.pem
+Ensure that this is the path provided for SSL_CERT_FILE in the environment-setter file (setenv.bat)
+
+===================================
+OPEN CMD PROMPT AND SET ENVIRONMENT
+===================================
+Get a dos command prompt by running 'cmd'
+Go to directory c:\chef-toolchain\my-kitchen-<version>
+Run environment setenv.bat
+Provide your name (FirstnameLastname as in git) and email address (given for git) when prompted for git configuration
+You should be set to use the stuff now
+
+===================================
+INSTALL ADDITIONAL GEMS/PLUGINS
+===================================
+Source the environment
+$ gem install knife-windows
+$ vagrant plugin install vagrant-berkshelf
+
+===================================
+TEST
+===================================
+CREATE A COOKBOOK
+- Go to cookbooks directory
+- Create a cookbook:
+- $ berks cookbook cbtest1
+- Edit Vagrantfile to choose the right box (if using chef/ubuntu replace it with bento/ubuntu)
+- Bring up the machine:
+- $ vagrant up
+- Make sure that chef-client installs into the VM during vagrant up
+- Write a recipe in recipes/default.rb
+- Run the recipe:
+- $ vagrant provision
+
+=============================
+SETENV.BAT
+=============================
+rem ------------------------------------------------------
+rem setenv.bat
+rem
+rem environment file for my's chef kitchen
+rem
+rem keep this file in the root directory
+rem ------------------------------------------------------
+rem Installation design:
+rem
+rem 'root' directory: C:\Opt\my-kitchen-<version> 
+rem subfolder: 'tools' for all software like ChefDK, Vagrant, PortableGit...
+rem subfolder: 'tools\newgems' for new gems (GEM_HOME) - not to overwrite gems in chefdk, vagrant etc
+rem subfolder: 'cookbooks' (you may use a different one) for cookbooks
+rem subfolder: 'home' for workareas for tools, cacert.pem file etc
+rem
+rem You can create .chef in 'root' or 'home' directory or elsewhere that suites
+rem
+rem ------------------------------------------------------
+
+@echo off
+
+rem root directory
+set rootdir=%~dp0
+
+rem other directories
+rem - toolsdir does not need a backslash after rootdir as rootdir would already have it
+set toolsdir=%rootdir%Tools
+set cookbooksdir=%rootdir%cookbooks
+
+rem note: define HOME in uppercase as some tools look for HOME env variable
+set HOME=%rootdir%home
+
+rem tool specific directories
+set atomdir=%toolsdir%\atom-windows
+set chefdkdir=%toolsdir%\chefdk
+set conemudir=%toolsdir%\ConEmuPack.150813.g
+set cygwindir=%toolsdir%\cygwin64
+set gitdir=%toolsdir%\PortableGit
+set puttydir=%toolsdir%\putty
+set vagrantdir=%toolsdir%\Vagrant
+
+rem DID NOT set "newgemsdir=%toolsdir%\newgems"
+rem - as it seems prefereable to set it to same as CHEFDK_HOME
+
+rem ====================================
+rem tool specific homes (work-areas for tools)
+
+rem ------------------------------------
+rem chefdk
+rem - newly introduced (from 0.7.0) CHEFDK_HOME
+rem - All ChefDK commands that cache cookbooks, gems and other items 
+rem - now look for them in this location
+set CHEFDK_HOME=%HOME%\.chefdk
+
+rem ------------------------------------
+rem gem home and path
+rem note - make gems in chefdk as primary in GEM_ROOT
+rem        and latest gems in GEM_HOME as first in GEM_PATH
+set GEM_HOME=%CHEFDK_HOME%\gem\ruby\2.1.0
+set GEM_ROOT=%chefdkdir%\embedded\lib\ruby\gems\2.1.0
+set GEM_PATH=%GEM_HOME%;%GEM_ROOT%
+
+rem ------------------------------------
+rem virtualbox 
+rem - use user's windows home 
+rem - otherwise it will be confused if this kitchen is mounted 
+rem - as a different drive and then unmounted
+set VBOX_USER_HOME=%USERPROFILE%
+
+rem ------------------------------------
+rem vagrant
+
+rem VAGRANT_HOME keeps box images also in boxes subfolder
+rem - if you prefer alternative location as boxes can be large, use a different directory
+rem - if not set then it defaults to %USERPROFILE%
+set VAGRANT_HOME=%HOME%\.vagrant.d
+
+rem vagrant - trick vagrant to detect colored output for Windows
+rem https://github.com/mitchellh/vagrant/blob/7ef6c5d9d7d4753a219d3ab35afae0d475430cae/lib/vagrant/util/platform.rb#L89
+set ANSICON=true
+
+rem ------------------------------------
+rem cygwin
+rem set proper TERM to not break `vagrant ssh` terminal
+rem see https://github.com/tknerr/bills-kitchen/issues/64
+set TERM=cygwin
+
+rem cygwin - mute the cygwin warning which otherwise comes on `vagrant ssh`
+set CYGWIN=nodosfilewarning
+
+rem ------------------------------------
+rem certificates (keep updated cacert.pem in HOME)
+set SSL_CERT_FILE=%HOME%\cacert.pem
+
+rem ------------------------------------
+rem git - portable git
+
+rem portable-git looks for %HOME%\.gitconfig
+rem - HOME is already set before in this file which is rootdir\home
+
+rem git configuration
+rem prompt for .gitconfig username/email
+FOR /F "usebackq tokens=*" %%a IN (`cmd /C %GITDIR%\cmd\git config --get user.name`) DO SET GIT_CONF_USERNAME=%%a
+if "%GIT_CONF_USERNAME%"=="" (
+  set /p GIT_CONF_USERNAME="Your Name (will be written to %HOME%\.gitconfig):"
+)
+FOR /F "usebackq tokens=*" %%a IN (`cmd /C %GITDIR%\cmd\git config --get user.email`) DO SET GIT_CONF_EMAIL=%%a
+if "%GIT_CONF_EMAIL%"=="" (
+  set /p GIT_CONF_EMAIL="Your Email (will be written to %HOME%\.gitconfig):"
+)
+rem write to .gitconfig
+cmd /C %GITDIR%\cmd\git config --global --replace user.name "%GIT_CONF_USERNAME%"
+cmd /C %GITDIR%\cmd\git config --global --replace user.email "%GIT_CONF_EMAIL%"
+
+rem ---------------------------------------
+rem PATH
+set PATH=%chefdkdir%\bin;%CHEFDK_HOME%\gem\ruby\2.1.0\bin;%chefdkdir%\embedded\bin;%vagrantdir%\bin;%vagrantdir%\embedded\bin;%gitdir%\cmd;%atomdir%\Atom;%puttydir%;%cygwindir%\bin;%VBOX_MSI_INSTALL_PATH%;%PATH%
+
+rem ---------------------------------------
+rem aliases
+@doskey vi=atom $*
+
+:: ------------------------------------
+:: echo all main settings
+echo -
+echo -
+echo -
+echo --------------------------
+echo main settings echoed below
+echo ---------------------------
+echo Toolchain HOME=%HOME%
+echo User HOME=%USERPROFILE%
+echo Virtualbox VBOX_USER_HOME=%VBOX_USER_HOME%
+echo ----
+echo GEM_ROOT=%GEM_ROOT%
+echo GEM_HOME=%GEM_HOME%
+echo GEM_PATH=%GEM_PATH%
+echo ----
+echo gitconfig file=%HOME%\.gitconfig
+echo ----
+echo PATH=%PATH%
+echo ---------------------------
+
+@echo on
+
+rem ---- end of file ----

@@ -1,0 +1,173 @@
+=================================================
+        BOOTSTRAPPING TO CHEF SERVER
+=================================================
+
+NOTE - SEE ALSO Chef-Notes-Advanced.txt
+
+Three files are needed:
+knife.rb
+<organization>-validator.pem
+<chef server username>.pem
+
+-------------------
+CHEF SERVER ACCOUNT
+-------------------
+Create an account in your chef-server, with the email address to use
+Public hosted chef - https://getchef.opscode.com
+
+-----------------
+ORGANIZATION
+-----------------
+Create an organization - say, g (comp) or gdba (pub)
+
+Click on 'administration' tab - it will list the organizations
+Click on the required organization from the list
+
+==========================
+VALIDATOR AND KNIFE FILES
+==========================
+
+HINT- DO THIS ONCE AND SAVE ALL FILES IN A SAFE PLACE
+CAUTION - in particular, the organization pem file better be not lost
+
+------------------------------
+DOWNLOADING USING STARTER-KIT
+------------------------------
+Go to the specific organization
+Click on the left hand pane 'starter kit'
+It will warn - "Your user and organization keys will be reset. Are you sure you want to do this?"
+--> BOTH user and organization keys will be reset
+Download the chef-starter.zip
+It contains a folder structure as follows in it:
+chef-repo/ --> .chef/ --> <userid>.pem, <organization>-validator.pem, knife.rb
+chef-repo/ --> cookbooks/
+chef-repo/ --> roles/
+chef-repo/ --> .gitignore
+chef-repo/ --> README.md
+
+> WHERE TO COPY THEM TO:
+If using unix or windows, this can be extracted as is - OR - only contents under chef-repo can be placed in working folder
+--> THAT IS, into the folder that contains cookbook
+Example:
+Note that both .chef and cookbooks be in the same folder
+chef-repo/.chef
+chef-repo/cookbooks
+
+In Bill's Kitchen - it could be .chef under O:/home if creating cookbooks folder or O:/ itself to keep cookbooks under O:/
+
+NOTE: In knife.rb, you can change cookbook folder path to be absolute path of choice than its default relative path
+
+-------------------------
+DOWNLOADING ONE AT A TIME
+-------------------------
+NOTE: Download one by one, and use the layout as described under starter-kit method
+
+NOTE: The steps below show how to generate the three files separately.
+        An alternative is to download 'starter kit' which contains .chef folder and the three files under it zipped in a file
+        --> HOWEVER, this will reset the validator key.  
+        --> If you DO NOT want to reset it, then you can generate only the needed files and use the old working validator file
+--------
+KNIFE.RB
+--------
+Click on the 'Generate Knife Config' on the left hand side panel
+--> Save the generated file into a safe location
+
+Contents of the file:
+  # See https://docs.getchef.com/config_rb_knife.html for more information on knife configuration options
+  
+  current_dir = File.dirname(__FILE__)
+  log_level                :info
+  log_location             STDOUT
+  node_name                "<userid>"
+  client_key               "#{current_dir}/<userid>.pem"
+  validation_client_name   "<organization>-validator"
+  validation_key           "#{current_dir}/<organization>-validator.pem"
+  chef_server_url          "https://chef-server.company.com/organizations/<organization>"
+  cookbook_path            ["#{current_dir}/../cookbooks"]
+
+----------------------------
+<ORGANIZATOIN>-VALIDATOR.PEM
+----------------------------
+Click on the 'Reset Validator Key' 
+(CAUTION - IF YOU HAVE USED A DIFFERENT VALIDATOR KEY BEFORE, THIS RESET WILL STOP THOSE SETUPS FROM WORKING ANYMORE)
+  It will display a caution - Please note that the current key for <org>-validator 
+  will no longer be accepted after resetting its key. Are you certain you want to continue?
+--> If you have the previously generated validator.pem saved and available THEN DONT CONTINUE - USE THE OLD ONE ITSELF
+--> Let us assume we have lost the old one, then continue - press the button "Reset Key"
+
+-->--> SAVE TO A SAFE LOCATION the key that shows up as <organization>-validator.pem --> like g-validator.pem
+
+---------------
+<USERID>.PEM
+---------------
+Go to user profile page
+  From the 'signed in as <user name>' --> drop down --> My Profile
+  
+You will see the 'public key' listed in the bottom right side
+--> DO NOT USE THAT PUBLIC KEY --> YOU NEED THE PRIVATE KEY
+--> click 'reset key' and that will pop-up a new private key
+Copy that private key into <userid>.pem
+
+Copy the key and SAVE TO A SAFE LOCATION as <userid>.pem
+NOTE - userid is the userid used to logon to the chef-server (it could be your LAN ID if LDAP authenticated in your company)
+
+==================
+USING THESE FILES - BASICS - BOOTSTRAP IN THE FOLLOWING SECTION
+==================
+Prep in Bill's kitchen:
+Copy all contents of chef-starter.zip to under O:\
+
+This should create a folder O:\.chef with knife.rb, chef-userid.pem and chef-org-validator.pem
+Usually knife.rb shows cookbook-directory as ..\cookbooks as the default location
+For convenience, you can place the .pem files of server private keys also in this O:\.chef directory
+
+------------------------------
+UPLOAD COOKBOOK TO CHEF SERVER
+------------------------------
+O:\>knife cookbook upload test1
+Uploading test1        [0.1.0]
+Uploaded 1 cookbook.
+
+Verify - Logon to chef server --> go to 'Policy' tab 
+                --> click 'Cookbooks' on left hand panel --> you should see the cookbook in right hand side panel
+
+===============================
+BOOTSTRAP CLIENT TO CHEF SERVER
+===============================
+
+https://docs.chef.io/install_bootstrap.html
+Also see Chef-Notes-Advanced.txt
+
+Two methods:
+  Bootstrapping directly from guest
+  Bootstrapping from workstation
+  
+---------------------------------
+Bootstrapping directly from guest
+---------------------------------
+1.	Download chef-starter.zip into ~/cookbooks/<node cookbook folder> like ~/cookbooks/node1
+2.	Logon to client VM by ‘vagrant ssh’
+3.	Sudo to ‘root’ in client
+4.	Unzip chef-starter.zip into /root folder
+5.	This will create chef-repo under /root and  .chef folder under /root/chef-repo, and knife.rb, 
+			the pem files etc will be placed under that .chef folder
+6. BOOTSTRAP:  
+    Logon/sudo as root
+    Go to /root/chef-repo folder
+   	a.	Bootstrap without runlist:
+   	
+   	    With NAT network address:
+				# knife bootstrap 10.0.2.15 –ssh-user root –ssh-password root –node-name node1  
+				
+				With other network address:
+				# knife bootstrap 192.168.65.10 –ssh-user root –ssh-password root –node-name node1  
+				
+  	b.	Bootstrap with runlist:  
+  	
+  	    With NAT network address:
+				# knife bootstrap 10.0.2.15 –ssh-user root –ssh-password root –node-name node1 –run-list ‘recipe[recipe1]’
+				
+				With other network address:
+				# knife bootstrap 192.168.65.10 –ssh-user root –ssh-password root –node-name node1 –run-list ‘recipe[recipe1]’
+				
+8.	On client recipes are synched to /var/chef/cache/cookbooks (or /root/chef-repo/cookbooks/ ??)

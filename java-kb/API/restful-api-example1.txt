@@ -1,0 +1,132 @@
+===================================================
+RESTFUL API EXAMPLE
+===================================================
+
+NOTE: For dealing with JSON, you need Jackson jars: http://stackoverflow.com/questions/30423776/post-to-jersey-rest-service-getting-error-415-unsupported-media-type
+
+TRY THIS VERY SIMPLE ONE NOW: http://xrmsoftware.blogspot.in/2012/09/jersey-consume-json-example-test-with.html
+AND TRY THIS : The wine one: http://coenraets.org/blog/2011/12/restful-services-with-jquery-and-java-using-jax-rs-and-jersey/
+(along with its source code: https://github.com/ccoenraets/wine-cellar-java)
+AND THIS has includes of jackson: https://www.nabisoft.com/tutorials/java-ee/producing-and-consuming-json-or-xml-in-java-rest-services-with-jersey-and-jackson
+
+
+MAIN TUTORIAL - http://www.tutorialspoint.com/restful/
+
+http://www.mkyong.com/webservices/jax-rs/jax-rs-pathparam-example/
+
+Try this for JsonObject: http://www.coderanch.com/t/603720/Web-Services/java/Sending-Retrieving-JSON-data-Jersey
+
+This seems good for PUT with curl and pathparam: http://stackoverflow.com/questions/28902923/how-to-test-a-java-restful-web-service-with-curl-problems-with-put-verb
+
+Nulls received from  curl: http://stackoverflow.com/questions/10357041/jersey-post-method-is-receiving-null-values-as-parameters
+
+Vogella tutorial: http://www.vogella.com/tutorials/REST/article.html
+
+consumes json: http://www.programcreek.com/java-api-examples/javax.ws.rs.Consumes
+consumes json: http://stackoverflow.com/questions/14600510/how-to-send-and-receive-json-data-from-a-restful-webservice-using-jersey-api
+
+====================
+DOING 'GET'
+====================
+Execute GET in browser: http://localhost:8080/RESTMyUserManager/rest/UserService/users
+(if using Postman plugin of Chrome, choose GET)
+
+Exceute GET by curl:
+C:> curl --request GET http://localhost:8080/RESTMyUserManager/rest/UserService/users
+
+====================
+DOING 'POST'
+====================
+At present, this is giving 415 - unsupported media type
+
+curl -X POST -H "Content-type: application/json" -d '{
+"id":"spmmm0",
+"profile":"PROFILE2",
+"VerifyFunction":"VERIFY_FUNCTION"
+}' 
+http://localhost:8080/RESTMyUserManager/rest/UserService/users
+
+curl -X POST -H "Content-type: application/json" -d '{"id":"spmmm0","profile":"PROFILE2","verifyFunction":"VERIFY_FUNCTION"}' http://localhost:8080/RESTMyUserManager/rest/UserService/users
+
+curl \
+--header "Content-type: application/json" \
+--request POST \
+--data '{"title": "Test Title", "note": "Test note"}' \
+http://myhost/notes/rest?_dc=1379027286060
+
+====================
+DOING 'PUT'
+====================
+At present, this seems to be receiving nulls as parameter
+
+curl -X PUT -H "Content-type: application/json" -d '{
+"id":"spmmm0",
+"profile":"PROFILE2",
+"VerifyFunction":"VERIFY_FUNCTION"
+}' 
+http://localhost:8080/RESTMyUserManager/rest/UserService/users
+
+curl -X PUT -H "Content-type: application/json" -d '{"id":"spmmm0","profile":"PROFILE2","verifyFunction":"VERIFY_FUNCTION"}' http://localhost:8080/RESTMyUserManager/rest/UserService/users
+
+= = = = = = = = = = = = 
+TROUBLESHOOTING
+= = = = = = = = = = = = 
+
+===================================
+Error 415 Media Not Found with Json
+===================================
+http://stackoverflow.com/questions/30423776/post-to-jersey-rest-service-getting-error-415-unsupported-media-type
+Reason: Jax RS/Jersey does not come with Json/Pojo support out of the box.
+
+Download additional jars:
+http://tutorials.jenkov.com/java-json/jackson-installation.html
+http://mvnrepository.com/artifact/org.glassfish.jersey.media
+
+http://central.maven.org/maven2/org/glassfish/jersey/media/jersey-media-json-jackson/2.17/jersey-media-json-jackson-2.17.jar
+http://central.maven.org/maven2/com/fasterxml/jackson/core/jackson-core/2.3.2/jackson-core-2.3.2.jar
+
+https://github.com/FasterXML/
+https://github.com/FasterXML/jackson
+
+http://stackoverflow.com/questions/30423776/post-to-jersey-rest-service-getting-error-415-unsupported-media-type
+The Jersey distribution doesn't come with JSON/POJO support out the box. You need to add the dependencies/jars.
+
+Add all these
+
+
+jersey-media-json-jackson-2.17 (done 2.22.2)
+- http://mvnrepository.com/artifact/org.glassfish.jersey.media/jersey-media-json-jackson
+
+jackson-jaxrs-json-provider-2.3.2 (done 2.7.2) 
+- http://mvnrepository.com/artifact/com.fasterxml.jackson.jaxrs/jackson-jaxrs-json-provider
+
+jackson-core-2.3.2  (done 2.7.2)
+- http://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-core
+
+jackson-databind-2.3.2 (done 2.7.2)
+- http://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-databind
+
+jackson-annotations-2.3.2 (done 2.7.2)
+- http://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-annotations/2.7.2
+
+jackson-jaxrs-base-2.3.2 (done 2.7.2)
+- http://mvnrepository.com/artifact/com.fasterxml.jackson.jaxrs/jackson-jaxrs-base
+
+jackson-module-jaxb-annotations-2.3.2 (done 2.7.2)
+- http://mvnrepository.com/artifact/com.fasterxml.jackson.module/jackson-module-jaxb-annotations
+
+jersey-entity-filtering-2.17 (done 2.22.2)
+- http://mvnrepository.com/artifact/org.glassfish.jersey.ext/jersey-entity-filtering
+
+
+With Maven, below will pull all the above in
+
+<dependency>
+    <groupId>org.glassfish.jersey.media</groupId>
+    <artifactId>jersey-media-json-jackson</artifactId>
+    <version>2.17</version>
+</dependency>
+For any future readers not using Jersey 2.17 (and using jars directly instead of Maven), you can go here to find the Jersey version you are using, and see what transitive dependency versions you need. The current version of this Jersey dependency uses Jackson 2.3.2. That's the main thing you need to look out for.
+
+
+

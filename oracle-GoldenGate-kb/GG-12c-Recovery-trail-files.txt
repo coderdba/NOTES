@@ -1,0 +1,173 @@
+GOLDENGATE RECOVERING LOST TRAIL FILES
+
+<<NOT ALL CASES ARE WORKING WELL - TEST FURTHER>>
+===============================
+CASES COVERED IN THIS DOCUMENT
+===============================
+REMOVE EXTRACT TRAIL FILE - WORKING VERSION
+REMOVE EXTRACT TRAIL FILE - FAILED VERSION
+REMOVE PUMP TRAIL FILE - TBD
+REMOVE REPLICAT TRAIL FILE - TBD
+
+============================================================
+INFO SITES
+============================================================
+Oracle manual:
+http://docs.oracle.com/goldengate/1212/gg-winux/GWUAD/wu_adminops.htm#GWUAD980
+        20.13 Restarting a Primary Extract after System Failure or Corruption
+
+SOME HELP:
+https://deciphercorp.wordpress.com/2010/07/26/oracle-goldengate-positioning-a-read-of-extractreplicat-trail-file-or-oracle-redo-log/
+https://docs.oracle.com/goldengate/1212/gg-winux/GWURF/ggsci_commands006.htm#GWURF122
+https://community.oracle.com/thread/2258856?tstart=0
+https://community.oracle.com/thread/2213874?tstart=0
+https://community.oracle.com/thread/2390953
+http://goldengatereplication.blogspot.in/2011/12/incompatible-record-in-trail-file.html
+
+http://jinyuwang.weebly.com/oracle-goldengate1/oracle-goldengate-extract-recovery-process - normal and bounded recovery
+
+A pair:
+http://oracleabout.blogspot.in/2012/10/ogg-01496-failed-to-open-target-trail.html - remote trail file 
+        http://oracleabout.blogspot.in/2012/07/start-extract-re-positioning-how-to.html -- use with the above one
+
+============================================
+REMOVE EXTRACT TRAIL FILE - WORKING VERSION
+============================================
+Oracle manual:
+http://docs.oracle.com/goldengate/1212/gg-winux/GWUAD/wu_adminops.htm#GWUAD980
+        20.13 Restarting a Primary Extract after System Failure or Corruption
+
+>Dest replicat - Login to DB in GGSCI
+ggsci> DBLOGIN {USERID Replicat_user | USERIDALIAS alias_of_Replicat_user}
+ggsci>  dblogin useridalias ogguserigowad
+
+>Dest replicat - obtain the LOGBSN value
+
+ggsci> info replicat rigowa, detail
+
+This showed:
+    Current Log BSN value: (no data)  --> QUESTION- why is it not showing a number here (sometimes it shows)
+    
+    Integrated Replicat low watermark: 15630999
+    (All source transactions prior to this scn have been applied)
+    
+    Integrated Replicat high watermark: 15631139
+    (Some source transactions between this scn and the low watermark may have been applied)
+
+--> Get a BSN value - not sure why it is showing as 'no data' above
+
+However, used one that I had found in an earlier test - 15620123
+
+>Source extract 
+
+ggsci> stop extract eigowa
+ggsci> dblogin useridalias ogguserigowas
+ggsci> alter extract eigowa SCN 15620123 (the bsn found from replicat)
+ggsci> alter extract eigowa ETROLLOVER
+
+    2015-09-04 02:25:30  INFO    OGG-01520  Rollover performed.  For each affected output trail of Version 10 or higher
+    format, after starting the source extract, issue ALTER EXTSEQNO for that trail's reader (either pump EXTRACT or REPLICAT)
+    to move the reader's scan to the new trail file;  it will not happen automatically.
+    EXTRACT altered.    
+
+ggsci> info extract eigowa showch
+
+In the output, look for the following:
+  Current Checkpoint (current write position):
+    Sequence #: 6
+    RBA: 0
+
+>Source pump
+
+ggsci> alter extract pigowa extseqno 6  (the sequence number got from extract above)
+ggsci> alter extract pigowa extrba 0
+ggsci> alter extract pigowa etrollover
+
+    2015-09-04 02:31:04  INFO    OGG-01520  Rollover performed.  For each affected output trail of Version 10 or higher
+    format, after starting the source extract, issue ALTER EXTSEQNO for that trail's reader (either pump EXTRACT or REPLICAT)
+    to move the reader's scan to the new trail file;  it will not happen automatically.
+    EXTRACT altered.
+    
+ggsci> info extract pigowa showch
+
+In the output, look for the following:
+
+  Current Checkpoint (current write position):
+    Sequence #: 7
+    RBA: 0
+    Timestamp: 2015-09-04 02:24:21.839605
+    Extract Trail: ./dirdat/go
+    Trail Type: RMTTRAIL
+
+>Dest replicat - reposition replicat
+
+ggsci> alter replicat rigowa EXTSEQNO 7 (sequence found above)
+ggsci> alter replicat rigowa EXTRBA 0
+
+>Source extract, pump
+ggsci> start extract eigowa
+ggsci> start extract pigowa
+
+>Dest replicat
+ggsci> start replicat rigowa
+
+============================================
+REMOVE EXTRACT TRAIL FILE - FAILED VERSION
+============================================
+Remove/rename an extract-trail file and recover it 
+INCORRECT? - https://community.oracle.com/thread/2240337?tstart=0:  alter extract <extract_name>, extseqno n
+
+Break: Renamed dirdat/ec000004
+Fix: (potential - still not working well)
+ggsci> stop ec1  --> the extract process on the source side
+ggsci> alter extract ec1  extseqno 4, thread 1
+ggsci> alter extract ec1  extseqno 4, thread 2
+
+This gave this error in ggserror.log: 
+Failed to open target trail file ./dirdat/ec000004, at RBA 11834.
+
+Then 'touched' an empty file ec000004, and restarted extract ec1.
+That gave this error:
+Expected 4 bytes, but got 0 bytes, in trail ./dirdat/ec000004
+
+Then moved the renamed file back to its original name ec000004.
+That gave the following messages:
+    2015-07-06 08:55:14  INFO    OGG-00993  Oracle GoldenGate Capture for Oracle, ec1.prm:  EXTRACT EC1 started.
+    2015-07-06 08:55:14  INFO    OGG-01055  Oracle GoldenGate Capture for Oracle, ec1.prm:  Recovery initialization 
+    completed for target file ./dirdat/ec000004, at RBA 11834.
+    2015-07-06 08:55:14  INFO    OGG-01478  Oracle GoldenGate Capture for Oracle, ec1.prm:  Output file ./dirdat/ec 
+    is using format RELEASE 12.1.
+    2015-07-06 08:55:14  INFO    OGG-01026  Oracle GoldenGate Capture for Oracle, ec1.prm:  Rolling over remote 
+    file ./dirdat/ec000004.
+    2015-07-06 08:55:14  INFO    OGG-01053  Oracle GoldenGate Capture for Oracle, ec1.prm:  Recovery completed 
+    for target file ./dirdat/ec000005, at RBA 1491.
+    2015-07-06 08:55:14  INFO    OGG-01057  Oracle GoldenGate Capture for Oracle, ec1.prm:  Recovery completed 
+    for all targets.
+    2015-07-06 08:55:15  INFO    OGG-00991  Oracle GoldenGate Capture for Oracle, ec1.prm:  EXTRACT EC1 stopped normally.
+    2015-07-06 08:55:19  WARNING OGG-01519  Oracle GoldenGate Capture for Oracle, pc1.prm:  Waiting at EOF on 
+    input trail file ./dirdat/ec000004, which is not marked as complete; 
+    but succeeding trail file ./dirdat/ec000005 exists. 
+    If ALTER ETROLLOVER has been performed on source extract, 
+    ALTER EXTSEQNO must be performed on each corresponding downstream reader.
+
+Also, extract had proceeded to many more trail files.
+So, did this:  Set the sequence number to the next file of the last file
+ggsci> alter extract ec1, extseqno 22, thread 1
+EXTRACT altered.
+
+ggsci> alter extract ec1, extseqno 22, thread 2
+EXTRACT altered.
+
+This also did not help: that is, more changes to data did not propagate
+
+Finally, had do a sort of 'resetlogs':
+    ggsci> dblogin useridalias oggusersc
+    ggsci> register extract ec1 database
+    Extract EC1 successfully registered with database at SCN 1328963.
+
+    ggsci> add extract ec1, tranlog, threads 2, begin now 
+    EXTRACT added.
+
+
+
+

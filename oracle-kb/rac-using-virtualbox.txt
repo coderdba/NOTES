@@ -1,0 +1,88 @@
+===============================================================
+              ORACLE RAC USING VIRTUALBOX VM's
+===============================================================
+Box to use:   config.vm.box = 'racattack/oracle65'
+Box URL:      config.vm.box_url = 'https://storage.us2.oraclecloud.com/v1/istoilis-istoilis/vagrant/oel65-64.box'
+
+Tutorial:       https://oracle-base.com/articles/11g/oracle-db-11gr2-rac-installation-on-oel5-using-virtualbox
+
+Silent Install (with VMs):        http://www.pythian.com/blog/silent-installation-of-rac-12c-database/
+
+IBM RAC Manual (silent method):   http://www.redbooks.ibm.com/redpapers/pdfs/redp9131.pdf
+
+Firewall setup:   https://oracle-base.com/articles/linux/linux-firewall#installation 
+FIrewall install: https://oracle-base.com/articles/linux/oracle-linux-6-installation#firewall
+
+Reduce grid memory need: http://www.pythian.com/blog/slimming-down-oracle-rac-12cs-resource-footprint/
+
+
+========
+COOKBOOK
+========
+cbora12crac2node
+
+============
+MAIN ACTIONS
+============
+Pre SSH and Hosts file
+Install Grid
+Install DB software
+Create DB
+
+==========
+MAIN STEPS
+==========
+------------
+PREP STEPS
+------------
+VMs - add three ASM shared disks each of 2GB or so
+oracle user (already in racttack box)
+dba group (already in racttack box)
+oinstall group (already in racattack box)
+Grid user (create if you want to do role-separation)
+asmadm group (create if you want role-separation - for grid user)
+asmdba group (create if you want role-sepration - for grid and oracle users)
+IP entries in DNS or in hosts file
+Hosts file with entries for public, private, virtual and scan IPs
+Selinux  permissive or disabled (already done in racattack box)
+Firewall off (already done in racattack box)
+NTP stopped and restart also disabled by renaming its config file (ntp does not exist in racattack box)
+ssh key - rsa or dsa - use either of them
+          (Use Grid software provided shell script: https://oracle-base.com/articles/linux/user-equivalence-configuration-on-linux 
+          OR Non iteractive generation - ssh-keygen -t dsa -f /home/oracle/.ssh/id_dsa -q -P "")
+Copy authorized keys back and forth to contain both hosts' keys in same file in both servers 
+    (use sshpass -  sshpass -p "oracle" scp -r authorized_keys rac2n2:/home/oracle/.ssh/. 
+          - from http://stackoverflow.com/questions/50096/how-to-pass-password-to-scp)
+known hosts - no action needed - local file gets automatically updated when ssh commands are run between nodes
+
+------------------
+GRID INSTALL STEPS
+------------------
+Partition the shared disks - use fdisk if manually doing, use sfdisk if doing via cookbook/script
+  Noninteractive - Using sfdisk 
+  - http://xmodulo.com/how-to-run-fdisk-in-non-interactive-batch-mode.html
+  - http://download.vikis.lt/doc/util-linux-ng-2.17.2/sfdisk.examples
+  - http://mybrainhurts.com/blog/2009/01/sfdisk-is-bomb.html
+  - http://www.linuxquestions.org/questions/linux-newbie-8/sfdisk-problems-partitioning-whole-drive-457362/
+    
+  Noninteractive - using fdisk  
+  - http://serverfault.com/questions/320590/non-interactively-create-one-partition-with-all-available-disk-size (echo -e "n\np\n1\n\n\nt\nc\na\n1\nw" | fdisk /dev/sdb)
+  - http://superuser.com/questions/332252/creating-and-formating-a-partition-using-a-bash-script
+  - http://www.linuxquestions.org/questions/programming-9/running-fdisk-in-a-script-766597/
+  
+  
+Configure oracleasm (not the ASM disks yet with oracleasm) 
+- https://oss.oracle.com/projects/oracleasm-support/src/trunk/documents/oracleasm-configure.txt
+Load the kernel module - /usr/sbin/oracleasm init
+Create asm disks - /usr/sbin/oracleasm createdisk DISK1 /dev/sdb1 ...
+/u01/app/oraInventory
+ORACLE_BASE=/u01/app/oracle; export ORACLE_BASE
+GRID_HOME=/u01/app/11.2.0/grid; export GRID_HOME
+ORACLE_HOME=$ORACLE_BASE/product/12cDB; export ORACLE_HOME
+Create grid response file
+Install grid - follow silent method - ./runInstaller -silent -responseFile /tmp/grid.rsp -showProgress -ignorePrereq
+
+
+
+
+

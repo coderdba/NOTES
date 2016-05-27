@@ -1,0 +1,90 @@
+http://www.oracle.com/technetwork/issue-archive/2014/14-nov/o64asktom-2298498.html
+
+================
+LIST OF ITEMS
+================
+
+SQL BEHAVIOR, STATISTICS
+Histogram - Supply more statically gathered statistics
+Dynamic sampling - 9i onwards - bit.ly/1qZzy8q
+
+Cardinality feedback - 11g onwards - just re-run the query so that it knows to take better cardinality info
+SQL plan directives - 12c onwards
+
+SQL profile
+Baselines
+Stored outlines
+
+Tuning advisor
+SQL tuning sets
+
+Application tracing
+
+OBJECT ADJUSTMENT
+Reverse key indexes - to reduce cache fusion, hot blocks
+Inittrans - to reduce cache fusion, hot blocks
+Pctfree - to reduce cache fusion
+
+Partitioning
+Parallelism
+
+http://www.dba-oracle.com/t_gather_plan_statistics.htm
+Oracle provides several tools to see the internals of the SQL optimizer and reveal execution plan details:
+•TKPROF (SQL*Trace) 10046
+•SQL*Plus "set autotrace"
+•Extended execution plan statistics (v$sql_workarea)
+•The gather_plan_statistics hint (or statistics_level=all)
+The Oracle docs note that additional SQL execution statistics are collected when SQL statements are executed, either by using the /*+ gather_plan_statistics */ hint or by setting the parameter  statistics_level=all.  
+
+====================
+GATHER STATS
+====================
+http://www.dba-oracle.com/t_dbms_stats.htm
+
+Basic:
+exec dbms_stats.gather_schema_stats( - 
+  ownname          => 'SCOTT', - 
+  options          => 'GATHER AUTO', - 
+  estimate_percent => dbms_stats.auto_sample_size, - 
+  method_opt       => 'for all columns size repeat', - 
+  degree           => 34 - 
+   )
+   
+Option 'gather auto' gathers for empty and stale statistics tables.  
+  Just 'gather' gathers for all.
+  Gather-stale and gather-auto requires 'monitoring' set on the table for Oracle to store change count in dba_tab_modifications.
+
+METHOD_OPT is different - it is for histogram collection 
+  Oracle recommends setting the METHOD_OPT to FOR ALL COLUMNS SIZE AUTO
+  Oracle updates the data dictionary table SYS.COL_USAGE$ based on the queries run on tables.
+
+Histogram:
+BEGIN
+dbms_stats.gather_schema_stats(
+ownname=>'TPCC',
+METHOD_OPT=>'FOR ALL INDEXED COLUMNS SIZE SKEWONLY',
+CASCADE=>TRUE,
+ESTIMATE_PERCENT=>100);
+END;
+/
+
+====================
+EXPORT-IMPORT STATS
+====================
+Source> exec dbms_stats.create_stat_table(ownname => 'SYS', stattab => 'prod_stats', tblspace => 'SYSTEM');
+Source> exec dbms_stats.export_system_stats
+Source> exp scott/tiger file=prod_stats.dmp log=stats.log tables=prod_stats rows=yes
+Dest> imp scott/tiger file=prod_stats.dmp log=stats.log tables=prod_stats rows=yes
+Dest> dbms_stats.import_system_stats 
+
+==============================
+EXTENDED OPTIMIZER  STATISTICS  (TBD)
+==============================
+http://www.dba-oracle.com/oracle11g/oracle_11g_extended_optimizer_statistics.htm
+
+==========
+HISTOGRAMS
+==========
+
+
+

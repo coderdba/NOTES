@@ -1,0 +1,69 @@
+============================
+CREATE NDB DATABASE IN MYSQL
+============================
+
+http://lists.mysql.com/cluster/4768
+Disk-data, tablespaces, undo etc:  https://dev.mysql.com/doc/refman/5.6/en/mysql-cluster-disk-data.html
+Tables, databases: https://dev.mysql.com/doc/refman/5.0/en/mysql-cluster-install-example-data.html
+
+===========================
+VERY BASIC
+===========================
+$ mysql -u root -p
+password:  <provide password>
+
+mysql> show engines;  --> lists type of storage supported. must list InnoDB and ndbcluster (and many others)
+
+mysql> create database dbndb1;
+mysql> show databases;
+mysql> use dbndb1;
+mysql> select database(); --> lists currently using DB
+
+Check the directory in the SQL node: (inside data_dir location - usually /var/lib/mysql)
+/var/lib/mysql/dbndb1 --> location of the new database
+
+mysql> create table dept (deptid int(10), name varchar2(20)) engine=ndbcluster;
+
+mysql> create table emp (empid int(10), name varchar(20), deptid int(10)) engine=ndbcluster;
+
+Check if there is any difference due to this in /var/lib/mysql-cluster/ndb*fs* in the data nodes
+--> did not seem to see any difference
+--> wonder where data gets stored
+--> wonder what if one SQL node goes down (if we have multiple SQL nodes) - 
+--> can the surviving node know the existence of the DB created by the lost node
+
+mysql> insert into test values (1); 
+...
+...
+
+Then bring down one data node (ndbd) --> you can still query the table
+Bring down the remaining data nodes (ndbd) --> now you cannot query the table
+
+=============================
+WHERE TABLE DATA IS STORED
+=============================
+Definitions file   - table.frm --> on all replica nodes if ndb, on local node only if innodb
+Data file (ndb)    - table.ndb --> on all replica nodes
+Data file (innodb) - table.ibd --> on local node only
+
+Node1: (note: salary is an innodb table on node1 - so it shows in node1 only)
+/home/username/mysql/cluster/mysqld_data/db1: ls -l
+total 136
+-rw-rw---- 1 oracle oradba    65 Dec  3 00:21 db.opt
+-rw-rw---- 1 oracle oradba  8594 Dec  3 00:46 dept.frm
+-rw-rw---- 1 oracle oradba     0 Dec  3 00:46 dept.ndb
+-rw-rw---- 1 oracle oradba  8626 Dec  3 00:46 emp.frm
+-rw-rw---- 1 oracle oradba     0 Dec  3 00:46 emp.ndb
+-rw-rw---- 1 oracle oradba  8630 Dec  3 00:46 salary.frm
+-rw-rw---- 1 oracle oradba 98304 Dec  3 00:46 salary.ibd
+
+Node2: (note: salary is a innodb table on node1 - so it does not show in node2)
+/home/user1/mysql/cluster/mysqld_data/db1: ls -l
+total 28
+-rw-rw---- 1 oracle oradba   65 Dec  3 00:21 db.opt
+-rw-rw---- 1 oracle oradba 8594 Dec  3 00:46 dept.frm
+-rw-rw---- 1 oracle oradba    0 Dec  3 00:46 dept.ndb
+-rw-rw---- 1 oracle oradba 8626 Dec  3 00:46 emp.frm
+-rw-rw---- 1 oracle oradba    0 Dec  3 00:46 emp.ndb
+
+

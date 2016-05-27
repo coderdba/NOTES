@@ -1,0 +1,312 @@
+UPGRADE FROM 11G to 12C PDB RAC
+Complete Checklist for Manual Upgrades to Oracle Database 12c Release 1 (12.1) (Doc ID 1503653.1)
+
+PRE-CHECKS (multiple steps below are bundled into pre-check.sql in this repository)
+
+Note: The pre-check run from 12c home says EM DB Control (SYSMAN) will be removed during upgrade
+
+CHECK: The 12c home pre-check can be run from its location itself
+CHECK: Check if DB Links work as they were after upgrade and conversion to PDB
+
+DUPLICATES AND INVALIDS
+-- Check duplicate objects between SYS and SYSTEM
+prompt
+prompt Check duplicate objects between SYS and SYSTEM
+prompt
+select OBJECT_NAME, OBJECT_TYPE from
+DBA_OBJECTS where OBJECT_NAME||OBJECT_TYPE
+in (select OBJECT_NAME||OBJECT_TYPE from
+DBA_OBJECTS where OWNER='SYS') and
+OWNER='SYSTEM' and OBJECT_NAME not in
+('AQ$_SCHEDULES_PRIMARY', 'AQ$_SCHEDULES',
+'DBMS_REPCAT_AUTH');
+
+-- Check invalid objects
+prompt
+prompt Checking invalid objects in SYS and SYSTEM users
+prompt
+select substr(owner,1,6) owner, substr(object_name,1,30) object, substr(object_type,1,30)
+type, status, LAST_DDL_TIME from dba_objects where status <>'VALID' and owner like 'SYS%';
+
+RUN PRE-UPGRADE DIAGNOSTIC SQL METALINK NOTE 556610.1
+Run the script dbupgdiag.sql to diagnose oracle recommended items
+NOTE: The script needs to be run in SQL*Plus both before the upgrade on the source database and after the upgrade on the upgraded database as SYS user. This will help to determine the status of the database before and after upgrade.
+--> dbupgdiag.sql is in this folder in another sql file
+
+It asks for a '1' - give an existing subdirectory name in the current folder to store its logfile.
+Check logfile for errors, duplicates etc.
+
+Pay attention to duplicates, invalid objects etc.
+For fixing, metalink note 1030426.6
+
+FIX ISSUES
+@$ORACLE_HOME/rdbms/admin/utlrp.sql
+
+RUN PRE-UPGRADE SCRIPT FROM 12C HOME
+
+Run $ORACLE_HOME_12C/rdbms/admin/preupgrd.sql
+After the run, it asks to do the following:
+    1. Review results of the pre-upgrade checks:
+     /u01/app/oracle/cfgtoollogs/DB_UNIQUE_NAME/preupgrade/preupgrade.log
+    
+    2. Execute in the SOURCE environment BEFORE upgrade:
+     /u01/app/oracle/cfgtoollogs/DB_UNIQUE_NAME/preupgrade/preupgrade_fixups.sql
+    
+    3. Execute in the NEW environment AFTER upgrade:
+     /u01/app/oracle/cfgtoollogs/DB_UNIQUE_NAME/preupgrade/postupgrade_fixups.sql
+
+
+CHECK DATAGUARD STATUS
+dgmgrl /
+DGMGRL> show configuration;
+
+This should show a good configuration with no transport/apply lag
+
+GENERATE DB-LINK RE-CREATE SCRIPT
+Upon upgrade passwords in DB-links will be encrypted in 12c - unlike un-encrypted in 11g.
+Create a db-link re-creator script using the following SQL.
+NOTE: Upon upgrade AND conversion to PDB, check if DB-Links work as they were in 11g - most possibly, we may need to create them again at PDB level
+
+    SELECT 'CREATE '||DECODE(U.NAME,'PUBLIC','public ')||'DATABASE LINK '||CHR(10)
+    ||DECODE(U.NAME,'PUBLIC',Null, 'SYS','',U.NAME||'.')|| L.NAME||chr(10)
+    ||'CONNECT TO ' || L.USERID || ' IDENTIFIED BY "'||L.PASSWORD||'" USING
+    '''||L.HOST||''''
+    ||chr(10)||';' TEXT
+    FROM SYS.LINK$ L, SYS.USER$ U
+    WHERE L.OWNER# = U.USER#;
+
+CHECK TIMEZONE FILE IF IT NEEDS UPDATE
+Ver 18 timezone file is supplied with 12c.
+Check note 1509653.1 to update DST using DBMS_DST.
+
+CHECK IF ANY FILE NEEDS MEDIA RECOVERY
+select * from v$recover_file;
+
+CHECK IF ANY FILES ARE IN BACKUP MODE
+select * from v$backup where status != 'NOT ACTIVE';
+
+NOTE LOCATION OF FILES
+SELECT name FROM v$controlfile;
+SELECT file_name FROM dba_data_files;
+SELECT group#, member FROM v$logfile;
+
+BACKUP CONFIG FILES
+init.ora, listener.ora, tnsnames.ora
+
+REMOVE DB-CONTROL OF ENTERPRISE MANAGER
+emctl stop dbcontrol
+@$ORACLE_HOME_12C/rdbms/admin/emremove.sql
+
+DISABLE/BLACKOUT ALERTS, BACKUPS ETC
+Disable scripts, cron, oem etc that do backups, alerting etc.
+Stop/suspend jobs using DBMS_SCHEDULER, DBMS_JOB etc.
+
+DATA GUARD SETUP
+Disable fast start failover, and configuration
+DGMGRL> DISABLE FAST_START FAILOVER;
+DGMGRL> DISABLE CONFIGURATION;
+
+Connect to both primary & standby and stop the broker.
+sqlplus / as sysdba
+SQL> ALTER SYSTEM SET DG_BROKER_START=FALSE SCOPE=BOTH;
+
+Take backup of broker configuration files in both primary and standby
+    Do this for both config files dg_config_file1.dat  and dg_config_file2.dat
+    Name f/s file to distinguish these between primary and standby
+    SQL> show parameter dg_broker_config_file
+    ASMCMD> cp <ASM file>  <f/s file>
+    
+BACKUP SPFILE
+SQL> create pfile='$ORACLE_HOME/dbs/initDBNAME.ora.preUpgrade' from spfile;
+
+PURGE RECYCLE BIN
+SQL> purge dba_recyclebin;
+
+COLLECT DICTIONARY STATISTICS
+SQL> exec dbms_stats.gather_dictionary_stats;
+
+PURGE PENDING TWO PHASE COMMITS
+SQL> SELECT local_tran_id FROM dba_2pc_pending;
+SQL> EXECUTE dbms_transaction.purge_lost_db_entry('');
+SQL> COMMIT;
+
+ENSURE NO MV-REFRESH IS  IN PROGRESS
+SQL> select s.obj#,o.obj#,s.containerobj#,lastrefreshdate,pflags,xpflags,o.name,o.owner#, bitand(s.mflags, 8) 
+from obj$ o, sum$ s
+where o.obj# = s.obj# and o.type# = 42 AND bitand(s.mflags, 8) = 8;
+Note 1442457.1 : During 11g Upgrade, Mview refresh warning.
+If any active refresh is reported, wait for its completion.
+
+MAKE DEFAULT TABLESPACE OF SYS AND SYSTEM as SYSTEM TABLESPACE
+
+CHECK AND STOP/COMPLETE ANY ACTIVE BACKUPS
+SQL> SELECT * FROM v$backup WHERE status != 'NOT ACTIVE';
+
+REMOVE ANY HIDDEN PARAMETERS AND RESTART DB
+SELECT name, value from SYS.V$PARAMETER WHERE name LIKE '\_%' ESCAPE '\' order by name;
+
+CHECK XDB ACL's HAVE START_DATE AND END_DATE ATTRIBUTES
+SQL> select aclid, start_date, end_date from xds_ace where start_date is not null; 
+If this query returns rows, then follow Note 1958876.1 Upgrade to 12.1 fails with ORA-01830 date format picture ends before converting entire input string ORA-06512: at "SYS.XS_OBJECT_MIGRATION"  to avoid failure in XDB's upgrade.
+
+DROP 12C ROLES AND USERS IF EXIST IN THE 11G DB
+--> see output from pre-upgrade script run earlier
+
+CHECK LABEL SECURITY AND DATABASE VAULT
+@$ORACLE_HOME_12C/rdbms/admin/olspreupgrade.sql
+   - It prepares the move of AUD$ table from SYSTEM to SYS.
+   - It processes the audit records to minimize downtime.
+   - It moves records to an Interim temporary table.
+
+PREPARE PRIMARY:
+---------------
+
+SET CLUSTER DATABASE TO FALSE (only at spfile level now)
+SQL> alter system set cluster_database=FALSE scope=spfile;
+
+CREATE A GUARANTEED RESTORE POINT 
+On node1: srvctl stop database -d <primay_db_unique_name>
+On node2 and other nodes: repeat this stop database in the case they have not stopped due to cluster_database=FALSE setting.
+
+SQL> startup mount;
+SQL> CREATE RESTORE POINT before_upgrade_to_12102 GUARANTEE FLASHBACK DATABASE;
+Restore point created.
+
+SQL> select NAME,SCN,TIME,GUARANTEE_FLASHBACK_DATABASE,STORAGE_SIZE from V$RESTORE_POINT;
+SQL> SHUTDOWN IMMEDIATE;
+
+BACKUP INIT.ORA FILE
+SQL> create pfile='$ORACLE_HOME/dbs/initDBNAME.ora.bkp_pre12cUpgrade' from spfile;
+
+CREATE PASSWORD FILE
+orapwd file=orapwDBINSTANCENAME
+
+COPY INIT.ORA AND PASSWORD FILE TO 12C HOME
+cp $ORACLE_HOME/dbs/initDBNAME.ora $ORACLE_HOME_12C/dbs/.
+cp $ORACLE_HOME/dbs/orapwDBINSTANCENAME $ORACLE_HOME_12C/dbs/.
+
+CREATE LINKS IN 12C HOME /network/admin to TNS_ADMIN FILES
+cd $ORACLE_HOME_12C
+ln -s $TNS_ADMIN/listener.ora 
+ln -s $TNS_ADMIN/tnsnames.ora
+ln -s $TNS_ADMIN/sqlnet.ora
+ln -s $TNS_ADMin/ldap.ora
+
+UPDATE ORATAB IN ALL NODES TO POINT TO 12C HOME
+For DB_UNIQUE_NAME and INSTANCE_NAME entries
+
+<< PREPARE STANDBY >>:
+---------------------
+a.	Create guaranteed restore point in mount stage.
+
+Shutdown Database
+	srvctl stop database -d <stby_db_unique_name>
+
+Create Guaranteed Restore point
+	sqlplus / as sysdba
+	SQL> startup mount;
+	
+SQL> CREATE RESTORE POINT before_upgrade_to_12102 GUARANTEE FLASHBACK DATABASE;
+
+Restore point created.
+
+SQL> select NAME,SCN,TIME,GUARANTEE_FLASHBACK_DATABASE,STORAGE_SIZE from V$RESTORE_POINT;
+
+NOTE: Check if the SCN from this view is less than or equal to the Primary Restore Point’s SCN. 
+If not, drop & re-Create a Restore Point from the Primary again.
+
+Stop the Database
+	SQL> SHUTDOWN IMMEDIATE;
+
+b.	Prepare Standby’s  12.1.0.2 ORACLE_HOME 
+i.	Copy  pfile & password file from OLD HOME  to the NEW HOME.
+ii.	Verify the links are present  for .ora file in the 12.1.0.2 ORACLE_HOME.
+
+NOTE: Make sure to perform this on all the nodes.
+
+c.	In all Nodes, Update /etc/oratab file to point to the new home for the corresponding DB NAMEs and the SIDs.
+Eg:-
+INSTANCE_NAME:/app/oracle/product/12.1.0.2/dbs:N
+DB_UNIQUE_NAME:/app/oracle/product/12.1.0.2/dbs:N
+
+d.	On node1, Bring up standby in the new home.
+i.	Set ENV Variables. This should now point to new 12c home.
+. oraenv
+ORACLE_SID = << INSTANCE NAME>>
+
+ii.	Mount the standby.
+sqlplus / as sysdba
+SQL> startup mount
+iii.	Start Redo Apply.
+SQL> alter database recover managed standby database using current logfile disconnect from session;
+
+---------------
+UPGRADE PRIMARY
+---------------
+
+SQL> startup upgrade
+
+Then on unix (Note: -n 6 --> 6 is the parallelism for upgrade actions by catupgrd.sql)
+ cd $ORACLE_HOME/rdbms/admin  (ensure that this goes to the new 12c orcale home)
+ $ORACLE_HOME/perl/bin/perl catctl.pl -n  6 -l $ORACLE_HOME/diagnostics catupgrd.sql
+ 
+Check logs in nohup.out and $ORACLE_HOME/diagnostics directory for error-free execution
+
+If issues, then rerun catctl.pl after fixing them. ORA-0001 in re-run can be ignored.
+Upon completion, catupgrd0.log should show all is well, components are upgrdaed and status is valid.
+
+VERIFY 1
+Startup the database by sqlplus / as sysdba and then startup
+Run $ORACLE_HOME_12C/rdbms/admin/utlu121s.sql
+It reports status of RDBMS and various options in the following file and on screen:
+CATCTL REPORT = /u01/app/oracle/product/12.1.0.2.RAC/cfgtoollogs/DB_UNIQUE_NAME/upgrade/upg_summary.log
+
+VERIFY 2
+Check for existence of string "BEGIN catuppst.sql" in catupgrd0.log.
+If it is missing, then run $ORACLE_HOME_12C/rdbms/admin/catuppst.sql
+
+VERIFY 3
+Run utluiobj.sql (for newly invalid objects)
+Run dbupgdiag.sql with argument ./ (for other invalids)
+
+FIX
+Run utlrp.sql to fix any invalid objects etc.
+
+MAKE DB CLUSTER DATABASE AGAIN
+alter system set cluster_database=TRUE scope=spfile;
+shutdown immediate;
+
+UPDATE OCR CONFIGURATION
+srvctl upgrade database -d <DB_UNIQUE_NAME> -o <ORACLE_HOME_12C>
+
+STARTUP
+srvctl start database -d <DB_UNIQUE_NAME>
+
+TIMEZONE FILE UPDATE
+If pre upgrade info tool output needed you to update the time zone files, then follow the note 1579838.1  Actions For DST Updates When Upgrading To Or Applying The 11.2.0.4 Patchset
+
+UPDATE ORATAB, INIT and PASSWORD FILES
+Ensure Oratab is updated in all nodes with new oracle home.
+Ensure init.ora and password files are same in all nodes for this DB and its instances.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+
+
+
+
+
+

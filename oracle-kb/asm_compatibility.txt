@@ -1,0 +1,40 @@
+ASM COMPATIBILITY PARAMETER
+
+DESCRIPTION
+compatible.asm --> lowest version of grid software can manage this asm 
+                     (also applies to password file storage in ASM disks)
+
+compatible.rdbms --> lowest version of dbms software that can create DB in this asm
+
+LISTING COMPATIBILITY FOR DISK-GROUPS
+Logon to asm:  sqlplus / as sysasm
+
+column attribute_name format a20
+column dg_name format a10
+column value format a20
+
+select a.name attribute_name, a.value, a.group_number, b.name dg_name
+from v$asm_attribute a, v$asm_diskgroup b
+where a.name in ('compatible.asm', 'compatible.rdbms')
+and   a.group_number = b.group_number;
+
+Example:
+ATTRIBUTE_NAME       VALUE                GROUP_NUMBER DG_NAME
+-------------------- -------------------- ------------ ----------
+compatible.asm       11.2.0.0.0                      1 DATA_DG01
+compatible.rdbms     11.2.0.0.0                      1 DATA_DG01
+compatible.asm       11.2.0.0.0                      2 FRA_DG01
+compatible.rdbms     11.2.0.0.0                      2 FRA_DG01
+compatible.asm       12.1.0.0.0                      3 GRD_DG01
+compatible.rdbms     10.1.0.0.0                      3 GRD_DG01
+compatible.asm       12.1.0.0.0                      4 GRD_DG02
+compatible.rdbms     12.1.0.0.0                      4 GRD_DG02
+
+SETTING COMPATIBILITY
+ALTER DISKGROUP data3 SET ATTRIBUTE 'compatible.rdbms' = '11.2',
+ALTER DISKGROUP data3 SET ATTRIBUTE 'compatible.advm' = '11.2';
+
+CREATING A DISK-GROUP WITH SPECIFIC COMPATIBILITY  (use one or more attributes in the command)
+CREATE DISKGROUP data2 DISK '/dev/sd*' 
+       ATTRIBUTE 'compatible.asm' = '11.2', 'compatible.rdbms' = '11.2',
+                 'compatible.advm' = '11.2';

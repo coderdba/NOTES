@@ -1,0 +1,290 @@
+MYSQL CLUSTER INSTALL WITH A SINGLE NODE ACTING AS DATA, MANAGEMENT AND SQL/API NODES
+-------------------------------------------------------------------------------------
+
+=====
+SETUP
+=====
+
+Vagrant Virtualbox VM:
+      Copy the rpms to c:\users\username\cookbooks\nodename directory
+      That will show up in the VM under /vagrant
+      
+      Hostname:  mysqlcl0
+      IP Address:
+
+Virtualbox VM at home:
+      hostname:  mysql5cl0
+      IP Addr: 192.168.0.180
+
+=========
+REFERENCE
+=========
+
+http://www.clusterdb.com/mysql-cluster/creating-a-simple-cluster-on-a-single-linux-host --> good (though not rpm)
+http://dba.stackexchange.com/questions/48173/cannot-start-mysql-cluster-with-single-node --> also startup script
+https://opensourcedba.wordpress.com/2011/11/18/mysql-cluster-7-2-a-single-node-cluster/
+http://www.mysqlab.net/knowledge/kb/detail/topic/cluster/id/7181
+
+============
+INSTALLATION
+============
+
+Move already exisitng /etc/my.cnf to /etc/my.cnf.initial-with-vm
+
+[root@mysqlcl0 MySQL-cluster-7.4.7]# ls -1
+MySQL-Cluster-client-advanced-7.4.7-1.el6.x86_64.rpm
+MySQL-Cluster-server-advanced-7.4.7-1.el6.x86_64.rpm
+
+Looks like this creates /usr/my.cnf which will be used by default --> should it be /etc/my.cnf
+
+-------------------------
+Install the 'cluster' RPM
+-------------------------
+This will install mysqld as well as ndb_mgmd --> so no separate install for mysqld server is necessary
+Also, it creates /usr/my.cnf (instead of /etc/my.cnf) --> and says will use /usr/my.cnf than /etc/my.cnf
+      
+      [root@mysqlcl0 MySQL-cluster-7.4.7]# rpm -Uhv --force MySQL-Cluster-server-adva
+      nced-7.4.7-1.el6.x86_64.rpm
+      warning: MySQL-Cluster-server-advanced-7.4.7-1.el6.x86_64.rpm: Header V3 DSA/SHA
+      1 Signature, key ID 5072e1f5: NOKEY
+      Preparing...                ########################################### [100%]
+         1:MySQL-Cluster-server-ad########################################### [100%]
+      warning: user mysql does not exist - using root
+      warning: group mysql does not exist - using root
+      2015-09-28 14:31:00 0 [Warning] TIMESTAMP with implicit DEFAULT value is depreca
+      ted. Please use --explicit_defaults_for_timestamp server option (see documentati
+      on for more details).
+      2015-09-28 14:31:00 0 [Note] /usr/sbin/mysqld (mysqld 5.6.25-ndb-7.4.7-cluster-c
+      ommercial-advanced) starting as process 4070 ...
+      2015-09-28 14:31:00 4070 [Note] InnoDB: Using atomics to ref count buffer pool p
+      ages
+      2015-09-28 14:31:00 4070 [Note] InnoDB: The InnoDB memory heap is disabled
+      2015-09-28 14:31:00 4070 [Note] InnoDB: Mutexes and rw_locks use GCC atomic buil
+      tins
+      2015-09-28 14:31:00 4070 [Note] InnoDB: Memory barrier is not used
+      2015-09-28 14:31:00 4070 [Note] InnoDB: Compressed tables use zlib 1.2.3
+      2015-09-28 14:31:00 4070 [Note] InnoDB: Using Linux native AIO
+      2015-09-28 14:31:00 4070 [Note] InnoDB: Not using CPU crc32 instructions
+      2015-09-28 14:31:00 4070 [Note] InnoDB: Initializing buffer pool, size = 128.0M
+      2015-09-28 14:31:00 4070 [Note] InnoDB: Completed initialization of buffer pool
+      2015-09-28 14:31:00 4070 [Note] InnoDB: The first specified data file ./ibdata1
+      did not exist: a new database to be created!
+      2015-09-28 14:31:00 4070 [Note] InnoDB: Setting file ./ibdata1 size to 12 MB
+      2015-09-28 14:31:00 4070 [Note] InnoDB: Database physically writes the file full
+      : wait...
+      2015-09-28 14:31:00 4070 [Note] InnoDB: Setting log file ./ib_logfile101 size to
+       48 MB
+      2015-09-28 14:31:01 4070 [Note] InnoDB: Setting log file ./ib_logfile1 size to 4
+      8 MB
+      2015-09-28 14:31:01 4070 [Note] InnoDB: Renaming log file ./ib_logfile101 to ./i
+      b_logfile0
+      2015-09-28 14:31:01 4070 [Warning] InnoDB: New log files created, LSN=45781
+      2015-09-28 14:31:01 4070 [Note] InnoDB: Doublewrite buffer not found: creating n
+      ew
+      2015-09-28 14:31:01 4070 [Note] InnoDB: Doublewrite buffer created
+      2015-09-28 14:31:01 4070 [Note] InnoDB: 128 rollback segment(s) are active.
+      2015-09-28 14:31:01 4070 [Warning] InnoDB: Creating foreign key constraint syste
+      m tables.
+      2015-09-28 14:31:01 4070 [Note] InnoDB: Foreign key constraint system tables cre
+      ated
+      2015-09-28 14:31:01 4070 [Note] InnoDB: Creating tablespace and datafile system
+      tables.
+      2015-09-28 14:31:01 4070 [Note] InnoDB: Tablespace and datafile system tables cr
+      eated.
+      2015-09-28 14:31:01 4070 [Note] InnoDB: Waiting for purge to start
+      2015-09-28 14:31:01 4070 [Note] InnoDB: 5.6.25 started; log sequence number 0
+      2015-09-28 14:31:01 4070 [Note] RSA private key file not found: /var/lib/mysql//
+      private_key.pem. Some authentication plugins will not work.
+      2015-09-28 14:31:01 4070 [Note] RSA public key file not found: /var/lib/mysql//p
+      ublic_key.pem. Some authentication plugins will not work.
+      A random root password has been set. You will find it in '/root/.mysql_secret'.
+      2015-09-28 14:31:01 4070 [Note] Binlog end
+      2015-09-28 14:31:01 4070 [Note] InnoDB: FTS optimize thread exiting.
+      2015-09-28 14:31:01 4070 [Note] InnoDB: Starting shutdown...
+      2015-09-28 14:31:03 4070 [Note] InnoDB: Shutdown completed; log sequence number
+      1625977
+      
+      2015-09-28 14:31:03 0 [Warning] TIMESTAMP with implicit DEFAULT value is depreca
+      ted. Please use --explicit_defaults_for_timestamp server option (see documentati
+      on for more details).
+      2015-09-28 14:31:03 0 [Note] /usr/sbin/mysqld (mysqld 5.6.25-ndb-7.4.7-cluster-c
+      ommercial-advanced) starting as process 4092 ...
+      2015-09-28 14:31:03 4092 [Note] InnoDB: Using atomics to ref count buffer pool p
+      ages
+      2015-09-28 14:31:03 4092 [Note] InnoDB: The InnoDB memory heap is disabled
+      2015-09-28 14:31:03 4092 [Note] InnoDB: Mutexes and rw_locks use GCC atomic buil
+      tins
+      2015-09-28 14:31:03 4092 [Note] InnoDB: Memory barrier is not used
+      2015-09-28 14:31:03 4092 [Note] InnoDB: Compressed tables use zlib 1.2.3
+      2015-09-28 14:31:03 4092 [Note] InnoDB: Using Linux native AIO
+      2015-09-28 14:31:03 4092 [Note] InnoDB: Not using CPU crc32 instructions
+      2015-09-28 14:31:03 4092 [Note] InnoDB: Initializing buffer pool, size = 128.0M
+      2015-09-28 14:31:03 4092 [Note] InnoDB: Completed initialization of buffer pool
+      2015-09-28 14:31:03 4092 [Note] InnoDB: Highest supported file format is Barracu
+      da.
+      2015-09-28 14:31:03 4092 [Note] InnoDB: 128 rollback segment(s) are active.
+      2015-09-28 14:31:03 4092 [Note] InnoDB: Waiting for purge to start
+      2015-09-28 14:31:03 4092 [Note] InnoDB: 5.6.25 started; log sequence number 1625
+      977
+      2015-09-28 14:31:03 4092 [Note] RSA private key file not found: /var/lib/mysql//
+      private_key.pem. Some authentication plugins will not work.
+      2015-09-28 14:31:03 4092 [Note] RSA public key file not found: /var/lib/mysql//p
+      ublic_key.pem. Some authentication plugins will not work.
+      2015-09-28 14:31:03 4092 [Note] Binlog end
+      2015-09-28 14:31:03 4092 [Note] InnoDB: FTS optimize thread exiting.
+      2015-09-28 14:31:03 4092 [Note] InnoDB: Starting shutdown...
+      2015-09-28 14:31:05 4092 [Note] InnoDB: Shutdown completed; log sequence number
+      1625987
+      
+      A RANDOM PASSWORD HAS BEEN SET FOR THE MySQL root USER !
+      You will find that password in '/root/.mysql_secret'.
+      
+      You must change that password on your first connect,
+      no other statement but 'SET PASSWORD' will be accepted.
+      See the manual for the semantics of the 'password expired' flag.
+      
+      Also, the account for the anonymous user has been removed.
+      
+      In addition, you can run:
+      
+        /usr/bin/mysql_secure_installation
+      
+      which will also give you the option of removing the test database.
+      This is strongly recommended for production servers.
+      
+      See the manual for more instructions.
+      
+      Please report any problems at http://bugs.mysql.com/
+      
+      The latest information about MySQL is available on the web at
+      
+        http://www.mysql.com
+      
+      Support MySQL by buying support/licenses at http://shop.mysql.com
+      
+      New default config file was created as /usr/my.cnf and
+      will be used by default by the server when you start it.
+      You may edit this file to change server settings
+
+----------------------
+Install the client RPM
+----------------------
+$ rpm -Uvh --force MySQL-Cluster-client-advanced-7.4.7-1.el6.x86_64.rpm
+warning: MySQL-Cluster-client-advanced-7.4.7-1.el6.x86_64.rpm: Header V3 DSA/SHA1 Signature, key ID 5072e1f5: NOKEY
+Preparing...                ########################################### [100%]
+   1:MySQL-Cluster-client-ad########################################### [100%]
+  
+  
+=========================================
+CONFIGURATION 1 BASED ON http://www.mysqlab.net/knowledge/kb/detail/topic/cluster/id/7181
+=========================================
+With possibly some modifications for data-dir for ndb engine
+
+=========================================
+INITIAL FOLDER/FILE SETUP
+=========================================
+
+Create folder /var/lib/mysql-cluster --> for cluster related config and log files
+NOTE - /var/lib/mysql already exists
+
+Backup /usr/my.cnf as /usr/my.cnf.orig-mysql-install
+--> This usr folder is not the right folder - it should be in /etc.  This usr is a bug.
+
+===========
+config.ini
+===========
+NOTE: Use localhost or hostname
+
+
+#
+#  MySQL Cluster with all nodes on the same server
+#
+#  This is based on www.mysqlab.net/knowledge/kb/detail/topic/cluster/id/7181
+#
+
+# Management node
+[ndb_mgmd default]
+DataDir=/var/lib/mysql-cluster
+
+[ndb_mgmd]
+HostName=mysql5cl0
+
+# Data node
+[ndbd default]
+NoOfReplicas=2
+DataDir=/var/lib/mysql-cluster
+
+[ndbd]
+HostName=mysql5cl0
+
+[ndbd]
+HostName=mysql5cl0
+
+# SQL/API nodes
+[mysqld]
+[mysqld]
+[api]
+
+================================
+my.cnf - TO SUITE ALL PROCESSES
+================================
+[mysqld]
+datadir=/var/lib/mysql
+ndbcluster
+ndb_connectstring=mysql5cl0
+
+
+==============
+START Management Node
+==============
+ndb_mgmd -f /etc/config.ini
+
+This will create /usr/mysql-cluster and creates some config.bin.1 file there
+Logs are placed in /var/lib/mysql-cluster previously created and referenced in config.ini
+Logfile=ndb_1_cluster.log, ndb_1_out.log
+
+Verify:
+------
+Note that node-id's are automatically picked up
+
+# ndb_mgm
+
+ndb_mgm> show
+
+Connected to Management Server at: localhost:1186
+Cluster Configuration
+---------------------
+[ndbd(NDB)]	2 node(s)
+id=2 (not connected, accepting connect from mysql5cl0)
+id=3 (not connected, accepting connect from mysql5cl0)
+
+[ndb_mgmd(MGM)]	1 node(s)
+id=1	@127.0.0.1  (mysql-5.6.24 ndb-7.4.6)
+
+[mysqld(API)]	3 node(s)
+id=4 (not connected, accepting connect from any host)
+id=5 (not connected, accepting connect from any host)
+id=6 (not connected, accepting connect from any host)
+
+==========================
+Start Data nodes
+==========================
+ndbd -c localhost
+ndbd -c localhost
+
+Verify again by using ndb_mgm show command
+
+-----------------------
+Start client/mysqld node
+-----------------------
+nohup mysqld_safe --defaults-file=/etc/my.cnf &
+
+or /etc/init.d/mysql start
+
+Verify again using ndb_mgm show.
+
+---------
+RESET root PASSWORD 
+---------
+https://dev.mysql.com/doc/refman/5.6/en/resetting-permissions.html
+

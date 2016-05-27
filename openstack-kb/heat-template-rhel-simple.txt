@@ -1,0 +1,87 @@
+heat_template_version: 2013-05-23
+description: A heat template guide
+ 
+##########################
+#PARAMETERS
+##########################
+
+parameters:
+  key_name:
+    type: string
+    description: Name of keypair to assign to servers
+    default: myKey
+  admin_user:
+    type: string
+    description: name of admin user on the server
+    default: cloud-user
+  image:
+    type: string
+    description: Name of image to use for servers
+    default: rhel7
+  flavor:
+    type: string
+    description: Flavor to use for servers
+    default: xtra-small
+  ext_network_id:
+    type: string
+    description: The External network to attach to
+    default: ext_xxxx_net
+  subnet_cidr:
+    type: string
+    description: Subnet CIDR block
+    default: 192.168.10.0/24
+
+resources:
+ 
+##########################
+#RHEL SERVER
+##########################
+ 
+#create the server
+  MyRhelServer:
+    type: OS::Nova::Server
+    properties: #these values are populated via passed in parameter
+      flavor: { get_param: flavor }
+      image: { get_param: image }
+      key_name: { get_param: key_name }
+      admin_user: { get_param: admin_user }
+      name: MyRhelServer
+      networks:
+        #add the server to the network
+        - network: "nw0"
+      #apply the BasicSG to this server
+      security_groups: ["BasicSG"]
+ 
+#grab a floating ip from the external network
+  MyRhelServer_fip:
+    type: OS::Nova::FloatingIP
+    properties:
+      pool: { get_param: ext_network_id }
+ 
+#associate the foating ip with the server
+  MyRhelServer_fip_association:
+    type: OS::Nova::FloatingIPAssociation
+    #the ip and the sever must exist before it can be associated
+    depends_on: [MyRhelServer_fip, MyRhelServer]
+    properties:
+      #which floating ip to assign
+      floating_ip: { get_resource: MyRhelServer_fip }
+      #what server to assign the floating ip to
+      server_id: { get_resource: MyRhelServer }
+
+
+##########################
+#OUTPUTS
+##########################
+outputs:
+  instance_ip:
+    description: The IP address of the deployed instance
+    value: { get_attr: [MyRhelServer, first_address] }
+
+  instance_ip0:
+    description: The IP0 address of the deployed instance
+    value: {get_attr: [MyRhelServer, networks, nw0, 0]}
+
+  instance_ip1:
+    description: The IP1 address of the deployed instance
+    value: {get_attr: [MyRhelServer, networks, nw0, 1]}

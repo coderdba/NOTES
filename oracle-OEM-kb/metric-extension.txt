@@ -1,0 +1,46 @@
+METRIC EXTENSIONS IN OEM
+
+http://neelimabawa.blogspot.in/2012/12/em12c-how-to-create-os-script-based.html
+ME's - http://docs.oracle.com/cd/E24628_01/doc.121/e24473/metric_extension.htm#EMADM14427
+Incident Rules - http://docs.oracle.com/cd/E24628_01/doc.121/e24473/incident_mgmt.htm#EMADM14304
+
+
+ORDER OF ACTIONS
+> Metric Extension Menus:
+Create metric extension
+Make it 'deployable'
+Publish it
+Deploy it to targets (this does not yet create alerts)
+
+> Incident Rule Menus:
+Create incident rule (again to the specific targets) (TBD)
+
+METRIC EXTENSIONS BEING TESTED
+
+>> This has only one value - no key-value pair
+ME$Testing_GG_Lag_Hostscript
+ME$Testing_GG_Lag_OEMScript  
+
+>> These have four dummy outputs as key-value pairs
+ME$Testing_GG_Lag_OEMGenericScript
+ME$Testing_GG_Lag_OEMGenericScript_deployable
+
+INCIDENT RULE SET - Create New
+
+
+VERIFY IF METRICS ARE BEING COLLECTED
+
+select to_Char(COLLECTION_TIMESTAMP, 'DD-MON-YYYY HH24:MI'), target_name, metric_name, column_label, value
+ from  mgmt$metric_current where metric_name like '%GG%' or metric_name like '%olde%'
+/
+
+RESOLVE AND CLEAR INCIDENT IN OEM
+Incident got created on Sep 15, 4:42.
+Marked resolved on 16 Sep at 2:29  --> wait and see if it re-appears on next run
+It seemed to clear after some time??
+Also, had set the crit threshold to 500 and to run every 5 min - and ME sends only 350 - this seemed to have created a new event at 3:07 as 'warn' - marked that also as 'resolved' (it was set to 'resolved' automatically or by my other update??) - need to wait and see --> it did not clear it and new alert did not get generated - tried doing 'reevaluate' (click the event and then in incident manager' - that seemed to re-obtain metric and said 'severity has not changed' - then edited the threshold to make the CRIT threshold 100 instead of 350 (did it at around 4:18am) - need to check whether that changes severity making the alert kick in - ok, it created two emails newly after thresholds changed (and no alerts in the host homepage, but two critical alerts in incident manager of the host - both at 4:22am - and later in the home page of the host also) both emails and alerts marked critical for the two processes with 111 and 350 sec lag - but one of them was marked already 'resolved' (which is the 350 one which I had marked resolved) --> should it mark it resolved or should it be new -->??
+
+Now, marked them as warn at 500 and crit at 1000 - did it at about 4:28 am --> wait and see
+
+question - why does 'resolved' one is still marked resolved though we have a new one in 350?
+question - when will the alert go away?  is it when next collections show it has really gone away?

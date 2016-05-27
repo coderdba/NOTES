@@ -1,0 +1,61 @@
+========================================================
+        NOVA NETWORK COMMANDS
+========================================================
+
+==============================================
+DETACHING AND ATTACHING NETWORK TO VM INSTANCE
+==============================================
+
+C:\Opt\osctcli>nova interface-list WinSrv20121
++------------+--------------------------------------+--------------------------------------+--------------+-------------------+
+| Port State | Port ID                              | Net ID           | IP addresses | MAC Addr          |
++------------+--------------------------------------+--------------------------------------+--------------+-------------------+
+| ACTIVE     | 2eb92105-a4c1-47fa-bd2f-21b623b38dee | 4b1bba3b-a362-4c22-8528-baef788b7540 | 192.168.10.9 | fa:16:3e:6f:d3:29 |
++------------+--------------------------------------+--------------------------------------+--------------+-------------------+
+
+C:\Opt\osctcli>nova network-list
++--------------------------------------+------------------+------+
+| ID                                   | Label            | Cidr |
++--------------------------------------+------------------+------+
+| 3dd12451-d7f4-49fc-84ea-acfbcab71e9a | ext_vlan1770_net | -    |
+| 44a6c0cb-6fee-45de-ab14-c2c0ee314e32 | ext_vlan1722_net | -    |
+| 4b1bba3b-a362-4c22-8528-baef788b7540 | MyNetwork        | -    |
+| 8543e91c-373a-4855-a269-9bd1248b95d0 | ext_vlan1771_net | -    |
+| d43146c3-1758-43e9-a488-26087e9ebf3e | ext_vlan1710_net | -    |
+| d5deed45-6554-4324-b705-700c5d4f519b | nw0              | -    |
+| d607baad-e7b1-4b1b-90ba-a1a32cc38b36 | ext_vlan1755_net | -    |
+| dda9e013-2236-48b0-97ba-dfb1021e2f80 | ext_vlan1767_net | -    |
+| f07f6514-5902-4b38-b387-fb557a281572 | ext_vlan1768_net | -    |
++--------------------------------------+------------------+------+
+
+C:\Opt\osctcli>nova interface-detach WinSrv20121 2eb92105-a4c1-47fa-bd2f-21b6
+23b38dee
+
+C:\Opt\osctcli>nova interface-list WinServ20121
+ERROR (CommandError): No server with a name or ID of 'WinServ20121' exists.
+
+C:\Opt\osctcli>nova interface-list WinSrv20121
++------------+---------+--------+--------------+----------+
+| Port State | Port ID | Net ID | IP addresses | MAC Addr |
++------------+---------+--------+--------------+----------+
++------------+---------+--------+--------------+----------+
+
+C:\Opt\osctcli>nova help interface-attach
+usage: nova interface-attach [--port-id <port_id>] [--net-id <net_id>]
+                             [--fixed-ip <fixed_ip>]
+                             <server>
+
+Attach a network interface to a server.
+
+Positional arguments:
+  <server>               Name or ID of server.
+
+Optional arguments:
+  --port-id <port_id>    Port ID.
+  --net-id <net_id>      Network ID
+  --fixed-ip <fixed_ip>  Requested fixed IP.
+
+C:\Opt\osctcli>nova interface-attach --port-id 2eb92105-a4c1-47fa-bd2f-21b623b38dee --net-id d5deed45-6554-4324-b705-700c5d4f519b WinSrv20121
+ERROR (BadRequest): Must not input both network_id and port_id (HTTP 400)
+
+C:\Opt\osctcli>nova interface-attach --net-id d5deed45-6554-4324-b705-700c5d4f519b WinSrv20121

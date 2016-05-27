@@ -1,0 +1,249 @@
+==============================================
+CAMEL EXAMPLE - TWO REST APIS FROM AND TO 
+==============================================
+
+FROM API - CALLED BY USER
+TO API - ROUTED BY CAMEL
+
+--------------------------
+SITES
+--------------------------
+For REST services with Jersey and Jackson
+https://www.nabisoft.com/tutorials/java-ee/producing-and-consuming-json-or-xml-in-java-rest-services-with-jersey-and-jackson
+http://www.mkyong.com/webservices/jax-rs/json-example-with-jersey-jackson/
+http://www.tutorialspoint.com/restful/restful_first_application.htm
+http://coenraets.org/blog/2011/12/restful-services-with-jquery-and-java-using-jax-rs-and-jersey/
+
+======================
+SETUP MAVEN PROJECT
+======================
+
+--------------------------
+MAVEN DEPENDENCIES
+--------------------------
+For Jersey:
+https://jersey.java.net/documentation/latest/modules-and-dependencies.html
+Camel core
+Camel http
+Apache http commons
+
+--------------------------
+CREATE MAVEN PROJECT
+--------------------------
+Archetype maven.archetype.webapp
+GroupId com.maven.camel
+ArtifactId restFromToExample1
+
+Create package com.maven.camel.restFromToExample1
+
+Standard folder structure: (at the time of this creation)
+src - main - resources
+src - main - webapp --> web-inf --> web.xml
+                    --> index.jsp
+                    
+target - m2e-wtp - web-resources - META-INF - maven
+                                            - MANIFEST.MF
+target - pom.xml
+
+---------------------------------
+ADD JERSEY AND JACKSON TO POM.XML
+---------------------------------
+
+This may NOT be needed: (this is the usual java servlets)
+  --> But, keep it to accomodate the default index.jsp in the maven default webapp project
+  <dependency>
+		<groupId>javax.servlet</groupId>
+		<artifactId>javax.servlet-api</artifactId>
+		<version>3.1.0</version>
+	</dependency>
+
+Jersey: https://jersey.java.net/documentation/latest/modules-and-dependencies.html
+
+    <!-- Jersey - Servlet Container -->
+	<!-- If using servlet containers like Tomcat instead of Glassfish --> 
+    <dependency>
+	    <groupId>org.glassfish.jersey.containers</groupId>
+	    <artifactId>jersey-container-servlet-core</artifactId>
+	    <version>2.22.2</version>
+	</dependency>
+	
+	<dependency>
+	    <groupId>org.glassfish.jersey.containers</groupId>
+	    <artifactId>jersey-container-servlet</artifactId>
+	    <version>2.22.2</version>
+	</dependency>
+	
+Jackson: http://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-core/ (and 2.7.4 from there)
+	<!-- http://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-core -->
+	<!-- Jackson -->
+	<dependency>
+    		<groupId>com.fasterxml.jackson.core</groupId>
+    		<artifactId>jackson-core</artifactId>
+    		<version>2.7.4</version>
+	</dependency>
+
+    <!-- Camel core -->
+    <dependency>
+        <groupId>Camel-Core</groupId>
+        <artifactId>camel-core</artifactId>
+        <version>2.17.1</version>
+        <scope>system</scope>
+        <systemPath>C:\Opt\apache-camel-2.17.1\lib\camel-core-2.17.1.jar</systemPath>
+    </dependency>
+    
+    <!-- SLF4J needed for Camel logging -->
+    <dependency>
+	<groupId>org.slf4j</groupId>
+	<artifactId>slf4j-log4j12</artifactId>
+	<version>1.7.21</version>
+	</dependency>
+	
+     <dependency>
+     <groupId>org.apache.camel</groupId>
+     <artifactId>camel-http</artifactId>
+     <version>2.17.1</version>
+     <scope>system</scope>
+     <systemPath>C:\Opt\apache-camel-2.17.1\lib\camel-http-2.17.1.jar</systemPath>
+    </dependency>
+
+Apache http client:
+<dependency>
+     <groupId>org.apache.httpcomponents</groupId>
+     <artifactId>httpclient</artifactId>
+     <version>4.5.2</version>
+</dependency>
+---------------------------------------
+RUN THE PROJECT TO INSTALL DEPENDENCIES
+---------------------------------------
+Right click the project in project explorer
+Run As --> Maven Install
+Ensure "BUILD SUCCESS" message in the bottom console.
+
+==================================
+CREATE A SIMPLE OBJECT CLASS
+==================================
+
+package com.maven.camel.restFromToExample1;
+
+public class TheObject {
+
+	private int id;
+	private String name;
+
+	public TheObject() {
+
+	}
+
+	public TheObject(int id, String name) {
+		this.id = id;
+		this.name = name;
+	}
+
+	public void setId(int id) {
+		this.id = id;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	public int getId() {
+		return id;
+	}
+
+	public String getName() {
+		return name;
+	}
+}
+
+=================================
+CREATE THE INPUT SERVICE CLASS
+=================================
+This is the service that receives user requests (the 'from' in Camel later)
+
+package com.maven.camel.restFromToExample1;
+
+// Java
+import java.util.List;
+
+// Java Servlet
+//import javax.servlet.http.HttpServletResponse;
+
+// Jersey 
+import javax.ws.rs.GET;
+import javax.ws.rs.POST;
+import javax.ws.rs.Path;
+import javax.ws.rs.Produces;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.core.MediaType;
+
+@Path("/InputService")
+public class InputService {
+
+	@GET
+	@Path("/postit")
+	//@Consumes(MediaType.APPLICATION_JSON)
+	// @Consumes({MediaType.APPLICATION_JSON, MediaType.APPLICATION_FORM_URLENCODED})
+	@Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+	@Produces(MediaType.TEXT_PLAIN)
+	public String doPostAction() {
+		TheObject theObject = new TheObject();
+		int id = 1;
+		String name = "one";
+
+		theObject.setId(id);
+		theObject.setName(name);
+
+		return theObject.toString();
+	}
+}
+
+======================================
+CREATE WEB.XML
+======================================
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE web-app PUBLIC
+ "-//Sun Microsystems, Inc.//DTD Web Application 2.3//EN"
+ "http://java.sun.com/dtd/web-app_2_3.dtd" >
+<web-app>
+	<display-name>Simple Object Input</display-name>
+	<servlet>
+		<servlet-name>Object Input Servlet - Jersey RESTful application</servlet-name>
+		<servlet-class>org.glassfish.jersey.servlet.ServletContainer</servlet-class>
+		<init-param>
+			<param-name>jersey.config.server.provider.packages</param-name>
+			<param-value>com.maven.camel.restFromToExample1</param-value>
+		</init-param>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>Object Input Servlet - Jersey RESTful application</servlet-name>
+		<url-pattern>/*</url-pattern>
+	</servlet-mapping>
+</web-app>
+
+======================================
+Do a 'clean install' 
+======================================
+NOTE: This is to get Maven download all dependencies for this project (dependencies are in pom.xml) 
+	and copy the dependencies  to target/<project>/WEB-INF/lib
+
+Right click on the project in the project explorer
+Choose Run As --> Maven Build
+and mention 'clean install' in the 'Goals' field
+
+======================================
+CREATE A WAR ONTO TOMCAT 
+======================================
+Right click project
+Export --> WAR
+	to folder <tomcat>/webapps
+Start Tomcat
+
+======================================
+ACCESS THE SERVICE
+======================================
+http://localhost:8080/restFromToExample1/InputService/postit
+You will see something like this:
+	com.maven.camel.restFromToExample1.TheObject@1b17012
+	
+NOTE: This is not legible yet -- will do more refinement
+

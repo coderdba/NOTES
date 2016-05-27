@@ -1,0 +1,53 @@
+http://blog.trackets.com/2014/05/17/ssh-tunnel-local-and-remote-port-forwarding-explained-with-examples.html
+http://www.linuxhorizon.ro/ssh-tunnel.html
+Port forwarding for mysql on a remote server: 
+  https://www.namecheap.com/support/knowledgebase/article.aspx/1249/89/how-to-remotely-connect-to-mysql-database-located-on-our-shared-server
+  https://www.digitalocean.com/community/questions/how-to-allow-remote-mysql-database-connection
+  http://dev.mysql.com/doc/refman/5.7/en/connecting.html
+  Mysql access denied - troubleshooting - 
+    http://serverfault.com/questions/230012/mysql-access-denied-for-user-rootx-x-x-x
+    http://serverfault.com/questions/614094/mysql-access-denied-error-when-connecting-via-ssh-tunnel
+    http://stackoverflow.com/questions/10236000/allow-all-remote-connections-mysql
+
+-------------------------------------------
+ssh to another machine with port forwarding
+-------------------------------------------
+Usual ssh logon: 
+ssh -p port host
+or
+ssh -p port user@host
+
+Logon with port of localhost forwarded to another in the remote machine: 
+(here port 2222 of localhost is 22 of remote host)
+ssh -p 2222 localhost
+Or
+ssh -p 2222 127.0.0.1
+
+HOWEVER, above two take the currently logged on user on localhost as the user.
+
+Therefore, provide the username as follows:
+ssh -p 2222  vagrant@127.0.0.1  --> note that user@host has host as localhost not the remote host, but user is the remote one
+
+(this is to logon to a Virtualbox Vagrant machine with NAT network, and port 222 of laptop forwarding to ssh-22 port on the VM)
+G:\cookbooks\cbmysqlr1>ssh -p 2222 vagrant@127.0.0.1
+The authenticity of host '[127.0.0.1]:2222 ([127.0.0.1]:2222)' can't be established.
+ECDSA key fingerprint is SHA256:7JcBGZFS5qLDkeH7HJBxvJb1gP08ZpWY6qiZco3+YhA.
+Are you sure you want to continue connecting (yes/no)? yes
+Warning: Permanently added '[127.0.0.1]:2222' (ECDSA) to the list of known hosts.
+vagrant@127.0.0.1's password:
+Last login: Sun May 15 16:14:03 2016 from 10.0.2.2
+[vagrant@cbmysqlr1 ~]$ logout
+Connection to 127.0.0.1 closed.
+
+Run a command after successful ssh:
+ssh -p 2222 vagrant@127.0.0.1 "echo hostname is: `hostname`"
+
+G:\cookbooks\cbmysqlr1>ssh -p 2222 vagrant@127.0.0.1 "echo hostname is: `hostname`"
+vagrant@127.0.0.1's password:
+hostname is: cbmysqlr1
+
+------------------------------
+Port forwarding in MAC
+------------------------------
+http://serverfault.com/questions/54357/can-i-specify-a-port-in-an-entry-in-my-etc-hosts-on-os-x
+--> http://serverfault.com/questions/102416/iptables-equivalent-for-mac-os-x/673551#673551

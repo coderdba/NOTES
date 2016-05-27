@@ -1,0 +1,124 @@
+METRICS FROM MGMT$ TABLES of OEM REPOSITORY
+
+'CURRENT' METRICS - Retained for 1 day at intervals of 15 or 30 min usually
+View: MGMT$METRIC_CURRENT
+
+-- Get current data availability for a target
+ select target_name, to_char(min(collection_timestamp), 'DD-MON-YYYY HH24:MI'), 
+        to_char(max(collection_timestamp), 'DD-MON-YYYY HH24:MI')
+ from mgmt$metric_current  (or mgmt$metric_details)
+ where target_name ='<<target name like db, server...>>' 
+ and metric_name='Load'
+ and metric_column='cpuUtil'
+ group by target_name;
+ 
+ -- Get names of available metrics for a target (of type server/host in this case)
+select distinct metric_name, metric_column 
+from mgmt$metric_current  (or mgmt$metric_details)
+where target_name='server hostname' order by 1,2;
+
+
+METRIC_NAME                                                      METRIC_COLUMN
+---------------------------------------------------------------- ----------------------------------------------------------------
+DiskActivity                                                     DiskActivityavque
+DiskActivity                                                     DiskActivityavserv
+DiskActivity                                                     DiskActivitybusy
+DiskActivity                                                     diskActivReadsBlks
+DiskActivity                                                     diskActivReadsPerSec
+DiskActivity                                                     diskActivWritesBlks
+DiskActivity                                                     diskActivWritesPerSec
+DiskActivitySummary                                              maxavserv
+DiskActivitySummary                                              maxiospersec
+DiskActivitySummary                                              totiosmade
+FileMonitoring                                                   file_attribute_not_found
+FileMonitoring                                                   file_permissions
+FileMonitoring                                                   file_size
+FileMonitoring                                                   file_sizechangerate
+Filesystems                                                      available
+Filesystems                                                      fileSystem
+Filesystems                                                      pctAvailable
+Filesystems                                                      size
+HostStorageSupport                                               is_hs_supported
+Load                                                             activeLogicalMem
+Load                                                             activeMem
+Load                                                             cpuIOWait
+Load                                                             cpuKernel
+Load                                                             cpuLoad
+Load                                                             cpuLoad_15min
+Load                                                             cpuLoad_1min
+Load                                                             cpuUser
+Load                                                             cpuUtil
+Load                                                             logicMemfreePct
+Load                                                             memUsedPct
+Load                                                             memfreePct
+Load                                                             noOfProcs
+Load                                                             noOfUsers
+Load                                                             pgScanRate
+Load                                                             swapUtil
+Load                                                             usedLogicalMemoryPct
+ME$CHK_PAM_CONFIG                                                FILE_EXIST
+ME$CHK_PAM_CONFIG                                                LINE_CTN
+ME$CHK_PAM_CONFIG                                                Platform
+ME$CLUSTER_ALERT                                                 A1_NAME
+ME$CLUSTER_ALERT                                                 A2_NAME
+ME$CLUSTER_ALERT                                                 A3_NAME
+ME$CLUSTER_ALERT                                                 A4_NAME
+ME$CLUSTER_ALERT_SETUP                                           HOSTNAME
+ME$Collect_Oratab_Entries                                        Start_Flag
+ME$ORACLE_ULIMIT                                                 hostname
+ME$ORAPERM_CHECK                                                 COMMENT
+ME$ORAUSER_CHECK                                                 GROUPID
+ME$ORAUSER_CHECK                                                 ORACLE_HOME
+ME$ORAUSER_CHECK                                                 USERID
+ME$ORA_FILES                                                     HOSTNAME
+ME$PMON                                                          Host_Name
+Network                                                          collisions
+Network                                                          inpErrors
+Network                                                          outErrors
+Network                                                          readRate
+Network                                                          readThroughput
+Network                                                          totalErrorRate
+Network                                                          totalRate
+Network                                                          totalThroughput
+Network                                                          writeRate
+Network                                                          writeThroughput
+NetworkSummary                                                   totalNetworkReadRate
+NetworkSummary                                                   totalNetworkReadThroughPut
+NetworkSummary                                                   totalNetworkThroughPut
+NetworkSummary                                                   totalNetworkThroughPutRate
+NetworkSummary                                                   totalNetworkWriteRate
+NetworkSummary                                                   totalNetworkWriteThroughPut
+PagingActivity                                                   PagingActivitypgscan
+PagingActivity                                                   PagingActivityppgin
+PagingActivity                                                   PagingActivityppgout
+PagingActivity                                                   Pgactive
+ProgramResourceUtilization                                       prog_max_cpu_time
+ProgramResourceUtilization                                       prog_max_cpu_util
+ProgramResourceUtilization                                       prog_max_process_count
+ProgramResourceUtilization                                       prog_max_rss
+ProgramResourceUtilization                                       prog_min_process_count
+ProgramResourceUtilization                                       prog_total_cpu_time
+ProgramResourceUtilization                                       prog_total_cpu_util
+Swap_Area_Status                                                 swapfreesize
+Swap_Area_Status                                                 swaplen
+TotalDiskUsage                                                   totavailable
+TotalDiskUsage                                                   totdisksize
+TotalDiskUsage                                                   totpercntavailable
+TotalDiskUsage                                                   totpercntused
+TotalDiskUsage                                                   totused
+proc_zombie                                                      host_proc_zombie_percnt
+
+-- List current metric values for a target
+select to_char(collection_timestamp, 'DD-MON-YYYY HH24:MI'), metric_column, value
+from mgmt$metric_details
+where metric_name='Load'
+and  metric_column in ('cpuUtil', 'cpuLoad_15min', 'cpuLoad_1min', 'cpuIOWait', 'cpuKernel', 'memUsedPct')
+and target_name='<< target name>>'
+order by 1,2;
+
+
+
+ 
+ 
+ 
+ 

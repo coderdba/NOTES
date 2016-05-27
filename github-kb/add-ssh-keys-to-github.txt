@@ -1,0 +1,112 @@
+ADD YOUR SSH KEYS - LAPTOP, WORKSTATION ETC
+
+https://help.github.com/articles/error-permission-denied-publickey/
+https://help.github.com/articles/generating-ssh-keys/
+http://stackoverflow.com/questions/17846529/could-not-open-a-connection-to-your-authentication-agent
+
+=== GENERATE KEYS ====
+THIS IS WHAT WORKED FOR ME (while with erroneous keys, Jenkins would hang while accessing Git)
+Start git-bash
+cd ~  (or cd /c/Users/<username> -->  this is not a necessary step, but convenient
+
+$ ssh-keygen -t rsa -b 4096 -C "gdba@yahoo.com"
+Generating public/private rsa key pair.
+Enter file in which to save the key (/c/Users/<username>/.ssh/id_rsa):
+/c/Users/<username>/.ssh/id_rsa already exists.
+Overwrite (y/n)? y
+Enter passphrase (empty for no passphrase):
+Enter same passphrase again:
+Your identification has been saved in /c/Users/<username>/.ssh/id_rsa.
+Your public key has been saved in /c/Users/<username>/.ssh/id_rsa.pub.
+The key fingerprint is:
+67:88:54:78:99:1a:cf:4e:c7:22:8c:34:b5:db:78:1d gdba@yahoo.com
+
+$ ssh-add ~/.ssh/id_rsa
+Identity added: /c/Users/<username>/.ssh/id_rsa (/c/Users/<username>/.ssh/id_rsa)
+
+$ cd .ssh
+
+$ ls -l
+total 4
+-rw-r--r--    1 username   Administ     3239 Aug 19 18:55 id_rsa
+-rw-r--r--    1 username   Administ      742 Aug 19 18:55 id_rsa.pub
+-rw-r--r--    1 username   Administ     2008 Aug 19 18:46 known_hosts
+
+$ cat id_rsa.pub
+    ssh-rsa 
+    7pHXB1Y5I4r8PVJrt3MLt76aewwIkGfYxQxYIcJnzNkmKfebbeP8lMEvyCop586FGAjhxULvWDJeA3zg
+    ...
+    ...
+    9098dflkjsldfVJrt3MLt76aewwIkGfYxQxYIcJnzNkmKfebbeP8lMEvylkjsdflkdslfjslkdfjopi90
+    gdba@yahoo.com
+
+==== START SSH AGENT ====
+$ eval $(ssh-agent -s)
+Agent pid 12356
+
+==== ADD THE KEY TO THE AGENT ==== (is this required?)
+$ ssh-add -l
+The agent has no identities.
+
+==== COPY THE KEYS TO GITHUB ====
+$ clip < ~/.ssh/id_rsa.pub
+
+Logon to github
+In profile choose 'ssh keys' on the left hand side panel
+Click 'add ssh key'
+Add a comment
+Add the copied key 
+Save
+
+
+==== NOW VERIFY ====
+$ ssh -vT git@github.com
+OpenSSH_4.6p1, OpenSSL 0.9.8e 23 Feb 2007
+debug1: Connecting to github.com [192.30.252.128] port 22.
+debug1: Connection established.
+debug1: identity file /c/Users/<username>/.ssh/identity type -1
+debug1: identity file /c/Users/<username>/.ssh/id_rsa type 1
+debug1: identity file /c/Users/<username>/.ssh/id_dsa type -1
+debug1: Remote protocol version 2.0, remote software version libssh-0.7.0
+debug1: no match: libssh-0.7.0
+debug1: Enabling compatibility mode for protocol 2.0
+debug1: Local version string SSH-2.0-OpenSSH_4.6
+debug1: SSH2_MSG_KEXINIT sent
+debug1: SSH2_MSG_KEXINIT received
+debug1: kex: server->client aes128-cbc hmac-sha1 none
+debug1: kex: client->server aes128-cbc hmac-sha1 none
+debug1: sending SSH2_MSG_KEXDH_INIT
+debug1: expecting SSH2_MSG_KEXDH_REPLY
+debug1: Host 'github.com' is known and matches the RSA host key.
+debug1: Found key in /c/Users/<username>/.ssh/known_hosts:3
+debug1: ssh_rsa_verify: signature correct
+debug1: SSH2_MSG_NEWKEYS sent
+debug1: expecting SSH2_MSG_NEWKEYS
+debug1: SSH2_MSG_NEWKEYS received
+debug1: SSH2_MSG_SERVICE_REQUEST sent
+debug1: SSH2_MSG_SERVICE_ACCEPT received
+debug1: Authentications that can continue: publickey
+debug1: Next authentication method: publickey
+debug1: Trying private key: /c/Users/<username>/.ssh/identity
+debug1: Offering public key: /c/Users/<username>/.ssh/id_rsa
+debug1: Server accepts key: pkalg ssh-rsa blen 533
+debug1: read PEM private key done: type RSA
+debug1: Authentication succeeded (publickey).   --->  NOTE THAT AUTHENTICATION SUCCEEDED
+debug1: channel 0: new [client-session]
+debug1: Entering interactive session.
+debug1: client_input_channel_req: channel 0 rtype exit-status reply 0
+Hi gowrishdba! You've successfully authenticated, but GitHub does not provide sh
+ell access.
+debug1: channel 0: free: client-session, nchannels 1
+debug1: Transferred: stdin 0, stdout 0, stderr 0 bytes in 0.5 seconds
+debug1: Bytes per second: stdin 0.0, stdout 0.0, stderr 0.0
+debug1: Exit status 1
+
+$ ssh-agent -s
+SSH_AUTH_SOCK=/tmp/ssh-ebSyrB5036/agent.5036; export SSH_AUTH_SOCK;
+SSH_AGENT_PID=13240; export SSH_AGENT_PID;
+echo Agent pid 13240;
+
+$ ssh-add -l
+The agent has no identities.
+

@@ -1,0 +1,128 @@
+Good tutorial by examples: https://www3.ntu.edu.sg/home/ehchua/programming/java/JSPByExample.html
+
+Java Persistent API: http://www.informit.com/articles/article.aspx?p=1671224&seqNum=2
+Persistent authentication (remember me): https://www.netiq.com/documentation/netiqaccessmanager4_appliance/identityserverhelp/data/b1aeuhkr.html
+Persistent authentication with sprint framework: http://www.mkyong.com/spring-security/spring-security-remember-me-example/
+
+JSP Form input fields and submit action: http://www.easywayserver.com/jsp/JSP-form.htm
+JSP input box size control: http://stackoverflow.com/questions/7545302/how-to-change-the-size-of-the-input-text-box
+JSP login page: https://www.netiq.com/documentation/netiqaccessmanager32_appliance/identityserverhelp/data/bok7p21.html
+"Required" property in JSP: http://stackoverflow.com/questions/20881438/required-property-in-jsp-page
+Mandatory field check code: http://www.experts-exchange.com/Programming/Languages/Java/J2EE/JSP/Q_22067476.html
+
+Copy jdbc.jar oracle drivers into tomcat/lib - or copy to web-inf/classes of each project - former is better
+Can similarly copy other jars also to tomcat/lib
+--> however, the above two apply to web apps and not command line run java programs created in same web-app project
+--> why in tomcat/lib: http://stackoverflow.com/questions/6981564/why-must-the-jdbc-driver-be-put-in-tomcat-home-lib-folder
+
+Printing stacktrace of exception in JSP: 
+	http://www.tutorialspoint.com/jsp/jsp_exception_handling.htm
+	https://books.google.co.in/books?id=nDEpAwAAQBAJ&pg=PT8&lpg=PT8&dq=printing+bean+println+in+jsp+error+stack&source=bl&ots=_q6zgXDFj9&sig=se8bZtMy3qA30G_expRxvL6cYVU&hl=en&sa=X&ved=0CB0Q6AEwAGoVChMIwvHSnI6_xwIVDkGSCh1i3wCz#v=onepage&q=printing%20bean%20println%20in%20jsp%20error%20stack&f=false
+	
+Printing input parameters
+http://examples.javacodegeeks.com/enterprise-java/jsp/get-request-parameter-in-jsp-page/
+
+Column names from result set: http://stackoverflow.com/questions/696782/retrieve-column-names-from-java-sql-resultset
+
+
+==========================
+QuerySYSMAN.jsp
+==========================
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1"
+    pageEncoding="ISO-8859-1"%>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>QuerySYSMAN</title>
+</head>
+<body>
+<h2>Query Sysman Form </h2> <br>
+
+<form name="QuerySysmanInputs" method="post" action="ShowSYSMANQueryResults.jsp">
+
+Query to Run: <br>
+<input type="text" name="query" style="width: 400px;"  style="height: 200px;"  style="top"><br><br>
+
+<table width="100%" border="0" cellspacing="0" cellpadding="0">
+  <tr>
+    <td width="22%">&nbsp;</td>
+    <td width="78%">&nbsp;</td>
+  </tr>
+  
+  <tr>
+    <td>Username </td>
+    <td><input type="text" name="username"></td>
+  </tr>
+  
+  <tr>
+    <td>Password </td>
+    <td><input type="password" name="password"></td>
+  </tr>
+  
+  <tr>
+    <td>OEM DB Host/Scan Name </td>
+    <td><input type="text" name="oemDBHostOrScan"></td>
+  </tr>
+  
+  <tr>
+    <td>OEM DB Port Number </td>
+    <td><input type="text" name="oemDBPort"></td>
+  </tr>
+ 
+   <tr>
+    <td>OEM DB Instance/Service </td>
+    <td><input type="text" name="oemDBInstanceOrService"></td>
+  </tr>
+    
+  <tr>
+    <td>&nbsp;</td>
+    <td><input type="submit" name="submit" value="Submit"></td>
+    </tr>
+  <tr>
+    <td>&nbsp;</td>
+    <td>&nbsp;</td>
+    </tr>
+</table>
+</form>
+
+</body>
+</html>
+
+
+
+==========================
+ShowSYSMANQueryResults.jsp:
+==========================
+<%@ page 
+	import="java.sql.ResultSet"
+	language="java" contentType="text/html; charset=ISO-8859-1"
+    pageEncoding="ISO-8859-1"%>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>Query Results</title>
+</head>
+<body>
+
+<jsp:useBean id= "queryBean" class= "dh.ora.dh.DataHandler" scope= "session" /> 
+
+<%
+
+String query = request.getParameter("query");
+String username = request.getParameter("username");
+String password = request.getParameter("password");
+String oemDBHostOrScan = request.getParameter("oemDBServerOrScan");
+String oemDBPort = request.getParameter("oemDBPort");
+String oemDBInstanceOrService = request.getParameter("oemDBInstanceOrService");
+
+ResultSet resultSet;
+
+resultSet = queryBean.queryResultSet(username, password, 
+		oemDBHostOrScan, oemDBPort, oemDBInstanceOrService, query);
+
+%>
+
+</body>
+</html>

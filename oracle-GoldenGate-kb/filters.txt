@@ -1,0 +1,18 @@
+FILTERING EXAMPLES FOR GOLDENGATE
+
+A COMPLEX DATE FILTER 
+In this example, JOINDATE column is a CHAR column that stores date as a portion of the string it stores.
+Functions used:
+@datediff = gives difference between two dates - with dates in the format 'YYYY-MM-DD' or @datenow() function output
+@date = creates a re-formatted date from another format
+@strext = similar to substr function of SQL - extracts portion of string from a begin position to an end position
+@datenow = gives current date time
+
+Extract ec1
+UserIdAlias oggusersc
+TranlogOptions DBLOGREADER DBLOGREADERBUFSIZE 1024
+Exttrail ./dirdat/ec
+LOGALLSUPCOLS
+UPDATERECORDFORMAT COMPACT
+DDL INCLUDE MAPPED OBJNAME OGGSOC.table1
+Table OGGSOC.table1, filter (@datediff('DD',@date('YYYY-MM-DD', 'YYYYMMDD', @strext(joindate,1,8)), @datenow()) < 4);

@@ -1,0 +1,273 @@
+
+Resync / Recover Data ( Tables , Trails ) Trails Are Missing, Damaged, Incompatible, Corrupt or Suspect 
+for Extract or Replicat (Doc ID 1614665.1)	To BottomTo Bottom	
+
+In this Document
+Goal
+Solution
+ 	
+Methods
+ 	
+1) For trails created by extract OGG versions 11.2+ and replicat running with a database checkpoint table (best practice).
+ 	a) STOP groups
+ 	b) FIND LOG_CSN
+ 	
+c) FIND LOCAL TRAIL WITH LOG_CSN
+ 	
+d) ALTER PUMP TO REBUILD TRAIL
+ 	e) ALTER REPLICAT TO NEW TRAIL AND START
+ 	
+2) The OGG version is earlier than V11.1 and does not checkpoint the last source transaction done.
+APPLIES TO:
+
+Oracle GoldenGate - Version 11.1.1.0.0 and later
+Information in this document applies to any platform.
+
+GOAL
+
+To reliably recover data from Oracle logs when such data may have been lost or damaged in the trails prior to application by replicat or processed by an extract pump. 
+Recovery depends on whether the local extract trail as created by the main transaction log extract or target remote trail as written by an extract pump.
+Examples of these Error messages in the report file indicates a possible corrupt trail:
+OGG-01028  Incompatible record (logical EOF) in 
+OGG-01179: Mismatched record version/bad data in {0} at {1}
+OGG-01184: Expected {3,number,0} bytes, but got {4,number,0} bytes, in trail {0},seqno {1,number,0}, reading record trailer token at RBA {2,number,0}
+....etc
+
+SOLUTION
+
+
+Methods
+
+
+1) For trails created by extract OGG versions 11.2+ and replicat running with a database checkpoint table (best practice).
+
+
+This is valid for all source databases types that supports the concept of a Commit System Number (CSN), example Oracle's SCN,Microsoft SQL LSN, etc.
+Basically the recovery involves taking note of the last source CSN done by the replicat, find this corresponding transaction in the source OGG trails and resend the OGG trail records from this transaction by building a new trail for the replicat to process.
+This ensures continuity without any data loss.
+
+
+
+
+a) STOP groups
+
+If not already stopped, Stop/kill replicats and source extract pump. If the local extract trail is corrupted , stop the transaction log main extract if it is not stopped.
+
+b) FIND LOG_CSN
+
+On target, ggsci > info <replicat group name> , detail
+....etc....
+Checkpoint table     ggsuser.chkpt
+Process file         C:\GoldenGateInstalls\OOG12CORA11\dirpcs\RTEST1.pcr
+Error log            C:\GoldenGateInstalls\OOG12CORA11\ggserr.log
+
+Determine the name of the checkpoint table and select the log csn (as in Oracle's scn) where the group name is the replicat group name.
+Example:
+select group_name,log_csn from ggsuser.chkpt where group_name = 'replicatname';
+Note that the check point file column names may be different between versions. Do a describe <check point table> to check.
+
+
+c) FIND LOCAL TRAIL WITH LOG_CSN
+
+From the extract pump report file find out which trail the extract pump was reading when it was writing the corrupted trail. Search in the report file for the last line
+    INFO    OGG-01026  Rolling over remote file <the target OGG trail>
+Then search backwards from this line, the last line showing:
+    Switching to next trail file  <the local OGG Extract trail>
+Locate the replicat log_csn from the source local trail Run logdump
+> Open <the local OGG Extract trail>
+> ggstoken detail
+(This option displays the log_csn)
+> filter logcsn = <log_csn from replicat checkpoint table> 
+(search for the record with this csn, there should only be one)
+> next 
+(start searching, list the next record matching the filter)
+If found, this confirms that the transaction is in this trail. If not found search the previous trail or next trail. 
+You can also remove the filter and see what the CSN is for the first transaction. Compare the log_csn against this will you in finding the trail with this transaction.
+
+
+
+d) ALTER PUMP TO REBUILD TRAIL
+
+Alter the extract pump to start reading from the trail containing the transaction with the log_csn as found in logdump
+ggsci > alter <extract pump>, extseqno <sequence of local trail>, extrba 0 
+Extrba 0 denotes the start of this trail.
+Alter the pump to start on a new trail and re-extract (pump) the OGG records to the target.
+ggsci >info <extract pump> detail
+Take note the target trail sequence number, example, the current target sequence is 1:
+GGSCI (KKGAN-AU) 4> info epump detail
+EXTRACT    EPUMP     Last Started 2014-12-03 15:21   Status STOPPED
+Checkpoint Lag       00:00:00 (updated 2640:18:40 ago)
+Log Read Checkpoint  File C:\GoldenGateInstalls\ORA11v1121019\dirdat\e2000005
+                     2014-09-12 14:02:55.000000  RBA 6959
+  Target Extract Trails:
+  Trail Name                                       Seqno        RBA     Max MB Trail Type
+  c:\temp\aa                                           1      30890        100 RMTTRAIL 
+....etc.
+ggsci >alter <extract pump>, etrollover
+ggsci >info <extract pump> detail
+The current target sequence would have changed to the next value. Example 2 for the above.
+Check the target directory of this rmttrail location that the next sequence trail numbered file does not exist.
+
+ggsci > start <extract pump>
+
+NOTE: DO NOT perform both Alter etrollover and extseqno in the same alter command as it will not work.
+
+e) ALTER REPLICAT TO NEW TRAIL AND START
+
+Alter the target replicat to the new trail and start after the last transaction done by the replicat.
+ggsci > alter <replicat>, extseqno <new sequence>, extrba 0
+ggsci > start <replicat>, aftercsn <log_csn>
+
+
+NOTE: if multiple replicats read the same trails, make sure you use the earliest log_csn from the multiple replicats. Each replicat will start from its respectie log_csn from the checkpoint file.
+
+ 
+
+
+2) The OGG version is earlier than V11.1 and does not checkpoint the last source transaction done.
+
+
+if not stopped, Stop/kill replicats and source extract pump.
+
+ggsci> info <pump or replicat name>, detail on the extract pump or replicat group.
+
+Example:
+GGSCI (slc00yef) 4> info r1971, detail
+
+REPLICAT   R1971     Last Started 2014-01-12 10:51   Status ABENDED
+Checkpoint Lag       13:31:42 (updated 68:40:45 ago)
+Log Read Checkpoint  File ./dirdat/di000199
+                     2014-01-11 21:26:02.008883  RBA 51025653
+
+  Extract Source                          Begin             End             
+
+  ./dirdat/di000199                       * Initialized *   2014-01-11 21:26
+  ./dirdat/di000000                       * Initialized *   First Record    
+
+In this example, we see that the replicat abended at RBA 51025653 in trail file ./dirdat/di000199.
+That means this transaction would not have been successfully processed.
+If maxtransops was set then it is possible a partial transaction was applied.
+That must be kept in mind for later.
+
+The report file is then examined...
+
+
+It shows where it last successfully committed a transaction:
+***********************************************************************
+
+Last record for the last committed transaction is the following:
+___________________________________________________________________
+Trail name :  ./dirdat/di000199
+Hdr-Ind    :     E  (x45)     Partition  :     .  (x04)
+UndoFlag   :     .  (x00)     BeforeAfter:     A  (x41)
+RecLength  :    14 (x000e)    IO Time    : 2014-01-11 21:26:02.008883  
+IOType     :    15  (x0f)     OrigNode   :   255  (xff)
+TransInd   :     .  (x03)     FormatType :     R  (x52)
+SyskeyLen  :     0  (x00)     Incomplete :     .  (x00)
+AuditRBA   :      34428       AuditPos   : 208351696
+Continued  :     Y  (x01)     RecCount   :     1  (x01)
+
+2014-01-11 21:26:02.008883 FieldComp          Len    14 RBA 51025653
+Name: ELMS_LMS_PRD.LCT_BATCH_FILES
+___________________________________________________________________
+
+You can tell maxtransops was set to 1 in two ways. One, read the report. The parameter is there.
+Two, if transind is not = 2 or 3 for the last committed transaction then this is a partial transaction implying maxtransops =1
+
+In the above example, transind = 3 meaning this is the only record in the transaction.
+
+The next task is to find the scn of the last committed transaction. This is done with logdump.
+
+
+From the OGG/HOME
+
+>logdump
+logdump> log to mycase0.txt                 -- keep a written record
+logdump> ghdr on
+logdump> detail on
+logdump> ggstokens detail                  -- this will tell us the scn number
+logdump> open ./dirdat/di000199            -- this trail file will be found in both the info, detail and in the report, and optionally in the discard file  
+logdump> pos 0
+logdump> filter inc transind 0             -- find all beginning records of transactions
+logdump> n 10000
+logdump> n 10000
+do this until you are not getting any more data.
+logdump> exit
+
+
+You now have a record of all begin transactions if the transaction had more than one DML (record, IO) in the transaction.
+Now you must capture the scns of those transactions with only a single DML in the transaction.
+Note that this must be done in a separate session due to logdump limitations.
+
+>logdump
+logdump> log to mycase3.txt                 -- keep a written record
+logdump> ghdr on
+logdump> detail on
+logdump> ggstokens detail                  -- this will tell us the scn number
+logdump> open ./dirdat/di000199            -- this trail file will be found in both the info, detail and in the report, and optionally in the discard file  
+logdump> pos 0
+logdump> filter inc transind 3             -- find all beginning records of transactions
+logdump> n 10000
+logdump> n 10000
+do this until you are not getting any more data.
+logdump> exit
+
+You now have a record of all begin transactions if the transaction had more than one DML and of all single DML transactions
+Now you must capture all the end transaction records.
+Note that this must be done in a separate session due to logdump limitations.
+
+>logdump
+logdump> log to mycase2.txt                 -- keep a written record
+logdump> ghdr on
+logdump> detail on
+logdump> open ./dirdat/di000199            -- this trail file will be found in both the info, detail and in the report, and optionally in the discard file  
+logdump> pos 0
+logdump> filter inc transind 2             -- find all end records of multiple row transactions
+logdump> n 10000
+logdump> n 10000
+do this until you are not getting any more data.
+logdump> exit
+
+Summary:
+Replicat processed data up to the transaction prior to where it now displays its current RBA.
+mycase0 has all the scns at the beginning of transactions where multiple records exist in a transaction
+mycase3 has all the scns  of transactions where only a single record existed in a transaction
+
+Next: Determine the end of the last transaction to complete before the replicat current RBA.
+Compare the RBAs in the record headers in mycase2 against the RBAs in the record header of the mycase3 records.
+Whichever RBA is the largest PRIOR to the RBA in the record info/report/discard is the one we want.
+If the largest prior RBA comes from mycase3 (ie transind = 3) file then we want this scn.
+Save this scn.
+If the largest prior RBA comes from mycase2 (ie transind = 2) file then we have the END OF the last transaction.
+Save the RBA from the header.
+In this latter case, we must search mycase0 and identify the largest RBA that is just prior to the RBA we idebtified fron mycase3.
+This record contains the the scn we want in this case.
+Save this scn.
+
+WE must now determine when to start re-extracting  the data from the archive logs.
+Recall that all logs must be present when the extract is re-started.
+
+The trail header contains the IO time that the record was captured. This should roughly correspond to the time of the source incident failure.
+This would seem the logical spot to restart the extract.
+Assume for example 2014-01-01 07:30 as the problem time.
+However, in most installations, not all transactions finish immediately.
+To manage long running transactions (LRTs), most installations have a timeout period after which an uncommitted transaction will be aborted.
+Assume for example, the commonly used 2 hours.
+We want to back the initial time we selected (07:30) by at least the amount of the timeout time. This leaves us with a start time of 2014-01-01 05:30.
+In the interest of a little way, we alter the extract as follows:
+
+ggsci> alter <extract group name>, begin time 2014-01-01 05:30.
+ggsci> start <extract group name>
+
+The extract will first roll over to a new trail so we need to do
+ggsci> info <extract group name>, detail
+This will tell us the sequence number of the new trail file extract is writing to
+We must alter the pump to start reading there
+ggsci> alter <extract pump name>, extseqno <the new number>, extrba 0
+ggsci> start <extract pump name>
+
+The pump will first roll over to a new trail so we need to do
+ggsci> info <extract pumpname>, detail
+This will tell us the sequence number of the new trail file the pump is writing to
+We must alter the replicat to start reading there
+ggsci> alter <replicat name>, extseqno <the new number>, extrba 0

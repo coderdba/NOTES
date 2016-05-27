@@ -1,0 +1,910 @@
+GOLDEN GATE 12C - INSTALL AND CONFIGURE  ---  AND ALSO REMOVE --- AND ALSO CONFIGURE DDL REPLICATION ---
+
+NOT COMPLETE - IN PROGRESS 
+
+DOCUMENTS/SITES 
+Tutorial followed here - http://www.oracle.com/webfolder/technetwork/tutorials/obe/fmw/goldengate/12c/OGG12c_Integrated_Replicat/index.html
+More tutorial - http://myoracleproduct.blogspot.in/2013/11/oracle-goldengate-replication-oracle-to.html
+Another tutorial - says 'best parameters testing' - http://www.askmaclean.com/archives/goldengate-best-parameters-test-from-maclean.html
+
+https://docs.oracle.com/goldengate/1212/gg-winux/GIORA.pdf
+https://docs.oracle.com/goldengate/1212/gg-winux/GIORA/install.htm
+Source/dest on same host - http://gavinsoorma.com/2011/08/goldengate-replication-with-source-and-target-on-the-same-physical-host/
+Enable DDL-Good-http://askdba.org/weblog/goldengate/starting-with-oracle-goldengate/
+Enable DDL - https://docs.oracle.com/goldengate/1212/gg-winux/GIORA/ddl.htm#GIORA302
+Enable DDL example - https://blogs.oracle.com/imc/entry/oracle_goldengate_configuring_ddl_replication (this has that 942 error)
+Sequences - 
+Enable DDL - http://www.vitalsofttech.com/configure-goldengate-ddl-replication/
+Enable DDL - http://gavinsoorma.com/2010/02/oracle-goldengate-tutorial-7-configuring-ddl-synchronization/
+Command help - http://satya-dba.blogspot.in/2012/02/ggsci-goldengate-command-interpreter.html
+
+Bad column index error - http://www.ateam-oracle.com/oracle-goldengate-understanding-ogg-01161-bad-column-index-error/
+DDL - defgen - http://chandu208.blogspot.in/2013/08/create-sourcedef-file-using-goldengate.html
+DDL - defgen - https://community.oracle.com/thread/3703156
+
+IMPORTANT - 
+In clusters, some(NOT ALL) components of GG need shared filesystem of type OCFS, AFS or DBFS
+--> However, this seems optional - see section 2.4.2
+(https://docs.oracle.com/goldengate/1212/gg-winux/GIORA.pdf section 2.4.1)
+
+1. GG Software - can be on local filesystem provided the install directories are same on all nodes
+2. The parameter files in the dirprm directory - can be on local f/s, but must be identical on all nodes
+3, Shared storage required here - At minimum, install the following directories on the shared storage to support
+Oracle GoldenGate recovery requirements. On UNIX or Linux, you can create
+    symbolic links to them from the installation directory on each node.
+    – br
+    – dirchk
+    – dirdat
+    These directories are among those created when you issue CREATE SUBDIRS during installation.
+
+HIGH LEVEL STEPS
+Unzip
+Install using runInstaller 
+Integrate with clusterware
+Create schemas in source and target DBs
+Do initial synch
+Set up replication
+
+DISK SPACE, FILESYSTEMS REQUIRED
+
+GG 12c software install directory - about 390 MB in Linux
+Trail files directory - 1GB
+Bounded Recovery feature needs disk space - TBD
+
+FILE AND PROCESS NAMING CONVENTION.
+
+File and process naming conventions can be whatever works for you or your company. Here are the sample conventions used in the tutorial:  http://www.oracle.com/webfolder/technetwork/tutorials/obe/fmw/goldengate/12c/OGG12c_Integrated_Replicat/index.html
+
+File Name - pxxxxhh.ext 
+where:
+
+p=process=
+e(xtract), p(ump), r(eplicat), i(nitial), d(efgen), s(tartup).
+xxxx=project=
+All files related to a common project xxxx, for example hr, sales, engr.
+hh=host-to-host=
+aa, ab, ba, bb, as indicated by source and target host names where a=host01, and b=host02. Later on you will see that you cannot use numbers as part of some file names, so better not to go there at all.
+ext=extension=
+prm=parameter (stored in dirprm/), dsc=discard, rpt=report (stored in dirrpt/), def=definition (stored in dirdef/), oby=obey (stored in installation directory), sql=SQL (stored in dirsql/).
+
+============
+INSTALLATION
+============
+
+Create response file gg_for_11gDB.rsp with content as below - exclude start manager, DB name etc to begin with
+            #-------------------------------------------------------------------------------
+            # Do not change the following system generated value.
+            #-------------------------------------------------------------------------------
+            oracle.install.responseFileVersion=/oracle/install/rspfmt_ogginstall_response_schema_v12_1_2
+            ################################################################################
+            ##                                                                            ##
+            ## Oracle GoldenGate installation option and details                          ####                                                                            ##
+            ################################################################################
+            #-------------------------------------------------------------------------------
+            # Specify the installation option.
+            # Specify ORA12c for installing Oracle GoldenGate for Oracle Database 12c and
+            #         ORA11g for installing Oracle GoldenGate for Oracle Database 11g
+            #-------------------------------------------------------------------------------
+            INSTALL_OPTION=ORA11g
+            
+            #-------------------------------------------------------------------------------
+            # Specify a location to install Oracle GoldenGate
+            #-------------------------------------------------------------------------------
+            SOFTWARE_LOCATION=/u01/app/oracle/product/12.1.2.1.OGG
+            
+            #-------------------------------------------------------------------------------
+            # Specify true to start the manager after installation.
+            
+            #-------------------------------------------------------------------------------
+            START_MANAGER=
+            
+            #-------------------------------------------------------------------------------
+            # Specify a free port within the valid range for the manager process.
+            # Required only if START_MANAGER is true.
+            #-------------------------------------------------------------------------------
+            MANAGER_PORT=
+            
+            #-------------------------------------------------------------------------------
+            # Specify the location of the Oracle Database.
+            # Required only if START_MANAGER is true.
+            #-------------------------------------------------------------------------------
+            DATABASE_LOCATION=
+            
+            ################################################################################
+            ##                                                                            ##
+            ## Specify details to Create inventory for Oracle installs                    ##
+            ## Required only for the first Oracle product install on a system.            ##
+            ##                                                                            ##
+            ################################################################################
+            
+            #-------------------------------------------------------------------------------
+            # Specify the location which holds the install inventory files.
+            # This is an optional parameter if installing on
+            # Windows based Operating System.
+            #-------------------------------------------------------------------------------
+            INVENTORY_LOCATION=/u01/app/oraInventory
+            
+            #-------------------------------------------------------------------------------
+            # UNIX group to be set for the inventory directory.  # This parameter is not applicable if installing on
+            # Windows based Operating System.
+            #-------------------------------------------------------------------------------
+            UNIX_GROUP_NAME=dba
+            
+Run runInstaller:
+Go to the unzipped software folder fbo_ggs_Linux_x64_shiphome/Disk1
+$ runInstaller -silent -nowait -responseFile ogg-for-11gDB.rsp
+This does install golden-gate in the said location and registers with oraInventory.
+HOWEVER, it detects cluster and throws message related to cluster in the screen output:  (ignore it for now)
+        Starting Oracle Universal Installer...
+        Checking Temp space: must be greater than 120 MB.   Actual 3555 MB    Passed
+        Checking swap space: must be greater than 150 MB.   Actual 16383 MB    Passed
+        Preparing to launch Oracle Universal Installer from /tmp/OraInstall2015-06-23_11-56-22PM. Please wait ...
+            [WARNING] [INS-75016] Cluster detected: Specified software location is not shared.
+        It is recommended to install Oracle GoldenGate entirely on shared storage.
+           CAUSE: The specified software location may not be accessible from one or more cluster nodes.
+           ACTION: Specify the software location on a shared storage.
+        You can find the log of this install session at:
+         /u01/app/oraInventory/logs/installActions2015-06-23_11-56-22PM.log
+        The installation of Oracle GoldenGate Core was successful.
+        Please check '/u01/app/oraInventory/logs/silentInstall2015-06-23_11-56-22PM.log' for more details.
+        Successfully Setup Software.
+
+Verify installation:
+        $ ggsci
+        GGSCI > info all
+        
+        Program     Status      Group       Lag at Chkpt  Time Since Chkpt
+        MANAGER     STOPPED
+    
+Verify directories:
+NOTE:  Do a show dirs and see that subdirectories are not created yet.  Then, create them using create subdirs
+
+        GGSCI> show dirs
+        
+        Parameter settings:
+        
+        SET SUBDIRS    ON
+        SET DEBUG      OFF
+        
+        Current directory: /u01/app/oracle/product/12.1.2.1.OGG
+        
+        Using subdirectories for all process files
+        
+        Editor:  vi
+        
+        Reports (.rpt)                 /u01/app/oracle/product/12.1.2.1.OGG/dirrpt -- does not yet exist
+        Parameters (.prm)              /u01/app/oracle/product/12.1.2.1.OGG/dirprm
+        Replicat Checkpoints (.cpr)    /u01/app/oracle/product/12.1.2.1.OGG/dirchk -- does not yet exist
+        Extract Checkpoints (.cpe)     /u01/app/oracle/product/12.1.2.1.OGG/dirchk -- does not yet exist
+        Process Status (.pcs)          /u01/app/oracle/product/12.1.2.1.OGG/dirpcs -- does not yet exist
+        SQL Scripts (.sql)             /u01/app/oracle/product/12.1.2.1.OGG/dirsql -- does not yet exist
+        Database Definitions (.def)    /u01/app/oracle/product/12.1.2.1.OGG/dirdef -- does not yet exist
+        Dump files (.dmp)              /u01/app/oracle/product/12.1.2.1.OGG/dirdmp -- does not yet exist
+        Masterkey wallet files (.wlt)  /u01/app/oracle/product/12.1.2.1.OGG/dirwlt -- does not yet exist
+        Credential store files (.crd)  /u01/app/oracle/product/12.1.2.1.OGG/dircrd -- does not yet exist
+        
+    GGSCI> create subdirs
+    Creating subdirectories under current directory /u01/app/oracle/product/12.1.2.1.OGG
+
+    Parameter files                /u01/app/oracle/product/12.1.2.1.OGG/dirprm: already exists
+    Report files                   /u01/app/oracle/product/12.1.2.1.OGG/dirrpt: created
+    Checkpoint files               /u01/app/oracle/product/12.1.2.1.OGG/dirchk: created
+    Process status files           /u01/app/oracle/product/12.1.2.1.OGG/dirpcs: created
+    SQL script files               /u01/app/oracle/product/12.1.2.1.OGG/dirsql: created
+    Database definitions files     /u01/app/oracle/product/12.1.2.1.OGG/dirdef: created
+    Extract data files             /u01/app/oracle/product/12.1.2.1.OGG/dirdat: created
+    Temporary files                /u01/app/oracle/product/12.1.2.1.OGG/dirtmp: created
+    Credential store files         /u01/app/oracle/product/12.1.2.1.OGG/dircrd: created
+    Masterkey wallet files         /u01/app/oracle/product/12.1.2.1.OGG/dirwlt: created
+    Dump files                     /u01/app/oracle/product/12.1.2.1.OGG/dirdmp: created
+    
+    GGSCI > show dirs
+    
+    Parameter settings:
+    
+    SET SUBDIRS    ON
+    SET DEBUG      OFF
+    
+    Current directory: /u01/app/oracle/product/12.1.2.1.OGG
+    
+    Using subdirectories for all process files
+    
+    Editor:  vi
+    
+    Reports (.rpt)                 /u01/app/oracle/product/12.1.2.1.OGG/dirrpt
+    Parameters (.prm)              /u01/app/oracle/product/12.1.2.1.OGG/dirprm
+    Replicat Checkpoints (.cpr)    /u01/app/oracle/product/12.1.2.1.OGG/dirchk
+    Extract Checkpoints (.cpe)     /u01/app/oracle/product/12.1.2.1.OGG/dirchk
+    Process Status (.pcs)          /u01/app/oracle/product/12.1.2.1.OGG/dirpcs
+    SQL Scripts (.sql)             /u01/app/oracle/product/12.1.2.1.OGG/dirsql
+    Database Definitions (.def)    /u01/app/oracle/product/12.1.2.1.OGG/dirdef
+    Dump files (.dmp)              /u01/app/oracle/product/12.1.2.1.OGG/dirdmp
+    Masterkey wallet files (.wlt)  /u01/app/oracle/product/12.1.2.1.OGG/dirwlt
+    Credential store files (.crd)  /u01/app/oracle/product/12.1.2.1.OGG/dircrd
+
+START MANAGER
+First, edit parameters
+$ ggsci
+GGSCI> edit params mgr
+NOTE: This opens a vi sessions to edit dirprm/mgr.prm file.  Add one line "PORT 7809" and save to beging with.
+
+GGSCI> start manager
+Manager started.
+
+GGSCI> info all
+Program     Status      Group       Lag at Chkpt  Time Since Chkpt
+
+MANAGER     RUNNING
+
+==============================================
+CONFIGURE EXTRACT AND REPLICATION
+==============================================
+http://www.oracle.com/webfolder/technetwork/tutorials/obe/fmw/goldengate/12c/OGG12c_Integrated_Replicat/index.html
+
+OVERVIEW
+
+Assuming two users srcowner and destowner are the schemas of source and destination.
+    SOURCE:
+    create user srcowner identified by srcowner
+    default tablespace users temporary tablespace temp;
+    alter user srcowner quota unlimited on users;
+    
+    create table srcowner.table1
+    (empid number(5) primary key,
+     empname varchar2(20));
+     
+     grant select on srcowner.table1 to ogguser;
+
+    DESTINATION:
+    create user destowner identified by destowner
+    default tablespace users temporary tablespace temp;
+    alter user destowner quota unlimited on users;
+
+    -- Should this be created - or can initial sync or exp/imp do that?
+    create table destowner.table1
+    (empid number(5) primary key,
+    empname varchar2(20));
+    
+    grant select, insert, update, delete on destowner.table1 to ogguser;
+    grant alter on destowner.table1 to ogguser;
+
+
+Perform the following tasks to implement extraction and replication.
+
+On the source system
+» Create an OGG User
+» Add supplemental log data for update operations.
+» Create an Extract parameter file on source Unix system.
+» Register Extract in database
+» Set up an initial Extract checkpoint on source Unix system.
+» Create Remote Trail File
+» Start Extract
+
+On the target system
+» Create an OGG User
+» Create a Replicat parameter file on target Unix system.
+» Set up an initial Replicat checkpoint on target Unix system. 
+
+- - - - - - - - - 
+SOURCE/DEST SETUP
+- - - - - - - - -
+» Source - Create the OGG User -  11g DB
+        create user ogguser identified by ogguser
+        default tablespace goldengate temporary tablespace temp;
+        
+        grant create session, alter session to ogguser;
+        grant resource to ogguser;
+        grant select any dictionary to ogguser;
+        
+        grant flashback any table to ogguser;
+        --grant flashback  on owner.table to ogguser;
+        
+        grant select any table to ogguser;
+        --grant select owner.table to ogguser;
+        
+        grant create table to ogguser;
+        grant execute on dbms_flashback to ogguser;
+        
+        EXEC DBMS_GOLDENGATE_AUTH.GRANT_ADMIN_PRIVILEGE('OGGUSER');
+
+>> Dest - Create OGG user in destination DB:
+    create user ogguser identified by ogguser
+    default tablespace goldengate temporary tablespace temp;
+    
+    grant create session, alter session to ogguser;
+    grant resource to ogguser;
+    grant select any dictionary to ogguser;
+    
+    alter user ogguser quota unlimited on users;
+    EXEC DBMS_GOLDENGATE_AUTH.GRANT_ADMIN_PRIVILEGE('OGGUSER');
+    
+    grant create table to ogguser;
+    
+    -- Better give select on only the tables being replicated
+    grant select any table to ogguser;
+    
+    -- grant insert, update, delete on the destination tables to ogguser
+    grant insert, update, delete on oggdestowner.table1 to ogguser;
+    
+    -- grant alter on destination tables to ogguser
+    grant alter on oggdestowner.table1 to ogguser;
+
+» Source - Add supplemental log data for update operations.
+
+    ALTER DATABASE ADD SUPPLEMENTAL LOG DATA;
+    SELECT supplemental_log_data_min, force_logging FROM v$database;
+    ALTER SYSTEM SWITCH LOGFILE;
+    
+>> Source - Additional:  Configure mgr process (see Oracle's tutorial)
+    $ ggsci
+    ggsci> edit param mgr
+    PORT 7809
+    DynamicPortList 20000-20099
+    PurgeOldExtracts ./dirdat/in*, UseCheckPoints, MinKeepHours 2
+    Autostart Extract E*
+    AUTORESTART Extract *, WaitMinutes 1, Retries 3  
+    << save with :wq if editor was vi >>
+    NOTE: Tutorial said ./dirdat/* --> now modified to match with exttrail 'in'
+
+    ggsci> stop mgr
+    ggsci> start mgr
+
+>> Dest - Additional:  Configure mgr process (see Oracle's tutorial)
+    $ ggsci
+    ggsci> edit param mgr
+    Port 7909 --> why not 7809 (I set 7809 itself)
+    DynamicPortList 20100-20199 --> why different from source (I set same ports as source)
+    PurgeOldExtracts ./dirdat/pn*, UseCheckPoints, MinKeepHours 2
+    Autostart Replicat R*
+    AUTORESTART Replicat *, WaitMinutes 1, Retries 3 
+    << save with :wq if editor was vi >>
+    NOTE: Tutorial said ./dirdat/pe* --> now modified to match with rmttrail 'pn'
+
+
+    ggsci> stop mgr
+    ggsci> start mgr
+
+NOTE:  If source and dest are same server/cluster, then both will go to same parameter file, and only one stop-start of mgr.
+
+>> Source - Additional:  Setup GG Wallet (new in 12c) (see Oracle's tutorial)
+    $ ggsci
+    ggsci> create wallet
+    Created wallet at location 'dirwlt'.
+    Opened wallet at location 'dirwlt'.
+    
+    ggsci> Add CredentialStore                                      
+    Credential store created in ./dircrd/.
+    
+    ggsci> Alter CredentialStore Add User ogguser@TNS_ALIAS_SOURCE Password password Alias ogguser_src (ogguser or ogguser_src/ogguser_dest)
+    Credential store in ./dircrd/ altered.
+    
+    ggsci> info credentialstore
+    Will list the alias and userid with tns alias
+
+    ggsci> DBLogin UserIDAlias ogguser_src  (ogguser_src in my case for source and ogguser_dest for destination - which are on same cluster, but in two databases)
+
+        NOTE - ERR - Got error ORA-12641 during DBLogin
+        https://community.oracle.com/message/10048402
+        To fix - edited sqlnet.ora in $TNS_ADMIN - comment out ALL and add NONE for sqlnet.authentication_services
+        #SQLNET.AUTHENTICATION_SERVICES=(ALL)
+        SQLNET.AUTHENTICATION_SERVICES=(NONE)
+
+
+>> Dest - Additional:  Setup GG Wallet (new in 12c) (see Oracle's tutorial)
+    Do similar steps as in source.
+    NOTE: If source and dest are on same server/cluster, 'info credentialstore' command will show both aliases
+
+>> Source - Setup TRANDATA (new in 12c)
+This is further to setting up supplemental logging. Before you can start capturing real-time data, 
+the Oracle database must be set to log the table key values whenever it logs a rows change, 
+so that they are available to Oracle GoldenGate in Redo. By default, the database logs only those column 
+values that change. This is required so Oracle GoldenGate can locate the correct row on the target 
+for update and delete operations.
+    
+    ggsci> DBLogin UserIDAlias ogguser_src
+    ggsci> Add TranData OGGSRCOWNER.*  ALLCOLS
+    ggsci> Info TranData OGGSRCOWNER.*
+    Columns supplementally logged for table OGGSRCOWNER.TABLE1: ALL.
+    
+    NOTE:  This can be done for all tables, specific tables, all columns, specific columns
+
+» Source - Create an Extract parameter file on source Unix system.
+    This will create a file dirprm/eprojecta.prm for the extract process.
+    
+    ggsci> edit param eprja
+    Extract eprja
+    SETENV (ORACLE_SID='SOURCE_ORACLE_SID')
+    UserIdAlias ogguser_src
+    TranlogOptions IntegratedParams (max_sga_size 256)
+    Exttrail ./dirdat/in
+    LOGALLSUPCOLS
+    UPDATERECORDFORMAT COMPACT
+    Table OGGSRCOWNER.*;
+    
+    To include DDL capture:
+    ggsci> edit param eprja
+    << Then add a new line like - DDL INCLUDE MAPPED OBJNAME OGGSRCOWNER.* >>
+    
+        Save the parameter file and leave the editor. Note the two parameters LOGALLSUPCOLS and UPDATERECORDFORMAT. The Integrated Replicat, which you are going to configure shortly, requires the source extract parameter file to contain these new parameters introduced in 12c.
+        
+        LOGALLSUPCOLS causes Extract to do the following with these supplementally logged columns:
+        
+        Automatically includes in the trail record the before image for UPDATE operations.
+        Automatically includes in the trail record the before image of all supplementally logged columns 
+        for both UPDATE and DELETE operations.
+        When two records are generated for an update to a single row, it incurs additional disk I/O and processing 
+        for both Extract and Replicat. If supplemental logging is enabled on all columns, the unmodified columns 
+        may be repeated in both the the before and after records. The overall size of the trail is larger, as well. 
+        This overhead is reduced by using UPDATERECORDFORMAT COMPACT
+
+» Source - Register Extract in database
+    This will register the extract, but not start extract yet
+
+    NOTE - In this, if you get an error "enable_goldengate_replication is not set to true" 
+             then set the following:   alter system set ENABLE_GOLDENGATE_REPLICATION=true scope=both;
+
+    ggsci> dblogin useridalias ogguser_src
+    ggsci> register extract eprja database
+    Extract EPRJA successfully registered with database at SCN 1328963.
+
+    ggsci> add extract eprja, integrated tranlog, begin now 
+    EXTRACT added.
+
+    ggsci> add exttrail ./dirdat/in, extract eprja, megabytes 10
+    EXTTRAIL added.
+    NOTE: Megabytes 10 is optional - default is 100
+
+>> Source - Configure data-pump
+
+    NOTE: The remote_hostname is the destination host, or localhost (or local host's hostname) 
+            if both source and dest are same host
+    CHECK: What about RAC - how do we give SID and HOST in the case of RAC - how to handle failover to other nodes??
+    
+    NOTE:  The data pump reads from the local trail file in and writes to the remote trail file pn. 
+            The remote trail file that will be created will be named dirdat/pn000000, then when that one 
+            fills up the next will be dirdat/pn000001, then dirdat/pn000002, and so on.
+
+    In this step, the secondary Extract will be created and configured, but not started. 
+    NOTE: Replace 'remote_hostname' below with the remote hostname or localhost if local
+        ggsci> Edit Param pprja
+        Extract  pprja
+        SETENV (ORACLE_SID='SOURCE_ORACLE_SID')
+        UserIdAlias ogguser_src
+        rmthost remote_hostname, mgrport 7809
+        rmttrail ./dirdat/pn
+        table OGGSRCOWNER.*;
+        
+        GGSCI> add extract pprja, exttrailsource ./dirdat/in
+        EXTRACT added.
+        
+        GGSCI> add rmttrail ./dirdat/pn, extract pprja, megabytes 10
+        RMTTRAIL added.
+    
+>> Source - Now, start the extract processes:
+        ggsci> start extract eprja
+        ggsci> start extract pprja
+        ggsci> info all
+        
+        Program     Status      Group       Lag at Chkpt  Time Since Chkpt
+        
+        MANAGER     RUNNING
+        EXTRACT     ABENDED     EPRJA       00:00:00      70:28:32
+        EXTRACT     STOPPED     PPRJA       00:00:00      70:18:54
+
+>> Dest - Configure Repcat process
+
+    First: alter system set enable_goldengate_replication=true scope=both;
+    
+    Then:
+        ggsci> edit param rprja
+        Replicat rprja
+        SETENV(ORACLE_SID='DEST_ORACLE_SID')
+        DBOPTIONS INTEGRATEDPARAMS(parallelism 6)
+        AssumeTargetDefs
+        DiscardFile ./dirrpt/rpdw.dsc, Purge
+        UserIdAlias ogguser_dest
+        Map oggsrcowner.*, target oggdestowner.*;
+        
+        GGSCI> DBlogin UserIdAlias ogguser_dest 
+        Successfully logged into database.
+        
+        GGSCI> Add Replicat rprja Integrated  exttrail ./dirdat/pn                        
+        REPLICAT (Integrated) added.
+        
+        GGSCI> Start Replicat rprja
+        
+        Sending START request to MANAGER ...
+        REPLICAT RPRJA starting
+        
+        GGSCI > info all
+        Program     Status      Group       Lag at Chkpt  Time Since Chkpt
+        MANAGER     RUNNING
+        REPLICAT    RUNNING     RPRJA       00:00:00      00:00:05
+
+    Display repcat info:
+        GGSCI > info rprja
+        
+        REPLICAT   RPRJA     Last Started 2015-06-29 02:55   Status RUNNING
+        INTEGRATED
+        Checkpoint Lag       00:00:00 (updated 00:00:02 ago)
+        Process ID           21178
+        Log Read Checkpoint  File ./dirdat/pn000000
+                             First Record  RBA 0
+        
+        GGSCI > info rprja detail
+        
+        REPLICAT   RPRJA     Last Started 2015-06-29 06:03   Status RUNNING
+        INTEGRATED
+        Checkpoint Lag       00:00:00 (updated 00:00:03 ago)
+        Process ID           30567
+        Log Read Checkpoint  File ./dirdat/pn000000
+                             First Record  RBA 0
+        
+        INTEGRATED Replicat
+        DBLOGIN Provided, inbound server name is OGG$RPRJA in ATTACHED state
+        
+        
+        Current Log BSN value: (no data)
+        
+        Integrated Replicat low watermark: (no data)
+        (All source transactions prior to this scn have been applied)
+        
+        Integrated Replicat high watermark: (no data)
+        (Some source transactions between this scn and the low watermark may have been applied)
+        
+        
+          Extract Source                          Begin             End
+        
+          ./dirdat/pn000000                       * Initialized *   First Record
+          ./dirdat/pn000000                       * Initialized *   First Record
+          ./dirdat/pn000000                       * Initialized *   First Record
+        
+        
+        Current directory    /u01/app/oracle/product/12.1.2.1.OGG
+        
+        Report file          /u01/app/oracle/product/12.1.2.1.OGG/dirrpt/RPRJA.rpt
+        Parameter file       /u01/app/oracle/product/12.1.2.1.OGG/dirprm/rprja.prm
+        Checkpoint file      /u01/app/oracle/product/12.1.2.1.OGG/dirchk/RPRJA.cpr
+        Process file         /u01/app/oracle/product/12.1.2.1.OGG/dirpcs/RPRJA.pcr
+        Error log            /u01/app/oracle/product/12.1.2.1.OGG/ggserr.log
+
+
+>> Source - Verify GG setup from data-dictionary
+        select apply_name,queue_name from DBA_APPLY;
+        APPLY_NAME                     QUEUE_NAME
+        ------------------------------ ------------------------------
+        OGG$EPRJA                      OGG$Q_EPRJA
+        
+>> Dest - Verify GG setup from data-dictionary
+        select apply_name,queue_name from DBA_APPLY;
+        APPLY_NAME                     QUEUE_NAME
+        ------------------------------ ------------------------------
+        OGG$RPRJA                      OGGQ$RPRJA
+        
+        select replicat_name,server_name from DBA_GOLDENGATE_INBOUND;
+        REPLICAT_NAME
+        --------------------------------------------------------------------------------
+        SERVER_NAME
+        ------------------------------
+        RPRJA
+        OGG$RPRJA
+
+
+    Source - Verify further 
+    ggsci> info all
+        Program     Status      Group       Lag at Chkpt  Time Since Chkpt
+        
+        MANAGER     RUNNING
+        EXTRACT     RUNNING     EPRJA       00:00:10      00:00:08
+        EXTRACT     RUNNING     PPRJA       00:00:00      00:00:00
+        REPLICAT    RUNNING     RPRJA       00:00:00      00:00:07
+
+    ggsci> info extract *
+    
+    EXTRACT    EPRJA     Last Started 2015-06-29 02:38   Status RUNNING
+    Checkpoint Lag       00:00:10 (updated 00:00:04 ago)
+    Process ID           48721
+    Log Read Checkpoint  Oracle Integrated Redo Logs
+                         2015-06-29 10:40:02
+                         SCN 0.1960856 (1960856)
+    
+    EXTRACT    PPRJA     Last Started 2015-06-29 02:42   Status RUNNING
+    Checkpoint Lag       00:00:00 (updated 00:00:06 ago)
+    Process ID           1672
+    Log Read Checkpoint  File ./dirdat/in000000
+                         2015-06-29 10:29:17.000000  RBA 1900
+
+    ggsci> DBlogin UserIdAlias ogguser_src
+    ggsci> info extract *, detail
+    
+        EXTRACT    EPRJA     Last Started 2015-06-29 02:38   Status RUNNING
+        Checkpoint Lag       00:00:10 (updated 00:00:07 ago)
+        Process ID           48721
+        Log Read Checkpoint  Oracle Integrated Redo Logs
+                             2015-06-29 10:49:32
+                             SCN 0.1961842 (1961842)
+        
+          Target Extract Trails:
+        
+          Trail Name                                       Seqno        RBA     Max MB Trail Type
+        
+          ./dirdat/in                                          0       1900        100 EXTTRAIL
+        
+        
+        Integrated Extract outbound server first scn: 0.1328963 (1328963)
+        
+        Integrated Extract outbound server filtering start scn: 0.1328963 (1328963)
+        
+          Extract Source                          Begin             End
+        
+          Not Available                           2015-06-26 04:03  2015-06-29 10:49
+          Not Available                           * Initialized *   2015-06-26 04:03
+          Not Available                           2015-06-26 04:03  2015-06-26 04:03
+        
+        
+        Current directory    /u01/app/oracle/product/12.1.2.1.OGG
+        
+        Report file          /u01/app/oracle/product/12.1.2.1.OGG/dirrpt/EPRJA.rpt
+        Parameter file       /u01/app/oracle/product/12.1.2.1.OGG/dirprm/eprja.prm
+        Checkpoint file      /u01/app/oracle/product/12.1.2.1.OGG/dirchk/EPRJA.cpe
+        Process file         /u01/app/oracle/product/12.1.2.1.OGG/dirpcs/EPRJA.pce
+        Error log            /u01/app/oracle/product/12.1.2.1.OGG/ggserr.log
+        
+        EXTRACT    PPRJA     Last Started 2015-06-29 02:42   Status RUNNING
+        Checkpoint Lag       00:00:00 (updated 00:00:09 ago)
+        Process ID           1672
+        Log Read Checkpoint  File ./dirdat/in000000
+                             2015-06-29 10:29:17.000000  RBA 1900
+        
+          Target Extract Trails:
+        
+          Trail Name                                       Seqno        RBA     Max MB Trail Type
+        
+          ./dirdat/pn                                          0       1977         10 RMTTRAIL
+        
+          Extract Source                          Begin             End
+        
+          ./dirdat/in000000                       * Initialized *   2015-06-29 10:29
+          ./dirdat/in000000                       * Initialized *   First Record
+        
+        
+        Current directory    /u01/app/oracle/product/12.1.2.1.OGG
+        
+        Report file          /u01/app/oracle/product/12.1.2.1.OGG/dirrpt/PPRJA.rpt
+        Parameter file       /u01/app/oracle/product/12.1.2.1.OGG/dirprm/pprja.prm
+        Checkpoint file      /u01/app/oracle/product/12.1.2.1.OGG/dirchk/PPRJA.cpe
+        Process file         /u01/app/oracle/product/12.1.2.1.OGG/dirpcs/PPRJA.pce
+        Error log            /u01/app/oracle/product/12.1.2.1.OGG/ggserr.log
+
+
+>> Source - insert some rows into oggsrcowner.table1
+
+insert into oggsrcowner.table1 values ('1', 'a');
+commit;
+
+>> Dest - check if the destination table received the row
+select * from oggdestowner.table1;
+--> worked fine!!
+
+>> Source and Dest - do more inserts, updates, deletes and check
+
+
+    
+= = = = FOLLOWING STEPS ARE POSSIBLY COVERED ALREADY IN THE SECTIONS ABOVE = = = 
+
+» Set up an initial Extract checkpoint on source Unix system.
+
+
+» Create Remote Trail File
+
+
+» Start Extract
+
+= = = = = = = 
+
+=====================
+REMOVE CONFIGURATION
+=====================
+
+High level:
+        Use DELETE EXTRACT to delete an Extract group. This command deletes the checkpoint file that belongs to the group, but leaves the parameter file intact. You can then re-create the group or delete the parameter file as needed.
+        
+        Use DELETE REPLICAT to delete a Replicat group. This command deletes the checkpoint file but leaves the parameter file intact. Then you can re-create the group or delete the parameter file as needed. This command frees up trail files for purging by Manager, because the checkpoints used by the deleted group are removed (assuming no other processes are reading the file).
+        
+Steps:
+
+    Dest:
+    ggsci> delete rmttrail ./dirdat/pn, extract pprja
+    ggsci> dblogin useridalias ogguser_dest
+    ggsci> delete replicat rprja
+    
+    Verify - These should show zero rows
+    select apply_name,queue_name from DBA_APPLY;
+    select replicat_name,server_name from DBA_GOLDENGATE_INBOUND; 
+    
+    Source:
+    ggsci> delete exttrail ./dirdat/in, extract eprja  
+    ggsci> dblogin useridalias ogguser_src
+    ggsci> delete extract eprja
+    ggsci> delete extract pprja
+    ggsci> unregister extract eprja database
+    
+    Verify - This should show zero rows
+    select apply_name,queue_name from DBA_APPLY;
+
+
+
+=======================================================
+CONFIGURE DDL REPLICATION - 11g DB with 12c GG software
+=======================================================
+http://www.vitalsofttech.com/configure-goldengate-ddl-replication/ --> has 10g, 11g, 12c db setup
+http://gavinsoorma.com/2010/02/oracle-goldengate-tutorial-7-configuring-ddl-synchronization/ --> has 12c db
+
+>> Source: 
+
+If 11g database:
+NOTE: ogguser should have its own default tablespace - ensure that before running ddl_setup.
+NOTE: Give ogguser for all gg user these scripts ask for
+$ sqlplus / as sysdba
+SQL> @marker_setup.sql
+SQL> @ddl_setup.sql
+SQL> @role_setup.sql 
+SQL> grant ggs_ggsuser_role to ogguser;
+SQL> @ddl_enable
+SQL> @ddl_pin OGG_USER;
+
+» Source - Create an Extract parameter file with DDL replication on source Unix system.
+    This will create a file dirprm/eprojecta.prm for the extract process.
+    
+    ggsci> edit param eprja
+    Extract eprja
+    SETENV (ORACLE_SID='SOURCE_ORACLE_SID')
+    UserIdAlias ogguser_src
+    TranlogOptions IntegratedParams (max_sga_size 256)
+    Exttrail ./dirdat/in
+    LOGALLSUPCOLS
+    UPDATERECORDFORMAT COMPACT
+    DDL INCLUDE MAPPED
+    Table OGGSRCOWNER.*;
+    
+    <<NOTE: More specific mapping like DDL INCLUDE MAPPED OBJNAME OGGSRCOWNER.* is also possible >>
+
+    If not done already, do this:
+    ggsci> DBLogin UserIDAlias ogguser_src
+    ggsci> Add TranData OGGSRCOWNER.*  ALLCOLS
+    ggsci> Info TranData OGGSRCOWNER.*
+    Columns supplementally logged for table OGGSRCOWNER.TABLE1: ALL.
+    
+    ggsci> dblogin useridalias ogguser_src
+    ggsci> unregister extract eprja database
+    ggsci> register extract eprja database
+    Extract EPRJA successfully registered with database at SCN 2127370.
+
+    ggsci> add extract eprja, integrated tranlog, begin now 
+    EXTRACT added.
+
+    ggsci> add exttrail ./dirdat/in, extract eprja, megabytes 10
+    EXTTRAIL added.
+    NOTE: Megabytes 10 is optional - default is 100
+
+>> Source - configure data pump
+        ggsci> Edit Param pprja
+        Extract  pprja
+        SETENV (ORACLE_SID='SOURCE_ORACLE_SID')
+        UserIdAlias ogguser_src
+        rmthost remote_hostname, mgrport 7809
+        rmttrail ./dirdat/pn
+        table OGGSRCOWNER.*;
+        
+        GGSCI> add extract pprja, exttrailsource ./dirdat/in
+        EXTRACT added.
+        
+        GGSCI> add rmttrail ./dirdat/pn, extract pprja, megabytes 10
+        RMTTRAIL added.
+    
+>> Dest - Configure Repcat process
+
+    First: alter system set enable_goldengate_replication=true scope=both;
+    
+    Then:
+        ggsci> edit param rprja
+        Replicat rprja
+        SETENV(ORACLE_SID='DEST_ORACLE_SID')
+        DBOPTIONS INTEGRATEDPARAMS(parallelism 6)
+        AssumeTargetDefs
+        DiscardFile ./dirrpt/rpdw.dsc, Purge
+        DDLERROR DEFAULT IGNORE
+        UserIdAlias ogguser_dest
+        Map oggsrcowner.*, target oggdestowner.*;
+        << NOTE:  DDLERROR DEFAULT IGNORE is necessary to avoid repcat abending due to GRANT to OGGUSER on GGS_MARKER table>>
+        GGSCI> DBlogin UserIdAlias ogguser_dest 
+        Successfully logged into database.
+        
+        GGSCI> Add Replicat rprja Integrated  exttrail ./dirdat/pn                        
+        REPLICAT (Integrated) added.
+        
+    NOTE:  In the case SOURCEDEF is defined to define the table structure, then this error will come - 
+            "Table with SOURCEDEF cannot have DDL operations (table [OGGDESTOWNER.TABLE1]) 
+            Either remove SOURCEDEF or filter out table from DDL operations"
+            In that case, remove SOURCEDEF definition from rprja.prm or by doing 'edit param rprja'
+            
+>> Source - start all processes
+    ggsci> start mgr
+    ggsci> start eprja
+    ggsci> start pprja
+    
+>> Dest - start all processes
+    ggsci> start mgr
+    ggsci> start rprja
+    
+>> Source: Do a DDL
+alter table table1 add (deptid number(5));
+
+>> Dest: Verify
+desc table1 --> this should show the newly added column
+
+=======================
+FILTERING DATA
+=======================
+https://sachinichake.wordpress.com/2013/05/09/oracle-goldengate-for-filtering-and-transformation-data/
+http://gavinsoorma.com/2010/02/oracle-goldengate-tutorial-8-filtering-and-mapping-data/comment-page-1/
+https://docs.oracle.com/goldengate/1212/gg-winux/GWUAD/wu_datainteg.htm#GWUAD426
+
+>> Source: Add filter
+ggsci> edit param eprja
+Table OGGSRCOWNER.*, FILTER (empid > 15);
+ggsci> stop eprja
+ggsci> start eprja
+
+Then, do some inserts, updates ... 
+NOTE: Only new rows in destination will get filtered data - existing destination data will not be affected
+
+Deletes - existing destination rows do not get affected upon delete of source table
+
+    
+=======================
+ERROR HANDLING
+=======================
+
+>> Error handling 1  - Repcat may throw error "Bad column index (2) specified for table OGGSRCOWNER.TABLE1, max columns = 2."
+For that, the table definition file must be generated and copied to destination.
+
+<< all these steps seem not help clear this error.  instead got ora-0001 also, for which I tried by dropping pk in destination>>
+
+Remove files in ./dirdat relevant to this project.  We had specified pn and in as two handlers.  Move those files or remove them - so that a fresh catch-up is initiated.
+
+
+Create parameter file to create definitions:
+    NOTE: Give another more descriptive filename like prja_defgen
+    ggsci> edit params defgen
+    defsfile ./dirsql/prja_DEFGEN.def
+    useridalias ogguser_src
+    table oggsrcowner.*;
+
+Create the definitions file:
+    $ defgen paramfile ./dirprm/defgen.prm
+    Definitions file will be created as ./dirsql/prja_DEFGEN.def
+    
+Add definitions file to repcat parameters (SOURCEDEFS ./dirsql/prja_DEFGEN.def):    
+    ggsci> edit param rprja
+    Replicat rprja
+    SETENV(ORACLE_SID='RL4DB211')
+    DBOPTIONS INTEGRATEDPARAMS(parallelism 6)
+    AssumeTargetDefs
+    DiscardFile ./dirrpt/rpdw.dsc, Purge
+    UserIdAlias ogguser_dest
+    SOURCEDEFS ./dirsql/prja_DEFGEN.def
+    Map oggsrcowner.*, target oggdestowner.*;
+
+    ggsci> start pprja
+    ggsci> start rprja
+    
+
+    
+
+
+
+
+
+
+

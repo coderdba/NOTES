@@ -1,0 +1,48 @@
+ACFS FILESYSTEM IN ORACLE - AS GENERAL PURPOSE CLUSTER MOUNTED SHARED FILESYSTEM
+
+https://oracle-base.com/articles/11g/acfs-11gr2
+http://oracle-info.com/2013/01/17/asm-acfs-filesystem-practiced-and-explained/
+
+Find candidate disks
+ASMCMD>ASMCMD> lsdsk --candidate -k 
+Total_MB  Free_MB   OS_MB  Name    Failgroup  Failgroup_Type  Library                                               Label   UDID  Product  Redund   Path
+       0        0  262138                     REGULAR         ASM Library - Generic Linux, version 2.0.4 (KABI_V2)  ASM005                 UNKNOWN  ORCL:ASM005
+
+Create a diskgroup for ACFS
+    sqlplus / as sysasm
+    SQL> create diskgroup acfsdg external redundancy disk 'ORCL:ASM005' size  262138 M;
+    Diskgroup created.
+
+If necessary set compativility:
+    SQL> ALTER DISKGROUP acfsdg SET ATTRIBUTE 'compatible.asm' = '11.2'
+    Diskgroup altered.
+    SQL> ALTER DISKGROUP acfsdg SET ATTRIBUTE 'compatible.rdbms' = '11.2'
+    Diskgroup altered.
+
+Create an ACFS volume:
+   SQL> alter diskgroup acfsdg add volume acfs01 size 10g;
+
+List the volume info:
+  Note that mountpath is still null
+    SQL> select VOLUME_NAME, MOUNTPATH, VOLUME_DEVICE, STATE, SIZE_MB from v$asm_volume
+    VOLUME_NAME                    MOUNTPATH
+    ------------------------------ ----------------------------------------
+    VOLUME_DEVICE                            STATE       SIZE_MB
+    ---------------------------------------- -------- ----------
+    ACFS01
+    /dev/asm/acfs01-272                      ENABLED       10240
+
+  Check in /dev/asm what got created:
+    A new folder 'asm' seems to have been created by root under /dev
+    drwxrwx---  2 root asmadm       400 Jun 30 00:17 asm
+  
+    ls -l /dev/asm/acfs01-272
+    brwxrwx--- 1 root asmadm 252, 139265 Jun 30 00:17 /dev/asm/acfs01-272
+
+Create directory to mount asm volumes:
+  mkdir /u01/app/grid/acfsvolumes
+  
+Mount the created volume:
+
+  
+  

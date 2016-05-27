@@ -1,0 +1,37 @@
+=====================================
+BIND VARIABLE - DISPLAY THEM, EFFECTS
+=====================================
+
+v$sql_bind_capture - http://docs.oracle.com/cd/B19306_01/server.102/b14237/dynviews_2114.htm#REFRN30310
+Tracing to find bind variable values - http://www.dba-oracle.com/t_trace_bind_variable_values.htm
+
+EXECUTE sys.dbms_system.set_ev ('||SID||','||SERIAL#||',10046,4,'''')
+
+ 
+SELECT 
+   a.sql_text, 
+   b.name, 
+   b.position, 
+   b.datatype_string, 
+   b.value_string 
+FROM
+  v$sql_bind_capture b,
+  v$sqlarea          a
+WHERE
+   b.sql_id = 'dpf3w96us2797'
+AND 
+   b.sql_id = a.sql_id;
+ 
+The following is a sample output:
+ 
+SQL_TEXT                                           NAME      POSITION DATATYPE_STRING VALUE_STRING
+-------------------------------------------------- ---------- ------- ------------
+select owner, object_type, count (*) from all_obje :PAR             1 VARCHAR2(4000)  SYS%
+cts where owner not like :par and object_type = :o
+bjtype group by owner,object_type order by 1,2,3;
+ 
+ 
+select owner, object_type, count (*) from all_obje :OBJTYPE         2 VARCHAR2(4000)  TABLE
+cts where owner not like :par and object_type = :o
+bjtype group by owner,object_type order by 1,2,3;
+

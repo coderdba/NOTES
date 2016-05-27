@@ -1,0 +1,368 @@
+============================================
+    MYSQL DATA HANDLERS, SERVICES PROJECT
+============================================
+
+-----------------------------
+Project Info README
+-----------------------------
+Build Tool - Maven (with Eclipse)
+GroupId - gm.mysql (should it be gm.maven.mysql or gmm.mysql)
+
+Archetype - maven-archetype-quickstart
+Data handlers    - ArtifactId - gm-mysql-dh,    package - gm.mysql.dh
+Database admin   - ArtifactId - gm-mysql-admin, package - gm.mysql.admin
+Metadata queries - 
+
+Archetype - maven-archetype-webapp
+Serviecs, Rest - ArtifactId gm-mysql-services, package - gm.mysql.services
+
+SPRING:???
+GroupId - gm.mysql.spring (should it be some other name like above)
+
+Model code:
+http://www.programcreek.com/java-api-examples/index.php?source_dir=BusinessCore-master/src/main/java/code/husky/Database.java
+http://www.programcreek.com/java-api-examples/index.php?source_dir=BusinessCore-master/src/main/java/code/husky/mysql/MySQL.java
+http://www.programcreek.com/java-api-examples/index.php?source_dir=BusinessCore-master/src/main/java/me/beastman3226/bc/db/Database.java
+
+-----------------
+pom.xml
+-----------------
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>gm.mysql</groupId>
+  <artifactId>gm-mysql-dh</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+  <packaging>jar</packaging>
+
+  <name>gm-mysql-dh</name>
+  <url>http://maven.apache.org</url>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>3.8.1</version>
+      <scope>test</scope>
+    </dependency>
+    
+    <!-- http://mvnrepository.com/artifact/mysql/mysql-connector-java -->
+	<dependency>
+	    <groupId>mysql</groupId>
+	    <artifactId>mysql-connector-java</artifactId>
+	    <version>5.1.39</version>
+	</dependency>
+  </dependencies>
+</project>
+
+------------------
+MySqlDatabase.java
+------------------
+package gm.mysql.dh;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.logging.Level;
+
+public class MySqlDatabase {
+	private String hostname;
+	private String port;
+	private String dbname;
+	private String username;
+	private String password;
+	private Connection connection;
+
+	public MySqlDatabase(String hostname, String port, String dbname,
+			String username, String password) {
+		this.hostname = hostname;
+		this.port = port;
+		this.dbname = dbname;
+		this.username = username;
+		this.password = password;
+		this.connection = null;
+		
+		System.out.println ("INFO - in class MySqlDatabase, created the db object");
+	}
+	
+	public void createDb(String rootUsername, String rootPassword) {
+		
+		// Create connection
+		try {
+			System.out.println("INFO - trying to connect as root");
+			
+			Class.forName("com.mysql.jdbc.Driver");
+			connection = DriverManager.getConnection("jdbc:mysql://" + hostname	+ ":" + port +
+					"/" +  "information_schema", rootUsername, rootPassword);
+
+			System.out.println("INFO - connected as root");
+			
+		} catch (SQLException e) {
+			System.out.println(e.getLocalizedMessage());
+		} catch (ClassNotFoundException e) {
+			System.out.println(e.getLocalizedMessage());
+		}
+
+		// Create database
+		Statement statement = null;
+		String sqlCreateDB   = "create database if not exists " + dbname;
+		String sqlCreateUserLocal = "CREATE USER IF NOT EXISTS '" + username + "'@'localhost' identified by ' " + password + "'";
+		String sqlCreateUserRemote = "CREATE USER IF NOT EXISTS '" + username + "'@'%' identified by ' " + password + "'";
+		String grantsLocal = "GRANT ALL PRIVILEGES ON " + dbname + ".* to '" + username + "'@'localhost'";
+		String grantsRemote = "GRANT ALL PRIVILEGES ON " + dbname + ".* to '" + username + "'@'%'";
+		
+		try {
+			statement = connection.createStatement();
+			System.out.println("Statement in create-db status is closed?: " + statement.isClosed());
+			System.out.println("Running sqlCreateDB: " + sqlCreateDB);
+			statement.executeUpdate(sqlCreateDB);
+			System.out.println("Running sqlCreateUserLocal");
+			statement.execute(sqlCreateUserLocal);
+			System.out.println("Running sqlCreateUserRemote");
+			statement.execute(sqlCreateUserRemote);
+			System.out.println("Running grantsLocal");
+			statement.execute(grantsLocal);
+			System.out.println("Running grantsRemote");
+			statement.execute(grantsRemote);
+			connection.close();
+			
+		} catch (SQLException e1) {
+			System.out.println(e1.getLocalizedMessage());
+		}
+	}
+
+	public Connection openConnection() {
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+			connection = DriverManager.getConnection("jdbc:mysql://" + hostname
+					+ ":" + port + "/" + dbname, username, password);
+		} catch (SQLException e) {
+			System.out.println(e.getLocalizedMessage());
+		} catch (ClassNotFoundException e) {
+			System.out.println(e.getLocalizedMessage());
+		}
+		return connection;
+	}
+
+	public void closeConnection() {
+		if (connection != null) {
+			try {
+				connection.close();
+			} catch (SQLException e) {
+				System.out.println("ERR - Error closing the MySQL Connection!");
+				System.out.println(e.getLocalizedMessage());
+			}
+		}
+	}
+
+	public Connection getConnection() {
+		return connection;
+	}
+	
+	public String getHostname(){
+		return hostname;
+	}
+	
+	public String getPort(){
+		return port;
+	}
+	
+	public String getUsername(){
+		return username;
+	}
+	
+	public String getDbname(){
+		return dbname;
+	}
+	
+	public MySqlDataHandler getDataHandler() {
+		return new MySqlDataHandler(this);
+	}
+}
+
+-------------------------------------------
+MySqlDataHandler.java
+-------------------------------------------
+package gm.mysql.dh;
+
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.logging.Level;
+
+public class MySqlDataHandler {
+
+	MySqlDatabase db;
+	Connection connection;
+
+	// instantiate
+	public MySqlDataHandler(MySqlDatabase db) {
+		this.db = db;
+		connection = db.getConnection();
+	}
+
+	// SQL HANDLERS (see RESULTSET HANDLERS section for resultset handling like
+	// printing etc)
+
+	// update
+	public void runSqlUpdate(String updateSql) {
+
+		Statement statement = null;
+
+		try {
+			statement = connection.createStatement();
+			statement.executeUpdate(updateSql);
+		} catch (SQLException e1) {
+			System.out.println(e1.getLocalizedMessage());
+		}
+
+	}
+
+	// select
+	public ResultSet runSqlQuery(String querySql) {
+
+		Statement statement = null;
+		ResultSet resultSet = null;
+
+		try {
+			statement = connection.createStatement();
+			resultSet = statement.executeQuery(querySql);
+		} catch (SQLException e1) {
+			System.out.println(e1.getLocalizedMessage());
+		}
+
+		return resultSet;
+	}
+
+	// generic sql
+	public ResultSet runSql(String sql) {
+
+		Statement statement = null;
+		ResultSet resultSet = null;
+
+		try {
+			statement = connection.createStatement();
+			resultSet = statement.executeQuery(sql);
+		} catch (SQLException e1) {
+			System.out.println(e1.getLocalizedMessage());
+		}
+
+		return resultSet;
+	}
+
+	// RESULTSET HANDLERS
+	public void printResultSetRows(ResultSet rs) throws Exception {
+
+		ResultSetMetaData rsMetadata = rs.getMetaData();
+		int colCount = rsMetadata.getColumnCount();
+		System.out.println("Column Count - " + colCount);
+
+		// For non-queries (like insert/update column-count of result set will
+		// be zero
+		if (colCount > 0) {
+			rs.beforeFirst();
+			while (rs.next()) {
+				// System.out.println ("outer loop");
+				for (int i = 1; i <= colCount; i++) {
+					// System.out.println ("inner loop");
+					System.out.println(rsMetadata.getColumnLabel(i) + " : "
+							+ rs.getString(i));
+				}
+			}
+		}
+	}
+
+	public void printResultSetRowsTabular(ResultSet rs) throws Exception {
+
+		ResultSetMetaData rsMetadata = rs.getMetaData();
+		int colCount = rsMetadata.getColumnCount();
+		System.out.println("Column Count - " + colCount);
+
+		// For non-queries (like insert/update column-count of result set will
+		// be zero
+		if (colCount > 0) {
+			rs.beforeFirst();
+			
+			StringBuffer rowHeaderString = new StringBuffer();
+			StringBuffer rowString = new StringBuffer();
+			
+			for (int i = 1; i <= colCount; i++) {  // for every column
+				rowHeaderString.append(rsMetadata.getColumnLabel(i) + " ");
+			}			
+			
+		    System.out.println(rowHeaderString.toString());
+		    
+			while (rs.next()) {  // for every row
+				for (int i = 1; i <= colCount; i++) {  // for every column
+				rowString.append(rs.getString(i) + " ");
+				}
+			    System.out.println(rowString.toString());
+			    rowString.delete(0, rowString.length());
+				}
+		}
+	}
+}
+
+----------------------
+App.java
+----------------------
+package gm.mysql.dh;
+
+import java.sql.Connection;
+import java.sql.ResultSet;
+
+public class App 
+{
+    public static void main( String[] args ) throws Exception
+    {
+    	System.out.println( "Hello MySQL!" );
+    	
+    	/// EXISTING DB ///
+        //MySqlDatabase db = new MySqlDatabase ("localhost", "13306", "hr", "root", "root123_ROOT123");
+    	MySqlDatabase db = new MySqlDatabase ("localhost", "13306", "hr", "hruserr", "hr123_HR123");
+        
+        // get connection
+        Connection connection = db.openConnection();
+        System.out.println ("Connection is closed? = " + connection.isClosed());
+        System.out.println ("Connection schema= " + connection.getSchema());
+        System.out.println ("Connection auto-commit property = " + connection.getAutoCommit());
+        
+        // do something
+        //String sql = "select host,user from mysql.user where user='root'";
+        //String sql="show tables";
+        String sql="select id, name from dept order by 1";
+        
+        MySqlDataHandler dh = db.getDataHandler();
+        ResultSet        rs;
+        
+        System.out.println ("Running sql: " + sql);
+        rs = dh.runSqlQuery(sql);
+        
+        System.out.println ("ResultSet is before-first?: " + rs.isBeforeFirst());
+        System.out.println ("ResultSet output: ");
+        dh.printResultSetRows(rs);
+        
+        System.out.println ("\nResultSet output tabular: ");
+        dh.printResultSetRowsTabular(rs);
+        
+        // close connection
+        System.out.println ("Closing the connection now");
+        connection.close();
+        System.out.println ("Connection is closed? = " + connection.isClosed());
+        
+        /// NEW DB ///
+        System.out.println ("\n\nCreating new database\n");
+        MySqlDatabase newDB = new MySqlDatabase("localhost", "13306", "sales", "salesuser", "mys123_MYS123");
+        newDB.createDb("root", "root123_ROOT123");
+        System.out.println ("Created new database\n");
+  
+    }

@@ -1,0 +1,76 @@
+JENKINS - BUILD JAVA PACKAGE FROM GIT REPOSITORY
+
+http://www.vogella.com/tutorials/Jenkins/article.html
+https://issues.jenkins-ci.org/browse/JENKINS-28373 --> For error 'Couldn’t find any executable in maven'
+      --> Copied maven-home/bin/mvn.cmd to mvn.bat in the same directory (as mklink did not work due to lack of LAR)
+      
+
+Workspace - Building jar: C:\Users\username\.jenkins\jobs\git-java-project-HR\workspace\target\HR-0.0.1-SNAPSHOT.jar
+
+CREATE A NEW JOB PROJECT
+New Item
+Item Name - git-java-project-HR
+Type - Freestyle
+Check the check box - discard old builds
+Source Code Management - Git
+      Repository URL - git@github.com:coderdba/java-project-HR.git
+      Branches to build - */master
+      Credentials (for Github) - github username and password
+Build Triggers section - 
+      Choose 'Poll SCM' - will poll Git periodically.
+            If you choose this, then schedule the poll frequency as follows:
+            H/15 * * * * (similar to crontab)
+      OR
+      Choose none - so that you can build it yourself by clicking 'build now' in project detail view
+      OR
+      Choose 'Build when a change is pushed to GitHub' 
+            - probably Jenkins then keeps polling Git and builds when new push happens
+      
+Build section - 
+Click 'add build step' --> choose 'invoke top level Maven targets'
+      Maven Version - 3.3.3 (or other per your install)
+      Goals (for Maven) - clean verify
+
+Save this
+
+RUNNING THE BUILD JOB
+> Pre-checks
+Ensure that your public key for the workstation is updated in Github (see article under github repository)
+Ensure your java project on local disk has been converted to Maven project - with pom.xml in the top folder 
+      Eclipse has a way of doing it (see article in 'maven' repository) 
+            Select 'jar' is the type of build for this project for Maven in Eclipse
+Push the project to Git manually (see article in 'github' repository)
+
+> Run the job
+Go to projects view  in Jenkins
+Click 'build now'
+To check errors and messages 
+      - Click on the progress reporter in the left hand side --> go to the build details view --> click on console output
+
+The build happens in this 'Workspace' folder:
+> Project copied to:
+      C:\Users\username\.jenkins\jobs\git-java-project-HR\workspace
+> Jar produced at:
+      C:\Users\username\.jenkins\jobs\git-java-project-HR\workspace\target\
+      And, the jar created here is - HR-0.0.1-SNAPSHOT.jar
+> Classes created at:
+      C:\Users\username\.jenkins\jobs\git-java-project-HR\workspace\target\classes
+
+TEST THE JAR FILE
+The jar file is created by Maven/Jenkins under a directory 'target':
+C:\Users\username\.jenkins\jobs\git-java-project-HR\workspace\target
+Jar file name: HR-0.0.1-SNAPSHOT.jar
+
+Syntax to run a specific class from a jar file: java -cp myJar.jar myClass
+
+Run our jar: java -cp HR-0.0.1-SNAPSHOT.jar mt.demo.hr.MEmpDataXMLParseDOM
+
+Initially, you will get an error that an input file is not found - because that file was under 'src' folder.
+Under 'target' folder, src folder is not copied by Jenkins/Maven.
+Therefore, copy 'src' folder from 'workspace' directory into workspace/target directory.
+
+Then run the jar as above and you will see the output alright.
+
+
+
+

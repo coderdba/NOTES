@@ -1,0 +1,402 @@
+http://satya-dba.blogspot.in/2012/02/ggsci-goldengate-command-interpreter.html
+
+February 6, 2012
+ggsci Oracle GoldenGate Command Interpreter
+GGSCI   -- (Oracle) GoldenGate Software Command Interpreter
+
+How to Invoke?
+C:\GG> ggsci.exe
+[oracle@prod gg]$ ./ggsci
+
+Commands
+ggsci> HELP [command] [object]
+ggsci> help
+
+GGSCI Command Summary:
+
+Object:          Command:
+SUBDIRS          CREATE
+ER                   INFO, KILL, LAG, SEND, STATUS, START, STATS, STOP
+EXTRACT          ADD, ALTER, CLEANUP, DELETE, INFO, KILL, LAG, SEND, START, STATS, STATUS, STOP
+EXTTRAIL         ADD, ALTER, DELETE, INFO
+GGSEVT           VIEW
+MANAGER         INFO, REFRESH, SEND, START, STOP, STATUS
+MARKER           INFO
+PARAMS           EDIT, VIEW
+REPLICAT         ADD, ALTER, CLEANUP, DELETE, INFO, KILL, LAG, SEND, START, STATS, STATUS, STOP
+REPORT           VIEW
+RMTTRAIL         ADD, ALTER, DELETE, INFO
+TRACETABLE     ADD, DELETE, INFO
+TRANDATA        ADD, DELETE, INFO
+CHECKPOINTTABLE  ADD, DELETE, CLEANUP, INFO
+Checkpoint Download Pdf Followers Summary Acquire Alter Approximate Atoms
+Commands without an object:
+(Database)       DBLOGIN, LIST TABLES, ENCRYPT PASSWORD
+(DDL)              DUMPDDL
+(Miscellaneous)  FC, HELP, HISTORY, INFO ALL, OBEY, SET EDITOR, SHELL, SHOW, VERSIONS, !
+
+For help on a specific command, type HELP [command] [object]
+Example: HELP ADD REPLICAT
+Note: You must type the word COMMAND after the ! to display the ! help topic. 
+i.e.: GGSCI> help ! command
+
+ggsci> help add rmttrail
+
+ggsci> CREATE SUBDIRS     -- To create default directories within Oracle GoldenGate home directory
+
+ggsci> INFO ALL [TASKS | ALLPROCESSES]   -- To display the status of all Manager, Extract, and Replicat processes
+ggsci> info all
+Program     Status      Group       Lag       Time Since Chkpt
+MANAGER     RUNNING
+EXTRACT     STOPPED     EXTR      00:01:15      00:00:07
+REPLICAT    ABENDED     REP       00:00:00      00:00:04
+ggsci> info all tasks
+ggsci> info all allprocesses
+
+ggsci> INFO MANAGER   -- To determine whether or not the Manager process is running
+ggsci> INFO MGR
+
+ggsci> INFO MARKER [COUNT number_of_items]  -- To review recently processed markers from a NonStop system
+ggsci> info marker
+
+ggsci> INFO EXTRACT group_name [, SHOWCH [n]] [, DETAIL] [, TASKS | ALLPROCESSES]  -- To display Status of Extract, Approximate Extract lag, Checkpoint information, Process run history
+ggsci> info extract emp_ext
+ggsci> info extract cust_ext, detail
+ggsci> info extract ext*, showch
+ggsci> info extract *, detail
+ggsci> info extract hr, tasks
+
+ggsci> INFO REPLICAT group_name [, SHOWCH [n]] [, DETAIL] [, TASKS | ALLPROCESSES] -- To display status of Replicat, Approximate replication lag, the trail from which Replicat is reading, Replicat run history, including checkpoints in the trail, Information about the Replicat environment.
+ggsci> info replicat emp_rep
+ggsci> info replicat emp_rep, detail
+ggsci> info replicat prd*, detail, allprocesses
+ggsci> info replicat *, tasks
+ggsci> info replicat fin, showch
+
+ggsci> INFO EXTTRAIL trail_name  -- To retrieve configuration information for a local trail
+ggsci> info exttrail *
+ggsci> info exttrail e:\ogg\dirdat\ex
+
+ggsci> INFO RMTTRAIL trail_name  -- To retrieve configuration information for a remote trail
+ggsci> info rmttrail *
+ggsci> info rmttrail d:\ogg\dirdat\ex
+
+Automatic storage management Cleanup Checkpoint Download Pdf Followers Summary
+ggsci> INFO TRANDATA user_name.table_names [, OLDFORMAT] [, USETRIGGER]  -- To determine whether logging/replication enabled or not
+ggsci> info trandata hr.*
+ggsci> info trandata fin.acct
+
+ggsci> INFO CHECKPOINTTABLE [user_name.table_name]  -- To confirm the existence of a checkpoint table and view the date and time that it was created
+ggsci> info checkpointtable gg_owner.chkpt_table
+
+ggsci> INFO TRACETABLE [owner.table]     -- To verify the existence of the specified trace table
+ggsci> info tracetable ora_trace
+
+ggsci> INFO ER group_wildcard_specification   -- To get information on multiple Extract and Replicat groups as a unit
+ggsci> info ER *ext*
+
+ggsci> SHOW   -- To display the Oracle GoldenGate environment
+ggsci> SHOW ALL
+
+ggsci> DBLOGIN {SOURCEDB|TARGETDB dsn | USERID user_name[, PASSWORD password] [SYSDBA] | 
+SOURCEDB|TARGETDB dsn, USERID user_name[, PASSWORD password] [SYSDBA] [SQLID sqlid]   -- To establish a database connection
+ggsci> dblogin sourcedb testdb
+ggsci> dblogin targetdb repldb
+ggsci> dblogin userid gg
+ggsci> dblogin userid gg, password oracle
+ggsci> dblogin userid system@localhost:1521/prod, password 12345678
+ggsci> dblogin sourcedb ctdb@host1, userid gg_owner, password ggs sysdba
+
+ggsci> ENCRYPT PASSWORD password [ENCRYPTKEY keyname]   -- To encrypt a database login password
+ggsci> encrypt password oracle143 encryptkey spiderman
+
+ggsci> LIST TABLES table_name   -- To list all tables in the database that match the specification
+ggsci> list tables cust*
+
+ggsci> EDIT PARAMS {MGR | ./GLOBALS | group_name | file_name}  -- To create or change a parameter file
+ggsci> edit params mgr
+ggsci> edit params ./GLOBALS
+ggsci> edit params myload
+ggsci> edit params rep_emp
+ggsci> edit params e:\gg\dirprm\replp.prm
+
+ggsci> VIEW PARAMS {MGR | group_name | file_name}   -- To view the contents of a parameter file
+ggsci> view params mgr
+ggsci> view params s_extr
+ggsci> view params e:\prm\replp.prm
+
+ggsci> VIEW GGSEVT                -- To view GoldenGate error log (ggserr.log file)
+
+ggsci> VIEW REPORT {group_name[n] | file_name}   -- To view the process report that is generated by Extract or Replicat
+ggsci> view report ext6
+ggsci> view report rep
+ggsci> view report c:\ogg\dirrpt\orders.rpt
+
+ggsci> ADD EXTRACT group_name
+{, SOURCEISTABLE |, TRANLOG [bsds_name] |, VAM |, EXTFILESOURCE file_name |, EXTTRAILSOURCE trail_name |, VAMTRAILSOURCE VAM_trail_name}
+{, BEGIN {NOW | yyyy-mm-dd [hh:mi:[ss[.cccccc]]]} |, EXTSEQNO seqno, EXTRBA relative_byte_address |, LOGNUM log_number, LOGPOS byte_offset |, EOF |, LSN value |, EXTRBA relative_byte_address |, PAGE data_page, ROW row |
+} [, THREADS n] [, PASSIVE] [, PARAMS parameter_file] [, REPORT report_file] [, DESC "description"]   -- To create an Extract group
+
+Syntax for an alias Extract:
+ADD EXTRACT group_name, RMTHOST {host_name | IP_address}, {MGRPORT port} | {PORT port} [, RMTNAME name] [, DESC "description"]
+Acquire Alter Approximate Atoms Automatic storage management Cleanup Checkpoint
+ggsci> add extract s_extr, tranlog, begin now
+ggsci> add extract finext, tranlog, begin now, threads 4
+ggsci> add extract fin, tranlog, begin now, passive
+ggsci> add extract ext_ms, extseqno 111, begin now
+ggsci> add extract hr_ext, extrba 567890, begin 2012-02-02 12:00:00
+ggsci> add extract initload, sourceistable
+ggsci> add extract pump, exttrailsource /oracle/gg11/dirdat/hr
+ggsci> add extract fin, vam                        -- VAM - Vendor Access Module
+ggsci> add extract fin, vamtrailsource /ogg/dirdat/vt
+ggsci> add extract finA, rmthost host123, mgrport 7810, rmtname fin
+
+ggsci> ADD REPLICAT group_name
+{, SPECIALRUN |, EXTFILE full_path_name |, EXTTRAIL full_path_name}
+[, BEGIN {NOW | YYYY-MM-DD HH:MM[:SS[.CCCCCC]]} |, EXTSEQNO seqno, EXTRBA rba] [, CHECKPOINTTABLE owner.table | NODBCHECKPOINT]
+[, PARAMS parameter_file] [, REPORT report_file] [, DESC "description"]   -- To create a Replicat group
+ggsci> add replicat repl, exttrail C:\OGG10G\dirdat\lt
+ggsci> add replicat t_rep, exttrail /oracle/gg11/dirdat/lt, checkpointtable gg_owner.checkpoint
+ggsci> add replicat initload, specialrun
+ggsci> add replicat sales, exttrail /oracle/gg11/dirdat/lt, nodbcheckpoint
+
+ggsci> ADD EXTTRAIL trail_name, EXTRACT group_name [, MEGABYTES n] [, SEQNO n]   -- To create a trail for online processing on local system
+ggsci> add exttrail /oracle/gg11/dirdat/lt, extract s_extr
+ggsci> add exttrail C:\OGG10G\dirdat\et, extract emp_ext
+ggsci> add exttrail c:\ogg\dirdat\fi, extract fin, megabytes 30
+
+ggsci> ADD RMTTRAIL trail_name, EXTRACT group_name [, MEGABYTES n] [, SEQNO n]   -- To create a trail for online processing on remote system
+ggsci> add rmttrail C:\OGG10G\dirdat\hr, extract extr
+ggsci> add rmttrail /u01/app/oracle/ogg/dirdat/ms, extract msextr
+ggsci> add rmttrail /u01/app/oracle/ogg/dirdat/my, extract mysql, megabytes 50
+
+ggsci> ADD TRANDATA user_name.table_names [, COLS (column_list)] [, INCLUDELONG | EXCLUDELONG]
+ [, LOBSNEVER | LOBSALWAYS | LOBSIFCHANGED | LOBSALWAYSNOINDEX] [, NOKEY] [, OLDFORMAT] [, USETRIGGER]    -- To enable Oracle GoldenGate to acquire the transaction information it needs from the transaction records
+ggsci> add trandata hr.*
+ggsci> add trandata emp.employees
+ggsci> add trandata fin.acct, cols (name, address)
+ggsci> add trandata fin.acct, nokey, cols (name, pid)
+ggsci> add trandata fin.acct, lobsalwaysnoindex
+
+ggsci> ADD CHECKPOINTTABLE [user_name.table_name]   -- To create a checkpoint table in the target database
+ggsci> add checkpointtable
+ggsci> add checkpointtable gg_owner.checkpoint
+
+ggsci> ADD TRACETABLE [owner.table]   -- To create a trace table in the Oracle database
+ggsci> add tracetable
+ggsci> add tracetable ora_trace
+
+ggsci> REGISTER EXTRACT extract_group_name LOGRETENTION
+ggsci> register extract extr logretention
+
+ggsci> START MANAGER    -- To start Manager process
+ggsci> START MGR
+ggsci> START *
+
+ggsci> START EXTRACT extract_name   -- To start Extract process
+ggsci> start extract extr
+
+ggsci> START REPLICAT group_name [SKIPTRANSACTION | ATCSN csn | AFTERCSN csn]   -- To start Replicat process
+ggsci> start replicat rep
+ggsci> start replicat fin, atcsn 5238306       -- commit sequence number (CSN)
+ggsci> start replicat fin, aftercsn 0X000006B1:0002334D:0004
+
+ggsci> START ER group_wildcard_specification    -- To start multiple Extract and Replicat groups as a unit
+ggsci> start er *rep*
+
+ggsci> STOP MANAGER [!]    -- To stop Manager process
+ggsci> stop manager
+ggsci> stop manager !     -- will not ask for confirmation
+
+ggsci> STOP EXTRACT extract_name   -- To stop Extract gracefully
+ggsci> stop extract extr
+
+ggsci> STOP REPLICAT replicat_name [!]   -- To stop Replicat gracefully
+ggsci> stop replicat rep
+
+ggsci> STOP ER group_wildcard_specification  -- To stop multiple Extract and Replicat groups as a unit
+ggsci> stop er *ext*
+
+ggsci> STATUS MANAGER    -- To determine whether or not the Manager process is running
+
+ggsci> STATUS EXTRACT group_name [, TASKS | ALLPROCESSES]   -- To determine whether or not Extract is running
+ggsci> status extract extr_hr
+ggsci> status extract ext*, tasks
+ggsci> status extract *ext*, allprocesses
+
+ggsci> STATUS REPLICAT group_name [, TASKS | ALLPROCESSES]  -- To determine whether or not Replicat is running
+ggsci> status replicat emp_rep
+ggsci> status replicat cust_rep, allprocesses
+
+ggsci> STATUS ER group_wildcard_specification   -- To check the status of multiple Extract and Replicat groups as a unit
+ggsci> status er *EX*
+
+Download Pdf Followers Summary Acquire Alter Approximate Atoms
+ggsci> STATS EXTRACT group_name [, statistic] [, TABLE table] [, TOTALSONLY table_specification] [, REPORTFETCH | NOREPORTFETCH] [, REPORTRATE HR|MIN|SEC] [, ... ]  -- To display statistics for one or more Extract group
+ggsci> stats ext_hr
+ggsci> stats extract ext
+ggsci> stats extract ext2 reportrate sec
+ggsci> stats extract fin, total, daily
+ggsci> stats extract fin, total, hourly, table acct, reportrate min, reset, reportfetch
+
+ggsci> STATS REPLICAT group_name [, statistic] [, TABLE table] [, TOTALSONLY table_specification] [, REPORTDETAIL | NOREPORTDETAIL] [, REPORTRATE HR|MIN|SEC] [, ... ]   -- To display statistics for one or more Replicat groups
+ggsci> stats rep_hr
+ggsci> stats replicat fin, total, table acct, reportrate hr, reset, noreportdetail
+
+ggsci> STATS ER group_wildcard_specification   -- To get statistics on multiple Extract and Replicat groups as a unit
+ggsci> stats er ext*
+
+ggsci> REFRESH MANAGER  -- not available in Oracle 11g
+
+ggsci> SEND MANAGER [CHILDSTATUS [DEBUG]] [GETPORTINFO [DETAIL]] [GETPURGEOLDEXTRACTS]   -- To retrieve the status of the active Manager process or to retrieve dynamic port information as configured in the Manager parameter file
+ggsci> send manager childstatus
+ggsci> send manager childstatus debug
+ggsci> send manager getportinfo
+ggsci> send manager getportinfo detail
+ggsci> send manager getpurgeoldextracts
+
+ggsci> SEND EXTRACT group_name, 
+{ CACHEMGR {CACHESTATS | CACHEQUEUES | CACHEPOOL} | FORCESTOP | FORCETRANS id [THREAD n] [FORCE] | GETLAG | GETTCPSTATS | LOGEND | REPORT | ROLLOVER | SHOWTRANS [id] [THREAD n] [COUNT n] [DURATION duration_unit] [TABULAR] [FILE file_name [DETAIL]] | SKIPTRANS id [THREAD n] [FORCE] | STATUS | STOP | TLTRACE {DEBUG | OFF | level} [SIZELIMIT size] [DDLINCLUDE | DDL[ONLY]] [FILE] file_name | TRACE[2] {tracefile | OFF} | TRACEINIT | TRANLOGOPTIONS {PURGEORPHANEDTRANSACTIONS | NOPURGEORPHANEDTRANSACTIONS} | TRANLOGOPTIONS TRANSCLEANUPFREQUENCY minutes | VAMMESSAGE "Teradata_command" | VAMMESSAGE {ARSTATS | INCLUDELIST [filter] | EXCLUDELIST [filter]} | VAMMESSAGE OPENTRANS
+}     -- To communicate with a running Extract process
+Teradata_command = {"control:terminate" | "control:suspend" | "control:resume" | "control:copy database.table"
+ggsci> send extract exthr status
+ggsci> send extract extr, getlag
+ggsci> send extract group_name tltrace file file_name ddlinclude
+ggsci> send extract fin, rollover
+ggsci> send extract fin  stop
+ggsci> send extract fin, vammessage control:suspend
+ggsci> send extract fin, tranlogoptions transcleanupfrequency 15
+ggsci> send extract fin, showtrans count 10
+ggsci> send extract fin, skiptrans 5.17.27634 thread 2
+
+ggsci> SEND REPLICAT group_name,
+{ FORCESTOP | GETLAG | HANDLECOLLISIONS [table_specification] | NOHANDLECOLLISIONS [table_specification] | REPORT [HANDLECOLLISIONS [table_specification]] | STATUS | STOP | TRACE[2] [DDLINCLUDE | DDL[ONLY]] [FILE] file_name | TRACE[2] OFF | TRACEINIT
+}    -- To communicate with a starting or running Replicat process
+ggsci> send replicat fin, handlecollisions
+ggsci> send replicat fin, report handlecollisions fin_*
+ggsci> send replicat fin, getlag
+
+ggsci> SEND ER group_wildcard_specification   -- To send instructions to multiple Extract and Replicat groups as a unit
+ggsci> send er *ext
+
+ggsci> ALTER EXTRACT group_name [, ADD_EXTRACT_attribute] [, THREAD number] [, ETROLLOVER]  -- To change the attributes of an Extract group, To increment a trail to the next file in the sequence
+ggsci> alter extract fin, begin 2012-02-16
+ggsci> alter extract fin, etrollover
+ggsci> alter extract fin, extseqno 26, extrba 338
+ggsci> alter extract accounts, thread 4, begin 2012-03-09
+ggsci> alter extract sales, lsn 1234:123:1
+
+ggsci> ALTER REPLICAT group_name , 
+[, BEGIN {NOW | YYYY-MM-DD HH:MM[:SS[.CCCCCC]]} |, EXTSEQNO seqno, EXTRBA rba] [, PARAMS parameter_file] [, REPORT report_file] [, DESC "description"]   -- To change the attributes of a Replicat group
+ggsci> alter replicat fin, begin 2011-09-28 08:08:08
+ggsci> alter replicat fin, extseqno 53
+ggsci> alter replicat fin, extrba 666
+
+ggsci> ALTER EXTTRAIL trail_name, EXTRACT group_name [, MEGABYTES n]   -- To change the attributes of a trail (on the local system)
+ggsci> alter exttrail c:\ogg\dirdat\aa, extract fin, megabytes 30
+
+ggsci> ALTER RMTTRAIL trail_name, EXTRACT group_name [, MEGABYTES n]   -- To change the attributes of a trail (on a remote system)
+ggsci> alter rmttrail c:\ogg\dirdat\et, extract fin, megabytes 25
+
+ggsci> CLEANUP EXTRACT group_name [, SAVE count]   -- To delete run history for specified Extract group
+ggsci> cleanup extract fin
+ggsci> cleanup extract e*, save 6
+
+ggsci> CLEANUP REPLICAT group_name [, SAVE count]  -- To delete run history for specified Replicat group
+ggsci> cleanup replicat fin
+ggsci> cleanup replicat *, save 10
+
+ggsci> CLEANUP CHECKPOINTTABLE [user_name.table_name]  -- To remove checkpoint records from the checkpoint table
+ggsci> cleanup checkpointtable ggs.fin_check
+
+ggsci> DELETE EXTRACT group_name [!]   -- To delete an Extract group
+ggsci> delete extract emp_ext
+ggsci> delete extract emp_ext !              -- will not ask for confirmation
+
+ggsci> DELETE REPLICAT group_name [!]   -- To delete a Replicat group
+ggsci> delete replicat emp_ext
+ggsci> delete replicat emp_ext !             -- will not ask for confirmation
+
+ggsci> DELETE EXTTRAIL trail_name    -- To delete the record of checkpoints associated with a trail on a local system
+ggsci> delete exttrail /home/ogg/dirdat/et
+
+ggsci> DELETE RMTTRAIL trail_name    -- To delete the record of checkpoints associated with a trail on a remote system
+ggsci> delete rmttrail /home/ogg/dirdat/et
+
+ggsci> DELETE TRANDATA user_name.table_names [, OLDFORMAT] [, USETRIGGER]  -- To delete logging/replication data
+ggsci> delete trandata fin.acct
+ggsci> delete trandata fin.cust*
+ggsci> delete trandata emp.hr, usetrigger
+
+ggsci> DELETE CHECKPOINTTABLE [user_name.table_name] [!]     -- To drop checkpoint table from database
+ggsci> delete checkpointtable ggs.fin_check
+
+ggsci> DELETE TRACETABLE [owner.table]   -- To delete a trace table
+ggsci> delete tracetable ora_trace
+
+ggsci> KILL EXTRACT group_name    -- To kill an Extract process running in regular or PASSIVE mode
+ggsci> kill extract fin
+
+ggsci> KILL REPLICAT group_name   -- To kill a Replicat process
+ggsci> kill replicat fin
+
+ggsci> KILL ER group_wildcard_specification   -- To forcefully terminate multiple Extract and Replicat groups as a unit
+ggsci> kill er *x*
+
+ggsci> LAG EXTRACT group_name    -- To determine a true lag time between Extract and the datasource
+ggsci> lag extract ext*
+ggsci> lag extract *
+
+ggsci> LAG REPLICAT group_name   -- To determine a true lag time between Replicat and the trail
+ggsci> lag replicat myrepl
+ggsci> lag replicat *
+
+ggsci> LAG ER group_wildcard_specification   -- To get lag information on multiple Extract and Replicat groups as a unit
+ggsci> lag er *ext*
+
+ggsci> DUMPDDL [SHOW]   -- To view the data in the Oracle GoldenGate DDL history table
+ggsci> dumpddl
+
+ggsci> HISTORY [n]   -- To view the most recently issued GGSCI commands since the session started
+ggsci> history       -- by default, shows last 10 commands
+ggsci> history 30
+
+ggsci> SET EDITOR program_name    -- To change the default text editor for the current session of GGSCI, default editors are Notepad for Windows and vi for UNIX
+ggsci> set editor wordpad
+
+ggsci> VERSIONS   -- To display operating system and database version information
+
+ggsci> FC [n | -n | string]   -- To display edit a previously issued GGSCI command and then execute it again
+ggsci> fc
+ggsci> fc 9
+ggsci> fc -3
+ggsci> fc sta
+FC editor commands
+i text  -- Inserts text
+r text  -- Replaces text
+d        -- Deletes a character
+replacement_text  -- Replaces the displayed command with the text that we enter on a one-for-one basis.
+
+ggsci> SHELL shell_command   -- To execute shell commands from within GGSCI interface
+ggsci> shell ls -l /u01/app/oracle/gg/dirdat
+ggsci> shell dir dirprm\*
+ggsci> shell rm ./dat*
+Automatic storage management Cleanup Checkpoint Download Pdf Followers Summary
+
+ggsci> ! [n | -n | string]    -- To execute previous GGSCI command
+ggsci> !
+ggsci> ! 6    -- To run the command 6 listed in the history
+ggsci> ! -3
+ggsci> ! sta
+ggsci> help ! command
+
+ggsci> OBEY ggsci_script      -- To process a file that contains a list of GoldenGate commands.
+ggsci> shell more /u01/app/oracle/gg/startup.txt
+START MANAGER
+START EXTRACT EXT3
+START EXTRACT DPUMP
+INFO ALL
+ggsci> OBEY /u01/app/oracle/gg/startup.txt
+ggsci> OBEY ./mycommands.txt
+
+ggsci> EXIT

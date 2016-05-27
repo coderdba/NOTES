@@ -1,0 +1,257 @@
+=============================
+MYSQL ARCHITECTURE
+=============================
+NOTE: Also see mysql-5.7-linux-rpm-install-config.txt for datadir, folder, file etc info and actions like moving datadir etc.
+
+Cluster Architecture, Redo:
+https://www.percona.com/live/europe-amsterdam-2015/sites/default/files/slides/PerconaLive_Amsterdam_2015_Severalnines_MySQLCluster.pdf
+http://mikaelronstrom.blogspot.in/2012/05/history-of-mysql-cluster-architecture.html
+
+InnoDB Redo:
+https://dev.mysql.com/doc/refman/5.6/en/innodb-redo-log.html
+
+Innodb data:
+https://blogs.oracle.com/mysqlinnodb/entry/data_organization_in_innodb
+
+MySQL for Oracle DBA:
+https://www.fromdual.com/sites/default/files/ukoug_2011_mysql_arch_for_orcl_dba.pdf
+
+Recovery Principles Cluster V5.1:
+http://www.vldb2005.org/program/paper/wed/p1108-ronstrom.pdf
+
+Tutorial with architecture points:
+http://cdn.oreillystatic.com/en/assets/1/event/36/MySQL%20Cluster%20Tutorial%20Presentation%201.pdf
+
+NDB vs InnoDB:
+https://dev.mysql.com/doc/mysql-cluster-excerpt/5.1/en/mysql-cluster-ndb-innodb-engines.html
+
+Binary Log (archive log??), Replication:
+https://dev.mysql.com/doc/mysql-cluster-excerpt/5.6/en/mysql-cluster-replication.html
+https://dev.mysql.com/doc/refman/5.1/en/mysql-cluster-replication.html
+https://docs.oracle.com/cd/E17952_01/refman-5.5-en/binary-log.html
+
+============
+------------
+INNODB STUFF
+------------
+============
+
+====================================
+MYSQL FOLDER and FILES - THE DATADIR
+====================================
+
+Default data directory is /var/lib/mysql.
+To change it: 
+  http://askubuntu.com/questions/137424/moving-mysql-datadir
+  http://tecadmin.net/change-default-mysql-data-directory-in-linux/#
+  http://stackoverflow.com/questions/1795176/how-to-change-mysql-data-directory
+
+Mariadb:
+/var/lib/mysql# ls -l
+total 110644
+-rw-rw---- 1 mysql mysql    16384 Feb 27 21:34 aria_log.00000001
+-rw-rw---- 1 mysql mysql       52 Feb 27 21:34 aria_log_control
+drwx------ 2 mysql mysql      111 Feb 27 22:42 hr --> database 'HR' directory
+-rw-rw---- 1 mysql mysql 12582912 Feb 27 22:42 ibdata1 --> tablespace file for system tables
+-rw-rw---- 1 mysql mysql 50331648 Feb 27 22:42 ib_logfile0 --> redo logfile 0
+-rw-rw---- 1 mysql mysql 50331648 Feb 27 19:09 ib_logfile1 --> redo logfile 1
+
+MySQL:
+root@cbmysqlr1:/var/lib/mysql# ls -l
+total 123048
+-rw-r----- 1 mysql mysql       56 May 15 16:44 auto.cnf
+-rw------- 1 mysql mysql     1676 May 15 16:44 ca-key.pem
+-rw-r--r-- 1 mysql mysql     1075 May 15 16:44 ca.pem
+-rw-r--r-- 1 mysql mysql     1079 May 15 16:44 client-cert.pem
+-rw------- 1 mysql mysql     1676 May 15 16:44 client-key.pem
+drwxr-x--- 2 mysql mysql       91 May 16 00:19 hr --> database 'HR' directory 
+                                                      (with one each .ibd and .frm files for each table in the DB in the directory)
+-rw-r----- 1 mysql mysql    98304 May 16 00:20 hrts1.ibd --> tablespace created without path, so in default location of datadir
+-rw-r----- 1 mysql mysql      299 May 15 19:28 ib_buffer_pool
+-rw-r----- 1 mysql mysql 12582912 May 16 00:20 ibdata1 --> system tablespace file
+-rw-r----- 1 mysql mysql 50331648 May 16 00:20 ib_logfile0 --> redolog file 0
+-rw-r----- 1 mysql mysql 50331648 May 15 16:44 ib_logfile1 --> redolog file 1
+-rw-r----- 1 mysql mysql 12582912 May 15 19:29 ibtmp1
+drwxr-x--- 2 mysql mysql     4096 May 15 16:44 mysql
+srwxrwxrwx 1 mysql mysql        0 May 15 19:29 mysql.sock --> socket for the server mysqld (in [mysqld] section in my.cnf)
+-rw------- 1 mysql mysql        4 May 15 19:29 mysql.sock.lock --> socket for the client connections (in [client] section in my.cnf)
+drwxr-x--- 2 mysql mysql     8192 May 15 16:44 performance_schema
+-rw------- 1 mysql mysql     1676 May 15 16:44 private_key.pem
+-rw-r--r-- 1 mysql mysql      452 May 15 16:44 public_key.pem
+-rw-r--r-- 1 mysql mysql     1079 May 15 16:44 server-cert.pem
+-rw------- 1 mysql mysql     1680 May 15 16:44 server-key.pem
+drwxr-x--- 2 mysql mysql     8192 May 15 16:44 sys
+
+-----------------------
+CHANGE DATADIR LOCATION
+-----------------------
+http://askubuntu.com/questions/137424/moving-mysql-datadir
+  Stop the mysql server:
+    stop mysql
+    
+  Create the new directory:
+    mkdir /array2/mysql
+    
+  Copy over the (whole mysql folder) the database folders:
+    cp -R /var/lib/mysql /array2/mysql
+    cp -R /var/lib/mysql/users /array2/mysql
+    
+  Backup the my.cnf file:
+    cp /etc/mysql/my.cnf /root/my.cnf.backup
+  
+  Edit the my.cnf file:
+    nano /etc/mysql/my.cnf
+    Change all mentions of the old datadir and socket to your new location
+  
+  As follows:
+    datadir=/array2/mysql
+    socket=/array2/mysql/mysql.sock
+  
+  Update the directory permissions:
+    chown -R mysql:mysql /array2/mysql
+  
+  Rename the old directory:
+    mv /var/lib/mysql /var/lib/mysql-old
+  
+  Create a symlink, just in case:
+   ln -s /array2/mysql /var/lib/mysql 
+  
+  Let AppArmor know about the new datadir:
+    echo "alias /var/lib/mysql/ -> /your/new/datadir/," >> /etc/apparmor.d/tunables/alias
+  
+  Reload the apparmor profiles
+    sudo /etc/init.d/apparmor reload
+  
+  Then start mysql:
+   start mysql
+   
+================================
+DATABASE AND TABLE DIRECTORY
+================================
+Database contents are kept in a directory under data directory: /var/lib/mysql/hr-db (for hr-db database)
+Tables are created under that hr-db directory: 
+--> one file each .frm and .ibd per DB
+--> .frm for definition and .ibd for data
+--> one db.opt file per db to contain options of DB like characterset, collation etc
+
+root@cbmysqlr1:/var/lib/mysql/hr# ls -l
+total 248
+-rw-r----- 1 mysql mysql     65 May 15 16:44 db.opt
+-rw-r----- 1 mysql mysql   8586 May 15 16:44 dept.frm
+-rw-r----- 1 mysql mysql  98304 May 15 16:44 dept.ibd
+-rw-r----- 1 mysql mysql   8668 May 15 16:44 emp.frm
+-rw-r----- 1 mysql mysql 114688 May 15 16:44 emp.ibd
+-rw-r----- 1 mysql mysql   8598 May 16 00:19 job.frm
+
+root@cbmysqlr1:/var/lib/mysql/hr# cat db.opt
+default-character-set=latin1
+default-collation=latin1_swedish_ci
+
+---------------------------------
+To change directory of one table
+---------------------------------
+https://dev.mysql.com/doc/refman/5.7/en/tablespace-placing.html
+(for this, innodb_file_per_table should be on)
+
+mysql> SHOW VARIABLES LIKE 'innodb_file_per_table';
++-----------------------+-------+
+| Variable_name         | Value |
++-----------------------+-------+
+| innodb_file_per_table | ON    |
++-----------------------+-------+
+1 row in set (0.00 sec)
+
+mysql> CREATE TABLE t1 (c1 INT PRIMARY KEY) DATA DIRECTORY = '/alternative/directory';
+
+Example:
+mysql> use hr-db;
+mysql>  CREATE TABLE t1 (c1 INT PRIMARY KEY) DATA DIRECTORY = '/tmp';
+
+# cd /tmp
+# ls -l 
+root@mariadb:/tmp# ls -l
+drwxrwx--- 2 mysql   mysql      19 Feb 27 23:33 hr-db --> a folder got created for hr-db and inside it are table files:
+
+root@mariadb:/tmp/hr# ls -l
+total 192
+-rw-rw---- 1 mysql mysql 98304 Feb 27 23:33 t1.ibd
+
+------------------------------------------
+To change directory of the whole database
+------------------------------------------
+Databases get created under 'datadir'/<dbname> - like /var/lib/mysql/hr.
+
+Moving existing databases
+-------------------------
+Stop mysqld daemon - service mysqld stop.
+Move the <dbname> folder off to desired location - like /mysqldata/mysql/db/hr.
+Make soft link to the new folder in the default location:
+  cd /var/lib/mysql
+  ln -s /mysqldata/mysql/db/hr
+Start mysqld daemon - service mysqld start.
+
+
+==============================
+REDOLOG - for crash recovery, similar to oracle redolog
+==============================
+https://dev.mysql.com/doc/refman/5.7/en/innodb-redo-log.html
+
+These are the ib_logfile0 and ib_logfile1 in the data-dir.
+
+==============================
+BINLOG - for PITR, similar to oracle archivelog
+==============================
+https://mariadb.com/kb/en/mariadb/overview-of-mariadb-logs/
+https://mariadb.com/kb/en/mariadb/binary-log/
+https://mariadb.com/kb/en/mariadb/activating-the-binary-log/
+
+https://dev.mysql.com/doc/refman/5.7/en/server-logs.html
+https://dev.mysql.com/doc/refman/5.7/en/binary-log.html
+http://dev.mysql.com/doc/refman/5.7/en/replication-options-binary-log.html
+
+http://www.nextstep4it.com/enable-binary-logs-mysql/ (enabling using my.cnf)
+
+Necessary for PITR (point in time recovery)
+For replication masters
+NOT ENABLED BY DEFAULT
+
+------------------
+Enabling binlog
+------------------
+http://www.nextstep4it.com/enable-binary-logs-mysql/ (enabling using my.cnf)
+Enabled by starting mysqld with --log-bin
+
+Step:1 Stop the mysql service using below command
+ # service mysqld stop 
+ 
+Step:2 Edit the mysql configuration files (/etc/my.cnf) and add below lines
+ log-bin = /var/lib/mysql/<application-name>-mysql-bin.log
+ OR
+ log-bin=mysql-bin
+ expire_logs_days = 2
+ # binary logging format – mixed recommended
+ binlog_format=mixed
+ 
+Verify: (with setting as log-bin=mysql-bin)
+  root@mariadb:/var/lib/mysql# ls -l
+  total 110628
+  -rw-rw---- 1 mysql mysql    16384 Feb 27 23:09 aria_log.00000001
+  -rw-rw---- 1 mysql mysql       52 Feb 27 23:09 aria_log_control
+  drwx------ 2 mysql mysql      111 Feb 27 22:42 hr
+  -rw-rw---- 1 mysql mysql 12582912 Feb 27 23:09 ibdata1
+  -rw-rw---- 1 mysql mysql 50331648 Feb 27 23:09 ib_logfile0
+  -rw-rw---- 1 mysql mysql 50331648 Feb 27 19:09 ib_logfile1
+  -rw-rw---- 1 mysql mysql        6 Feb 27 23:09 mariadb.pid
+  -rw-rw---- 1 mysql mysql        0 Feb 27 19:10 multi-master.info
+  drwx--x--x 2 mysql mysql     4096 Feb 27 19:09 mysql
+  -rw-rw---- 1 mysql mysql      313 Feb 27 23:09 mysql-bin.000001 --> the binlog file
+  -rw-rw---- 1 mysql mysql       19 Feb 27 23:09 mysql-bin.index --> index of binlog files
+  srwxrwxrwx 1 mysql mysql        0 Feb 27 23:09 mysql.sock
+  drwx------ 2 mysql mysql       19 Feb 27 19:09 performance_schema
+  drwxr-xr-x 2 mysql mysql        6 Feb 27 19:09 test
+ 
+===============================
+QUERY LOGS AND ERROR LOGS
+===============================
+https://mariadb.com/kb/en/mariadb/overview-of-mariadb-logs/
+

@@ -1,0 +1,68 @@
+IOPS AND THROUGHPUT ANALYSIS IN ORACLE
+
+http://www.nyoug.org/Presentations/2012/June/Ault_Validating%20_IO_Subsystem.pdf
+http://xtremio.com/wp-content/uploads/2014/07/h13174-wp-optimized-flash-storage-for-oracle-databases.pdf
+https://community.emc.com/docs/DOC-31573
+
+Goldengate - http://www.oracle.com/technetwork/database/availability/maa-gg-performance-1969630.pdf
+
+Redolog tuning for i/o: https://bartsjerps.wordpress.com/2012/05/20/managing-redo-log-performance/
+
+Statspack analyzer tool: www.statspackanalyzer.com  (bandwidth, latency, queue)
+
+AWR analyzer tool: http://flashdba.com/database/useful-scripts/awr-parser/
+                    https://github.com/flashdba/scripts/blob/master/awr-parser.sh
+
+AWR REPORT ANALYSIS
+
+AWR - IOPS 
+http://www.nyoug.org/Presentations/2012/June/Ault_Validating%20_IO_Subsystem.pdf
+
+Instance Activity Statistics section:
+--> These totals should match with the totals in 'IOStat by Filetype' section
+physical read total IO requests – Total read (input) requestsper second
+physical read total bytes – Read Bandwidth
+physical write total IO requests – Total write (output) requests per second
+physical write total bytes – Write bandwidth
+
+physical read total IO requests 1,921,190 2,110.82 3.01 
+physical read total bytes 49,773,095,424 54,685,853.78 78,054.63 
+physical write total IO requests 3,488,582 3,832.92 5.47 
+physical write total bytes 97,198,914,560 106,792,747.86 152,428.24 
+
+IOStat by Filetype summary section:
+--> This section accounts for all types of reads and writes to files - data, log, arch, temp, control, other
+--> The sums should match to what we find as 'total' in the 'Instance Activity Statistics' section.
+
+  Filetype Name, Reads: Data, Reqs per sec, Data per sec, Writes: Data, Reqs per sec, Data per sec, Small Read, Large Read
+  Log File 24G 27.06 26.9764 37.8G 1334.49 42.5395 0.58 0.25 
+  Data File 14.6G 2030.28 16.4124 29.4G 2418.59 33.1171 2.98 17.20 
+  Archive Log 4.3G 4.83 4.82880 17.2G 19.30 19.3020   7.39 
+  Temp File 3G 29.09 3.42026 6.2G 59.29 6.95479 5.50 3.33 
+  Control File 459M 13.24 .504304 54M 3.86 .059329 0.13 6.09 
+  Other 1M 0.46 .001098 0M 0.00 0M 0.20   
+  TOTAL: 46.3G 2104.96 52.1433 90.6G 3835.53 101.972 2.99 1.47 
+  
+  IOPS OF REDO - The total REDO WRITE IOPS from filetype summary are for multiplexed redo files 
+                - so if we are looking at how much reads would Goldengate require, divide that by number of redo multiplexes
+  TOTAL REDO WRITTEN (in filetype summary)- (Total Redo + Redo Wastage both from instance activity section) * Multiplexes
+
+AWR - BANDWIDTH
+
+Load Profile
+                           Per Second     Per Transaction
+                          --------------- ---------------
+ Physical reads (blocks): 11,140.07 10,886.06
+ Physical writes (blocks): 1,309.27 1,279.41
+ 
+ Note: Above items are in 'blocks' of db_block_size and not bytes
+ 
+ CAUTION: DO NOT use this for IOPS calculation because multi-block sequential read is treated as one IO request, 
+          while single-block reads are treated EACH as one read by the IO subsystem
+          
+          
+AWR - REDO SIZE
+Instance Activity Statistics section:
+  'redo size' - total and per sec
+  --> This should match with 'Redo Size' per sec in Load Profile section
+

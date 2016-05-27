@@ -1,0 +1,265 @@
+=========================================
+DATA BAGS
+=========================================
+------------------------
+COMMAND LIST
+------------------------
+Create:
+G:\.chef>knife data bag create −−editor vi −−secret-file G:\databags\secret_key mysqlpasswords rootpwstandard
+G:\.chef>knife data bag create −−editor vi unenc passwords
+
+Edit:
+G:\.chef>knife data bag edit  −−editor vi −−secret-file G:\databags\secret_key mysqlpasswords rootpwstandard
+G:\.chef>knife data bag edit −−editor vi unenc passwords
+
+Show:
+G:\.chef>knife data bag show mysqlpasswords hruser -Fj --> good for test-kitchen local databag file content
+G:\.chef>knife data bag show mysqlpasswords rootpwstandard  --> shows encrypted ones in encrypted form
+G:\.chef>knife data bag show unenc passwords --> shows unencrypted ones
+
+------------------------
+ABOUT DATA BAG
+------------------------
+https://docs.chef.io/data_bags.html
+https://docs.chef.io/knife_data_bag.html
+https://docs.getchef.com/essentials_data_bags.html --> about encryption
+https://www.devops.zone/provisioning/creating-encrypted-databag-chef/ --> tutorial creating and downloading encrypted data bag
+
+Databag with test-kitchen (local testing without connecting to chef server): 
+http://atomic-penguin.github.io/blog/2013/06/07/HOWTO-test-kitchen-and-encrypted-data-bags/
+
+Databag with Vagrant (local testing without connecting to chef server): 
+https://www.vagrantup.com/docs/provisioning/chef_solo.html
+http://stackoverflow.com/questions/21239162/how-do-i-use-chef-data-bags-from-my-vagrantfile
+
+------------------------
+ABOUT VAULT
+------------------------
+https://docs.chef.io/chef_vault.html
+--> https://www.chef.io/blog/2013/09/19/managing-secrets-with-chef-vault/
+--> http://jtimberman.housepub.org/blog/2013/09/10/managing-secrets-with-chef-vault/
+
+chef-vault is a RubyGems package that is included in the Chef development kit. 
+chef-vault allows the encryption of a data bag item by using the public keys of a list of nodes, 
+allowing only those nodes to decrypt the encrypted values. chef-vault adds the knife vault subcommand.
+
+For more information about the knife subcommands, its arguments, and other uses, see https://github.com/chef/chef-vault
+For more information about using the chef-vault cookbook, its helper methods and resources, 
+see https://github.com/chef-cookbooks/chef-vault
+
+=========================
+CREATE A DATA BAG
+=========================
+
+----------------------------
+CREATE AN ENCRYPTED DATA BAG - USING EDITOR (not with an input file)
+----------------------------
+O:\data_bags>knife data bag create −−editor O:\tools\sublimetext2\sublime_text.exe −−secret-file ./secret_key0 db_enc_0 passwords
+Created data_bag[db_enc_0]
+    --> at this point, an editor pops up - in it, provide the entries like the following:
+    {
+      "id": "passwords",
+      "mysql": "yourmysqlpassword",
+      "ssh": "yoursshpassword"
+    }
+    Save and exit that file in the editor.
+Created data_bag_item[passwords]
+
+O:\data_bags>knife data bag edit −−editor O:\tools\sublimetext2\sublime_text.exe −−secret-file ./secret_key0 db_enc_0 passwords
+Encrypting data bag using provided secret.
+  --> At this point, it shows the current content of the data bag in the editor
+  --> Edit as needed, save and exit the editor
+      {
+      "name": "data_bag_item_db_enc_0_passwords",
+      "json_class": "Chef::DataBagItem",
+      "chef_type": "data_bag_item",
+      "data_bag": "db_enc_0",
+      "raw_data": {
+      "id": "passwords",
+      "mysql": "yourmysqlpassword-changed",
+      "ssh": "yoursshpassword-changed"
+        }
+      }
+Saved data_bag_item[passwords]
+
+----------------------------
+CREATE AN ENCRYPTED DATA BAG - USING AN INPUT FILE (not with editor)
+----------------------------
+TBD
+
+------------------------------------------------
+DOWNLOAD A DATA BAG - for local kitchen testing
+------------------------------------------------
+G:\.chef>knife data bag show mysqlpasswords rootpwstandard  --> shows encrypted ones in encrypted form
+G:\.chef>knife data bag show unenc passwords --> shows unencrypted ones
+
+Place the outputs of these commands in a .json file.
+Typically, for kitchen testing files will be kept under 
+    <cookbook folder>/test/integration/databags/<databag name>/<databag item name>.json
+However for a general storage you can keep it elsewhere and make the directory and filename as above for kitchen testing.
+(ALSO, see kitchen testing section later on)
+
+Examples:
+For kitchen - G:\cookbooks\cbmysqlr1\test\integration\default\databags\unenc\passwords.json
+General someplace storage - G:\databags\unenc\passwords.json
+
+--------------------------------
+DOWNLOADING A DATABAG - EXAMPLES
+--------------------------------
+
+Use show with -Fj options to download json format file content for test-kitchen use.
+
+G:\.chef>knife data bag show unenc passwords -Fj
+{
+  "id": "passwords",
+  "mysqlrootstd": "bbb111_bbb111",
+  "mysqlhruser": "aaa111_aaa111"
+}
+
+G:\.chef>knife data bag show mysqlpasswords hruser -Fj
+{
+  "id": "hruser",
+  "password": {
+    "encrypted_data": "fP3jhLxPINEwS7vb5cypuMlHU7Z0rgNIE5HFSTlWPw8=\n",
+    "iv": "4MARpX6MxUf9MI280jf/yg==\n",
+    "version": 1,
+    "cipher": "aes-256-cbc"
+  }
+}
+
+
+--- other methods, but error prone ---
+To show databag contents on screen use 'show' command - better use this for encrypted databags.
+Edit command gives the right format for test-kitchen local databag.
+    HOWEVER, for encrypted databag, it asks for secret-file and shows only un-encrypted values.
+
+- SHOW COMMAND
+
+G:\.chef>knife data bag show unenc passwords
+WARNING: Unencrypted data bag detected, ignoring any provided secret options.
+id:           passwords
+mysqlhruser:  abc111_abc111
+mysqlrootstd: aaa3_bbb3
+
+G:\.chef>knife data bag show mysqlpasswords rootpwstandard
+WARNING: Encrypted data bag detected, but no secret provided for decoding.  Displaying encrypted data.
+id:       rootpwstandard
+password:
+  cipher:         aes-256-cbc
+  encrypted_data: 3KdxaAkZDjQRoONiK8/o63OunPlXlGBpQAaFKhOPB+6z9RJD43iOvWguv9Ek
+  pxrW
+
+  iv:             K+ZD6y7iKtPWHceA2Y6Jaw==
+
+  version:        1
+  
+- EDIT COMMAND
+NOTE: For test-kitchen copy only the curly-bracket contents after "raw_data":.  Discard the rest.
+
+G:\.chef> knife data bag edit −−editor vi unenc passwords
+{
+  "name": "data_bag_item_unenc_passwords",
+  "json_class": "Chef::DataBagItem",
+  "chef_type": "data_bag_item",
+  "data_bag": "unenc",
+  "raw_data": {
+    "id": "passwords",
+    "mysqlrootstd": "root123_ROOT123",
+    "mysqlhruser": "hr123_HR123"
+  }
+}
+
+--------------------------------
+JSON FILE FOR KITCHEN
+--------------------------------
+Show the contents of the databags as in the previous section.
+NOTE: This file should be in json format
+1. Copy only the json components to a file.  Do not copy WARNING and other messages.
+2. Enclose the content in curly brackets in the file
+3. Enclose the names and values in double quotes
+4. Separate items by commas
+Example:
+{
+"id": "passwords",
+"mysqlhruser": "abc111_abc111",
+"mysqlrootstd": "aaa3_bbb3"
+}
+
+=================================================
+TEST KITCHEN TESTING WITH DATA BAGS
+=================================================
+Data bags get created in the chef server when knife create is run.
+However, for local kitchen or vagrant testing we need a local copy of it.
+
+---------------------
+DOWNLOAD DATA BAG
+---------------------
+Download the data bag contents using the 'show' command with -Fj option.
+Place the contents in a file named as follows:
+<cookbook folder>test\integration\default\databags\<databag name>\<item name>
+
+Example (un-encrypted): G:\cookbooks\cbmysqlr1\test\integration\default\databags\unenc\passwords.json
+{
+"id": "passwords",
+"mysqlhruser": "abc111_abc111",
+"mysqlrootstd": "aaa3_bbb3"
+}
+
+Example (ecnrypted): G:\cookbooks\cbmysqlr1\test\integration\default\databags\mysqlpasswords\rootpwstandard.json
+{
+  "id": "rootpwstandard",
+  "password": {
+    "encrypted_data": "DDarrvvnRM9X8HCw1KqQ1MSr6yONZQDd1jm8PJAQT8ySLxhIAlijdRo2gBrD\nJysa\n",
+    "iv": "7piTTpYdifCa0t5bfN7IRw==\n",
+    "version": 1,
+    "cipher": "aes-256-cbc"
+  }
+}
+
+-----------------
+SECRET KEY FILE
+-----------------
+Create a secret key file copy in <cookbook folder>test\integration\default\databags.
+Example:
+G:\cookbooks\cbmysqlr1\test\integration\default\databags\secret-key.txt
+
+------------------
+VAGRANTFILE SETUP
+------------------
+Provide the chef.data_bags_path and chef.encrypted_data_bag_secret_key_path as in the example below.
+
+config.vm.provision :chef_solo do |chef|
+
+    chef.data_bags_path = 'test\integration\default\databags'
+    chef.encrypted_data_bag_secret_key_path = 'test\integration\default\databags\secret-key.txt'
+
+    chef.json = {
+      mysql: {
+        server_root_password: 'rootpass',
+        server_debian_password: 'debpass',
+        server_repl_password: 'replpass'
+      }
+    }
+
+    chef.run_list = [
+      # Original 'default' recipe
+      #'recipe[cbmysqlr1::default]'
+      'recipe[cbmysqlr1::databag-display]'
+    ]
+
+  end
+  
+-----------------------------
+RECIPE CODE
+-----------------------------
+ 
+# Encrypted data bag
+rootpwstandard = Chef::EncryptedDataBagItem.load("mysqlpasswords", "rootpwstandard")
+password = rootpwstandard["password"]
+Chef::Log.info("The standard mysql root password is: '#{password}'")
+
+# Non-encrypted data bag
+databag = Chef::DataBagItem.load("unenc", "passwords")
+password = databag["mysqlrootstd"]
+Chef::Log.info("The standard mysql root password is: '#{password}'")
+

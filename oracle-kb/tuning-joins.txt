@@ -1,0 +1,131 @@
+ORACLE OPTIMIZER - JOINS
+
+https://docs.oracle.com/database/121/TGSQL/tgsql_join.htm#TGSQL94680
+http://www.dbspecialists.com/files/presentations/semijoins.html
+
+TYPES
+Nested loop
+Sort-merge
+Hash
+
+GENERAL RULE
+Table that results in single rows via index - places first in the join order
+Table that has outer join operator - placed next to the other table
+
+Exception:
+When subquery is converted into 'anti join' or 'semi join' those tables come after the other tables to which outer join connects.
+However, hash anti/semi joins may not follow this exceptions.
+
+ANTI JOIN
+A join that returns rows that fail to match the subquery on the right side. 
+For example, an antijoin can list departments with no employees. 
+Antijoins use the NOT EXISTS or NOT IN constructs.
+Uitility: Customers who have not placed any orders in the last one year
+
+Example:
+Instead of SELECT DEPTNO FROM DEPT MINUS SELECT DISTINCT DEPTNO FROM EMP;
+
+Write this (not as good as NOT EXISTS) -  SELECT * FROM DEPT WHERE DEPT NOT IN (SELECT DISTINCT DEPTID FROM EMP);
+Or this: (better version as null depts will disable index usage in NOT-IN clause)
+        SELECT   D.deptno, D.dname
+        FROM     dept D
+        WHERE    NOT EXISTS
+                 (
+                 SELECT 1
+                 FROM   emp E
+                 WHERE  E.deptno = D.deptno
+                 )
+        ORDER BY D.deptno;
+
+Hint: NL_AJ (nested loop anti join) to the in-line query can help when rows returned by inner query can be very less
+
+SEMI JOIN
+A join that returns rows from the first table when at least one match exists in the second table. 
+For example, you list departments with at least one employee. The difference between a semijoin and a 
+conventional join is that rows in the first table are returned at most once. Semijoins use the EXISTS or IN constructs.
+Utility: Customers that have placed at least one order in the last one year
+
+Example: To obtain DEPT with at least one employee, EXISTS returns/processes less rows than joining two tables:
+Exists make the subquery return yes as soon as the first value is found.
+
+        SELECT   D.deptno, D.dname
+        FROM     dept D
+        WHERE    EXISTS
+                 (
+                 SELECT 1
+                 FROM   emp E
+                 WHERE  E.deptno = D.deptno
+                 )
+        ORDER BY D.deptno;
+        
+instead of
+        SELECT   DISTINCT D.deptno, D.dname
+        FROM     dept D, emp E
+        WHERE    E.deptno = D.deptno
+        ORDER BY D.deptno;
+
+HASH JOIN
+When tables are to return large number or rows AND in EQUIJOIN
+Oracle makes a hash table of values from smaller table using join keys
+Then FOR EACH ROW OF the larger table, hash the join columns and match them with hash table of smaller table
+NOTE: A hash slot may have more than one key value set, then, first go to slot and then look for exact matching columns
+This helps a set of rows compared with only related set of rows in FTS than all rows
+No latching as this happens in PGA
+
+It stores in PGA memory
+Needs much PGA, sort area size and TEMP tablespace
+If tables are large, they are partitioned and larger ones kept in TEMP tablespace processed one partition at a time
+
+SORT MERGE JOIN
+When tables are to return large number of rows and join between two tables is not an equijoin such as <, <=, >, or >=.
+Sort both data sets
+If one has index, then sort only the other
+For every row in the first, look up the second, and return matching rows
+No latching as this happens in PGA
+
+Advantages: Merge part is optimized well - due to sorting.  Does not seem as advantageous as Hash join, but has this advantage. 
+                Also, when tables are too big for the PGA, this is an alternative
+
+Example: Select empno, empname, deptid, deptname from emp, dept where emp.deptid=dept.deptid order by deptid;
+Here, both tables need to be scanned fully, but it can use index on dept, and sort emp only, and ordering helps in order-by.
+
+CARTESIAN
+Join everything with everything and return combined rows
+Utility - rare
+Cost - high
+
+OUTER JOIN
+Retrieve rows not present in one or both joined tables while satisfying remaining conditions.
+They may end up using HASH, and can force USE_NL hint if tables are small, and Outer table to be the driver.
+
+SELECT /*+ USE_NL(c o) */ cust_last_name, SUM(NVL2(o.customer_id,0,1)) "Count"
+FROM   customers c, orders o
+WHERE  c.credit_limit > 1000
+AND    c.customer_id = o.customer_id(+)
+GROUP BY cust_last_name;
+
+
+Full outer join:
+SELECT d.department_id, e.employee_id
+FROM   employees e FULL OUTER JOIN departments d
+ON     e.department_id = d.department_id
+ORDER BY d.department_id;
+---  or ---
+SELECT d.department_id, e.employee_id
+FROM   employees e, departments d
+ON     e.department_id (+)= d.department_id(+)
+ORDER BY d.department_id;
+
+PARTITIONWISE-JOIN
+Join two partitioined tables partitioned simiarly.
+Can make hash partition of one table join with hash sub-partitions of second table which is primarily range-partitioned
+
+--------
+CAUTIONS/MISTAKES:
+--------
+Use EXISTS (with NL_AJ hit where possible), NOT_EXISTS instead of simple join and DISTINCT, MINUS, NOT IN etc.
+NOT EXISTS vs NOT IN --> NOT EXISTS ensures index is used if indexed column may have null values - otherwise NVL drops index use
+NOT IN (subquery) vs simple join with !=
+HAVING vs simple join with = (where possible)
+SELECT * vs SELECT <required fields>
+Repeatedly look up the same value from  same table in the program and not persist it

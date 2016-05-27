@@ -1,0 +1,41 @@
+RECOVER FROM LOSS OF CHECKPOINT FILE
+
+	Goldengate Checkpoint .cpe Files Gone (Doc ID 1925213.1)	To BottomTo Bottom	
+
+In this Document
+Goal
+Solution
+
+APPLIES TO:
+
+Oracle GoldenGate - Version 11.2.1.0.6 and later
+Information in this document applies to any platform.
+GOAL
+
+How to recreate OGG process checkpoint files?
+
+
+When trying to delete the replicat below error appears:
+
+GGSCI (xdt1dbadm02.mffcomet.com) 167> delete replicat r_trb
+
+ERROR: Invalid header token (0x00) found in checkpoint file /u01/app/OGG/11.2.1.0.6/dirchk/R_TRB.cpr.
+ 
+
+SOLUTION
+
+The extract processes need to be deleted, re-created and re-positioned as per the checkpoint values in the " info , showch" output.
+
+Please perform the below set of steps on the target side.
+
+$ mv ./dirchk/R_TEST.cpr ./dirchk.R_TEST.cpr.empty
+
+sql> create table . as select * from ;
+
+> delete from sch_ogg.ogg_checkpoint where GROUP_NAME = 'R_TEST;
+
+> commit;
+
+ggsci> dblogin userid @, password 
+
+ggsci> add rep R_TEST, exttrail , extseqno xx, extrba xyz, checkpointtable 

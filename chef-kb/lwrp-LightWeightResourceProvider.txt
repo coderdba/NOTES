@@ -1,0 +1,148 @@
+================================================================
+          LWRP - LIGHT WEIGHT RESOURCE PROVIDER
+================================================================
+
+Custom Resources:  https://docs.chef.io/custom_resources.html
+
+Examples:
+Good - http://divineops.net/the-simplest-example-ever-how-to-create-and-use-lwrp-in-chef/ 
+http://dougireton.com/blog/2012/12/31/creating-an-lwrp/
+(not all pages displayed in free site): https://books.google.co.in/books?id=umwLBAAAQBAJ&pg=PA169&lpg=PA169&dq=chef+achieving+idempotency&source=bl&ots=qmC4E9mjbW&sig=fEwFi0Dakg_i3OBH5w5UAL-Pw1I&hl=en&sa=X&ved=0ahUKEwjmube18pbKAhUJJx4KHQgSAVoQ6AEIIjAB#v=onepage&q=chef%20achieving%20idempotency&f=false
+  --> see chapter 10 page 170 onwards
+
+
+Fallacy of idempotency - http://sharknet.us/2014/02/01/automated-configuration-management-challenges-with-idempotency/
+
+---------------------------
+INTRODUCTION
+---------------------------
+LWRPs help in coding for idempotence.
+'Resource' is the action to be taken - and - 'Provider' is the one that executes the action.
+
+Idempotence can be coded with if-then-else kind of code, but LWRPs make it simpler for large pieces of code requirements.
+
+Directories:
+cookbooks/resources
+cookbooks/providers
+
+Provider:  http://www.rubydoc.info/gems/chef/Chef/Provider
+Resource:  http://www.rubydoc.info/gems/chef/Chef/Resource
+
+-----------------------------
+KEY THINGS
+-----------------------------
+converge_by
+converge_if_changed
+
+------------------------------
+EXAMPLE 1
+------------------------------
+
+Cookbook is 'oel65' under folder cookbooks.
+
+RESOURCE FILE --> cookbooks/oel65/resources/wordpress.rb
+
+#
+#
+#  Resource 'wordpress'
+#
+#
+
+# Actions
+actions :install, :remove
+default_action :install
+
+# Attributes
+attribute :wp_url,  :kind_of => String, default:"https://wordpress.org/latest.tar.gz"
+attribute :wp_path, :kind_of => String, default: "/tmp"
+
+PROVIDER FILE --> cookbooks/oel65/providers/wordpress.rb
+#
+#
+#  Provider wordpress
+#
+
+# Support “no-operation” mode
+def whyrun_supported?
+  true
+end
+
+# Use this so that chef-client can notify parent lightweight resources
+# after embedded resources have finished processing
+use_inline_resources
+
+# Implement action install
+action :install do
+
+  if ::File.exists?("#{new_resource.wp_path}/wordpress")
+
+    Chef::Log.info "#{@new_resource} already exists - nothing to do"
+
+    #What is this?? (was from google books doc)
+    #new_resource.updated_by_last_action(false)
+
+  else
+
+    converge_by ("Downloading wordpress file") do
+
+      # Download the file
+      remote_file "#{new_resource.wp_path}/wordpress.tar.gz" do
+        source "#{new_resource.wp_url}"
+        action :create
+      end
+
+      # Extract the file
+      bash "Extracting wordpress" do
+        code <<-EOH
+          cd #{new_resource.wp_path}
+          mkdir wordpress
+          tar -xvf wordpress.tar.gz wordpress
+        EOH
+      end
+
+    end
+
+  end
+end
+
+# Implement action remove
+action :remove do
+  if ::File.exists?("#{new_resource.wp_path}/wordpress")
+    bash "Removing wordpress" do
+      code <<-EOH
+        cd #{new_resource.wp_path}
+        rm -rf wordpress
+      EOH
+    end
+  else
+      Chef::Log.info "#{@new_resource} does not exist - nothing to do"
+  end
+
+end
+
+CALLING RECIPE FILE --> cookbooks/oel65/recipes/install_wordpress.rb
+
+#
+# Cookbook Name:: oel65
+# Recipe:: install_wordpress.rb
+#
+# Copyright (C) 2015 YOUR_NAME
+#
+# All rights reserved - Do Not Redistribute
+#
+
+oel65_wordpress 'Install wordpress' do
+  action :install
+end
+
+oel65_wordpress 'Install wordpress again' do
+  action :install
+end
+
+===============================
+EXAMPLE 2
+===============================
+TBD
+
+
+
