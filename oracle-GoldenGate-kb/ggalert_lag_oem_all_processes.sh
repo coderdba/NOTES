@@ -24,7 +24,7 @@ then
 
 export ORACLE_BASE=/app/oracle
 export ORACLE_HOME=/app/oracle/product/11.2.0.4
-export GG_HOME=/u02/app/oracle/product/12.1.2.1.OGG
+export GG_HOME=/app/oracle/product/12.1.2.1.OGG
 
 #echo here1
 
