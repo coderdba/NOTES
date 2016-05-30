@@ -82,6 +82,8 @@ public class MySqlDatabase {
 	private String username;
 	private String password;
 	private Connection connection;
+	
+	public MySqlDatabase() {}
 
 	public MySqlDatabase(String hostname, String port, String dbname,
 			String username, String password) {
@@ -181,6 +183,10 @@ public class MySqlDatabase {
 		return username;
 	}
 	
+	public String getPassword(){
+		return password;
+	}
+	
 	public String getDbname(){
 		return dbname;
 	}
@@ -189,7 +195,6 @@ public class MySqlDatabase {
 		return new MySqlDataHandler(this);
 	}
 }
-
 -------------------------------------------
 MySqlDataHandler.java
 -------------------------------------------
@@ -405,13 +410,15 @@ public class MySqlService {
 	@POST
 	@Path("/json/createdb")
 	@Consumes(MediaType.APPLICATION_JSON)
-	public String createDb(MySqlDatabase mySqlDatabase, String rootUsername, String rootPassword) {
-		
+	@Produces(MediaType.TEXT_PLAIN)
+	//@Consumes({"application/json", MediaType.APPLICATION_JSON})
+	public String createDb(MySqlDatabase mySqlDatabase) {
+		String rootUsername="root";
+		String rootPassword="root123_ROOT123";
 		mySqlDatabase.createDb(rootUsername, rootPassword);
 		return ("createDb - created the db");
 	}
 }
-
 ---------------
 POM.XML
 ---------------
@@ -426,25 +433,7 @@ NOTE: See kb article on how to add external jar to Maven repo
   <version>0.0.1-SNAPSHOT</version>
   <name>gm-mysql-services Maven Webapp</name>
   <url>http://maven.apache.org</url>
-  
-  <!--  
-  <properties>
-  	<ownjarfolder>/C/Data/PROGRAMMING/JAVA/OwnJars</ownjarfolder>
-  	<ownjarfolderx>C:\Data\PROGRAMMING\JAVA\OwnJars</ownjarfolderx>
-  </properties>
-  
-  <repositories>
-  <repository>
-    <id>my-local-jar-repox</id>
-    <url>file://${ownjarfolder}</url>
-  </repository>
-    <repository>
-    <id>my-local-jar-repo</id>
-    <url>file://C/Data/PROGRAMMING/JAVA/OwnJars</url>
-  </repository>
-  </repositories>
-  -->
-  
+
   <dependencies>
     <dependency>
       <groupId>junit</groupId>
@@ -469,7 +458,7 @@ NOTE: See kb article on how to add external jar to Maven repo
       <scope>compile</scope>
     </dependency>    
     
-    <!-- Jersey and jackson -->
+    <!-- Jersey -->
     <dependency>
       <groupId>org.glassfish.jersey.containers</groupId>
       <artifactId>jersey-container-servlet-core</artifactId>
@@ -482,14 +471,33 @@ NOTE: See kb article on how to add external jar to Maven repo
       <version>2.22.2</version>
       <scope>compile</scope>
     </dependency>
+    
+    <!-- Jackson -->
+    <dependency>
+      <groupId>org.glassfish.jersey.media</groupId>
+      <artifactId>jersey-media-json-jackson</artifactId>
+      <version>2.23</version>
+    </dependency>
+    
+    <!-- 
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-core</artifactId>
       <version>2.7.4</version>
       <scope>compile</scope>
     </dependency>
-    <!-- Jersey and jackson - end -->
-
+    <dependency>
+      <groupId>com.fasterxml.jackson.jaxrs</groupId>
+      <artifactId>jackson-jaxrs-json-provider</artifactId>
+      <version>2.7.4</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.jaxrs</groupId>
+      <artifactId>jackson-jaxrs-base</artifactId>
+      <version>2.7.4</version>
+    </dependency>
+    -->
+    
     <!-- Own jars -->
     <dependency>
         <groupId>gm.mysql</groupId>
