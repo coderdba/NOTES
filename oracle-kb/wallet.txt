@@ -8,12 +8,28 @@ Using Wallet in JDBC: http://stackoverflow.com/questions/7634196/what-is-correct
 ==================================
 WALLET CREATE/USE/MANAGE
 ==================================
-Wallet tutorial: http://www.idevelopment.info/data/Oracle/DBA_tips/Security/SEC_15.shtml
+BELOW INFO IS TAKEN FROM - Wallet tutorial: http://www.idevelopment.info/data/Oracle/DBA_tips/Security/SEC_15.shtml
 
 OVERVIEW
 Wallet is a file
 Location of this file should be in sqlnet.ora
 A TNS entry is required - as it is a combination of Tns alias, userid and password
+
+ADD ENTRY IN SQLNET.ORA
+  WALLET_LOCATION =
+     (SOURCE =
+       (METHOD = FILE)
+       (METHOD_DATA =
+         (DIRECTORY = /u01/app/oracle/product/11.2.0/dbhome_1/network/admin)
+       )
+     )
+  
+  SQLNET.WALLET_OVERRIDE = TRUE
+  SSL_CLIENT_AUTHENTICATION = FALSE
+  
+  ADR_BASE = /u01/app/oracle
+  NAMES.DIRECTORY_PATH= (TNSNAMES)
+  NAMES.DEFAULT_DOMAIN = IDEVELOPMENT.INFO
 
 CREATE TNS ENTRY
   REPORTING_TOOL.IDEVELOPMENT.INFO =
@@ -27,6 +43,10 @@ CREATE TNS ENTRY
 
 CREATE WALLET 
 Note: Examples below create it in $ORACLE_HOME/network/admin --> it can be any other directory also
+
+This will create two files:
+cwallet.sso  
+ewallet.p12
 
 - reusable on other machines
 $ mkstore -wrl "/u01/app/oracle/product/11.2.0/dbhome_1/network/admin" -create
@@ -86,3 +106,83 @@ You can also use the mkstore command to modify or delete password credentials fo
 
 mkstore -wrl <wallet_location> -modifyCredential <tnsalias> <username> <password>
 mkstore -wrl <wallet_location> -deleteCredential <tnsalias>
+
+PROXY-USER AUTHENTICATION
+Command-Line Proxy Authentication
+
+Another example for the secure external password store is the following scenario: A routine batch program running on a back-end server needs nightly access to the HR application schema, but new security policies have restricted direct access to the HR application schema. According to the new policy, the HR password will not be distributed and applications will not be allowed to log in directly as the HR application schema. How can the program authenticate to the database using credentials other than the application owner but still have the same level of access?
+
+Solution: Create a separate database account for the program that uses command-line proxy authentication with the secure external password store. Using this method, applications can use traditional proxy authentication to authenticate as an end user (HRPROC in this example) and the proxy to the HR user.
+
+ 	
+Note that prior to Oracle Database 10g Release 2, Oracle proxy authentication only worked with thick or thin JDBC connections. In Oracle Database 10g Release 2, Oracle introduced command line proxy functionality as demonstrated in this section.
+
+Start by creating the database proxy user and granting CREATE SESSION privileges.
+
+
+SQL> grant create session to hrproc identified by hrproc_password;
+
+Grant succeeded.
+Alter the user HR to enable access through the new database account.
+
+
+SQL> alter user hr grant connect through hrproc;
+
+User altered.
+Configure the wallet and the tnsnames.ora file starting with the TNS alias entry. Add an entry to the tnsnames.ora file for the proxy user.
+
+
+HRPROC.IDEVELOPMENT.INFO =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = testnode1.idevelopment.info)(PORT = 1521))
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = testdb1.idevelopment.info)
+    )
+  )
+Add the credentials for the proxy user to your wallet.
+
+
+$ cd /u01/app/oracle/product/11.2.0/dbhome_1/network/admin
+$ mkstore -wrl . -createCredential hrproc hrproc hrproc_password
+Oracle Secret Store Tool : Version 11.2.0.3.0 - Production
+Copyright (c) 2004, 2011, Oracle and/or its affiliates. All rights reserved.
+
+Enter wallet password: xxxxxxxx
+Create credential oracle.security.client.connect_string3
+The batch program can now authenticate as HRPROC using the secure external password store and is allowed to proxy through the HR user:
+
+
+$ sqlplus [HR]/@hrproc
+
+SQL*Plus: Release 11.2.0.3.0 Production on Tue Jul 24 14:57:30 2012
+
+Copyright (c) 1982, 2011, Oracle.  All rights reserved.
+
+
+Connected to:
+Oracle Database 11g Enterprise Edition Release 11.2.0.3.0 - 64bit Production
+With the Partitioning, Oracle Label Security, OLAP, Data Mining
+and Real Application Testing options
+
+SQL> show user
+USER is "HR"
+SQL>
+Although the secure external password store was used in the previous example, it is still possible to use the traditional username/password method with the proxy authentication functionality. For example:
+
+
+$ sqlplus hrproc[HR]/hrproc_password@hrproc
+
+SQL*Plus: Release 11.2.0.3.0 Production on Tue Jul 24 15:26:33 2012
+
+Copyright (c) 1982, 2011, Oracle.  All rights reserved.
+
+
+Connected to:
+Oracle Database 11g Enterprise Edition Release 11.2.0.3.0 - 64bit Production
+With the Partitioning, Oracle Label Security, OLAP, Data Mining
+and Real Application Testing options
+
+SQL> show user
+USER is "HR"
+SQL>
