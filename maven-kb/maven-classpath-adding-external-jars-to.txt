@@ -4,3 +4,60 @@ http://stackoverflow.com/questions/15305679/maven-and-eclipse-a-reliable-way-to-
 http://stackoverflow.com/questions/4955635/how-to-add-local-jar-files-in-maven-project
 
 Adding a local repository and a jar from that: http://stackoverflow.com/questions/2229757/maven-add-a-dependency-to-a-jar-by-relative-path
+
+===============================
+THE RIGHT WAY 
+===============================
+An local jar has to be added to Maven repository under C:\Users\username\.m2 ....
+That is achieved by mvn install:file command - which can be simulated by Eclipse also.
+
+------------------------------------------------------
+MVN command: (Eclipse alternative shown in next para)
+------------------------------------------------------
+http://stackoverflow.com/questions/1164043/maven-how-to-include-jars-which-are-not-available-in-reps-into-a-j2ee-project
+mvn install:install-file -Dfile=[FILE_PATH] \
+-DgroupId=[GROUP] -DartifactId=[ARTIFACT] -Dversion=[VERS] \ 
+-Dpackaging=jar -DlocalRepositoryPath=[REPO_DIR]
+
+------------------------------------------------------
+Eclipse steps: (alternative to mvn command)
+------------------------------------------------------
+http://stackoverflow.com/questions/2209950/how-to-tell-m2eclipse-to-install-jar-file-as-a-maven-dependency
+First, get that jar and save it somewhere on your file system. 
+Then, in Eclipse, from the top bar, Run > Run Configurations... 
+--> then right-click on Maven Build and configure the New_configuration freshly created:
+Select an arbitrary Base directory (actually this does not matter, just give something)
+Fill the Goals with install:install-file
+Add parameters for each required parameters, without the -D prefix
+file as Parameter name and /path/to/file as Value and so on for groupId, artifactId, version and packaging.
+Example: (in Run-Configuration adding a new configuration)
+Name - Install-File
+Base directory - C:\Data\PROGRAMMING\JAVA\Maven-local-repo (or something else - just placeholder)
+Goals - install:install-file
+Parameters:
+name - file, value - C:\Data\PROGRAMMING\JAVA\OwnJars\gm-mysql-dh-0.0.1-SNAPSHOT.jar
+name - groupId, value - gm.mysql
+name - artifactId, value - gm-mysql-dh
+name - version, value - 0.0.1-SNAPSHOT
+name - packaging, value - jar
+
+Then, click 'Run'
+
+Following are the messages on the work Eclipse does after this.
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] Using the builder org.apache.maven.lifecycle.internal.builder.singlethreaded.SingleThreadedBuilder with a thread count of 1
+[INFO]                                                                         
+[INFO] ------------------------------------------------------------------------
+[INFO] Building Maven Stub Project (No POM) 1
+[INFO] ------------------------------------------------------------------------
+[INFO] 
+[INFO] --- maven-install-plugin:2.4:install-file (default-cli) @ standalone-pom ---
+[INFO] Installing C:\Data\PROGRAMMING\JAVA\OwnJars\gm-mysql-dh-0.0.1-SNAPSHOT.jar to C:\Users\dbgsm0\.m2\repository\gm\mysql\gm-mysql-dh\0.0.1-SNAPSHOT\gm-mysql-dh-0.0.1-SNAPSHOT.jar
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time: 0.875 s
+[INFO] Finished at: 2016-05-30T18:37:29+05:30
+[INFO] Final Memory: 7M/245M
+[INFO] ------------------------------------------------------------------------
