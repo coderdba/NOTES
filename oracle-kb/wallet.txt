@@ -1,2 +1,88 @@
+============================
+ORACLE WALLET
+============================
+
 Wallet tutorial: http://www.idevelopment.info/data/Oracle/DBA_tips/Security/SEC_15.shtml
 Using Wallet in JDBC: http://stackoverflow.com/questions/7634196/what-is-correct-jdbc-url-syntax-if-oracle-wallets-are-used
+
+==================================
+WALLET CREATE/USE/MANAGE
+==================================
+Wallet tutorial: http://www.idevelopment.info/data/Oracle/DBA_tips/Security/SEC_15.shtml
+
+OVERVIEW
+Wallet is a file
+Location of this file should be in sqlnet.ora
+A TNS entry is required - as it is a combination of Tns alias, userid and password
+
+CREATE TNS ENTRY
+  REPORTING_TOOL.IDEVELOPMENT.INFO =
+    (DESCRIPTION =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = testnode1.idevelopment.info)(PORT = 1521))
+      (CONNECT_DATA =
+        (SERVER = DEDICATED)
+        (SERVICE_NAME = testdb1.idevelopment.info)
+      )
+    )
+
+CREATE WALLET 
+Note: Examples below create it in $ORACLE_HOME/network/admin --> it can be any other directory also
+
+- reusable on other machines
+$ mkstore -wrl "/u01/app/oracle/product/11.2.0/dbhome_1/network/admin" -create
+Oracle Secret Store Tool : Version 11.2.0.3.0 - Production
+Copyright (c) 2004, 2011, Oracle and/or its affiliates. All rights reserved.
+Enter password: **********
+Enter password again:  **********
+
+- local only, not reusable on other machines
+$ orapki wallet create -wallet "/u01/app/oracle/product/11.2.0/dbhome_1/network/admin" -pwd "myPassword" -auto_login_local
+Oracle PKI Tool : Version 11.2.0.3.0 - Production
+Copyright (c) 2004, 2011, Oracle and/or its affiliates. All rights reserved.
+
+ADD USER CREDENTIAL
+$ mkstore -wrl "/u01/app/oracle/product/11.2.0/dbhome_1/network/admin" -createCredential reporting_tool report_user report_user_pwd
+Oracle Secret Store Tool : Version 11.2.0.3.0 - Production
+Copyright (c) 2004, 2011, Oracle and/or its affiliates. All rights reserved.
+
+Enter wallet password: **********
+Create credential oracle.security.client.connect_string1
+
+CONNECT TO DB
+
+
+$ sqlplus /@reporting_tool
+
+SQL*Plus: Release 11.2.0.3.0 Production on Fri Jul 20 23:47:59 2012
+
+Copyright (c) 1982, 2011, Oracle.  All rights reserved.
+
+
+Connected to:
+Oracle Database 11g Enterprise Edition Release 11.2.0.3.0 - 64bit Production
+With the Partitioning, Oracle Label Security, OLAP, Data Mining
+and Real Application Testing options
+
+SQL> show user
+USER is "REPORT_USER"
+SQL>
+
+MANAGE CONTENTS OF THE WALLET
+
+- list credentials stored
+Use the mkstore command with the -listCredential option to list the credentials present in the wallet.
+
+$ mkstore -wrl "/u01/app/oracle/product/11.2.0/dbhome_1/network/admin" -listCredential
+Oracle Secret Store Tool : Version 11.2.0.3.0 - Production
+Copyright (c) 2004, 2011, Oracle and/or its affiliates. All rights reserved.
+
+Enter wallet password: **********
+List credential (index: connect_string username)
+2: testdb1_scott scott
+1: reporting_tool report_user
+
+- modify/delete credentials
+You can also use the mkstore command to modify or delete password credentials for existing wallet entries.
+
+mkstore -wrl <wallet_location> -modifyCredential <tnsalias> <username> <password>
+mkstore -wrl <wallet_location> -deleteCredential <tnsalias>
