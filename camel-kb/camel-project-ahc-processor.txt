@@ -1,0 +1,173 @@
+REFERENCE EXAMPLE
+
+Example code - http://camel.465427.n5.nabble.com/CONF-Apache-Camel-gt-AHC-td5753428.html
+  Further to snippet below, want to try print the message body.
+  
+    Exchange exchange = template.send("ahc:http://www.google.com/search", new Processor() {
+              public void process(Exchange exchange) throws Exception {
+                  exchange.getIn().setHeader(Exchange.HTTP_QUERY, constant("hl=en&q=activemq"));
+              }
+     });
+     Message out = exchange.getOut();
+     int responseCode = out.getHeader(Exchange.HTTP_RESPONSE_CODE, Integer.class);
+     
+INFO
+- Processor, Exchange
+http://camel.apache.org/book-in-one-page.html 
+
+- ProducerTemplate interface
+https://access.redhat.com/documentation/en-US/Red_Hat_JBoss_Fuse/6.0/html/Programming_EIP_Components/files/Templates-Producer-Intro.html
+http://camel.apache.org/producertemplate.html
+http://www.programcreek.com/java-api-examples/index.php?api=org.apache.camel.ProducerTemplate
+
+- Exchange interface
+https://examples.javacodegeeks.com/enterprise-java/apache-camel/apache-camel-exchange-example/
+https://camel.apache.org/maven/camel-2.15.0/camel-core/apidocs/org/apache/camel/Exchange.html
+http://camel.apache.org/using-getin-or-getout-methods-on-exchange.html
+
+ARCHETYPE
+camel.archetype.java
+
+GROUPID
+gm.camel
+
+ARTIFACTID
+gm.camel.gm-camel-ahc
+
+PACKAGE
+gm.camel.ahc
+
+POM.XML
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>gm.camel</groupId>
+  <artifactId>gm-camel-ahc</artifactId>
+  <packaging>jar</packaging>
+  <version>0.0.1-SNAPSHOT</version>
+
+  <name>A Camel Route</name>
+  <url>http://www.myorganization.org</url>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.apache.camel</groupId>
+      <artifactId>camel-core</artifactId>
+      <version>2.17.1</version>
+    </dependency>
+    <!-- logging -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>1.7.13</version>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-log4j12</artifactId>
+      <version>1.7.13</version>
+    </dependency>
+    <dependency>
+      <groupId>log4j</groupId>
+      <artifactId>log4j</artifactId>
+      <version>1.2.17</version>
+    </dependency>
+
+    <!-- testing -->
+    <dependency>
+      <groupId>org.apache.camel</groupId>
+      <artifactId>camel-test</artifactId>
+      <version>2.17.1</version>
+      <scope>test</scope>
+    </dependency>
+    
+    <!-- camel-ahc -->
+	<dependency>
+     <groupId>org.apache.camel</groupId>
+     <artifactId>camel-ahc</artifactId>
+     <version>2.17.1</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <defaultGoal>install</defaultGoal>
+
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.5.1</version>
+        <configuration>
+          <source>1.7</source>
+          <target>1.7</target>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>2.6</version>
+        <configuration>
+          <encoding>UTF-8</encoding>
+        </configuration>
+      </plugin>
+
+      <!-- Allows the example to be run via 'mvn compile exec:java' -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>1.4.0</version>
+        <configuration>
+          <mainClass>gm.camel.ahc.MainApp</mainClass>
+          <includePluginDependencies>false</includePluginDependencies>
+        </configuration>
+      </plugin>
+
+    </plugins>
+  </build>
+
+</project>
+
+CODE - AhcMainApp.java
+package gm.camel.ahc;
+
+import org.apache.camel.CamelContext;
+import org.apache.camel.Message;
+import org.apache.camel.Processor;
+import org.apache.camel.ProducerTemplate;
+import org.apache.camel.Exchange;
+import org.apache.camel.builder.*;
+import org.apache.camel.impl.DefaultCamelContext;
+
+public class AhcMainApp {
+
+	public static void main(String args[]) throws Exception {
+
+		CamelContext context = new DefaultCamelContext();
+		ProducerTemplate producerTemplate = context.createProducerTemplate();
+		Processor processor = new Processor() {
+			public void process(Exchange exchange) throws Exception {
+				exchange.getIn().setHeader(Exchange.HTTP_QUERY,
+						"?hl=en&q=activemq");
+			}
+		};
+
+		Exchange exchange = producerTemplate.send(
+				"ahc:http://www.google.com/search", processor);
+
+		Message out = exchange.getOut();
+		int responseCode = out.getHeader(Exchange.HTTP_RESPONSE_CODE, Integer.class);
+		
+		System.out.println("Response code = " + responseCode);
+		System.out.println("Response body = " + out.getBody());
+		System.out.println("Response header = " + out.getHeaders());
+		
+	}
+}
+
