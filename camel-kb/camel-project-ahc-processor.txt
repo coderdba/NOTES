@@ -1,3 +1,11 @@
+=======================================================
+AHC TO READ A HTTP WEBPAGE AND PRINT ITS CONTENTS
+- USING PROCESSOR, PRODUCER TEMPLATE and EXCHANGE
+=======================================================
+
+NOTE:
+This gives the complete body of the message - exchange.getOut().getBody(String.class)
+
 REFERENCE EXAMPLE
 
 Example code - http://camel.465427.n5.nabble.com/CONF-Apache-Camel-gt-AHC-td5753428.html
@@ -135,7 +143,7 @@ POM.XML
 </project>
 
 CODE - AhcMainApp.java
-package gm.camel.ahc;
+package gm.camel.one;
 
 import org.apache.camel.CamelContext;
 import org.apache.camel.Message;
@@ -151,15 +159,25 @@ public class AhcMainApp {
 
 		CamelContext context = new DefaultCamelContext();
 		ProducerTemplate producerTemplate = context.createProducerTemplate();
+		
 		Processor processor = new Processor() {
 			public void process(Exchange exchange) throws Exception {
-				exchange.getIn().setHeader(Exchange.HTTP_QUERY,
-						"?hl=en&q=activemq");
+				exchange.getIn().setHeader(Exchange.HTTP_QUERY, "?hl=en&q=activemq");
 			}
 		};
 
-		Exchange exchange = producerTemplate.send(
-				"ahc:http://www.google.com/search", processor);
+		Processor processor2 = new Processor() {
+			public void process(Exchange exchange) throws Exception {
+				//exchange.getIn().setHeader(Exchange.HTTP_QUERY, "?hl=en&q=activemq");
+			}
+		};
+		
+		// with google
+		System.out.println("\nWith Google");
+
+		//Exchange exchange = producerTemplate.send("ahc:http://www.google.com/search", processor);
+		
+		Exchange exchange = producerTemplate.send ("ahc:http://www.google.com/search?hl=en&q=activemq", processor2);
 
 		Message out = exchange.getOut();
 		int responseCode = out.getHeader(Exchange.HTTP_RESPONSE_CODE, Integer.class);
@@ -168,6 +186,32 @@ public class AhcMainApp {
 		System.out.println("Response body = " + out.getBody());
 		System.out.println("Response header = " + out.getHeaders());
 		
+		// TBD - need a if-then-else here = do this only if response code means redirection
+		String redirectUrl = out.getHeader("Location").toString();
+		System.out.println("Redirect URL = " + redirectUrl);
+		
+		System.out.println("\nTrying Redirection");
+		exchange = producerTemplate.send (redirectUrl, processor2);
+
+		out = exchange.getOut();
+		responseCode = out.getHeader(Exchange.HTTP_RESPONSE_CODE, Integer.class);
+		
+		System.out.println("Response code = " + responseCode);
+		System.out.println("Response body = " + out.getBody());
+		System.out.println("Response body class = " + out.getBody().getClass());
+		System.out.println("Response body string = " + out.getBody().toString());
+		System.out.println("Response body string.class = " + out.getBody(String.class));
+		System.out.println("Response header = " + out.getHeaders());
+		
+		System.out.println("\n\n");
+		
+		// at this point, redirect will be mostly null - either get it and check or ignore and comment out
+     		//redirectUrl = out.getHeader("Location").toString();
+		//System.out.println("Redirect URL = " + redirectUrl);
+		
+		// stop and come out
+		context.stop();
 	}
 }
+
 
