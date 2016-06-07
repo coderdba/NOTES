@@ -290,7 +290,7 @@ import org.apache.camel.impl.DefaultCamelContext;
 import com.ning.http.client.AsyncHttpClientConfig;
 import com.ning.http.client.AsyncHttpClientConfig.Builder;
 
-public class MySqlServiceAhcCallWithRoute {
+public class MySqlServiceCallWithRoute {
 
 	public static void main(String args[]) throws Exception {
 
@@ -300,8 +300,11 @@ public class MySqlServiceAhcCallWithRoute {
 		      {
 		      public void configure()
 		        {
+		    	  	//NOT SURE how this exception handler works
+		    	    //onException(NullPointerException.class).to("stream:out");
+		    	    //
+		    	  	//NOT OK - this needs a xml file for marshaling as json - not clear yet
 		    	    //from("file:///C:/tmp/mysqlCreateDbJsons?fileName=mysqlCreateDbJson1.txt")
-		    	  
 		    	  	//NOT OK - Dont use direct:start - use a timer with 1 invocation instead
 		    	  	//from("direct:start")
 		    	    //OK
@@ -315,9 +318,9 @@ public class MySqlServiceAhcCallWithRoute {
 		    	    //OK
 		    	    .setHeader("Content-Type", constant("application/json"))
 		    	    //NOT OK - sends null json to api
-		    	    //.setBody(body().append("{\"hostname\":\"localhost\", \"port\":\"13306\", \"dbname\":\"mkt\", \"username\":\"mktuser\",\"password\":\"mkt123_MKT123\"}"))
+		    	    .setBody(body().append("{\"hostname\":\"localhost\", \"port\":\"13306\", \"dbname\":\"mkt\", \"username\":\"mktuser\",\"password\":\"mkt123_MKT123\"}"))
 		    	    //OK
-		    	    .setBody(constant("{\"hostname\":\"localhost\", \"port\":\"13306\", \"dbname\":\"mkt\", \"username\":\"mktuser\",\"password\":\"mkt123_MKT123\"}"))
+		    	    //.setBody(constant("{\"hostname\":\"localhost\", \"port\":\"13306\", \"dbname\":\"mkt\", \"username\":\"mktuser\",\"password\":\"mkt123_MKT123\"}"))
 		    	    //OK - no need to give ahc:http
 		    	    .to("http://localhost:8080/gm-mysql-services/MySqlService/json/createdb")
 		    	    .to("stream:out")
@@ -325,14 +328,14 @@ public class MySqlServiceAhcCallWithRoute {
 		        }
 		      });
 		   
-		    context.setTracing(true);
+		    //context.setTracing(true);
 		    
  		    // Start the Camel route
 		    System.out.println ("Starting context");
 		    context.start();
 
 		    // Wait x minutes, then stop
-		    Thread.sleep (60*1*1000);
+		    Thread.sleep (60*1*100);
 		    System.out.println ("Stopping context");
 
 		    context.stop ();
