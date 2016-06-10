@@ -39,17 +39,18 @@ DB SETUP (oracle) - USERS
 ----------------------------
 DB- L52
 
--- SOURCE SCHEMA - TDATA1
-create user tdata1 identified by tdata1 default tablespace users profile default;
-grant connect, resource to tdata1;
-
--- SOURCE CDC - TCDC1
+-- SOURCE SCHEMA - CDC - TCDC1
 create user tcdc1 identified by tcdc1 default tablespace users profile default;
 grant connect, resource to tcdc1;
 grant select any table to tcdc1;
+grant create any table to tcdc1;
 grant create any view to tcdc1;
 
--- SOURCE DWH user - TDWH1
+-- DESTINATION SCHEMA 1 - TDATA1
+create user tdata1 identified by tdata1 default tablespace users profile default;
+grant connect, resource to tdata1;
+
+-- DESTINATION SCHEMA 2 - TDWH1
 create user tdwh1 identified by tdwh1 default tablespace users profile default;
 grant connect, resource to tdwh1;
 
@@ -78,6 +79,40 @@ It may pop-up a screen saying odbc6.jar has not been installed - click the butto
 
 Check the connection using the 'check' button in the screen where you enter user/host details
 
+------------------------
+SETUP REPLICATE JOB
+------------------------
+In 'Job Designs' in the 'repository'/'integration' view, create a folder
+Right click on the folder and add a job 'LoadCustomers'
+
+Drag the three connections of TDATA1 and TDWH1 into the job canvas - both as 'oracleOutput' items.
+Drag TCDC1 as 'oracleInput' item.
+
+Click 'open perspective' icon at the top right corner --> Resource choice in it
+In the ensuing list, choose 'orchestration' --> tReplicate
+Drag that 'tReplicate' to the job canvas.
+
+(If you want to get a simulator row-generator, drag 'tRowGenerator' which is under Misc to job palette)
+
+Right click on the 'tReplicate' item, choose row --> main --> this will give a line and join it to the oracleOutput items 
+(twice, one at a time)
+
+Right click on the 'oracleInput' item, choose row --> main --> and connect to the tReplicate item
+
+Set up the table input and output:
+Doubleclick on the oracleInput item, select the input table 'customers', provide the SQL --> select * from customers --> no semicolon.
+    Mark that item as 'data source' also, and specify an data-source-alias like 'CUSTOMERS'
+    Click 'edit schema' and ensure it and the tReplicate item has the same fields and primary key checked.
+Doubleclick on oracleOutput items also and do this table setup and primary key check for them too (but no need to give SQL)
+    Click 'edit schema' and ensure them and the tReplicate item has the same fields and primary key checked.
+Doubleclick on the tReplicate item and in its 'edit schema' ensure the fields and PK.
+Do any other setting as you feel right (like create if does not exist...)
+
+Pre-create some rows in CDC schema table.
+Run the job in Talend screen.
+After some time it inserts CDC table rows into DATA and DWH schema tables.
+
+NOTE: This job just ends after that. It does not wait for more rows to come.  That is another exercise altogether.
 
 
 
