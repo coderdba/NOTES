@@ -14,3 +14,111 @@ Right click on 'source' connection --> and choose 'retrieve schema'
 --> drill up/down and choose a table that you need
 --> verify the primary key of it and click finish
 --> ensure it shows up under the source connection item
+
+
+-----------------------
+CREATE SUBSCRIBER PART - 'CREATE CDC' at the data-connection level
+-----------------------
+
+CREATE TABLE PUBLISHER.TSUBSCRIBERS
+  (
+  TALEND_CDC_TABLE_TO_WATCH VARCHAR2(35) NOT NULL, 
+   TALEND_CDC_TABLE_ID VARCHAR2(35) , 
+   TALEND_CDC_SUBSCRIBER_NAME VARCHAR2(50), 
+   TALEND_CDC_CREATION_DATE TIMESTAMP,  
+   CONSTRAINT PK_TSUBSCRIBERS PRIMARY KEY (TALEND_CDC_TABLE_TO_WATCH)
+  )
+
+alter database force logging
+
+alter database add supplemental log data
+
+alter user source quota unlimited on users
+
+----------------------------------
+ADDING SOURCE TABLE - 'CREATE CDC' at the source schema level
+----------------------------------
+
+
+
+INSERT INTO  PUBLISHER.TSUBSCRIBERS
+  (
+   TALEND_CDC_TABLE_TO_WATCH,
+   TALEND_CDC_TABLE_ID,
+   TALEND_CDC_SUBSCRIBER_NAME,
+   TALEND_CDC_CREATION_DATE
+  ) 
+  values ('SOURCE.EMP','L00001',NULL,systimestamp)
+
+alter table SOURCE.EMP
+   add supplemental log data(all) columns
+
+begin
+  dbms_capture_adm.prepare_table_instantiation(
+    table_name=>'SOURCE.EMP' 
+  );
+end;
+
+begin
+  dbms_cdc_publish.create_change_set(
+    change_set_name=>'L00001_cs_hotlog',
+    description=>'hotlog change set for SOURCE.EMP',
+    change_source_name=>'HOTLOG_SOURCE',
+    stop_on_ddl=>'y'
+  );
+end;
+
+begin
+  dbms_cdc_publish.create_change_table(
+    owner =>'publisher',
+    change_table_name=>'TCDC_L00001',
+    change_set_name=>'L00001_cs_hotlog',
+    source_schema=>'SOURCE',
+    source_table=>'EMP',
+    column_type_list=>'TALEND_CDC_STATE VARCHAR2(1),ID DEC(10,0)   NOT NULL,NAME DEC(10,0)',
+    capture_values=>'new',
+    rs_id=>'y',
+    row_id=>'n',
+    user_id=>'n',
+    timestamp=>'n',
+    object_id=>'n',
+    source_colmap=>'n',
+    target_colmap=>'y',
+    options_string=>'tablespace users'
+  );
+end;
+
+grant select on PUBLISHER.TCDC_L00001 to source
+
+
+begin
+  dbms_cdc_subscribe.create_subscription(
+    change_set_name=>'L00001_cs_hotlog',
+    description=>'change data for SOURCE.EMP',
+    subscription_name=>'sub_L00001'
+  );
+end;
+
+begin
+  dbms_cdc_subscribe.subscribe(
+   subscription_name=>'sub_L00001',
+   source_schema=>'SOURCE',
+   source_table=>'EMP',
+   column_list=>'ID,NAME',
+   subscriber_view=>'TCDC_VIEW_L00001'
+  );
+end;
+
+
+begin
+  dbms_cdc_publish.alter_change_set(
+    change_set_name=>'L00001_cs_hotlog',
+    enable_capture=>'y'
+  );
+end;
+
+begin
+  dbms_cdc_subscribe.activate_subscription(
+    subscription_name=>'sub_L00001'
+  );
+end;
