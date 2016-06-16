@@ -1,12 +1,28 @@
 ===============================================
 SCN OF TABLE ROW
 ===============================================
+NOTE:
+ORA_ROWSCN cannot be indexed - therefore, querying deltas based on it will go to FTS
+
 http://www.dba-oracle.com/t_row_scn_rowdependencies.htm
 https://docs.oracle.com/database/121/SQLRF/statements_7002.htm#SQLRF01402
 Book-https://books.google.co.uk/books?id=TmPoYfpeJAUC&pg=PA197&lpg=PA197&dq=tom+kyte+row+dependencies&source=bl&ots=RzX71s1t2y&sig=acxvma5zwHQk1uFBZGvyhF0KzYc&hl=en&ei=jpZaTNTSFJi60gSDlrVf&sa=X&oi=book_result&ct=result#v=onepage&q=tom%20kyte%20row%20dependencies&f=false
 
 create table emprowdep
 (id number(10) primary key, name varchar2(10)) rowdependencies;
+
+insert into emprowdep values (1, '1');
+insert into emprowdep values (2, '2');
+commit;
+
+select id, name, dbms_rowid.rowid_block_number(rowid) block, ora_rowscn from emprowdep;
+
+
+        ID NAME            BLOCK ORA_ROWSCN
+---------- ---------- ---------- ----------
+         1 1                 636    1370601
+         2 2                 636    1370601
+
 
 
 
