@@ -68,3 +68,52 @@ Without it, performance will be severely degraded.
 
 (To make it a service when Windows starts: https://sourceforge.net/p/phpvirtualbox/wiki/Windows%207%20-%202008%20%2B%20Service/)
 
+========================================
+BASIC PROGRAM - TO START AN EXISTING VM
+========================================
+NOTE - this is derived from  the example in the SDK programming guide and reference
+NOTE - The code in the reference is for an older version of SDk (4.1).  
+		'startvm' method mentioned in the reference is not in version 5 sdk.
+		Latest code for the same action in the below program.
+
+------
+CODE
+------
+package gm.vbox.java;
+
+import org.virtualbox_5_0.*;
+import org.virtualbox_5_0.jaxws.*;
+
+public class Example1 {
+
+	public static void main(String[] args) {
+
+		VirtualBoxManager mgr = VirtualBoxManager.createInstance(null);
+		String url = "http://localhost:18083";
+		
+		//boolean ws = false; // or true, if we need the SOAP version
+		//if (ws)
+			url="http://localhost:18083";
+			String user = "hostOsUser";
+			String passwd = "hostOsPassword";
+			mgr.connect(url, user, passwd);
+			IVirtualBox vbox = mgr.getVBox();
+			System.out.println("VirtualBox version: " + vbox.getVersion() + "\n");
+			
+			// get first VM name
+			IMachine machine = vbox.getMachines().get(0);
+			String machineName = vbox.getMachines().get(0).getName();
+			System.out.println("\nAttempting to start VM : " + machineName );
+			
+			// start it
+    		//mgr.startVm(machineName, null, 7000);
+			ISession session = mgr.getSessionObject();
+			
+			machine.launchVMProcess(session, machineName, null);
+    		
+			//if (ws) 
+		    mgr.disconnect();
+			mgr.cleanup();
+			
+	}
+}
