@@ -96,17 +96,20 @@ Choose timezone - Bangalore
 Create user - user1, name user1, password (some)
 --> DO NOT click 'setup enterprise logon' --> just click next
 
+============
 NEXT STEPS
- (look after this section for each item details)
+============
+ (look after this section for each item details) (also see https://docs.oracle.com/database/121/CWLIN/prelinux.htm#CEGDDFII)
 Install guest additions
-
+Stop NTP
 Install oracle preinstall rpm / validation rpm
-
 Install oracleasm modules
-
+PAM modules
 Check if open-jdk is good enough (and version) and install Oracle's JDK if that is better
 
+========================
 Install guest additions-
+========================
 Logon as root
 Click Devices --> Insert Guest Additions CD Image
 - That will mount the ISO that Virtualbox software already has to install guest-additions on the machine
@@ -128,3 +131,49 @@ You can change a few more settings for interaction between host and guest:
 - Enable drag and drop between them - from 'Devices --> Drag and Drop'
 - Share clipboard (copy-paste) - from 'Devices --> shared clipboard'
 
+============
+Stop NTP
+============
+# service ntpd stop
+Redirecting to /bin/systemctl stop  ntpd.service
+# chkconfig ntpd off
+Note: Forwarding request to 'systemctl disable ntpd.service'.
+# mv /etc/ntp.conf /etc/ntp.conf.orig
+
+=============
+Configure Yum
+=============
+Oracle Yum repository should be already there.
+---------
+Check it
+---------
+# cd /etc/yum.repos.d
+# ls -l
+-rw-r--r--. 1 root root 2560 Nov 19  2015 public-yum-ol7.repo
+
+--------------
+Enable Addons
+--------------
+In the yum.repos.d file, set enabled=1 in addons section:
+
+[ol7_addons]
+name=Oracle Linux $releasever Add ons ($basearch)
+baseurl=http://public-yum.oracle.com/repo/OracleLinux/OL7/addons/$basearch/
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-oracle
+gpgcheck=1
+enabled=1
+
+----------------------
+Ensure GPG key exists (or download if it does not)
+----------------------
+# ls -l /etc/pki/rpm-gpg/RPM-GPG-KEY-oracle
+-rw-r--r--. 1 root root 1011 Nov 25  2015 /etc/pki/rpm-gpg/RPM-GPG-KEY-oracle
+
+================================
+Install oracle preinstall rpm
+================================
+For yum command - https://www.krenger.ch/blog/oracle-linux-7-oracle-rdbms-server-12cr1-preinstall/
+(or https://docs.oracle.com/database/121/CWLIN/olinrpm.htm#CWLIN173)
+For rpm file downloads - https://oracle-base.com/blog/2015/03/26/oracle-linux-7-1-preinstall-packages-available-for-11gr2-and-12cr1/ 
+
+# yum install oracle-rdbms-server-12cR1-preinstall
