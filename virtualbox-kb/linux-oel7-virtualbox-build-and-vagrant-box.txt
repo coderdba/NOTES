@@ -1,8 +1,9 @@
 ===============================================================
 BUILD A ORACLE LINUX VIRTUALBOX VM AND VAGRANT BOX FROM SCRATCH
 ===============================================================
-
-Also see oracle12c-vm-build.txt
+https://github.com/okfn/ckan-barnet/wiki/How-to-Create-a-CentOS-Vagrant-Base-Box
+http://www.oaktable.net/content/preparing-oracle-linux-vagrant-box
+Also see oracle12c-vm-build.txt (for asmlib stuff)
 
 ===========================================
 HELP - WHICH LINUX RELEASE IS INSTALLED
@@ -109,8 +110,25 @@ Check if open-jdk is good enough (and version) and install Oracle's JDK if that 
 Chef
 
 ========================
-Install guest additions-
+Install guest additions
 ========================
+IMPORTANT NOTE: This needs latest UEK kernel
+Install it first:
+yum install kernel-uek-devel-3.8.13-118.8.l.el7uek.x86_64
+--> if that does not work, yum install kernel-uek-devel
+(NOTE - oracleasm also installs/updates a uek kernel, and a uek kernel may be there in the initial install itself.
+	Still, this uek install step is necessary)
+
+Otherwise, guest additions install gives the following error messages:
+	Removing existing Virtualbox non-DKMS kernel modules [ ok ]
+	Removinng existing VirtualBox Guest Additions Kernel modules
+	The headers for the current running kernel were not found. 
+	If the following module compilation fails then this could be the reason.
+	The missing package can be probably installed with 'yum install kernel-uek-devel-3.8.13-118.8.l.el7uek.x86_64
+	Buidling the m ain guest additions module [ failed ]
+	(Look at /var/log/vboxadd-install.log to find out what went wrong)
+
+AFTER INSTALLING THE UEK KERNEL:
 Logon as root
 Click Devices --> Insert Guest Additions CD Image
 - That will mount the ISO that Virtualbox software already has to install guest-additions on the machine
@@ -141,9 +159,9 @@ Redirecting to /bin/systemctl stop  ntpd.service
 Note: Forwarding request to 'systemctl disable ntpd.service'.
 # mv /etc/ntp.conf /etc/ntp.conf.orig
 
-=============
-=============
+=================
 Enable networking 
+=================
 NOTE: A NAT network is attached by default and marked 'connect', 'enable' etc in Vbox console.
 However, it may not be active in the VM immediately upon install and reboot.
 
@@ -363,3 +381,22 @@ pam.i686
 # rpm -qa |grep pam
 pam-1.1.8-12.el7_1.1.x86_64
 pam_krb5-2.4.8-4.el7.x86_64
+
+=============================
+MAKE IT A VAGRANT BOX
+=============================
+http://www.oaktable.net/content/preparing-oracle-linux-vagrant-box
+
+Create vagrant user:
+# useradd vagrant
+
+Set its password to vagrant:
+# passwd vagrant (and then give vagrant as password)
+
+Download its insecure authorized keys from Vagrant git:
+# sudo su - vagrant
+As vagrant user:
+$ mkdir ~/.ssh
+$ curl -k https://raw.githubusercontent.com/mitchellh/vagrant/master/keys/vagrant.pub > .ssh/authorized_keys
+(you can use wget also)
+$ chmod 600 ~/.ssh/authorized_keys
