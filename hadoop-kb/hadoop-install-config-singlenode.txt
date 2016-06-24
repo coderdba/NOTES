@@ -6,6 +6,10 @@ More detailed - https://docs.hortonworks.com/HDPDocuments/HDP2/HDP-2.4.2/bk_inst
 http://stackoverflow.com/questions/18862875/what-exactly-is-hadoop-namenode-formatting
 Note: Also, try Cloudera Virtualbox sandbox VM option
 
+Tutorials:
+http://www.tutorialspoint.com/hadoop/hadoop_enviornment_setup.htm
+http://had00b.blogspot.in/2013/08/setup-apache-hadoop-on-your-machine.html
+
 MACHINE DETAILS
 OS - Linux (Redhat/Oracle)
 Install User - can be any user - does not require to be root or other specially set up user
@@ -16,7 +20,7 @@ http://hadoop.apache.org/releases.html
     http://mirror.fibergrid.in/apache/hadoop/common/hadoop-2.7.2/hadoop-2.7.2.tar.gz
     
 INSTALL FOLDER
-/opt/hadoop
+/disk1/opt/hadoop  (or /opt/hadoop)
 
 DOWNLOAD
 wget http://mirror.fibergrid.in/apache/hadoop/common/hadoop-2.7.2/hadoop-2.7.2.tar.gz
@@ -25,20 +29,115 @@ UNZIP
 gunzip hadoop-2.7.2.tar.gz
 tar xvfp gunzip hadoop-2.7.2.tar.gz
 
-This installs Hadoop to folder /opt/hadoop/hadoop-2.7.2
+This installs Hadoop to folder /disk1/opt/hadoop/hadoop-2.7.2
 
-CONFIGURE
+INSTALL SSH AND RSYNC
 http://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-common/SingleCluster.html
 
 -Install ssh
 If it does not exist, (which ssh), install it
-
--Install rsync
-# yum install rsync
 
 -Setup ssh to localhost
   $ ssh-keygen -t dsa -P '' -f ~/.ssh/id_dsa
   $ cat ~/.ssh/id_dsa.pub >> ~/.ssh/authorized_keys
   $ chmod 0600 ~/.ssh/authorized_keys
   
+-Install rsync
+# yum install rsync
 
+-- - - - - - - 
+REFERENCES FOR CONFIGURATION
+-- - - - - - -
+Refer: http://had00b.blogspot.in/2013/08/setup-apache-hadoop-on-your-machine.html
+  echo "export HADOOP_INSTALL=~/hadoop-x.y.z" >> ~/.bashrc
+  echo "export PATH=\$PATH:\$HADOOP_INSTALL/bin" >> ~/.bashrc
+  source ~/.bashrc
+  echo "export JAVA_HOME=$JAVA_HOME" >> $HADOOP_INSTALL/conf/hadoop-env.sh
+
+Refer: http://www.tutorialspoint.com/hadoop/hadoop_enviornment_setup.htm
+  export HADOOP_HOME=/usr/local/hadoop 
+  export HADOOP_MAPRED_HOME=$HADOOP_HOME 
+  export HADOOP_COMMON_HOME=$HADOOP_HOME 
+  export HADOOP_HDFS_HOME=$HADOOP_HOME 
+  export YARN_HOME=$HADOOP_HOME 
+  export HADOOP_COMMON_LIB_NATIVE_DIR=$HADOOP_HOME/lib/native 
+  export PATH=$PATH:$HADOOP_HOME/sbin:$HADOOP_HOME/bin 
+  export HADOOP_INSTALL=$HADOOP_HOME 
+
+===================================
+CONFIGURE - PSEUDO-DISTRIBUTED MODE
+===================================
+ENVIRONMENT
+export JAVA_HOME=/usr/java/latest
+export HADOOP_HOME=/disk1/opt/hadoop/hadoop-2.7.2
+export HADOOP_INSTALL=$HADOOP_HOME
+export HADOOP_MAPRED_HOME=$HADOOP_HOME 
+export HADOOP_COMMON_HOME=$HADOOP_HOME 
+export HADOOP_HDFS_HOME=$HADOOP_HOME 
+export YARN_HOME=$HADOOP_HOME 
+export HADOOP_COMMON_LIB_NATIVE_DIR=$HADOOP_HOME/lib/native 
+export PATH=$PATH:$HADOOP_HOME/sbin:$HADOOP_HOME/bin 
+
+DIRECTORIES
+/disk1/data/hadoop/hdfs
+/disk1/data/hadoop/hdfs/namenode
+/disk1/data/hadoop/hdfs/datanode
+
+CONFIGURATION FILE DESCRIPTIONS
+Location -  HADOOP_HOME/etc/hadoop
+Files- (description TBD)
+capacity-scheduler.xml
+core-site.xml --> contains information such as the port number used for Hadoop instance, 
+                  memory allocated for the file system, memory limit for storing the data, and size of Read/Write buffers.
+hadoop-policy.xml
+hdfs-site.xml --> configure hdfs filesystems and replication count etc
+httpfs-site.xml
+kms-acls.xml
+kms-site.xml
+mapred-queues.xml.template
+mapred-site.xml.template --> to specify the framework (like yarn) for mapreduce
+ssl-client.xml.example
+ssl-server.xml.example
+yarn-site.xml --> to bring in yarn 
+
+CORE-SITE.XML
+<configuration>
+   <property>
+      <name>fs.default.name </name>
+      <value> hdfs://localhost:9000 </value> 
+   </property>
+</configuration>
+
+HDFS-SITE.XML
+<configuration>
+   <property>
+      <name>dfs.replication</name>
+      <value>1</value>
+   </property>
+    
+   <property>
+      <name>dfs.name.dir</name>
+      <value>file:///home/hadoop/hadoopinfra/hdfs/namenode </value>
+   </property>
+    
+   <property>
+      <name>dfs.data.dir</name> 
+      <value>file:///home/hadoop/hadoopinfra/hdfs/datanode </value> 
+   </property>
+</configuration>
+
+YARN-SITE.XML
+<configuration>
+  <property>
+      <name>yarn.nodemanager.aux-services</name>
+      <value>mapreduce_shuffle</value> 
+   </property>
+</configuration>
+
+MAPRED-SITE.XML
+<configuration>
+   <property> 
+      <name>mapreduce.framework.name</name>
+      <value>yarn</value>
+   </property>
+</configuration>
