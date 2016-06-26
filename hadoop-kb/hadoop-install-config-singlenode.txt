@@ -333,9 +333,117 @@ $ wget http://mirror.fibergrid.in/apache/hadoop/common/hadoop-2.7.2/hadoop-2.7.2
 $ tar zxf hadoop-2.7.2-src.tar.gz
 $ cd hadoop-2.7.2-src
 
-COMPILATION ISSUES
+============================
+COMPILATION & ISSUES
+============================
+$ cd hadoop-2.7.2-src
+$ mvn package -Pdist,native -DskipTests -Dtar
+
+[INFO] Scanning for projects...
+Downloading: https://repo.maven.apache.org/maven2/org/apache/felix/maven-bundle-plugin/2.5.3/maven-bundle-plugin-2.5.3.pom
+[ERROR] [ERROR] Some problems were encountered while processing the POMs:
+[WARNING] 'build.plugins.plugin.version' for org.apache.maven.plugins:maven-javadoc-plugin is missing. @ line 395, column 19
+[ERROR] Unresolveable build extension: Plugin org.apache.felix:maven-bundle-plugin:2.5.3 or one of its dependencies could not be resolved:                              Failed to read artifact descriptor for org.apache.felix:maven-bundle-plugin:jar:2.5.3 @
+ @
+[ERROR] The build could not read 1 project -> [Help 1]
+[ERROR]
+[ERROR]   The project org.apache.hadoop:hadoop-main:2.7.2 (/disk1/stage/hadoop/hadoop-2.7.2-src/pom.xml) has 1 error
+[ERROR]     Unresolveable build extension: Plugin org.apache.felix:maven-bundle-plugin:2.5.3 or one of its dependencies could not be resolv                             ed: Failed to read artifact descriptor for org.apache.felix:maven-bundle-plugin:jar:2.5.3: Could not transfer artifact org.apache.felix:mav                             en-bundle-plugin:pom:2.5.3 from/to central (https://repo.maven.apache.org/maven2): sun.security.validator.ValidatorException: PKIX path bui                             lding failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target -> [H                             elp 2]
+[ERROR]
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR]
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/ProjectBuildingException
+[ERROR] [Help 2] http://cwiki.apache.org/confluence/display/MAVEN/PluginManagerException
+
+ISSUE - PKIX DOWLOAD ERROR
 PKIX download error fix - https://confluence.atlassian.com/kb/unable-to-connect-to-ssl-services-due-to-pkix-path-building-failed-779355358.html
             https://confluence.atlassian.com/kb/connecting-to-ssl-services-802171215.html
       https://maven.apache.org/guides/mini/guide-repository-ssl.html
+
+-Download the certificate of maven repo site
+$ openssl s_client -connect repo.maven.apache.org:443  < /dev/null | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p'
+
+$ keytool -v -alias mavensrv -import -file maven-repo.crt -keystore maven-repo.crt.jks
+Enter keystore password: password
+Re-enter new password: password
+Owner: CN=repo.maven.apache.org, O="Sonatype, Inc", L=Fulton, ST=MD, C=US
+Issuer: EMAILADDRESS=stosupport@target.com, CN=Target Bluecoat SSL Intercept CA, OU=Bluecoat, O=Target Corporation, L=Minneapolis, ST=MN, C=US
+Serial number: 161090e900000000
+Valid from: Thu Jul 31 19:00:00 CDT 2014 until: Wed Aug 09 07:00:00 CDT 2017
+Certificate fingerprints:
+         MD5:  9B:2C:BC:C5:21:85:3F:B3:28:45:87:45:B9:5C:F4:2E
+         SHA1: 93:55:25:B7:C4:F9:80:50:B3:3E:2A:4E:AE:C6:95:F1:15:A3:68:36
+         SHA256: 3A:01:C2:0C:74:42:0B:9C:20:22:70:01:E4:D3:92:AC:8B:D5:CC:7F:89:C3:38:A5:C1:00:A4:73:45:BB:9C:F6
+         Signature algorithm name: SHA256withRSA
+         Version: 3
+
+Extensions:
+
+#1: ObjectId: 2.16.840.1.113730.1.13 Criticality=false
+0000: 16 81 92 54 61 72 67 65   74 20 72 65 73 65 72 76  ...Target reserv
+0010: 65 73 20 74 68 65 20 72   69 67 68 74 20 74 6F 20  es the right to
+0020: 6D 6F 6E 69 74 6F 72 2C   20 72 65 76 69 65 77 2C  monitor, review,
+0030: 20 72 65 74 72 69 65 76   65 2C 20 61 6E 64 20 72   retrieve, and r
+0040: 65 74 61 69 6E 20 49 6E   66 6F 72 6D 61 74 69 6F  etain Informatio
+0050: 6E 20 73 74 6F 72 65 64   20 6F 6E 20 6F 72 20 61  n stored on or a
+0060: 63 63 65 73 73 65 64 20   74 68 72 6F 75 67 68 20  ccessed through
+0070: 69 74 73 20 49 6E 66 6F   72 6D 61 74 69 6F 6E 20  its Information
+0080: 52 65 73 6F 75 72 63 65   73 20 61 74 20 61 6E 79  Resources at any
+0090: 20 74 69 6D 65                                      time
+
+
+#2: ObjectId: 2.5.29.35 Criticality=false
+AuthorityKeyIdentifier [
+KeyIdentifier [
+0000: 5B 6B C4 66 6E B5 62 3A   7F 2A 6D 94 25 03 FC 60  [k.fn.b:.*m.%..`
+0010: 8A 7D 72 4E                                        ..rN
+]
+]
+
+#3: ObjectId: 2.5.29.19 Criticality=false
+BasicConstraints:[
+  CA:false
+  PathLen: undefined
+]
+
+#4: ObjectId: 2.5.29.32 Criticality=false
+CertificatePolicies [
+  [CertificatePolicyId: [2.5.29.32.0]
+[PolicyQualifierInfo: [
+  qualifierID: 1.3.6.1.5.5.7.2.2
+  qualifier: 0000: 30 81 95 1A 81 92 54 61   72 67 65 74 20 72 65 73  0.....Target res
+0010: 65 72 76 65 73 20 74 68   65 20 72 69 67 68 74 20  erves the right
+0020: 74 6F 20 6D 6F 6E 69 74   6F 72 2C 20 72 65 76 69  to monitor, revi
+0030: 65 77 2C 20 72 65 74 72   69 65 76 65 2C 20 61 6E  ew, retrieve, an
+0040: 64 20 72 65 74 61 69 6E   20 49 6E 66 6F 72 6D 61  d retain Informa
+0050: 74 69 6F 6E 20 73 74 6F   72 65 64 20 6F 6E 20 6F  tion stored on o
+0060: 72 20 61 63 63 65 73 73   65 64 20 74 68 72 6F 75  r accessed throu
+0070: 67 68 20 69 74 73 20 49   6E 66 6F 72 6D 61 74 69  gh its Informati
+0080: 6F 6E 20 52 65 73 6F 75   72 63 65 73 20 61 74 20  on Resources at
+0090: 61 6E 79 20 74 69 6D 65                            any time
+
+]]  ]
+]
+
+#5: ObjectId: 2.5.29.15 Criticality=false
+KeyUsage [
+  DigitalSignature
+  Non_repudiation
+  Key_Encipherment
+]
+
+#6: ObjectId: 2.5.29.17 Criticality=false
+SubjectAlternativeName [
+  DNSName: repo.maven.apache.org
+]
+
+Trust this certificate? [no]:  yes
+Certificate was added to keystore
+[Storing maven-repo.crt.jks]
+$ ls -ltr
+   1919 Jun 26 04:38 maven-repo.crt
+   1440 Jun 26 04:41 maven-repo.crt.jks
 
 
