@@ -361,6 +361,8 @@ ISSUE - PKIX DOWLOAD ERROR
 PKIX download error fix - https://confluence.atlassian.com/kb/unable-to-connect-to-ssl-services-due-to-pkix-path-building-failed-779355358.html
             https://confluence.atlassian.com/kb/connecting-to-ssl-services-802171215.html
       https://maven.apache.org/guides/mini/guide-repository-ssl.html
+      
+      THIS WORKED - http://stackoverflow.com/questions/21252800/how-to-tell-maven-to-disregard-ssl-errors-and-trusting-all-certs
 
 -Download the certificate of maven repo site
 $ openssl s_client -connect repo.maven.apache.org:443  < /dev/null | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p'
@@ -445,5 +447,25 @@ Certificate was added to keystore
 $ ls -ltr
    1919 Jun 26 04:38 maven-repo.crt
    1440 Jun 26 04:41 maven-repo.crt.jks
+
+-Setup maven environment variable
+NOTE:  Main ones are --> 
+      -Dmaven.wagon.http.ssl.insecure=true -Dmaven.wagon.http.ssl.allowall=true -Dmaven.wagon.http.ssl.ignore.validity.dates=true
+
+export MAVEN_OPTS="-Xmx512m -Djavax.net.ssl.trustStore=/disk1/stage/hadoop/hadoop-2.7.2-src/maven-repo.crt.jks \
+                     -Djavax.net.ssl.trustStoreType=jks \
+                     -Djavax.net.ssl.trustStorePassword=password  \
+                     -Djavax.net.ssl.keyStore=/disk1/stage/hadoop/hadoop-2.7.2-src/maven-repo.crt \
+                     -Djavax.net.ssl.keyStoreType=jks \
+                     -Djavax.net.ssl.keyStorePassword=password \
+-Dmaven.wagon.http.ssl.insecure=true \
+-Dmaven.wagon.http.ssl.allowall=true \
+-Dmaven.wagon.http.ssl.ignore.validity.dates=true \
+-Djava.net.preferIPv4Stack=true"
+
+-Run the mvn command to build again:
+$ cd hadoop-2.7.2-src
+$ mvn package -Pdist,native -DskipTests -Dtar
+
 
 
