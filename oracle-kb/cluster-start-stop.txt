@@ -1,0 +1,249 @@
+Taken from: http://albertvandersel.nl/start_stop_rac.txt
+
+================================
+1. START / STOP CLUSTERWARE CRS:
+================================
+
+To start and stop CRS when the machine starts or shutdown, on unix there are rc scripts in place.
+
+/etc/init.d/init.crs start
+/etc/init.d/init.crs stop
+/etc/init.d/init.crs enable
+/etc/init.d/init.crs disable
+
+You can also, as root, manually start, stop, enable or disable the services with:
+
+# crsctl start crs
+# crsctl stop crs
+# crsctl enable crs
+# crsctl disable crs
+
+On a unix system, you may find the following in the /etc/inittab file.
+
+# cat /etc/inittab | grep crs
+h3:35:respawn:/etc/init.d/init.crsd run > /dev/null 2>&1 </dev/null
+
+# cat /etc/inittab | grep evmd
+h1:35:respawn:/etc/init.d/init.evmd run > /dev/null 2>&1 </dev/null
+
+# cat /etc/inittab | grep css
+h2:35:respawn:/etc/init.d/init.cssd fatal > /dev/null 2>&1 </dev/null
+
+/etc/init.d> ls -al *init*
+init.crs
+init.crsd
+init.cssd
+init.evmd
+
+# cat /etc/inittab
+..
+..
+h1:35:respawn:/etc/init.d/init.evmd run > /dev/null 2>&1 </dev/null
+h2:35:respawn:/etc/init.d/init.cssd fatal > /dev/null 2>&1 </dev/null
+h3:35:respawn:/etc/init.d/init.crsd run > /dev/null 2>&1 </dev/null
+
+
+===================================
+2. STARTING / STOPPING THE CLUSTER:
+===================================
+
+-- Stopping the Cluster:
+
+Before you shut down any processes that are monitored by Enterprise Manager Grid Control, set a blackout in 
+Grid Control for the processes that you intend to shut down. This is necessary so that the availability records 
+for these processes indicate that the shutdown was planned downtime, rather than an unplanned system outage.
+Shut down all Oracle RAC instances on all nodes. To shut down all Oracle RAC instances for a database, 
+enter the following command, where db_name is the name of the database:
+
+$ ORACLE_HOME/bin/srvctl stop database -d db_name
+
+Shut down all ASM instances on all nodes. To shut down an ASM instance, enter the following command, 
+where node is the name of the node where the ASM instance is running:
+
+$ ORACLE_HOME/bin/srvctl stop asm -n node
+
+Stop all node applications on all nodes. To stop node applications running on a node, enter the following command, 
+where node is the name of the node where the applications are running
+
+$ ORACLE_HOME/bin/srvctl stop nodeapps -n node
+
+Log in as the root user, and shut down the Oracle Clusterware or CRS process by entering the following command 
+on all nodes:
+
+# CRS_HOME/bin/crsctl stop crs                                          # as root
+
+
+-- Starting the Cluster:
+
+# CRS_HOME/bin/crsctl start crs                                          # as root
+$ ORACLE_HOME/bin/srvctl start nodeapps -n node
+$ ORACLE_HOME/bin/srvctl start asm -n node
+$ ORACLE_HOME/bin/srvctl start database -d db_name    # will start all instances of the Database
+
+
+================================================
+3. CRS_STAT -t command OR SRVCTL STATUS command:
+================================================
+
+CRS_STAT example:
+-----------------
+
+Viewing the status of instances, database, nodeapps:
+
+For example, to list the status of the apps in the cluster, use crs_stat:
+
+/home/oracle-->$CRS_HOME/bin/crs_stat -t
+
+
+Name           Type           Target    State     Host
+------------------------------------------------------------
+ora....SM1.asm application    ONLINE    ONLINE    aix1
+ora....x1.lsnr application    ONLINE    ONLINE    aix1
+ora....ix1.gsd application    ONLINE    ONLINE    aix1
+ora....ix1.ons application    ONLINE    ONLINE    aix1
+ora....ix1.vip application    ONLINE    ONLINE    aix1
+ora....SM2.asm application    ONLINE    ONLINE    aix2
+ora....x2.lsnr application    ONLINE    ONLINE    aix2
+ora....ix2.gsd application    ONLINE    ONLINE    aix2
+ora....ix2.ons application    ONLINE    ONLINE    aix2
+ora....ix2.vip application    ONLINE    ONLINE    aix2
+ora....test.db application    ONLINE    ONLINE    aix1
+ora....x1.inst application    ONLINE    ONLINE    aix1
+ora....x2.inst application    ONLINE    ONLINE    aix2
+/home/oracle--> 
+
+
+SRVCTL example:
+---------------
+
+$ srvctl status nodeapps -n mynewserver
+
+VIP is running on node: mynewserver
+GSD is running on node: mynewserver
+Listener is not running on node: mynewserver
+ONS daemon is running on node: mynewserver
+
+
+CRSCTL example:
+---------------
+
+Checking crs on the node:
+
+# crsctl check crs
+
+Cluster Synchronization Services appears healthy
+Cluster Ready Services appears healthy
+Event Manager appears healthy
+
+Checking crs clusterwide:
+
+crsctl check cluster
+
+# crsctl check cluster
+node1-pub    ONLINE
+node2-pub    ONLINE 
+
+
+
+
+
+
+===================
+4. OTHER EXAMPLES:
+===================
+
+
+Example 1. Bring up the MYSID1 instance of the MYSID database.
+
+$ srvctl start instance -d MYSID -i MYSID1
+
+Example 2. Stop the MYSID database: all its instances and all its services, on all nodes.
+
+$ srvctl stop database -d MYSID
+
+Example 3. Stop the nodeapps on the myserver node. NB: Instances and services also stop.
+
+$ srvctl stop nodeapps -n myserver
+
+Example 4. Add the MYSID3 instance, which runs on the myserver node, to the MYSID 
+clustered database.
+
+$ srvctl add instance -d MYSID -i MYSID3 -n myserver
+
+Example 4. Add a new node, the mynewserver node, to a cluster.
+
+$ srvctl add nodeapps -n mynewserver -o $ORACLE_HOME -A 10.10.10.100/255.255.255.0/eth1
+(The -A flag precedes an address specification.)
+
+Example 5. To change the VIP (virtual IP) on a RAC node, use the command
+
+$ srvctl modify nodeapps -A new_address
+
+Example 6. Disable the ASM instance on myserver for maintenance.
+
+$ srvctl disable asm -n myserver
+
+Some other examples:
+--------------------
+
+$ srvctl add instance -d -i -n
+$ srvctl add service -d -s -r “” [-a ""] [-P ]
+$ srvctl add service -d -s -u {-r “” | -a “”}
+$ srvctl add nodeapps -n -o -A /netmask[/if1[|if2|...]]
+$ srvctl add asm -n -i -o [-p ]
+$ srvctl config database
+$ srvctl config database -d [-a] [-t]
+$ srvctl config service -d [-s ] [-a] [-S ]
+$ srvctl config nodeapps -n [-a] [-g] [-o] [-s] [-l]
+$ srvctl config asm -n
+$ srvctl config listener -n
+$ srvctl disable database -d
+$ srvctl disable instance -d -i “”
+$ srvctl disable service -d -s “” [-i ]
+$ srvctl disable asm -n [-i ]
+$ srvctl enable database -d
+$ srvctl enable instance -d -i “”
+$ srvctl enable service -d -s “” [-i ]
+$ srvctl enable asm -n [-i ]
+$ srvctl getenv database -d [-t ""]
+$ srvctl getenv instance -d -i [-t ""]
+$ srvctl getenv service -d -s [-t ""]
+$ srvctl getenv nodeapps -n [-t ""]
+$ srvctl modify database -d [-n <db_name] [-o ] [-m ] [-p ] [-r {PRIMARY | PHYSICAL_STANDBY | LOGICAL_STANDBY}] [-s ] [-y {AUTOMATIC | MANUAL}]
+$ srvctl modify instance -d -i -n
+$ srvctl modify instance -d -i {-s | -r}
+$ srvctl modify service -d -s -i -t [-f]
+$ srvctl modify service -d -s -i -r [-f]
+$ srvctl modify service -d -s -n -i [-a ] [-f]
+$ srvctl modify asm -n -i [-o ] [-p ]
+$ srvctl relocate service -d -s -i -t [-f]
+$ srvctl remove database -d [-f]
+$ srvctl remove instance -d -i [-f]
+$ srvctl remove service -d -s [-i ] [-f]
+$ srvctl remove nodeapps -n “” [-f]
+$ srvctl remove asm -n [-i ] [-f]
+$ srvctl setenv database -d {-t =[,=,...] | -T =}
+$ srvctl setenv instance -d [-i ] {-t “=[,=,...]” | -T “=”}
+$ srvctl setenv service -d [-s ] {-t “=[,=,...]” | -T “=”}
+$ srvctl setenv nodeapps -n {-t “=[,=,...]” | -T “=”}
+$ srvctl start database -d [-o ] [-c | -q]
+$ srvctl start instance -d -i “” [-o ] [-c | -q]
+$ srvctl start service -d [-s "" [-i ]] [-o ] [-c | -q]
+$ srvctl start nodeapps -n
+$ srvctl start asm -n [-i ] [-o ] [-c | -q]
+$ srvctl start listener -n [-l ]
+$ srvctl status database -d [-f] [-v] [-S ]
+$ srvctl status instance -d -i “” [-f] [-v] [-S ]
+$ srvctl status service -d [-s ""] [-f] [-v] [-S ]
+$ srvctl status nodeapps -n
+$ srvctl status asm -n
+$ srvctl stop database -d [-o ] [-c | -q]
+$ srvctl stop instance -d -i “” [-o ] [-c | -q]
+$ srvctl stop service -d [-s "" [-i ]] [-c | -q] [-f]
+$ srvctl stop nodeapps -n
+$ srvctl stop asm -n [-i ] [-o ] [-c | -q]
+$ srvctl stop listener -n [-l ]
+$ srvctl unsetenv database -d -t “”
+$ srvctl unsetenv instance -d [-i ] -t “”
+$ srvctl unsetenv service -d [-s ] -t “”
+$ srvctl unsetenv nodeapps -n -t “”
