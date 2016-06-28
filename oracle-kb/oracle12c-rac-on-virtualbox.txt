@@ -10,6 +10,8 @@ Voting disk stuff: http://www.redstk.com/voting-disk-setup-in-a-12c-grid-infrast
 ================
 OVERVIEW
 ================
+Create two VMs and install grid and db software.
+Use cookbook cbora12crac1 cookbook for this.
 
 ================
 VM Build
@@ -60,5 +62,74 @@ user grid   uid 771 group oinstall, asmadm, asmdba
 user oracle uid 772 group oinstall, dba, asmdba
 
 -------------------------------------
+
+=========================
+COOKBOOK RECIPE RUN ORDER
+=========================
+Needed to install sshpass ftp://rpmfind.net/linux/dag/redhat/el7/en/x86_64/dag/RPMS/sshpass-1.05-1.el7.rf.x86_64.rpm
+Needed to stop firewall (# service firewalld stop)
+
+1. rac1n1 - 'recipe[cbora12crac1::users_and_groups]'
+2. rac1n2 - 'recipe[cbora12crac1::users_and_groups]'
+3. rac1n1 - 'recipe[cbora12crac1::update_etc_hosts]'
+4. rac1n2 - 'recipe[cbora12crac1::update_etc_hosts]'
+5. rac1n1 - 'recipe[cbora12crac1::setup_ssh]'
+6. rac1n2 - 'recipe[cbora12crac1::setup_ssh]'
+7. rac1n1 - 'recipe[cbora12crac1::directories]'
+8. rac1n2 - 'recipe[cbora12crac1::directories]'
+9. rac1n1 - 'recipe[cbora12crac1::configure_oracleasm]','recipe[cbora12crac1::prepare_asm_disks]'
+(not needed??as configure_oracleasm does both nodes 9. rac1n2 - 'recipe[cbora12crac1::configure_oracleasm]')
+
+./runInstaller -silent -responseFile /tmp/grid.rsp -showProgress -ignorePrereq
+- OR - 
+./runInstaller -silent -responseFile /tmp/grid_install.rsp -showProgress -ignorePrereq
+whichever is in the cookbook
+
+===============================
+ ./runcluvfy.sh comp nodecon -n rac1n1,rac1n2 -verbose
+
+ERROR:
+PRVG-1172 : The IP address "192.168.122.1" is on multiple interfaces "virbr0" on nodes "rac1n1,rac1n2"
+
+ERROR:
+PRVG-1172 : The IP address "10.0.2.15" is on multiple interfaces "enp0s3" on nodes "rac1n1,rac1n2"
+
+Result: Node connectivity check failed
+
+
+ERROR:
+PRVG-11850 : The system call "connect" failed with error "113" while executing exectask on node "rac1n2"
+No route to host
+  rac1n1 : 10.10.10.111           rac1n2 : 10.10.10.112           failed
+
+ERROR:
+PRVG-11850 : The system call "connect" failed with error "113" while executing exectask on node "rac1n1"
+
+  rac1n2 : 10.10.10.112           rac1n2 : 10.10.10.112           passed
+Result: TCP connectivity check failed for subnet "10.10.10.0"
+
+FIX- Shutdown firewall
+
+# service firewalld stop
+# firewall-cmd --state
+not running
+==============================
+                                  
+As a root user, execute the following script(s):                                                                                   
+       1. /u01/app/oraInventory/orainstRoot.sh                                                                                    
+       2. /u01/app/gridhome12c/root.sh                                                                                            
+Execute /u01/app/oraInventory/orainstRoot.sh on the following nodes:                                                               
+[rac1n1, rac1n2]                                                                                                                   
+Execute /u01/app/gridhome12c/root.sh on the following nodes:                                                                       
+[rac1n1, rac1n2]                                                                                                                   
+Run the script on the local node first. After successful completion, you can start the script in parallel on all other nodes.      
+..................................................   100% Done.                                                                    
+Successfully Setup Software.                                                                                                       
+As install user, execute the following script to complete the configuration.                                                       
+     1. /u01/app/gridhome12c/cfgtoollogs/configToolAllCommands RESPONSE_FILE=<response_file>                                    
+       Note: 
+       1. This script must be run on the same host from where installer was run. 
+       2. This script needs a small password properties file for configuration assistants that require passwords 
+       (refer to install guide documentation). 
 
 
