@@ -13,6 +13,8 @@ MGMTDB and MGMTLSNR stuff: http://www.oraclebuffer.com/oracle/oracle-12c-rac-mov
 ================
 OVERVIEW
 ================
+NOTE: see the section on 'obseravations' for pre/post install observations and fixes.
+
 Create two VMs and install grid and db software.
 Use cookbook cbora12crac1 cookbook for this.
 --> Design in sections below
@@ -668,5 +670,42 @@ As install user, execute the following script to complete the configuration.
        1. This script must be run on the same host from where installer was run. 
        2. This script needs a small password properties file for configuration assistants that require passwords 
        (refer to install guide documentation). 
+
+
+===================================
+OBSERVATIONS AND TROUBLESHOOTING
+===================================
+
+---------------------------------
+ONLY ONE VOTING DISK WAS CREATED (expected three)
+---------------------------------
+NOTE: This is normal behavior.  See reason below.
+
+$ crsctl query css votedisk
+##  STATE    File Universal Id                File Name Disk group
+--  -----    -----------------                --------- ---------
+ 1. ONLINE   3ae4ca5844184f55bfd62f99d1d8fd7c (ORCL:DISK01) [DATA01]
+ 
+Reason: In the grid response file, redundancy for initial ASM disks was set to 'EXTERNAL'.
+For external redundancy disks CRS will create only one voting disk.  
+For normal it creates 3 and for high it creates 5.
+(https://docs.oracle.com/cd/E11882_01/rac.112/e41959/votocr.htm#CWADD91889)
+
+-------------------------------------
+MGMTDB not created, MGMTLSNR offline  (TBD)
+-------------------------------------
+
+$ crs_stat -t
+Name           Type           Target    State     Host
+------------------------------------------------------------
+ora.DATA01.dg  ora....up.type ONLINE    ONLINE    rac1n1
+ora....ER.lsnr ora....er.type ONLINE    ONLINE    rac1n1
+ora....N1.lsnr ora....er.type ONLINE    ONLINE    rac1n1
+ora....N2.lsnr ora....er.type ONLINE    ONLINE    rac1n1
+ora....N3.lsnr ora....er.type ONLINE    ONLINE    rac1n1
+ora.MGMTLSNR   ora....nr.type OFFLINE   OFFLINE
+ora.asm        ora.asm.type   ONLINE    ONLINE    rac1n1
+ora.cvu        ora.cvu.type   ONLINE    ONLINE    rac1n1
+ora....network ora....rk.type ONLINE    ONLINE    rac1n1
 
 
