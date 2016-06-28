@@ -12,11 +12,65 @@ OVERVIEW
 ================
 Create two VMs and install grid and db software.
 Use cookbook cbora12crac1 cookbook for this.
+--> Design in sections below
+
+==============
+/etc/hosts
+==============
+127.0.0.1       localhost localhost.localdomain localhost4 localhost4.localdomain4
+
+# Public
+192.168.0.111   rac1n1
+192.168.0.112   rac1n2
+
+# Virtual
+192.168.0.121   rac1n1-vip
+192.168.0.122   rac1n2-vip
+
+# Private Interconnect
+10.10.10.111    rac1n1-priv
+10.10.10.112    rac1n2-priv
+
+# SCAN
+192.168.0.131   rac1-scan
+192.168.0.132   rac1-scan
+192.168.0.133   rac1-scan
+
+::1             localhost localhost.localdomain localhost6 localhost6.localdomain6
+
+=====================
+USERS and GROUPS
+=====================
+NOTE: For simplicity keep all software under oracle ID, but with oinstall and dba groups
+--> If role-separation between oracle, grid etc. that needs more elaborate setup (see another section below)
+
+NOTE: Groups oinstall, dba and user oracle are pre-created in VM that uses Oracle Unix and preinstall rpm
+User - oracle
+Primary group - oinstall
+Secondary group - dba
+
+=====================
+Directories
+=====================
+/u01 - owned by root:root (later, it will be converted to root:oinstall)
+/u01/app - owned by oracle:dba
+
+$ cd /
+$ ls -l |grep u01
+drwxr-xr-x.   3 root    oinstall  4096 Jun 28 12:09 u01
+$ cd /u01
+$ ls -l
+drwxr-xr-x. 5 root oinstall 4096 Jun 28 15:29 app
+$ cd app
+$ ls -l
+drwxr-xr-x.  9 oracle dba      4096 Jun 28 16:03 gridbase
+drwxr-xr-x. 73 root   oinstall 4096 Jun 28 16:00 gridhome12c
+drwxrwx---.  6 oracle oinstall 4096 Jun 28 16:17 oraInventory
 
 ================
 VM Build
 ================
-Full details in linux-oel7-virtualbox-build-and-vagrant-box.txt
+NOTE: Full details in linux-oel7-virtualbox-build-and-vagrant-box.txt
 
 Summary:
 Create VM 
@@ -53,6 +107,8 @@ Chef
 ....
 
 ---------------------------------------
+If not pre-created in the VM by Oracle Linux
+AND want role-separation, then do as follows
 
 group oinstall gid 551
 group dba      gid 552
@@ -60,7 +116,6 @@ group asmadm   gid 553
 group asmdba   gid 553
 user grid   uid 771 group oinstall, asmadm, asmdba
 user oracle uid 772 group oinstall, dba, asmdba
-
 -------------------------------------
 
 =========================
@@ -79,6 +134,8 @@ Needed to stop firewall (# service firewalld stop)
 8. rac1n2 - 'recipe[cbora12crac1::directories]'
 9. rac1n1 - 'recipe[cbora12crac1::configure_oracleasm]','recipe[cbora12crac1::prepare_asm_disks]'
 (not needed??as configure_oracleasm does both nodes 9. rac1n2 - 'recipe[cbora12crac1::configure_oracleasm]')
+
+After this, run the next steps manually:
 
 ./runInstaller -silent -responseFile /tmp/grid.rsp -showProgress -ignorePrereq
 - OR - 
