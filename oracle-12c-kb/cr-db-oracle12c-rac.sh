@@ -27,7 +27,7 @@ export PATH=/bin:/usr/bin:/etc:/usr/etc:/usr/local/bin:/usr/lib:/usr/sbin:/usr/c
 export oratab=/etc/oratab
 export listenerora=$TNS_ADMIN/listener.ora
 export tnsnamesora=$TNS_ADMIN/tnsnames.ora
-export RACNODES=`$GRID_HOME/bin/onsnodes`  #This gives space-delimited list
+export RACNODES=`$GRID_HOME/bin/olsnodes`  #This gives space-delimited list
 export RACNODES=`echo $RACNODES | sed 's/ /,/g'`  #Change space to comma delimited
 export RACCLUSTERNAME=`$GRID_HOME/bin/cemutlo -n`
 export RACSCANNAME=`srvctl config scan |grep "SCAN name:" | cut -d: -f2 |cut -d, -f1 |sed 's/ //g'`
@@ -40,7 +40,7 @@ echo "INFO - Creating Database using DBCA command"
 echo
 dbca -silent -createDatabase -gdbName $DBNAME_UNIQUE -sid $DBNAME -nodelist $RACNODES -databaseType MULTIPURPOSE -characterSet AL32UTF8 -nationalCharacterSet AL16UTF16 -initParams db_name=$DBNAME,db_unique_name=$DBNAME_UNIQUE,db_block_size=8 -templatename General_Purpose.dbc -sysPassword sys123 -systemPassword system123 -createAsContainerDatabase true -numberOfPdbs 1 -pdbName $PDBNAME -pdbAdminUserName PDBADMIN -pdbAdminPassword pdbadmin123 -storageType ASM -diskGroupName DATA01 -recoveryGroupName FRA01 -redoLogFileSize 100M -emConfiguration NONE -sampleSchema false 
 
-if [$# -ne 0]
+if [ $? -ne 0 ]
 then
 echo "ERR - Error while creating database using DBCA command"
 exit 1
