@@ -87,13 +87,56 @@ drwxrwx---.  6 oracle oinstall 4096 Jun 28 16:17 oraInventory
 =========================
 ENVIRONMENT VARIABLES
 =========================
-Set the following environment (not essential for install)
-in .bash_profile
+Set the following environment in .bash_profile (not essential for install) 
 
-ORACLE_HOME=/u01/app/gridhome12c
-export ORACLE_HOME
-PATH=$PATH:$ORACLE_HOME/bin
+# .bash_profile
+
+db_grid_option="none"
+
+if [ $# -gt 0 ]
+then
+     db_grid_option="$1"
+     echo "Argument: $db_grid_option"
+fi
+
+# Get the aliases and functions
+if [ -f ~/.bashrc ]; then
+        . ~/.bashrc
+fi
+
+# User specific environment and startup programs
+
+export DEFAULT_PATH=/usr/lib64/qt-3.3/bin:/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/home/oracle/.local/bin:
+
+#PATH=$PATH:$HOME/.local/bin:$HOME/bin
+PATH=$DEFAULT_PATH:$HOME/.local/bin:$HOME/bin
 export PATH
+
+#--------------
+
+export GRID_BASE=/u01/app/gridbase
+export GRID_HOME=/u01/app/gridhome12c
+export DB_BASE=/u01/app/oracle
+export DB_HOME=/u01/app/oracle/product/12cRAC1
+
+if [ "$db_grid_option" == "db" ]
+then
+export ORACLE_HOME=$DB_HOME
+export ORACLE_BASE=$DB_BASE
+else
+export ORACLE_HOME=$GRID_HOME
+export ORACLE_BASE=$GRID_BASE
+fi
+
+export PATH=$PATH:$ORACLE_HOME/bin
+
+alias diagg='cd $GRID_BASE/diag'
+alias diagd='cd $DB_BASE/diag'
+alias oh='cd $ORACLE_HOME'
+alias gh='cd $GRID_BASE'
+alias dbs='cd $ORACLE_HOME/dbs'
+alias tns='cd /usr/local/tns'
+alias tnsoh='cd $ORACLE_HOME/network/admin'
 
 =========================
 FIREWALL
