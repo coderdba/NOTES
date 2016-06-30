@@ -80,3 +80,64 @@ total 1801893
 -r-xr-xr-x. 1 root root     49800 Jun 30 19:28 perl-Time-HiRes-1.9721-141.el6_7.1.x86_64.rpm
 -r-xr-xr-x. 1 root root    180224 Jun 30 19:28 scsi-target-utils-1.0.24-16.0.2.el6.x86_64.rpm
 
+NOTE: Of these, items of interest are the following:
+jdk1.8.0_66-1.8.0_66-fcs.x86_64.rpm --> may not be needed if already installed
+cell-12.1.2.3.1_LINUX.X64_160411-1.x86_64.rpm
+
+======================
+INSTALL PREREQUISITES
+======================
+net-snmp
+net-snmp-utils
+perl
+
+=======================
+UPDATE MACHINE SETTINGS
+=======================
+++ Update Linux parameters
+
+
+++ /etc/sysctl.conf
+
+fs.file-max = 65536
+fs.aio-max-nr=50000000
+net.core.rmem_default=262144
+net.core.rmem_max=4194304
+net.core.wmem_default=262144
+net.core.wmem_max=2097152
+
+sysctl -p
+++ /etc/security/limits.conf files 
+
+* soft nofile 65536
+* hard nofile 65536
+
+++ /etc/grub.conf
+default=1
+
+++ /etc/selinux/config
+SELINUX=disabled
+
+++ /etc/modprobe.d/rds.conf
+
+[root@localhost Server]# lsmod | grep rds
+[root@localhost Server]# modprobe rds
+[root@localhost Server]# modprobe rds_tcp
+[root@localhost Server]# modprobe rds_rdma
+[root@localhost Server]# cat /etc/modprobe.d/rds.conf
+cat: /etc/modprobe.d/rds.conf: No such file or directory
+[root@localhost Server]# vi /etc/modprobe.d/rds.conf
+1 files to edit
+[root@localhost Server]# cat /etc/modprobe.d/rds.conf
+install rds /sbin/modprobe --ignore-install rds && /sbin/modprobe rds_tcp && /sbin/modprobe rds_rdma
+[root@localhost Exadata-12.1]# lsmod | grep rds
+rds_rdma              106305  0
+rds_tcp                48097  0
+rds                   154921  2 rds_rdma,rds_tcp
+rdma_cm                73301  2 rds_rdma,ib_iser
+ib_core               107841  7 rds_rdma,ib_iser,rdma_cm,ib_cm,iw_cm,ib_sa,ib_mad
+
+[root@localhost deploy]# cat /etc/hosts
+# Do not remove the following line, or various programs
+# that require network functionality will fail.
+127.0.0.1  exadata_lab_1     localhost.localdomain localhost
