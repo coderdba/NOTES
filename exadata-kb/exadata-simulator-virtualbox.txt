@@ -1,3 +1,8 @@
+==============================================================
+		EXADATA STORAGE CELL SIMULATION USING VIRTUALBOX VM
+==============================================================
+
+
 For version 12.1.2: http://oracletechdba.blogspot.in/2015/04/vm-simulation-exadata-storage-server.html
 
 ------------------------------------------------------------------------------------------------------------------------------------
@@ -7,6 +12,7 @@ http://oracletechdba.blogspot.in/2014/06/building-exadata-in-vm-for-learning.htm
 http://oracletechdba.blogspot.in/2015/04/msstatus-stopped-socket-open-error-port.html (port 8888 MS service fix)
 http://oracletechdba.blogspot.in/2015_04_01_archive.html (port 8888 MS service fix)
 
+Memory error fixing in this site: (also check https://dbaesp.wordpress.com/2014/03/16/storage-server-12-1-1/)
 http://www.dba.bg/forum/oracle-rdbms-server/server-database-administration/exadata/5055-install-exadata-12-1-2-1-1-150316-2-on-oracle-linux-7-with-oracle-vm-server-manager-3-3-1-for-own-testing-and-preparation-for-exadata-exam-oracle-linux-7-0-installation
 --> http://www.dba.bg/forum/oracle-rdbms-server/server-database-administration/exadata/5094-install-exadata-12-1-2-1-1-150316-2-on-oracle-linux-7-with-oracle-vm-server-manager-3-3-1-for-own-testing-and-preparation-for-exadata-exam-cell-software-installation
 
@@ -385,4 +391,55 @@ The STARTUP of MS services was successful.
 Starting CELLSRV services...
 The STARTUP of CELLSRV services was successful.
 [root@localhost ~]#
+
+-Try starting CELLSRV
+# cellcli -e "alter cell startup services cellsrv"
+
+Starting CELLSRV services...
+The STARTUP of CELLSRV services was not successful.
+CELL-01531: Unable to parse the cellinit.ora file due to incorrect parameters in the file.
+
+FIX - Add ipaddress1 in cellinit.ora as follows:
+ipaddress1=192.168.0.91/24
+
+- Retry
+# cellcli -e "alter cell startup services cellsrv"
+
+Starting CELLSRV services...
+The STARTUP of CELLSRV services was not successful.
+CELL-01547: CELLSRV startup failed due to unknown reasons.
+[root@eds1 config]# service celld status
+	 rsStatus:               running
+	 msStatus:               running
+	 cellsrvStatus:          stopped
+[root@eds1 config]# cellcli -e "alter cell startup services cellsrv"
+
+Starting CELLSRV services...
+The STARTUP of CELLSRV services was not successful.
+CELL-01547: CELLSRV startup failed due to unknown reasons.
+
+[root@eds1 config]# vi /opt/oracle/cell12.1.2.3.1_LINUX.X64_160411/log/diag/asm/cell/eds1/trace/svtrc_16968_main.trc
+
+In alert.log:
+[RS] monitoring process /opt/oracle/cell12.1.2.3.1_LINUX.X64_160411/cellsrv/bin/cellrsomt (pid: 17269) returned with error: 161
+Errors in file /opt/oracle/cell12.1.2.3.1_LINUX.X64_160411/log/diag/asm/cell/eds1/trace/svtrc_17271_main.trc  (incident=65):
+ORA-00600: internal error code, arguments: [TODO(zutao): handle OOM gracefully], [], [], [], [], [], [], [], [], [], [], []
+Incident details in: /opt/oracle/cell12.1.2.3.1_LINUX.X64_160411/log/diag/asm/cell/eds1/incident/incdir_65/svtrc_17271_main_i65.trc
+Fri Jul 01 22:40:16 2016
+Sweep [inc][65]: completed
+CELLSRV error - ORA-600 internal error
+Fri Jul  1 22:40:16 2016
+CELLSRV<17271> is no longer alive before state dump completes.
+
+In some files in the trace directory you will see a string 'sarr' --> may indicate memory starvation
+# grep sarr *
+svtrc_17755_main.trm:k3+d}ocl_sarr_seg_alloc*ocl_sarr.c*s4cS1gW"2;
+
+FIX - per http://oracletechdba.blogspot.in/2015_04_01_archive.html
+Increase VM memory and restart services.
+# service celld stop
+# init 0
+
+Then increase VM memory in Virtualbox and restart the VM.
+
 
