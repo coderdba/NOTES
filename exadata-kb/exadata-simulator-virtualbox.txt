@@ -157,6 +157,31 @@ ib_core               107841  7 rds_rdma,ib_iser,rdma_cm,ib_cm,iw_cm,ib_sa,ib_ma
 # that require network functionality will fail.
 127.0.0.1  exadata_lab_1     localhost.localdomain localhost
 
+==================================
+MAKE THESE MODULES PERMANENT - to be loaded upon restart
+==================================
+
+Create /etc/modprobe.d/rds.conf as in the previous section.
+--> However, this method did not seem to bring up the modules upon restart
+
+Use the following method described in 
+https://docs.oracle.com/cd/E37670_01/E41138/html/ol_bootmodules.html
+https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/6/html/Deployment_Guide/sec-Persistent_Module_Loading.html
+
+- Create a file /etc/sysconfig/modules/eds.modules with actual code to load the modules (feel free to add a log file)
+
+NOTE: Change its permissions to +x
+
+
+# vi /etc/sysconfig/modules/eds.modules
+Add this code:
+
+#!/bin/sh
+/bin/mv /tmp/eds.modules.out /tmp/eds.modules.out.old
+modprobe rds >> /tmp/eds.modules.out
+modprobe rds_tcp >> /tmp/eds.modules.out
+modprobe rds_rdma >> /tmp/eds.modules.out
+
 ==============================
 INSTALL CELL SOFTWARE
 ==============================
@@ -298,3 +323,38 @@ IP Address series - 192.168.0.x (in line with other intnet addresses of VMs on t
 ipaddress1=192.168.0.91/24
 HTTP_PORT=8888
 BMC_SNMP_PORT=162
+
+-Restart 
+# service celld restart
+
+Stopping the RS, CELLSRV, and MS services...
+CELL-01509: Restart Server (RS) not responding.
+Starting the RS, CELLSRV, and MS services...
+Getting the state of RS services...  running
+Starting CELLSRV services...
+The STARTUP of CELLSRV services was not successful.
+CELL-01531: Unable to parse the cellinit.ora file due to incorrect parameters in the file.
+Starting MS services...
+The STARTUP of MS services was not successful.
+CELL-01531: Unable to parse the cellinit.ora file due to incorrect parameters in the file.
+
+CELL-01531: Unable to parse the cellinit.ora file due to incorrect parameters in the file.
+Fix?: https://dbaesp.wordpress.com/2014/03/16/storage-server-12-1-1/
+
+Alert log mentioned:
+(/opt/oracle/cell/log/diag/asm/cell/eds1/trace/alert.log)
+[RS] monitoring process /opt/oracle/cell12.1.2.3.1_LINUX.X64_160411/cellsrv/bin/cellrsmmt (pid: 10699) returned with error: 162
+Fri Jul 01 15:06:49 2016
+[RS] Service MS is no longer present
+Errors in file /opt/oracle/cell12.1.2.3.1_LINUX.X64_160411/log/diag/asm/cell/eds1/trace/rstrc_10689_mmt.trc  (incident=137):
+RS-7445 [Serv MS is absent] [It will be restarted] [] [] [] [] [] [] [] [] [] []
+Incident details in: /opt/oracle/cell12.1.2.3.1_LINUX.X64_160411/log/diag/asm/cell/eds1/incident/incdir_137/rstrc_10689_mmt_i137.trc
+Sweep [inc][137]: completed
+Fri Jul 01 15:06:50 2016
+[RS] Stopped Service MS
+
+The trace file said:  (/opt/oracle/cell12.1.2.3.1_LINUX.X64_160411/log/diag/asm/cell/eds1/trace/rstrc_10689_mmt.trc)
+2016-07-01 15:06:38.650105 :00000046: socket open error: Port no: 8888. Received errorno 111. Connection refused
+
+--> So, port 8888 has to be opened
+
