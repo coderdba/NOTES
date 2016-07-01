@@ -216,3 +216,65 @@ If this is a manual installation, please stop and restart ExaWatcher to pick up 
 You can run "/opt/oracle.ExaWatcher/ExaWatcher.sh --stop" and then "/opt/oracle.ExaWatcher/ExaWatcher.sh --fromconf" to stop and restart ExaWatcher.
 Logout and then re-login to use the new cell environment.
 
+===========================
+START CELL AND EXA SERVICES
+===========================
+
+From install messasges above:
+	Please Login as user celladmin, startup RS and MS, then create cell to startup CELLSRV to complete cell configuration.
+	If this is a manual installation, please stop and restart ExaWatcher to pick up newly installed binaries.
+	You can run "/opt/oracle.ExaWatcher/ExaWatcher.sh --stop" and then "/opt/oracle.ExaWatcher/ExaWatcher.sh --fromconf" to stop and restart ExaWatcher.
+	Logout and then re-login to use the new cell environment.
+	
+---------------------
+Check first
+---------------------
+- New users created - check in /etc/passwd
+celladmin
+cellmonitor
+
+- Check if exa-watcher ExaWatcher.sh is running
+# ps -ef |grep -i exa
+< none running at this time>
+
+- Check status of 'cell' process/service:
+# ps -ef |grep -i cell
+<none running now>
+
+# service celld status
+	 rsStatus:               stopped
+	 msStatus:               unknown
+	 cellsrvStatus:          unknown
+
+- Restart celld service - errors out paritally (see below)
+# /etc/init.d/celld restart
+
+Stopping the RS, CELLSRV, and MS services...
+CELL-01509: Restart Server (RS) not responding.
+Starting the RS, CELLSRV, and MS services...
+Getting the state of RS services...  running
+Starting CELLSRV services...
+The STARTUP of CELLSRV services was not successful.
+CELL-01531: Unable to parse the cellinit.ora file due to incorrect parameters in the file.
+Starting MS services...
+The STARTUP of MS services was not successful.
+CELL-01531: Unable to parse the cellinit.ora file due to incorrect parameters in the file.
+[root@localhost ~]# service celld status
+	 rsStatus:               running
+	 msStatus:               stopped
+	 cellsrvStatus:          stopped
+
+- Check cellinit.ora
+# cat /opt/oracle/cell12.1.2.3.1_LINUX.X64_160411/cellsrv/deploy/config/cellinit.ora
+- OR - 
+# cat /opt/oracle/cell/cellsrv/deploy/config/cellinit.ora
+
+Initially, it is empty
+
+- Set a hostname to the machine
+Shutdown the machine
+Add additional adapter of (in order of preference) Bridged, host-only or intnet (no LAR required)
+Did 'intnet' and enabled port-forwarding.
+IP Address series - 192.168.0.x (in line with other intnet addresses of VMs on this laptop)
+- 192.168.0.91 
+
