@@ -1,0 +1,54 @@
+
+
+http://www.orafaq.com/node/1840
+How to Setup Connections For Connect Time Failover between Multiple Connection Managers (Doc ID 579709.1)
+Load Balancing and DESCRIPTION_LISTs (Doc ID 67137.1)	
+
+https://community.oracle.com/thread/2336341?tstart=0 (inconclusive)
+
+Trigger for service_names - https://asktom.oracle.com/pls/apex/f?p=100:11:0::::P11_QUESTION_ID:52258813563764
+Trigger (doc not related to failover) - How To Configure Client Failover For Data Guard Connections Using Database Services (Doc ID 1429223.1)
+
+NOTE:247135.1 - How to Implement Load Balancing With RAC Configured System Using JDBC
+
+=================================================================
+TRIGGER (main one for JDBC connect time failover) 
+- JDBC/thin Application Fails to Connect with ORA-01033 after Dataguard Switchover (Doc ID 2129131.1)
+=================================================================
+
+Only run the database service for the primary database. The service for the standby database should be stopped.
+This configuration can be automated using AFTER STARTUP ON DATABASE triggers.
+
+for example:
+
+The database on host1 could be configured with the following trigger:
+
+CREATE TRIGGER CHECK_SERV1_START AFTER STARTUP ON DATABASE
+DECLARE
+V_ROLE VARCHAR(30);
+BEGIN
+SELECT DATABASE_ROLE INTO V_ROLE FROM V$DATABASE;
+IF V_ROLE = 'PRIMARY' THEN
+DBMS_SERVICE.START_SERVICE('SERV1);
+ELSE
+DBMS_SERVICE.STOP_SERVICE(SERV1');
+END IF;
+END;
+/
+ 
+
+The database on host2 could be configured with the following trigger:
+
+CREATE TRIGGER CHECK_SERV2_START AFTER STARTUP ON DATABASE
+DECLARE
+V_ROLE VARCHAR(30);
+BEGIN
+SELECT DATABASE_ROLE INTO V_ROLE FROM V$DATABASE;
+IF V_ROLE = 'PRIMARY' THEN
+DBMS_SERVICE.START_SERVICE('SERV2);
+ELSE
+DBMS_SERVICE.STOP_SERVICE(SERV2');
+END IF;
+END;
+/
+	
