@@ -184,3 +184,104 @@ Note 316740.1How to configure to let TAF work after Data Guard Switchover or Fai
 
 http://www.oracle.com/technetwork/database/features/availability/maa-096107.html
 http://www.oracle.com/technetwork/database/features/availability/maa-wp-10gr2-switchoverfailoverbest-128455.pdf
+
+=======================================================
+CONNECT TIME FAILOVER - UNCLEAR - STATES SQLPLUS WORKS WITH TWO HOSTS AND TWO SERVICE NAMES, BUT DID NOT WORK SO FOR ME
+=======================================================
+JDBC/thin Application Fails to Connect with ORA-01033 after Dataguard Switchover (Doc ID 2129131.1)	To BottomTo Bottom	
+
+In this Document
+Symptoms
+Changes
+Cause
+Solution
+References
+
+This document is being delivered to you via Oracle Support's Rapid Visibility (RaV) process and therefore has not been subject to an independent technical review.
+APPLIES TO:
+
+JDBC - Version 12.1.0.2.0 and later
+Information in this document applies to any platform.
+SYMPTOMS
+
+A JDBC/thin application connecting to a Dataguard configuration uses the following connect string:
+
+jdbc:oracle:thin:@(DESCRIPTION = (LOAD_BALANCE = no)(FAILOVER = yes)(ADDRESS = (PROTOCOL = TCP)(HOST = host1)(PORT = 1521))(CONNECT_DATA =(SERVER = DEDICATED)(SERVICE_NAME = serv1))(ADDRESS = (PROTOCOL = TCP)(HOST = host2)(PORT = 1521))(CONNECT_DATA =(SERVER = DEDICATED)(SERVICE_NAME = serv2)))
+In the initial configuration, host1 and serv1 represent the primary host and database service and host2 and serv2 represent the standby host and database service.
+
+At this stage the JDBC connection works fine and connects to the primary database.
+
+After the switchover is completed the 2 databases are now reversed.  Host2 and serv2 are the primary  and host1 and serv1 are the standby.
+
+The JDBC/thin application can no longer connect due to error: ORA-01033: ORACLE initialization or shutdown in progress
+
+It should be noted that the SQL*Plus connection still works:
+
+sqlplus system/password@(DESCRIPTION = (LOAD_BALANCE = no)(FAILOVER = yes)(ADDRESS = (PROTOCOL = TCP)(HOST = host1)(PORT = 1521))(CONNECT_DATA =(SERVER = DEDICATED)(SERVICE_NAME = serv1))(ADDRESS = (PROTOCOL = TCP)(HOST = host2)(PORT = 1521))(CONNECT_DATA =(SERVER = DEDICATED)(SERVICE_NAME = serv2)))
+
+SQL*Plus: Release 12.1.0.2.0 Production on Wed Mar 16 09:23:34 2016
+
+Copyright (c) 1982, 2014, Oracle. All rights reserved.
+
+Connected to:
+Oracle Database 12c Enterprise Edition Release 12.1.0.2.0 - 64bit Production
+With the Partitioning, Real Application Clusters, Automatic Storage Management, OLAP,
+Advanced Analytics and Real Application Testing options
+
+ 
+
+ 
+
+CHANGES
+
+ The issue is triggered by the Dataguard switchover.  During this process, the first database, which was the primary and the second database which was the standby will swap roles.
+
+After the switchover the second database is now the primary and is in OPEN READ WRITE mode.  The first database is now the standby and is in MOUNT mode.
+
+CAUSE
+
+Following the Dataguard switchover, both the primary and standby database services are started.
+The JDBC driver will keep trying to connect to the first database on the connect string list and hit the ORA-1033 for the standby database with is in MOUNT mode.
+
+This is JDBC/thin specific and not reproducible with SQL*Plus apparently because the Oracle Net is configured with TAF which will ensure that only the primary database is used. 
+
+ 
+
+SOLUTION
+
+Only run the database service for the primary database. The service for the standby database should be stopped.
+This configuration can be automated using AFTER STARTUP ON DATABASE triggers.
+
+for example:
+
+The database on host1 could be configured with the following trigger:
+
+CREATE TRIGGER CHECK_SERV1_START AFTER STARTUP ON DATABASE
+DECLARE
+V_ROLE VARCHAR(30);
+BEGIN
+SELECT DATABASE_ROLE INTO V_ROLE FROM V$DATABASE;
+IF V_ROLE = 'PRIMARY' THEN
+DBMS_SERVICE.START_SERVICE('SERV1);
+ELSE
+DBMS_SERVICE.STOP_SERVICE(SERV1');
+END IF;
+END;
+/
+ 
+
+The database on host2 could be configured with the following trigger:
+
+CREATE TRIGGER CHECK_SERV2_START AFTER STARTUP ON DATABASE
+DECLARE
+V_ROLE VARCHAR(30);
+BEGIN
+SELECT DATABASE_ROLE INTO V_ROLE FROM V$DATABASE;
+IF V_ROLE = 'PRIMARY' THEN
+DBMS_SERVICE.START_SERVICE('SERV2);
+ELSE
+DBMS_SERVICE.STOP_SERVICE(SERV2');
+END IF;
+END;
+/
+
