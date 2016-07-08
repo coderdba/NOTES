@@ -54,3 +54,133 @@ END IF;
 END;
 /
 	
+=======================================================
+CONNECT TIME FAILOVER - in primary-standy situation
+=======================================================
+NOTE: KEY POINTS:
+1. There should be only one DESCRIPTION - not DESCRIPTION_LIST
+2. There should be only one service name
+3. The service should be up on primary only
+
+Failover Connections for Data Guard Error with ORA-1033 (Doc ID 461874.1)		
+
+In this Document
+Symptoms
+Cause
+Solution
+References
+APPLIES TO:
+
+Oracle Net Services - Version 9.2.0.4 to 11.2.0.4 [Release 9.2 to 11.2]
+Information in this document applies to any platform.
+Checked for relevance on 04-JUN-2014
+SYMPTOMS
+
+Connections in data guard environment fail with ORA-01033: ORACLE initialization or shutdown in progress.
+
+Oracle Net client trace shows after successful connection handshake
+
+[27-SEP-2007 11:34:18:104] nsprecv: 00 00 39 4F 52 41 2D 30  |..9ORA-0| 
+[27-SEP-2007 11:34:18:104] nsprecv: 31 30 33 33 3A 20 4F 52  |1033:.OR| 
+[27-SEP-2007 11:34:18:104] nsprecv: 41 43 4C 45 20 69 6E 69  |ACLE.ini| 
+[27-SEP-2007 11:34:18:104] nsprecv: 74 69 61 6C 69 7A 61 74  |tializat| 
+[27-SEP-2007 11:34:18:104] nsprecv: 69 6F 6E 20 6F 72 20 73  |ion.or.s| 
+[27-SEP-2007 11:34:18:104] nsprecv: 68 75 74 64 6F 77 6E 20  |hutdown.| 
+[27-SEP-2007 11:34:18:104] nsprecv: 69 6E 20 70 72 6F 67 72  |in.progr| 
+[27-SEP-2007 11:34:18:104] nsprecv: 65 73 73 0A              |ess.    |
+Net service name has LOAD_BALANCE set in description section
+
+  (DESCRIPTION = 
+    (LOAD_BALANCE = yes) 
+    (ADDRESS = (PROTOCOL = TCP)(HOST = NodeA)(PORT = 1521)) 
+    (ADDRESS = (PROTOCOL = TCP)(HOST = NodeB)(PORT = 1521))
+Or has two description sections
+
+  (DESCRIPTION_LIST = 
+    (DESCRIPTION = 
+      (ADDRESS = (PROTOCOL = TCP)(Host = NodeA)(Port = 1521)) 
+      (CONNECT_DATA = 
+        (SERVICE_NAME = ORCL1) 
+      ) 
+    ) 
+    (DESCRIPTION = 
+      (ADDRESS = (PROTOCOL = TCP)(Host = NodeB)(Port = 1521)) 
+      (CONNECT_DATA = 
+        (SERVICE_NAME = ORCL2)
+CAUSE
+
+Error ORA-1033 is expected for connections when they attempt to connect to standby instance, because it is mounted and not open.
+
+When LOAD_BALANCE is set, connections can load balance between the addresses in the net service name.
+
+When there are two description sections in a net service name, Oracle Net will load balance between them.
+
+SOLUTION
+
+Example is for service called failover 
+
+1. Setup the net service name, ensuring LOAD_BALANCE is not used and one has one description section.
+
+ DGtest =  
+  (DESCRIPTION =  
+    (ADDRESS_LIST =  
+      (ADDRESS = (PROTOCOL = TCP)(HOST = NodeA)(PORT = 1521))  
+      (ADDRESS = (PROTOCOL = TCP)(HOST = NodeB)(PORT = 1521))  
+    )  
+    (CONNECT_DATA =  
+      (SERVICE_NAME = failover)  
+      (SERVER = DEDICATED)  
+        (FAILOVER_MODE =  
+          (TYPE = session)  
+          (METHOD = BASIC)  
+          (RETRIES = 180)  
+          (DELAY = 5)  
+        )  
+      )  
+    ) 
+2. Create and start service
+
+SQL> exec DBMS_SERVICE.CREATE_SERVICE (service_name => 'failover',network_name => 'failover',aq_ha_notifications => true,failover_method => 'BASIC', failover_type => 'SELECT',failover_retries => 180,failover_delay => 1);
+
+PL/SQL procedure successfully completed.
+
+
+SQL>exec dbms_service.start_service('failover');
+
+PL/SQL procedure successfully completed.
+3.Create a database trigger to ensure the service name is always the same, no matter which node's instance is the primary.
+
+sqlplus / as sysdba
+
+SQL> CREATE OR REPLACE TRIGGER manage_OCIservice 
+after startup on database 
+DECLARE 
+role VARCHAR(30); 
+BEGIN 
+SELECT DATABASE_ROLE INTO role FROM V$DATABASE; 
+IF role = 'PRIMARY' THEN 
+DBMS_SERVICE.START_SERVICE('failover'); 
+ELSE 
+DBMS_SERVICE.STOP_SERVICE('failover'); 
+END IF; 
+END; 
+
+PL/SQL procedure successfully completed.
+4. Ensure the change is made on the standby with command.
+
+SQL> Alter system archive log current ;
+5. Listener service command lsnrctl services on primary will then show
+
+Service "failover" has 1 instance(s). 
+  Instance "tom1", status READY, has 1 handler(s) for this service... 
+    Handler(s): 
+      "DEDICATED" established:0 refused:0 state:ready 
+         LOCAL SERVER
+
+This method ensures the service failover is only available on the primary node.The net service name DGtest works through the addresses in the address_list section, in order. If NodeA is the standby, then Node B will have the service failover and the connection will attempt to connect.
+
+More information on Dataguard setup can be found in following articles:
+Note 316740.1How to configure to let TAF work after Data Guard Switchover or Failover
+
+http://www.oracle.com/technetwork/database/features/availability/maa-096107.html
+http://www.oracle.com/technetwork/database/features/availability/maa-wp-10gr2-switchoverfailoverbest-128455.pdf
