@@ -17,11 +17,17 @@ echo
 
 echo "INFO - Setting environment and variables"
 echo
-export ORACLE_HOME=/oracle/db/product/12.1.0.2
-export ORACLE_BASE=/oracle/db
-export GRID_HOME=/oracle/grid/12.1.0.2
-export GRID_BASE=/oracle/grid
-export TNS_ADMIN=/usr/local/tns
+#export ORACLE_HOME=/oracle/db/product/12.1.0.2
+#export ORACLE_BASE=/oracle/db
+#export GRID_HOME=/oracle/grid/12.1.0.2
+#export GRID_BASE=/oracle/grid
+#export TNS_ADMIN=/usr/local/tns
+export GRID_BASE=/u01/app/gridbase
+export GRID_HOME=/u01/app/gridhome12c
+export ORACLE_BASE=/u01/app/oracle
+#export ORACLE_HOME=/u01/app/oracle/product/12cRAC1
+export ORACLE_HOME=/u01/app/oracle/product/12.1.0.2
+export TNS_ADMIN=$GRID_HOME/network/admin
 export TNS_FILE=$TNS_ADMIN/tnsnames.ora
 export PATH=/bin:/usr/bin:/etc:/usr/etc:/usr/local/bin:/usr/lib:/usr/sbin:/usr/ccs/bin:/usr/ucb:/usr/bin/X11:/sbin:$ORACLE_HOME/bin:.
 export oratab=/etc/oratab
