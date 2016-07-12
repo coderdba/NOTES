@@ -421,6 +421,108 @@ createdb: could not connect to database template1: could not connect to server: 
 - Need to start the server
 https://www.postgresql.org/docs/current/static/server-start.html
 
+# service postgresql-9.5 initdb
+The service command supports only basic LSB actions (start, stop, restart, try-restart, reload, force-reload, status). For other actions, please try to use systemctl.
+
+Fix: run /usr/pgsql-9.5/bin/postgresql95-setup initdb 
+     Taken from http://serverfault.com/questions/350045/postgresql-service-initdb-doesnt-work/484542
+     or https://wiki.postgresql.org/wiki/YUM_Installation
+(also see https://docs.fedoraproject.org/en-US/Fedora/16/html/Release_Notes/sect-Release_Notes-Changes_for_Sysadmin.html 
+for multiple postgres instances)
+# /usr/pgsql-9.5/bin/postgresql95-setup initdb
+Initializing database ... OK
+
+This will create the following files:
+# ls -l /var/lib/pgsql/9.5/data  (all new files)
+total 116
+drwx------. 5 postgres postgres  4096 Jul 12 02:09 base
+drwx------. 2 postgres postgres  4096 Jul 12 02:09 global
+drwx------. 2 postgres postgres  4096 Jul 12 02:09 pg_clog
+drwx------. 2 postgres postgres  4096 Jul 12 02:09 pg_commit_ts
+drwx------. 2 postgres postgres  4096 Jul 12 02:09 pg_dynshmem
+-rw-------. 1 postgres postgres  4224 Jul 12 02:09 pg_hba.conf
+-rw-------. 1 postgres postgres  1636 Jul 12 02:09 pg_ident.conf
+drwx------. 2 postgres postgres  4096 Jul 12 02:09 pg_log
+drwx------. 4 postgres postgres  4096 Jul 12 02:09 pg_logical
+drwx------. 4 postgres postgres  4096 Jul 12 02:09 pg_multixact
+drwx------. 2 postgres postgres  4096 Jul 12 02:09 pg_notify
+drwx------. 2 postgres postgres  4096 Jul 12 02:09 pg_replslot
+drwx------. 2 postgres postgres  4096 Jul 12 02:09 pg_serial
+drwx------. 2 postgres postgres  4096 Jul 12 02:09 pg_snapshots
+drwx------. 2 postgres postgres  4096 Jul 12 02:09 pg_stat
+drwx------. 2 postgres postgres  4096 Jul 12 02:09 pg_stat_tmp
+drwx------. 2 postgres postgres  4096 Jul 12 02:09 pg_subtrans
+drwx------. 2 postgres postgres  4096 Jul 12 02:09 pg_tblspc
+drwx------. 2 postgres postgres  4096 Jul 12 02:09 pg_twophase
+-rw-------. 1 postgres postgres     4 Jul 12 02:09 PG_VERSION
+drwx------. 3 postgres postgres  4096 Jul 12 02:09 pg_xlog
+-rw-------. 1 postgres postgres    88 Jul 12 02:09 postgresql.auto.conf
+-rw-------. 1 postgres postgres 21730 Jul 12 02:09 postgresql.conf
+
+# ls -l  (initdb.log is a new file)
+total 12
+drwx------.  2 postgres postgres 4096 May 14 17:45 backups
+drwx------. 20 postgres postgres 4096 Jul 12 02:09 data
+-rw-------.  1 postgres postgres 1324 Jul 12 02:09 initdb.log
+
+- Start the service (fails)
+# systemctl start postgresql
+Failed to issue method call: Unit postgresql.service failed to load: No such file or directory.
+
+/etc/services has postgres entry (probably default that comes with OS)
+postgres        5432/tcp        postgresql      # POSTGRES
+postgres        5432/udp        postgresql      # POSTGRES
+
+-- Hint from https://docs.fedoraproject.org/en-US/Fedora/16/html/Release_Notes/sect-Release_Notes-Changes_for_Sysadmin.html
+Look in /lib/systemd/system for postgresql.service (the site said /lib/systemd)
+# ls -l /lib/systemd/system/pos*
+-rw-r--r--. 1 root root  463 Jan 26  2014 postfix.service
+-rw-r--r--. 1 root root 1628 May 14 17:45 postgresql-9.5.service
+
+Copy postgresql-9.5.service to /etc/systemd/system
+
+--  Now try start the service (success)
+# systemctl start postgresql-9.5
+[root@oralx0001 system]# systemctl status postgresql-9.5
+postgresql-9.5.service - PostgreSQL 9.5 database server
+   Loaded: loaded (/etc/systemd/system/postgresql-9.5.service; disabled)
+   Active: active (running) since Tue 2016-07-12 02:34:00 CDT; 23s ago
+  Process: 52785 ExecStart=/usr/pgsql-9.5/bin/pg_ctl start -D ${PGDATA} -s -w -t 300 (code=exited, status=0/SUCCESS)
+  Process: 52779 ExecStartPre=/usr/pgsql-9.5/bin/postgresql95-check-db-dir ${PGDATA} (code=exited, status=0/SUCCESS)
+   CGroup: /system.slice/postgresql-9.5.service
+           ├─52788 /usr/pgsql-9.5/bin/postgres -D /var/lib/pgsql/9.5/data
+           ├─52789 postgres: logger process
+           ├─52791 postgres: checkpointer process
+           ├─52792 postgres: writer process
+           ├─52793 postgres: wal writer process
+           ├─52794 postgres: autovacuum launcher process
+           └─52795 postgres: stats collector process
+
+Jul 12 02:33:58 oralx0001 systemd[1]: Starting PostgreSQL 9.5 database server...
+Jul 12 02:34:00 oralx0001 pg_ctl[52785]: < 2016-07-12 02:34:00.009 CDT >LOG:  redirecting log output to logging collector process
+Jul 12 02:34:00 oralx0001 pg_ctl[52785]: < 2016-07-12 02:34:00.009 CDT >HINT:  Future log output will appear in directory "pg_log".
+Jul 12 02:34:00 oralx0001 systemd[1]: Started PostgreSQL 9.5 database server.
+Jul 12 02:34:14 oralx0001 systemd[1]: Started PostgreSQL 9.5 database server.
+
+# ps -ef|grep post
+root      2253     1  0 May07 ?        00:00:19 /usr/libexec/postfix/master -w
+postfix   2277  2253  0 May07 ?        00:00:04 qmgr -l -t fifo -u
+postfix  50232  2253  0 01:52 ?        00:00:00 pickup -l -t fifo -u
+postgres 52788     1  0 02:33 ?        00:00:00 /usr/pgsql-9.5/bin/postgres -D /var/lib/pgsql/9.5/data
+postgres 52789 52788  0 02:33 ?        00:00:00 postgres: logger process
+postgres 52791 52788  0 02:33 ?        00:00:00 postgres: checkpointer process
+postgres 52792 52788  0 02:33 ?        00:00:00 postgres: writer process
+postgres 52793 52788  0 02:33 ?        00:00:00 postgres: wal writer process
+postgres 52794 52788  0 02:33 ?        00:00:00 postgres: autovacuum launcher process
+postgres 52795 52788  0 02:33 ?        00:00:00 postgres: stats collector process
+root     52810 52101  0 02:35 pts/0    00:00:00 grep --color=auto post
+
+-- Now, enable the service to restart upon machine reboot
+# systemctl enable postgresql-9.5
+ln -s '/etc/systemd/system/postgresql-9.5.service' '/etc/systemd/system/multi-user.target.wants/postgresql-9.5.service'
+
+
+==== FOR LATER - cutomize data directory ===
 # mkdir /disk1/data/postgres
 # chown postgres:postgres /disk1/data/postgres
 # sudo su - postgres
@@ -429,6 +531,7 @@ Now work under id postgres
 set environment PGDATA or pass the data directory with -D to postgres executable
 
 $ postgres -D /disk1/data/postgres
+
 
 
 
