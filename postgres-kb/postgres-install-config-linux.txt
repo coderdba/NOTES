@@ -689,6 +689,13 @@ No relations found.
 mydb=#  drop table emp;
 ERROR:  table "emp" does not exist
 
+- Where is a table stored on disk
+mydb=# select pg_relation_filepath('emp');
+ pg_relation_filepath
+----------------------
+ base/16387/16393
+
+
 -------------------------------------
 CONSTRAINTS
 -------------------------------------
@@ -706,12 +713,54 @@ Exclusion constraint : The EXCLUDE constraint ensures that if any two rows are c
 CREATE SCHEMA
 -------------------------------
 http://www.tutorialspoint.com/postgresql/postgresql_schema.htm
+postgres=# \c mydb
+You are now connected to database "mydb" as user "postgres".
+mydb=# create schema myschema;
+CREATE SCHEMA
+mydb=# create table myschema.emp(empid int, empname varchar(20));
+CREATE TABLE
+mydb=# \d
+        List of relations
+ Schema | Name | Type  |  Owner
+--------+------+-------+----------
+ public | emp  | table | postgres
+(1 row)
+
+mydb=# \d myschema
+Did not find any relation named "myschema".
+mydb=# insert into emp (1,'1');
+ERROR:  syntax error at or near "1"
+LINE 1: insert into emp (1,'1');
+                         ^
+mydb=# insert into emp values (1,'1');
+INSERT 0 1
+mydb=# insert into myschema.emp values (10, '10');
+INSERT 0 1
+mydb=# select * from emp;
+ id | name
+----+------
+  1 | 1
+(1 row)
+
+mydb=# select * from myschema.emp;
+ empid | empname
+-------+---------
+    10 | 10
+(1 row)
+
 
 --------------------------
 WHERE ARE TABLES STORED
 --------------------------
 http://rachbelaid.com/introduction-to-postgres-physical-storage/
+Choose a DB and query pg_relation_filepath for a table in it
 
+mydb=#\c mydb
+
+mydb=# select pg_relation_filepath('emp');
+ pg_relation_filepath
+----------------------
+ base/16387/16393
 
 
 ==== FOR LATER - cutomize data directory ===
