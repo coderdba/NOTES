@@ -1235,6 +1235,9 @@ Add them to DATA01 disk group
 --------------------------------------------------------
 Once DB 'DB1' is created, here are some of its settings:
 --------------------------------------------------------
+NOTES:
+1. Service_Names has the default service DB1_SITE1 which is same as db_unique_name
+2. db_domain is null
 
 SQL> show parameter name
 
@@ -1251,6 +1254,120 @@ log_file_name_convert                string
 pdb_file_name_convert                string
 processor_group_name                 string
 service_names                        string      DB1_SITE1
+
+SQL> show parameter db_domain
+
+NAME                                 TYPE        VALUE
+------------------------------------ ----------- ------------------------------
+db_domain                            string
+
+-------------------------------------------------
+LISTENER DETAILS JUST UPON CREATION (without any customizations)
+-------------------------------------------------
+NOTES:
+1. init parameters - there are two entries local_listener(uses virtual ips (vip)) and remote_listener (scan)
+2. Listener status - lists scan listener and one or two local listeners (depends upon how many VIPs are up on the node)
+                         (in the listing below, only one of the two nodes was up and both VIPs were on that node)
+3. Listener services - There are three instances on the node1 (and two in node2 that does not have MGMTDB)
+                         -MGMTDB, +ASM1, DB11, and PDB instance P1 (for the one PDB created)
+                       There are the following services:
+                       -MGMTDB - service _mgmtdb, instance -MGMTDB
+                       +ASM1   - service +ASM, instance +ASM
+                       -DB11   - no service for the 'instance' itself
+                                   However, service DB1_SITE1 with the same name as db_unique_name is created
+                                   with instance DB11
+                                   So, you can connect using service DB1_SITE1 
+                                   (and cannot connect to non existent service DB11 via scan 
+                                        - you can connect to sid DB11 via local listener)
+                        P1 - the PDB has service p1, instance DB11
+
+SQL> show parameter listener
+
+NAME                                 TYPE        VALUE
+------------------------------------ ----------- ------------------------------
+listener_networks                    string
+local_listener                       string       (ADDRESS=(PROTOCOL=TCP)(HOST=
+                                                 192.168.0.121)(PORT=1521))
+remote_listener                      string       rac1-scan:1522
+
+$ lsnrctl status
+
+LSNRCTL for Linux: Version 12.1.0.2.0 - Production on 13-JUL-2016 10:38:24
+
+Copyright (c) 1991, 2014, Oracle.  All rights reserved.
+
+Connecting to (ADDRESS=(PROTOCOL=tcp)(HOST=)(PORT=1521))
+STATUS of the LISTENER
+------------------------
+Alias                     LISTENER
+Version                   TNSLSNR for Linux: Version 12.1.0.2.0 - Production
+Start Date                13-JUL-2016 10:15:51
+Uptime                    0 days 0 hr. 22 min. 33 sec
+Trace Level               off
+Security                  ON: Local OS Authentication
+SNMP                      OFF
+Listener Parameter File   /u01/app/gridhome12c/network/admin/listener.ora
+Listener Log File         /u01/app/gridbase/diag/tnslsnr/rac1n1/listener/alert/log.xml
+Listening Endpoints Summary...
+  (DESCRIPTION=(ADDRESS=(PROTOCOL=ipc)(KEY=LISTENER)))
+  (DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(HOST=192.168.0.111)(PORT=1521)))
+  (DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(HOST=192.168.0.121)(PORT=1521)))
+Services Summary...
+Service "+ASM" has 1 instance(s).
+  Instance "+ASM1", status READY, has 1 handler(s) for this service...
+Service "-MGMTDBXDB" has 1 instance(s).
+  Instance "-MGMTDB", status READY, has 1 handler(s) for this service...
+Service "DB1XDB" has 1 instance(s).
+  Instance "DB11", status READY, has 1 handler(s) for this service...
+Service "DB1_SITE1" has 1 instance(s).
+  Instance "DB11", status READY, has 1 handler(s) for this service...
+Service "_mgmtdb" has 1 instance(s).
+  Instance "-MGMTDB", status READY, has 1 handler(s) for this service...
+Service "p1" has 1 instance(s).
+  Instance "DB11", status READY, has 1 handler(s) for this service...
+The command completed successfully
+
+$ lsnrctl services
+
+LSNRCTL for Linux: Version 12.1.0.2.0 - Production on 13-JUL-2016 10:42:16
+
+Copyright (c) 1991, 2014, Oracle.  All rights reserved.
+
+Connecting to (ADDRESS=(PROTOCOL=tcp)(HOST=)(PORT=1521))
+Services Summary...
+Service "+ASM" has 1 instance(s).
+  Instance "+ASM1", status READY, has 1 handler(s) for this service...
+    Handler(s):
+      "DEDICATED" established:0 refused:0 state:ready
+         LOCAL SERVER
+Service "-MGMTDBXDB" has 1 instance(s).
+  Instance "-MGMTDB", status READY, has 1 handler(s) for this service...
+    Handler(s):
+      "D000" established:0 refused:0 current:0 max:1022 state:ready
+         DISPATCHER <machine: rac1n1, pid: 10821>
+         (ADDRESS=(PROTOCOL=tcp)(HOST=rac1n1)(PORT=37647))
+Service "DB1XDB" has 1 instance(s).
+  Instance "DB11", status READY, has 1 handler(s) for this service...
+    Handler(s):
+      "D000" established:0 refused:0 current:0 max:1022 state:ready
+         DISPATCHER <machine: rac1n1, pid: 11179>
+         (ADDRESS=(PROTOCOL=tcp)(HOST=rac1n1)(PORT=10367))
+Service "DB1_SITE1" has 1 instance(s).
+  Instance "DB11", status READY, has 1 handler(s) for this service...
+    Handler(s):
+      "DEDICATED" established:0 refused:0 state:ready
+         LOCAL SERVER
+Service "_mgmtdb" has 1 instance(s).
+  Instance "-MGMTDB", status READY, has 1 handler(s) for this service...
+    Handler(s):
+      "DEDICATED" established:0 refused:0 state:ready
+         LOCAL SERVER
+Service "p1" has 1 instance(s).
+  Instance "DB11", status READY, has 1 handler(s) for this service...
+    Handler(s):
+      "DEDICATED" established:0 refused:0 state:ready
+         LOCAL SERVER
+The command completed successfully
 
 ------------------------------------------------
 Apply bundle psu patch - TBD
