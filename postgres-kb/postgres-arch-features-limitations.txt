@@ -3,19 +3,6 @@
 =================================================
 
 ==================
-CAPABILITY LIMITS
-==================
-https://www.postgresql.org/about/
-Limit	Value
-Maximum Database Size	Unlimited
-Maximum Table Size	32 TB
-Maximum Row Size	1.6 TB
-Maximum Field Size	1 GB
-Maximum Rows per Table	Unlimited
-Maximum Columns per Table	250 - 1600 depending on column types
-Maximum Indexes per Table	Unlimited
-
-==================
 TABLES
 ==================
 
@@ -49,9 +36,30 @@ to create an extension called pg_freespacemap which has a function pg_freespace
 CREATE EXTENSION pg_freespacemap;
 SELECT * FROM pg_freespace('bar'::regclass);
 
+---------------------------
+INITIALIZATION FORK
+---------------------------
+https://www.postgresql.org/docs/9.5/static/storage-init.html
+Each unlogged table, and each index on an unlogged table, has an initialization fork. 
+The initialization fork is an empty table or index of the appropriate type. 
+When an unlogged table must be reset to empty due to a crash, the initialization fork is copied over the main fork, 
+and any other forks are erased (they will be recreated automatically as needed).
+
 ==========================
 LIMITATIONS OF POSTGRES
 ==========================
+------------------
+HIGH LEVEL LIMITS
+------------------
+https://www.postgresql.org/about/
+Limit	Value
+Maximum Database Size	Unlimited
+Maximum Table Size	32 TB
+Maximum Row Size	1.6 TB  (this with TOAST - without that, it is 1page=8kb)
+Maximum Field Size	1 GB  (this with TOAST)
+Maximum Rows per Table	Unlimited
+Maximum Columns per Table	250 - 1600 depending on column types
+Maximum Indexes per Table	Unlimited
 
 --------------------
 ROW SIZE
