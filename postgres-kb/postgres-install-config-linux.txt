@@ -326,6 +326,11 @@ postgresql.auto.conf	A file used for storing configuration parameters that are s
 postmaster.opts	A file recording the command-line options the server was last started with
 postmaster.pid	A lock file recording the current postmaster process ID (PID), cluster data directory path, postmaster start timestamp, port number, Unix-domain socket directory path (empty on Windows), first valid listen_address (IP address or *, or empty if not listening on TCP), and shared memory segment ID (this file is not present after server shutdown)
 
+data/base/<db oid> folder contains tables
+In that:
+The free space map is stored in a file named with the filenode number plus the suffix _fsm. Tables also have a visibility map, stored in a fork with the suffix _vm, to track which pages are known to have no dead tuples. The visibility map is described further in Section 63.4. Unlogged tables and indexes have a third fork, known as the initialization fork, which is stored in a fork with the suffix _init (see Section 63.5).
+
+
 # cd /usr/pgsql-9.5
 # ls -l
 drwxr-xr-x. 2 root root 4096 Jul 12 01:04 bin
@@ -735,7 +740,6 @@ Check constraint
 Exclusion constraint : The EXCLUDE constraint ensures that if any two rows are compared on the specified column(s) 
                        or expression(s) using the specified operator(s), not all of these comparisons will return TRUE.
 
-
 -------------------------------
 CREATE SCHEMA
 -------------------------------
@@ -791,6 +795,13 @@ mydb=# select pg_relation_filepath('myschema.emp');
 WHERE ARE TABLES STORED
 --------------------------
 http://rachbelaid.com/introduction-to-postgres-physical-storage/
+https://www.postgresql.org/docs/current/static/storage-file-layout.html
+https://www.postgresql.org/docs/9.5/static/storage-file-layout.html
+
+data/base/<db oid> folder contains tables
+In that:
+The free space map is stored in a file named with the filenode number plus the suffix _fsm. Tables also have a visibility map, stored in a fork with the suffix _vm, to track which pages are known to have no dead tuples. The visibility map is described further in Section 63.4. Unlogged tables and indexes have a third fork, known as the initialization fork, which is stored in a fork with the suffix _init (see Section 63.5).
+
 First, where is the DB stored:
 postgres=# select oid, datname from pg_database;
   oid  |  datname
