@@ -748,12 +748,37 @@ mydb=# select * from myschema.emp;
     10 | 10
 (1 row)
 
+- To find where they are stored:
+mydb=# select pg_relation_filepath('emp');
+ pg_relation_filepath
+----------------------
+ base/16387/16393
+(1 row)
+
+mydb=# select pg_relation_filepath('myschema.emp');
+ pg_relation_filepath
+----------------------
+ base/16387/16398
 
 --------------------------
 WHERE ARE TABLES STORED
 --------------------------
 http://rachbelaid.com/introduction-to-postgres-physical-storage/
-Choose a DB and query pg_relation_filepath for a table in it
+First, where is the DB stored:
+postgres=# select oid, datname from pg_database;
+  oid  |  datname
+-------+-----------
+     1 | template1
+ 13289 | template0
+ 13294 | postgres
+ 16387 | mydb
+
+Next, where is the table stored:
+http://rachbelaid.com/introduction-to-postgres-physical-storage/
+Choose a DB and query pg_relation_filepath for a table in it.
+For a schema-table search for schema.table.
+NOTE: the files  base/16387/16393, base/16387/16398 are individual files, not with extensions like _vm, _fsm etc
+NOTE: If the table grows beyonod 1GB, it gets split into 1GB segments
 
 mydb=#\c mydb
 
@@ -761,6 +786,12 @@ mydb=# select pg_relation_filepath('emp');
  pg_relation_filepath
 ----------------------
  base/16387/16393
+
+
+mydb=# select pg_relation_filepath('myschema.emp');
+ pg_relation_filepath
+----------------------
+ base/16387/16398
 
 
 ==== FOR LATER - cutomize data directory ===
