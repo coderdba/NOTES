@@ -72,29 +72,40 @@ fi
 echo "INFO - Listing DB configuration using srvctl config database -d $DBNAME_UNIQUE"
 srvctl config database -d $DBNAME_UNIQUE
 
-if [$ARCHIVELOGMODE="YES"]
+if [ "$ARCHIVELOGMODE" = "YES" ]
 then
 
 echo "INFO - Setting archivelog mode"
+echo "INFO - First stopping the database"
 
+srvctl stop  database -d $DBNAME_UNIQUE
+
+echo "INFO - Starting mount and setting archivelog"
 sqlplus / as sysdba <<EOF
 whenever sqlerror exit 1
+startup mount;
 alter database archivelog;
+alter database open;
+shutdown;
 EOF
 
-	if [$? -ne 0]
-	then
-	echo "ERR - Error while setting archivelog mode"
-	#exit 1  #Probably we dont need to exit, instead, fix later
-	else
-	echo "INFO - Setting archivelog mode successful"
-	echo
-	fi
+        if [ $? -ne 0 ]
+        then
+        echo "ERR - Error while setting archivelog mode"
+        #exit 1  #Probably we dont need to exit, instead, fix later
+        else
+        echo "INFO - Setting archivelog mode successful"
+        echo
+        fi
+
+echo "INFO - Restarting the database"
+srvctl start  database -d $DBNAME_UNIQUE
 
 else
 echo "INFO - Not setting archivelog mode"
 echo
 fi
+
 
 # NOTE - A verify-function is already created upon db creation.  
 #        NO NEED to run this
