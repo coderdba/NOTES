@@ -9,3 +9,47 @@ alter database open resetlogs;
 
 NOTE: This will only do it for one instance. You will need to get the other instances open:
 alter database open;
+
+-----------------
+Forcing resetlogs
+-----------------
+https://hemantoracledba.blogspot.in/2008/11/open-resetlogs-without-really-doing.html
+Simulate a Recovery and then do an OPEN RESETLOGS :
+
+ora10204>sqlplus
+
+SQL*Plus: Release 10.2.0.4.0 - Production on Sat Nov 8 23:25:43 2008
+
+Copyright (c) 1982, 2007, Oracle.  All Rights Reserved.
+
+Enter user-name: / as sysdba
+Connected to an idle instance.
+
+SQL> startup mount
+ORACLE instance started.
+
+Total System Global Area  838860800 bytes
+Fixed Size                  2087672 bytes
+Variable Size             213910792 bytes
+Database Buffers          616562688 bytes
+Redo Buffers                6299648 bytes
+Database mounted.
+SQL> alter database open resetlogs;
+alter database open resetlogs
+*
+ERROR at line 1:
+ORA-01139: RESETLOGS option only valid after an incomplete database recovery
+
+SQL> recover database;
+ORA-00283: recovery session canceled due to errors
+ORA-00264: no recovery required
+
+SQL> alter database open resetlogs;
+alter database open resetlogs
+*
+ERROR at line 1:
+ORA-01139: RESETLOGS option only valid after an incomplete database recovery
+
+SQL> recover database until cancel;
+Media recovery complete.
+SQL> alter database open resetlogs;
