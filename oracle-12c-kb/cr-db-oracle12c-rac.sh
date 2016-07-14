@@ -8,7 +8,7 @@
 export script=$0
 
 export DBNAME=DB1  #Can be parametrized
-export DBNAME_UNIQUE=DB1_SITE1 #Can be derived from DBNAME if standardized
+export DBNAME_UNIQUE=${DBNAME}_SITE1 #Can be derived from DBNAME if standardized
 export PDBNAME=P1
 export ARCHIVELOGMODE=YES
 
