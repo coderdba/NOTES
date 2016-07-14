@@ -1,0 +1,399 @@
+Source  - D14DB95
+Dest    - D14DB1
+GG Home - /app/oracle/product/12.1.2.1.OGG
+
+==================================
+CREATE GOLDENGATE PROCESS DB USER
+==================================
+GG user source - OGGUSER
+GG user dest   - OGGUSER
+NOTE: Use same script below for this
+cr_user_ogguser.sql
+
+create user ogguser identified by ogguser
+default tablespace users temporary tablespace temp;
+
+grant create session, alter session to ogguser;
+grant resource to ogguser;
+alter user ogguser quota unlimited on users;
+
+grant select any dictionary to ogguser;
+grant dba to ogguser;
+
+grant flashback any table to ogguser;
+--grant flashbackon owner.table to ogguser;
+
+grant select any table to ogguser;
+--grant select owner.table to ogguser;
+
+grant create table to ogguser;
+grant execute on dbms_flashback to ogguser;
+
+EXEC DBMS_GOLDENGATE_AUTH.GRANT_ADMIN_PRIVILEGE('OGGUSER');
+
+=====================================
+CREATE SOURCE AND DESTINATION SCHEMAS
+=====================================
+Schema source - ggsrcmgr
+Schema dest   - ggdestmgr
+
+-------------
+SOURCE SCHEMA
+-------------
+
+--src_cr_user_ggsrcmgr.sql
+
+set echo on
+
+create user ggsrcmgr identified by ggsrcmgr default tablespace users;
+grant connect, resource to ggsrcmgr;
+
+create table ggsrcmgr.emp (id number primary key, name varchar2(10));
+
+--Add some initial data
+--NOTE-this may not replicate if extract starts after these inserts
+insert into ggsrcmgr.emp values (1, '1');
+insert into ggsrcmgr.emp values (2, '2');
+insert into ggsrcmgr.emp values (3, '3');
+commit;
+
+------------------
+DESTINATION SCHEMA
+------------------
+
+--dest_cr_user_ggdestmgr.sql
+
+set echo on
+
+create user ggdestmgr identified by ggdestmgr default tablespace users;
+grant connect, resource to ggdestmgr;
+
+create table ggdestmgr.emp (id number primary key, name varchar2(10));
+
+=====================================
+CREATE TNS ENTRIES
+=====================================
+OGGMIGSRC =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = c14-scan)(PORT = 1522))
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = D14DB95_UNIQUE_NAME)
+    )
+  )
+
+OGGMIGDEST =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = c14-scan)(PORT = 1522))
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = D14DB1_UNIQUE_NAME)
+    )
+  )
+
+=====================================
+CREATE USERID-ALIASES IN GOLDENGATE
+(credential store)
+=====================================
+NOTE: Userid Alias 'alias' is case-sensitive!!
+Userid Alias source - oggmigsrc
+Userid Alias dest   - oggmigdest
+
+-------------------
+Userid Alias source
+-------------------
+
+ggsci> create wallet
+    Created wallet at location 'dirwlt'.
+    Opened wallet at location 'dirwlt'.
+
+ggsci> add credentialstore
+    Credential store created in ./dircrd/.
+
+ggsci> alter credentialstore add aser ogguser@OGGMIGSRC password ogguser alias oggmigsrc
+(SYNTAX-ggsci> alter credentialstore add user ogguser@TNS_ALIAS_SOURCE password <password> alias <aias>)
+    Credential store in ./dircrd/ altered.
+
+ggsci> info credentialstore
+    Will list the alias and userid with tns alias
+
+-- VERIFY
+ggsci> dblogin useridalias oggmigsrc
+
+        NOTE - ERR - Got error ORA-12641 during DBLogin
+        https://community.oracle.com/message/10048402
+        To fix - edited sqlnet.ora in $TNS_ADMIN - comment out ALL and add NONE for sqlnet.authentication_services
+        #SQLNET.AUTHENTICATION_SERVICES=(ALL)
+        SQLNET.AUTHENTICATION_SERVICES=(NONE)
+
+-------------------
+Userid Alias dest
+-------------------
+
+ggsci> create wallet
+    Created wallet at location 'dirwlt'.
+    Opened wallet at location 'dirwlt'.
+
+ggsci> add credentialstore
+    Credential store created in ./dircrd/.
+
+ggsci> alter credentialstore add aser ogguser@OGGMIGDEST password ogguser alias oggmigdest
+(SYNTAX-ggsci> alter credentialstore add user ogguser@TNS_ALIAS_SOURCE password <password> alias <aias>)
+    Credential store in ./dircrd/ altered.
+
+ggsci> info credentialstore
+    Will list the alias and userid with tns alias
+
+-- VERIFY
+ggsci> dblogin useridalias oggmigdest
+
+
+======================================================
+CREATE PARAMETER FILES - MGR, EXTRACT, PUMP, REPLICAT
+======================================================
+Extract  - EMIG1
+Pump     - PMIG1
+Replicat - RMIG1
+
+Trail file - Extract  - /app/oracle/product/12.1.2.1.OGG/dirdat/EMIG1/ex
+Trail file - Remote   - /app/oracle/product/12.1.2.1.OGG/dirdat/PMIG1/px
+
+Ports to open - 7809, 7810-7825 (both ways between source and destination servers)
+
+----------------
+SOURCE - MGR.PRM
+----------------
+PORT 7809
+DYNAMICPORTLIST 7810-7825
+--Autostart Replicat R*
+--AUTORESTART Replicat *, WaitMinutes 1, Retries 10
+--PURGEOLDEXTRACTS /app/oracle/product/12.1.2.1.OGG/dirdat/RIODS01/rs*, NOUSECHECKPOINTS, MINKEEPFILES 600
+--PURGEOLDEXTRACTS /app/oracle/product/12.1.2.1.OGG/dirdat/RIODS02/rs*, NOUSECHECKPOINTS, MINKEEPFILES 200
+--
+-- This one to test migration and resetlogs at source
+PURGEOLDEXTRACTS /app/oracle/product/12.1.2.1.OGG/dirdat/EMIG1/ex*, NOUSECHECKPOINTS, MINKEEPFILES 50
+
+----------------------------
+SOURCE - EXTRACT - EMIG1.PRM
+----------------------------
+extract EMIG1
+UserIdAlias oggmigsrc
+exttrail /app/oracle/product/12.1.2.1.OGG/dirdat/EMIG1/ex
+LOGALLSUPCOLS
+UPDATERECORDFORMAT COMPACT
+TABLE  GGSRCMGR.EMP;
+--
+-- Additional logging begin
+--REPORTCOUNT EVERY 5 MINUTES, RATE
+-- Additional logging end
+--
+-- Tuning begin
+--TRANLOGOPTIONS INTEGRATEDPARAMS (MAX_SGA_SIZE 5120)
+--TRANLOGOPTIONS INTEGRATEDPARAMS (MAX_SGA_SIZE 3584)
+--TRANLOGOPTIONS INTEGRATEDPARAMS (MAX_SGA_SIZE 2048, parallelism 8)
+--TRANLOGOPTIONS INTEGRATEDPARAMS (MAX_SGA_SIZE 3584, parallelism 8)
+--
+--TRANLOGOPTIONS INTEGRATEDPARAMS (MAX_SGA_SIZE 256, parallelism 2)
+--TRANLOGOPTIONS _READAHEADCOUNT 64
+-- Tuning end
+--TRANLOGOPTIONS EXCLUDEUSER OGGUSER
+
+-------------------------------
+SOURCE - PUMP - PMIG1.PRM
+-------------------------------
+NOTES:
+1. The trail file folder is 'remote' - on the destination machine
+2. The 'rmthost' is the hostname of the destination host
+
+Extract PMIG1
+UserIdAlias oggmigsrc
+rmthost d-6fp9j02, mgrport 7809
+rmttrail /app/oracle/product/12.1.2.1.OGG/dirdat/RMIG1/rx
+table ggsrcmgr.*;
+
+
+-------------------------------
+DEST - REPLICAT - RMIG1.PRM
+-------------------------------
+REPLICAT RMIG1
+UserIdAlias oggmigdest
+DBOPTIONS INTEGRATEDPARAMS(parallelism 2)
+--BATCHSQL BATCHTRANSOPS 1000
+ASSUMETARGETDEFS
+DISCARDFILE /app/oracle/product/12.1.2.1.OGG/dirrpt/rmig1.dsc, APPEND
+--HANDLECOLLISIONS
+--IGNOREDELETES
+MAP GGSRCMGR.EMP, TARGET GGDESTMGR.EMP;
+
+
+=====================================
+ADD CHECKPOINT TABLE
+=====================================
+
+----------------------------
+SOURCE CHECKPOINT TABLE
+----------------------------
+ggsci> dblogin useridalias oggmigsrc
+Successfully logged into database.
+
+ggsci> ADD CHECKPOINTTABLE  OGGUSER.GG_checkpoint1
+Successfully created checkpoint table OGGUSER.GG_checkpoint1.
+
+----------------------------
+DEST CHECKPOINT TABLE
+----------------------------
+ggsci> dblogin useridalias oggmigdest
+Successfully logged into database.
+
+ggsci> ADD CHECKPOINTTABLE  OGGUSER.GG_checkpoint1
+Successfully created checkpoint table OGGUSER.GG_checkpoint1.
+
+
+=====================================
+START MGR PROCESS
+=====================================
+
+------------------------
+SOURCE
+------------------------
+ggsci> start mgr
+
+------------------------
+DEST
+------------------------
+ggsci> start mgr
+
+=====================================
+CREATE EXTRACT, PUMP, REPLICAT
+=====================================
+
+--------------------------------
+SOURCE - EXTRACT
+--------------------------------
+NOTE - The 'exttrail' for extract is the local folder used by extract and as input for pump (it is 'exttrailsource' source to the pump)
+
+ggsci> dblogin useridalias oggmigsrc
+Successfully logged into database.
+
+ggsci> register extract emig1 database
+ERROR: This EXTRACT EMIG1 is already registered with the database.
+
+ggsci> add extract emig1, integrated tranlog, begin now
+EXTRACT added.
+
+ggsci> add exttrail /app/oracle/product/12.1.2.1.OGG/dirdat/EMIG1/ex extract emig1
+EXTTRAIL added.
+
+--------------------------------
+SOURCE - PUMP
+--------------------------------
+NOTE - The 'exttrailsource' is the extract folder (the source to the pump)
+NOTE - The 'rmttrail' is the folder folder on the remote machine (the source to the replicat)
+
+ggsci> add extract pmig1, exttrailsource /app/oracle/product/12.1.2.1.OGG/dirdat/EMIG1/ex
+EXTRACT added.
+
+ggsci> add rmttrail /app/oracle/product/12.1.2.1.OGG/dirdat/RMIG1/rx, extract pmig1
+RMTTRAIL added.
+
+--------------------------------
+DEST - REPLICAT
+--------------------------------
+NOTE - The 'exttrail' for replicat is the remote folder used for pump (now it is 'extract' source to the replicat)
+
+ggsci>  dblogin useridalias oggmigdest
+Successfully logged into database.
+
+ggsci> add replicat rmig1 integrated exttrail /app/oracle/product/12.1.2.1.OGG/dirdat/RMIG1/rx
+
+
+=====================================
+START EXTRACT, PUMP, REPLICAT
+=====================================
+
+-----------------------
+SOURCE - START EXTRACT
+-----------------------
+ggsci> start emig1
+
+-----------------------
+SOURCE - START PUMP
+-----------------------
+ggsci> start pmig1
+
+-----------------------
+SOURCE - VERIFY
+-----------------------
+ggsci> info all
+
+Program     Status      Group       Lag at Chkpt  Time Since Chkpt
+
+MANAGER     RUNNING
+EXTRACT     RUNNING     EMIG1       00:00:09      00:00:06
+EXTRACT     RUNNING     PMIG1       00:00:00      00:00:05
+
+-----------------------
+DEST - START REPLICAT
+-----------------------
+ggsci> start rmig1
+
+-----------------------
+DEST - VERIFY
+-----------------------
+ggsci> info all
+
+Program     Status      Group       Lag at Chkpt  Time Since Chkpt
+
+MANAGER     RUNNING
+REPLICAT    RUNNING     RMIG1       00:00:00      00:00:03
+
+
+=====================================
+ADD/MODIFY SOURCE DATA AND VERIFY
+=====================================
+
+----------------------------------
+change.sh - to change source data (and check)
+----------------------------------
+
+#!/bin/ksh
+
+echo "INFO - Changing source data"
+sqlplus -s ggsrcmgr/ggsrcmgr@OGGMIGSRC <<EOF
+--insert into ggsrcmgr.emp values (4,'4');
+--insert into ggsrcmgr.emp values (5,'5');
+insert into ggsrcmgr.emp values (6,'6');
+insert into ggsrcmgr.emp values (7,'7');
+EOF
+
+echo "INFO - sleeping for 10 sec"
+
+sleep 10
+
+echo "INFO - Checking source"
+sqlplus -s ggsrcmgr/ggsrcmgr@OGGMIGSRC <<EOF
+select * from emp order by id;
+EOF
+
+
+echo "INFO - Checking dest"
+sqlplus -s ggdestmgr/ggdestmgr@OGGMIGDEST <<EOF
+select * from emp order by id;
+EOF
+
+-----------------------------------------
+check.sh - to check source and dest data
+-----------------------------------------
+
+#!/bin/ksh
+
+echo "INFO - Checking source"
+sqlplus -s ggsrcmgr/ggsrcmgr@OGGMIGSRC <<EOF
+select * from emp order by id;
+EOF
+
+
+echo "INFO - Checking dest"
+sqlplus -s ggdestmgr/ggdestmgr@OGGMIGDEST <<EOF
+select * from emp order by id;
+EOF
