@@ -30,6 +30,7 @@ export ORACLE_HOME=/u01/app/oracle/product/12.1.0.2
 export TNS_ADMIN=$GRID_HOME/network/admin
 export TNS_FILE=$TNS_ADMIN/tnsnames.ora
 export PATH=/bin:/usr/bin:/etc:/usr/etc:/usr/local/bin:/usr/lib:/usr/sbin:/usr/ccs/bin:/usr/ucb:/usr/bin/X11:/sbin:$ORACLE_HOME/bin:.
+export LD_LIBRARY_PATH=$ORACLE_HOME/lib
 export oratab=/etc/oratab
 export listenerora=$TNS_ADMIN/listener.ora
 export tnsnamesora=$TNS_ADMIN/tnsnames.ora
