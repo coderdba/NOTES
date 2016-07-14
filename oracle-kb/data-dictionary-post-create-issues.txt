@@ -1,0 +1,131 @@
+===============================================
+    ORACLE DATA DICTIONARY POST-CREATE ISSUES
+===============================================
+
+DBCA command/UI creates data dictionary by itself.
+If using CREATE DATABASE command instead (or if dbca somehow fails to create everything or compiles some of them invalid):
+  In SQL*Plus run as sysdba user (like sys)
+  @?/rdbms/admin/catalog.sql
+  @?/rdbms/admin/catproc.sql
+  
+  In SQL*Plus, connect to your Oracle Database instance as SYSTEM user:
+  @?/sqlplus/admin/pupbld.sql
+  
+  
+==========================
+INVALID OBJECTS - 1
+==========================
+  SQL> select owner, object_type, object_name, status from dba_objects where status !='VALID';
+
+OWNER                          OBJECT_TYPE
+------------------------------ -------------------
+OBJECT_NAME
+--------------------------------------------------------------------------------------------------------------------------------
+STATUS
+-------
+SYS                            PACKAGE BODY
+DBMS_LOGMNR_LOGREP_DICT
+INVALID
+
+SYS                            PACKAGE BODY
+DBMS_LOGMNR_SESSION
+INVALID
+
+SYS                            PACKAGE BODY
+DBMS_XSTREAM_GG_ADM
+INVALID
+
+Export error due to SYS.DBMS_LOGMNR_INTERNAL - DBA-Village
+www.dba-village.com/village/dvp_forum.OpenThread?ThreadIdA=32401
+Mar 19, 2008 - 5 posts - ‎2 authors
+SYS DBMS_LOGMNR_SESSION INVALID ... I am able to resolve this issue after executing dbmslmd.sql (creation of logminer data dictionary ...
+
+=================================
+INVALID LOGMNR OBJECTS
+=================================
+Datapump Reports Error ORA-06508: PL/SQL: could not find program unit being called: "SYS.DBMS_LOGMNR_LOGREP_DICT" During a Full Export (Doc ID 2094977.1)	To BottomTo Bottom	
+
+In this Document
+Symptoms
+Cause
+Solution
+
+APPLIES TO:
+
+Oracle Database - Enterprise Edition - Version 11.2.0.3 to 12.1.0.2 [Release 11.2 to 12.1]
+Information in this document applies to any platform.
+SYMPTOMS
+
+The following errors are reported running a Datapump full export.
+
+Processing object type DATABASE_EXPORT/SCHEMA/TYPE/GRANT/OWNER_GRANT/OBJECT_GRANT
+ORA-39127: unexpected error from call to export_string :=SYS.DBMS_LOGMNR_LOGREP_DICT.SYSTEM_INFO_EXP(0,dynconnect,'11.02.00.00.00',newblock)
+ORA-04063: package body "SYS.DBMS_LOGMNR_LOGREP_DICT" has errors
+ORA-06508: PL/SQL: could not find program unit being called: "SYS.DBMS_LOGMNR_LOGREP_DICT"
+ORA-06512: at line 1
+ORA-06512: at "SYS.DBMS_METADATA", line 9281
+Processing object type DATABASE_EXPORT/SYSTEM_PROCOBJACT/PRE_SYSTEM_ACTIONS/PROCACT_SYSTEM
+Processing object type DATABASE_EXPORT/SYSTEM_PROCOBJACT/PROCOBJ
+ORA-39127: unexpected error from call to export_string :=SYS.DBMS_LOGMNR_LOGREP_DICT.SYSTEM_INFO_EXP(1,dynconnect,'11.02.00.00.00',newblock)
+ORA-04063: package body "SYS.DBMS_LOGMNR_LOGREP_DICT" has errors
+ORA-06508: PL/SQL: could not find program unit being called: "SYS.DBMS_LOGMNR_LOGREP_DICT"
+ORA-06512: at line 1
+ORA-06512: at "SYS.DBMS_METADATA", line 9281
+ 
+
+CAUSE
+
+In this case the issue was raised because there are some Logminer dictionary objects invalid, which was confirmed by the output of the following query:
+
+select owner,object_name,object_type,status
+from dba_objects
+where status = 'INVALID';
+OWNER  OBJECT_NAME              OBJECT_TYPE   STATUS
+------ ------------------------ ------------- --------
+SYS    DBMS_LOGMNR_LOGREP_DICT  PACKAGE BODY  INVALID
+SYS    DBMS_LOGMNR_SESSION      PACKAGE BODY  INVALID
+SYS    DBMS_SQLTCB_INTERNAL     PACKAGE BODY  INVALID
+ 
+The reason for those objects to be invalid is because there are some missing sequences:
+
+LOGMNR_UIDS$  (Associated with DBMS_LOGMNR_LOGREP_DICT)
+LOGMNR_SEQ$  (Associated with DBMS_LOGMNR_SESSION)
+The missing sequence issue was confirmed executing the following commands:
+
+SQL> alter package sys.DBMS_LOGMNR_LOGREP_DICT compile body;
+Warning: Package Body altered with compilation errors.
+SQL> show errors
+Errors for PACKAGE BODY SYS.DBMS_LOGMNR_LOGREP_DICT:
+LINE/COL ERROR
+-------- ---------------------------------------------------------
+83/11    PL/SQL: SQL Statement ignored
+83/25    PL/SQL: ORA-02289: sequence does not exist
+
+Those sequence are created by file dlmnr.bsq but for some reason those are missing at database level.
+
+
+SOLUTION
+
+To solve the issue, execute next steps:
+
+Move to the directory where the script dlmnr.bsq is located:
+cd $ORACLE_HOME/rdbms/admin
+  
+
+Execute the script connected as sysdba:
+SQL> connect /as sysdba
+SQL> @dlmnr.bsq;
+  
+
+Check if the sequences are created:
+SQL> select object_name,object_type,status
+     from dba_objects
+     where object_name in ('LOGMNR_UIDS$','LOGMNR_SEQ$');
+  
+
+Run ultrp.sql connected as sysdba to recompile the invalid objects:
+SQL> connect /as sysdba
+SQL> @ultrp;
+  
+
+Execute the export process again.
