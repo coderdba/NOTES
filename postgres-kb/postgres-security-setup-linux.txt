@@ -237,28 +237,27 @@ STANDARD DESIGN FOR AN APPLICATION
 USER DESIGN
 ------------------------------
 For a standard application setup:
+appdba   - can create databases, roles, create tablespaces
 appdev   - can use databases and create tables, create stored procedures on those db's/tables
 appuser  - can use databases and do DML on tables, execute stored procedures
-appdba   - can create databases, roles, create tablespaces
 postgres - internal Superuser will stay as is
 
-postgres=# create user appuser;
+postgres=# create user appdba;
 CREATE ROLE
 postgres=# create user appdev;
 CREATE ROLE
-postgres=# create user appdba;
+postgres=# create user appuser;
 CREATE ROLE
 
-postgres=# \password appuser
+postgres=# \password appdba
 Enter new password:
 Enter it again:
 postgres=# \password appdev
 Enter new password:
 Enter it again:
-postgres=# \password appdba
+postgres=# \password appuser
 Enter new password:
 Enter it again:
-postgres=#
 
 postgres=# \du
                                    List of roles
@@ -270,6 +269,24 @@ postgres=# \du
  dbarole   | Superuser, Cannot login                                    | {}
  dbauser   | Superuser                                                  | {}
  postgres  | Superuser, Create role, Create DB, Replication, Bypass RLS | {}
+ 
+- Grants to APPDBA
+postgres=# alter user appdba with createdb;
+ALTER ROLE
+postgres=# alter user appdba with createrole;
+ALTER ROLE
+
+ postgres=# \du
+                                   List of roles
+ Role name |                         Attributes                         | Member of
+-----------+------------------------------------------------------------+-----------
+ appdba    | Create role, Create DB                                     | {}
+ appdev    |                                                            | {}
+ appuser   |                                                            | {}
+ dbarole   | Superuser, Cannot login                                    | {}
+ dbauser   | Superuser                                                  | {}
+ postgres  | Superuser, Create role, Create DB, Replication, Bypass RLS | {}
+
 
 ------------------------------
 HBA
