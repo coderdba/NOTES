@@ -26,12 +26,6 @@ HOST BASED ACCESS CONFIGURATION
 https://www.postgresql.org/docs/9.5/static/auth-pg-hba-conf.html
 http://dba.stackexchange.com/questions/83984/connect-to-postgresql-server-fatal-no-pg-hba-conf-entry-for-host
 
-===============================
-HOST BASED ACCESS CONFIGURATION
-===============================
-https://www.postgresql.org/docs/9.5/static/auth-pg-hba-conf.html
-http://dba.stackexchange.com/questions/83984/connect-to-postgresql-server-fatal-no-pg-hba-conf-entry-for-host
-
 - Edit pg_hba.conf in 'data' directory
 
 - Format:
@@ -55,7 +49,18 @@ host    all             all             ::1/128                 ident
 #host    replication     postgres        127.0.0.1/32            ident
 #host    replication     postgres        ::1/128                 ident
 
-- Example:
+- Example:  To enable logons using passwords which are md5 encrypted 
+            (if you use 'password' instead of 'md5', passwords will be in plain text)
+            
+# "local" is for Unix domain socket connections only
+local   all             all                                     peer
+# IPv4 local connections:
+#host    all             all             127.0.0.1/32            ident --> Comment this out (original line)
+host    all             all             127.0.0.1/32            md5 --> add this line
+host    all             all             pgserver0001            md5 --> add this line (is this necessary as its IP below covers it)
+host    all             all             10.63.166.33/0          md5 --> add this line 
+                                                                        (it should be IP-not host mostly, 24/32/0 is also needed)
+- Restart postgres service
 
 =======================
 LIST CURRENT USERS
