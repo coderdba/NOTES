@@ -203,3 +203,38 @@ postgres=# \du
  postgres  | Superuser, Create role, Create DB, Replication, Bypass RLS | {}
  superuser | Cannot login                                               | {}
 
+- Create DB privilege
+postgres=# alter user appuser with createdb;
+ALTER ROLE
+postgres=# \du
+                                   List of roles
+ Role name |                         Attributes                         | Member of
+-----------+------------------------------------------------------------+-----------
+ appuser   | Create DB                                                  | {}
+ dbarole   | Superuser, Cannot login                                    | {}
+ dbauser   | Superuser                                                  | {}
+ postgres  | Superuser, Create role, Create DB, Replication, Bypass RLS | {}
+ superuser | Cannot login                                               | {}
+
+postgres=# alter user appuser with nocreatedb;
+ALTER ROLE
+postgres=# \du
+                                   List of roles
+ Role name |                         Attributes                         | Member of
+-----------+------------------------------------------------------------+-----------
+ appuser   |                                                            | {}
+ dbarole   | Superuser, Cannot login                                    | {}
+ dbauser   | Superuser                                                  | {}
+ postgres  | Superuser, Create role, Create DB, Replication, Bypass RLS | {}
+ superuser | Cannot login                                               | {}
+
+postgres=#
+
+------------------------------
+NOW, LET US REFINE OUR DESIGN
+------------------------------
+For a standard application setup:
+appdev   - can use databases and create tables, create stored procedures on those db's/tables
+appuser  - can use databases and do DML on tables, execute stored procedures
+appdba   - can create databases, roles, create tablespaces
+postgres - internal Superuser will stay as is
