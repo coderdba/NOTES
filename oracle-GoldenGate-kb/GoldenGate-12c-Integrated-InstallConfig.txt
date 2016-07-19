@@ -239,6 +239,11 @@ MANAGER     RUNNING
 ==============================================
 CONFIGURE EXTRACT AND REPLICATION
 ==============================================
+
+-- NOTE: THIS SHOWS HOW TO START THE SYNCH WITH EMPTY SOURCE TO BEGIN WITH
+--       
+--       TO CONFIGURE SYNCH WITH INITIAL DATA LOAD, SEE SECTION 'INITIAL DATA LOAD'
+
 http://www.oracle.com/webfolder/technetwork/tutorials/obe/fmw/goldengate/12c/OGG12c_Integrated_Replicat/index.html
 
 OVERVIEW
@@ -842,6 +847,41 @@ alter table table1 add (deptid number(5));
 
 >> Dest: Verify
 desc table1 --> this should show the newly added column
+
+===========================
+INITIAL DATA LOAD
+===========================
+
+---------------------
+Export/Import Method
+---------------------
+Export the source tables with the current SCN of the source DB
+Import into the empty destination DB
+Start the extract with that SCN mentioned
+
+-Get the SCN
+https://oracle-base.com/articles/10g/oracle-data-pump-10g#Flashback
+Use one of the following methods:
+SELECT current_scn FROM v$database;
+SELECT DBMS_FLASHBACK.get_system_change_number FROM dual;
+SELECT TIMESTAMP_TO_SCN(SYSTIMESTAMP) FROM dual;
+
+-Export
+expdp ..... flashback_scn=5474280
+
+-Import
+impdp .... (no need to give flashback_scn)
+
+-Configure extract, pump, replicat
+
+-- Source (have scn steps)
+ADD EXTRACT E1 INTEGRATED TRANLOG, SCN 8937889 (the scn used to take the export) --> SCN step
+ADD EXTTRAIL <dirdat path>/E1/es  EXTRACT E1
+ADD EXTRACT P1 EXTTRAILSOURCE <dirdat path>/E1/es, SCN 8937889 (same scn as above) --> SCN step
+ADD RMTTRAIL <remote dirdat path>/R1/rs EXTRACT P1 (remote trail to which pump P1 pushes)
+
+-- Destination (no scn steps)
+ADD REPLICAT R1 INTEGRATED EXTTRAIL <remote dirdat path>/R1/rs
 
 =======================
 FILTERING DATA
