@@ -29,8 +29,7 @@ select target_name,
 rollup_timestamp, average, minimum, maximum
 from mgmt$metric_daily
 --where target_name = <target_name from="" query="" 1="">
-where target_name in (
-'DB_UNIQUE_NAME1', 'DB_UNIQUE_NAME2'...
+where target_name in ('DB_UNIQUE_NAME1', 'DB_UNIQUE_NAME2')
 )
 and column_label = 'Used Space(GB)'
 and metric_name = 'DATABASE_SIZE'
@@ -42,19 +41,30 @@ prompt
 prompt  90 day old data
 prompt
 
-select target_name,
---metric_name,
-min(rollup_timestamp), average, minimum, maximum
-from mgmt$metric_daily
---where target_name = <target_name from="" query="" 1="">
-where target_name in (
-'DB_UNIQUE_NAME1', 'DB_UNIQUE_NAME2'...
-)
-and column_label = 'Used Space(GB)'
-and metric_name = 'DATABASE_SIZE'
-and rollup_timestamp > sysdate-90
-group by target_name
+select
+a.target_name,
+a.metric_name,
+a.rollup_timestamp,
+a.average,
+a.minimum,
+a.maximum
+from
+mgmt$metric_daily a,
+(select target_name, min(rollup_timestamp) rollup_timestamp
+   from mgmt$metric_daily
+  where rollup_timestamp >= sysdate-90
+    and column_label = 'Used Space(GB)'
+    and metric_name = 'DATABASE_SIZE'
+    and target_name in ('DB_UNIQUE_NAME1', 'DB_UNIQUE_NAME2')
+  group by target_name
+) b
+where
+a.target_name = b.target_name
+and a.rollup_timestamp = b.rollup_timestamp
+and a.column_label = 'Used Space(GB)'
+and a.metric_name = 'DATABASE_SIZE'
 order by 1, 2;
+
 
 spool off
 
