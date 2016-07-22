@@ -18,8 +18,6 @@ srvctl add service -s gowrish1 -d DB1_UNIQUE_NAME -r DB11,DB12 -a DB13,DB14
 srvctl start service -s gowrish1 -d DB1_UNIQUE_NAME -r DB11,DB12 -a DB13,DB14
 srvctl status service -s gowrish1 -d DB1_UNIQUE_NAME
 
-
-
 =============
 LIST SERVICES
 =============
@@ -36,11 +34,59 @@ LIST SERVICES USING SRVCTL
 
 LIST SERVICES USING CRSCTL
 << >>
+
 LIST SERVICES USING CRS_STAT
 << >>
 
 LIST SERVICES USING LSRCTL STATUS
-lsnrctl status LISTENER
+lsnrctl status listener
+lsnrctl services listener
+
+SERVICE STATUS
+srvctl status service -d db_unique_name
+
+TNS ENTRY USING SERVICE AND CONNECT TIME FAILOVER
+NOTE: A default service gets created with DB_UNIQUE_NAME when a DB is created.  
+      It is also automatically registered with Listener.
+      We can use it for connect-time failover between primary and standby DB's or between two disparate DBs.
+      That can be done using DESCRIPTION_LIST.
+      HOWEVER, if the same default service is used for standby DB creation 
+      (by making static entries in listener.ora with the same name as that service name)
+      then the same service cannot be used for connect time failover, TAF etc.
+      
+MYDB =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = prim-scan)(PORT = 1522))
+    (ADDRESS = (PROTOCOL = TCP)(HOST = stby-scan)(PORT = 1522))
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = MY_SERVICE_NAME)
+    )
+)
+
+TNS ENTRY WITH DESCRIPTION LIST AND CONNECT TIME FAILOVER
+NOTE: Here, the cluster1 and cluster2 are NOT primary-standby pair.
+      This example shows two databases or two services on same or different clusters and connect to whichever is up.
+MYDB =
+(DESCRIPTION_LIST=
+  (FAILOVER=true)
+  (LOAD_BALANCE=false)
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = cluster1-scan)(PORT = 1522))
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = SERVICE1)
+    )
+  )
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = cluster2-scan)(PORT = 1522))
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = SERVICE2)
+    )
+  )
+)
+
 
 
 
