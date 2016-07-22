@@ -350,6 +350,57 @@ GRANT
 appdb=> grant trigger on emp to appdev;
 GRANT
 
+-- Create schemas
+Connect to database 'appdb' as 'appdba' user
+
+appdb=> create schema appdbschema1;
+CREATE SCHEMA
+appdb=> create schema appdbschema2;
+CREATE SCHEMA
+
+appdb=> \dn
+     List of schemas
+     Name     |  Owner
+--------------+----------
+ appdbschema1 | appdba
+ appdbschema2 | appdba
+ public       | postgres
+(3 rows)
+
+appdb=> \dt
+         List of relations
+ Schema |  Name  | Type  |  Owner
+--------+--------+-------+----------
+ public | city   | table | postgres
+ public | dept   | table | appdba
+ public | emp    | table | appdba
+ public | salary | table | appuser
+(4 rows)
+
+-- Try dropping a table not owned by the current user
+Logon as 'appdba' to database 'appdb'
+
+appdb=> drop table salary;
+ERROR:  must be owner of relation salary
+
+-- Create a new table in a non-public schema
+
+appdb=> create table appdbschema1.emp (id int, name varchar(10));
+CREATE TABLE
+
+NOTE: However, \dt lists only public schema tables
+appdb=> \dt
+         List of relations
+ Schema |  Name  | Type  |  Owner
+--------+--------+-------+----------
+ public | city   | table | postgres
+ public | dept   | table | appdba
+ public | emp    | table | appdba
+ public | salary | table | appuser
+(4 rows)
+
+
+
 
 - - - - - - 
 -- CAUTION - do not give the privileges like the following.  
