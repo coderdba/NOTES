@@ -1,0 +1,72 @@
+================================================
+POSTGRES TABLE OWNERSHIP DEMO
+================================================
+
+NOTE:
+Having too many users create-table or 'ALL' privileges on a database can make it messy.
+As in the demo below, in the database 'appdb' there are tables owned by many users.
+
+
+appdb=> \dt
+       List of relations
+ Schema | Name | Type  | Owner
+--------+------+-------+--------
+ public | emp  | table | appdba
+(1 row)
+
+appdb=> create table dept (id int, name varchar(20));
+CREATE TABLE
+appdb=> \dt
+       List of relations
+ Schema | Name | Type  | Owner
+--------+------+-------+--------
+ public | dept | table | appdba
+ public | emp  | table | appdba
+(2 rows)
+
+appdb=> \q
+-bash-4.2$ psql
+psql (9.5.3)
+Type "help" for help.
+
+postgres=# \c appdb
+You are now connected to database "appdb" as user "postgres".
+appdb=# create table city (id int, name varchar(20));
+CREATE TABLE
+appdb=# \dt
+        List of relations
+ Schema | Name | Type  |  Owner
+--------+------+-------+----------
+ public | city | table | postgres
+ public | dept | table | appdba
+ public | emp  | table | appdba
+(3 rows)
+
+appdb=# \q
+-bash-4.2$ logon
+Usage: ./logon username dbname
+-bash-4.2$ logon appuser appdb
+Password for user appuser:
+psql (9.5.3)
+Type "help" for help.
+
+appdb=> \dt
+        List of relations
+ Schema | Name | Type  |  Owner
+--------+------+-------+----------
+ public | city | table | postgres
+ public | dept | table | appdba
+ public | emp  | table | appdba
+(3 rows)
+
+appdb=> create table salary (empid int, salary int);
+CREATE TABLE
+
+appdb=> \dt
+         List of relations
+ Schema |  Name  | Type  |  Owner
+--------+--------+-------+----------
+ public | city   | table | postgres
+ public | dept   | table | appdba
+ public | emp    | table | appdba
+ public | salary | table | appuser
