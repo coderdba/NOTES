@@ -350,8 +350,15 @@ GRANT
 appdb=> grant trigger on emp to appdev;
 GRANT
 
+-- Create roles
+Logon as appdba
+$ psql -U appdba -d appdb -h pgserver0001 -W
+appdb=> create role appread_role;
+appdb=> create role appwrite_role;
+
 -- Create schemas
 Connect to database 'appdb' as 'appdba' user
+$ psql -U appdba -d appdb -h pgserver0001 -W
 
 appdb=> create schema appdbschema1;
 CREATE SCHEMA
@@ -482,6 +489,18 @@ appdb=# \dt app*.*
  appdbschema1 | emp  | table | appdba
  appdbschema2 | emp  | table | appdba
 
+
+-- Grant privileges on tables/schemas to roles
+Logon as appdba to appdb database.
+appdb=> grant usage on schema appdbschema1 to appread_role;
+appdb=> grant usage on schema appdbschema1 to appwrite_role;
+appdb=> grant usage on schema appdbschema2 to appread_role;
+appdb=> grant usage on schema appdbschema2 to appwrite_role;
+
+appdb=> grant select on all tables in schema appdbschema1 to appread_role;
+appdb=> grant select, insert, update, delete on all tables in schema appdbschema1 to appwrite_role;
+appdb=> grant select on all tables in schema appdbschema2 to appread_role;
+appdb=> grant select, insert, update, delete on all tables in schema appdbschema2 to appwrite_role;
 
 - - - - - - 
 -- CAUTION - do not give the privileges like the following.  
