@@ -28,7 +28,48 @@ V$SQL has some new offload related columns:
      /IO_CELL_OFFLOAD_ELIGIBLE_BYTES "IO_SAVED_%", sql_text
     from v$sql where SQL_ID in ('8m5zmxka24vyk', '0563r8vdy9t2y');
 
-Column projection - return only the columns of interest (the columns in the SELECT and WHERE) - not the whole row
+-- Column projection 
+Return only the columns of interest (the columns in the SELECT and WHERE) - not the whole row
+
+-- Predicate Filtering
+Return only rows of interest
+
+-- Storage Indexes
+In-memory structures in storage cells.
+Store minimum and maximum value for each 1MB storage unit - for upto 8 columns of a table.
+DBAs do not have much conrol on them.
+This helps smart scan find the group of blocks required quickly.
+alter session set "_kcfis_storageidx_disabled"=true|false;
+
+-- Zone maps
+Area of a table about 1024 blocks.
+Help in eliminating rows not of interest.
+NOT in storage cell - DBA maintains it in the DB.
+Zone map info is available in data dictionary.
+In explain-plan:  WITH ZONEMAP                | T1_ORDER_BY_ID 
+
+-- Simple joins
+Known also as 'bloom predicate'
+_BLOOM_PREDICATE_OFFLOAD=TRUE|FALSE
+
+-- Function offloading
+Functions to be processed at storage layer.
+Helps more by reducing number of rows to be sent to and processed in DB server - than function execution in storage itself.
+V$SQLFN_METADATA contains the functions that can be offloaded.
+
+-- HCC decompression
+HCC data decompression to be sent to DB server is done at storage tier in smart scans - unless storage cells are too busy
+NOTE: HCC compression itself is done at DB server and not in storage cell
+
+-- Decryption
+Decryption of data can be done at storage tier (while encryption is always done at DB server)
+Parameters - CELL_OFFLOAD_DECRYPTION, _CELL_OFFLOAD_HYBRIDCOLUMNAR
+
+-- Virtual Columns
+Virtual columns are 'calculated' columns without storing that value in the table.
+They can be indexed, made part of partition key and stats can be gathered for them.
+Their value upon query/access has to be 'calculated' on the fly - and this can be offloaded to storage tier.
+
 
 
 
