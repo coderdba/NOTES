@@ -57,7 +57,7 @@ SQL> create table t2_ql
       as select * from t2;
 SQL> alter session set events 'trace[ADVCMP_MAIN.*] off';
 
--- Metadata sqls
+-- Useful sqls
 
 select table_name,compression,compress_for
   from user_tables;
@@ -77,5 +77,18 @@ create table t_ql ... column store compress for query low;
 
 alter table t1 modify partition p_jun_2013 column store compress for query high;
 
+To find the type of compression for various rows:  
+select decode (dbms_compression.get_compression_type(user,'T1_QH',rowid),
+       1,  'COMP_NOCOMPRESS',
+       2,  'COMP_FOR_OLTP',  --> in 12c it is COMP_ADVANCED
+       4,  'COMP_FOR_QUERY_HIGH',
+       8,  'COMP_FOR_QUERY_LOW',
+       16, 'COMP_FOR_ARCHIVE_HIGH',
+       32, 'COMP_FOR_ARCHIVE_LOW',
+       64, 'COMP_BLOCK',  --> COMP_BLOCK is OLTP-64
+       'OTHER') type
+   from T1
+  where rownum < 100;
 
-
+Blog that has some tracing and such: 
+http://kerryosborne.oracle-guy.com/2011/01/ehcc-mechanics-proof-that-whole-cus-are-not-decompressed/
