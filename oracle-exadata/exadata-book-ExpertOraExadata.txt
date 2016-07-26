@@ -23,5 +23,61 @@ Insert direct path triggers HCC - else it is columnar format (TBD - what is this
 Updates make rows to use row-format
 Updates cause CU-level locking up to 32000 rows
 
+Importing HCC to non-HCC table:
+$ impdp ... transform=table_compression_clause:nocompress
+
+-- What is HCC
+Traditionally, rows are stored in blocks 
+  - efficient for OLT where specific rows are queried and updated.
+  - not efficient for column-lookups as query has to then scan through multiple blocks - wider row the worse
+In 'columnar' db's blocks store column values than whole rows 
+  - efficient for DSS where specific columns of many rows or aggregations are required
+  - not efficient for full-row lookups as query has to scan through multiple blocks
+Blocks can be usually greater than usual 8k.
+Provides still 'table access by index rowid'.
+CU - compression unit - contiguous multiple blocks to store columnar data - and the row information to which column data belongs.
+Access - block oriented, smart scan
+
+-- Limitations:
+Requires direct path - so, use more as part of ILM or static data than as oltp compression alternative
+Updates move rows to OLTP compression, out of CU
+Non direct operations store rows outside of CU and not as HCC
+
+-- Levels
+Query Low 4x, Query High 6x, Archite Low 7x, Archive High 12x
+
+-- Package
+DBMS_COMPRESSION
+
+-- Tracing sessions (Universal Tracing Facility - UTS)
+SQL> oradebug doc component ADVCMP
+SQL> alter session set events 'trace[ADVCMP_MAIN.*] disk=high';
+SQL> create table t2_ql
+      column store compress for query low
+      as select * from t2;
+SQL> alter session set events 'trace[ADVCMP_MAIN.*] off';
+
+
+
+-- Metadata sqls
+
+select table_name,compression,compress_for
+  from user_tables;
+
+select s.segment_name, s.bytes/power(1024,2) mb, s.blocks,
+  t.compression, t.compress_for, num_rows
+  from user_segments s, user_tables t
+  where s.segment_name = t.table_name
+  and s.segment_name like 'T1%'
+  order by mb;
+  
+select id, rowid,
+  dbms_compression.get_compression_type(user, 'T1_QL', rowid) compType
+  from t1_ql where rownum < 3;
+  
+create table t_ql ... column store compress for query low;
+
+alter table t1 modify partition p_jun_2013 column store compress for query high;
+
 
 
