@@ -2,7 +2,39 @@
 NOTES - EXPERT ORACLE EXADATA
 =============================
 
+=======================
+OFFLOADING - SMART SCAN
+=======================
+- Offloading
+Offload query execution to storage layer.
+Storage server part-processes the query and sends already partly-filtered data to DB server.
+
+alter session set cell_offload_processing=false|true;
+
+- Smart Scan
+Direct-path-reads is a pre-requisite for Smart Scans - set the session parameter _SERIAL_DIRECT_READ=ALWAYS.
+To disable smart-scan set  CELL_OFFLOAD_PROCESSING=FALSE.
+
+Following type of filtering is done by smart scan in storage itself:
+  Column projection, predicate filtering, storage indexes
+  Simple joins, functions offloading, virtual column evaluation, decryption
+Smart-flash later stores that pre-filtered data before sending to memory blocks
+
+Plan shows this as "TABLE ACCESS STORAGE FULL".
+V$SQL has some new offload related columns:
+   select SQL_ID, IO_CELL_OFFLOAD_ELIGIBLE_BYTES eligible,
+     IO_INTERCONNECT_BYTES actual,
+     100*(IO_CELL_OFFLOAD_ELIGIBLE_BYTES-IO_INTERCONNECT_BYTES)
+     /IO_CELL_OFFLOAD_ELIGIBLE_BYTES "IO_SAVED_%", sql_text
+    from v$sql where SQL_ID in ('8m5zmxka24vyk', '0563r8vdy9t2y');
+
+Column projection - return only the columns of interest (the columns in the SELECT and WHERE) - not the whole row
+
+
+
+==============================================
 HYBRID COLUMNAR COMPRESSION
+==============================================
 - Basic compression 
 Basic compression works only with direct-path operations like 'insert-append'. 
 Direct bypasses buffer-cache and stores rows above HWM.
