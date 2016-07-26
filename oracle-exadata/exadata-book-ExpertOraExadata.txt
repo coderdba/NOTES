@@ -1,0 +1,27 @@
+=============================
+NOTES - EXPERT ORACLE EXADATA
+=============================
+
+HYBRID COLUMNAR COMPRESSION
+- Basic compression 
+Basic compression works only with direct-path operations like 'insert-append'. 
+Direct bypasses buffer-cache and stores rows above HWM.
+Updates render rows to uncompress and stay so (DML unfriendly).
+Makes pctfree 0 upon compression, wasting space.
+
+- OLTP compression
+Does not compress immediately - does so upon reaching a threshold.
+No need for 'direct' operations.
+DML permitted and benefit from compression.
+
+- HCC Hybrid Columnar Compression
+Supported on Exadata, ZFS Storage Appliance,Pillar Axiom or Oracle FS1 storage
+If stored on other types of storage - smart scans cannot be used, first it has to decompress before reading
+
+Limitations/Cautions:
+Insert direct path triggers HCC - else it is columnar format (TBD - what is this 'columnar format')
+Updates make rows to use row-format
+Updates cause CU-level locking up to 32000 rows
+
+
+
