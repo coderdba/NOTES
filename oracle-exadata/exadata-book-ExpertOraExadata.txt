@@ -11,6 +11,11 @@ Storage server part-processes the query and sends already partly-filtered data t
 
 alter session set cell_offload_processing=false|true;
 
+What is offloadable:
+select count(*), name, offloadable from v$sqlfn_metadata
+    where name like '%JSON%' group by name, offloadable
+    order by offloadable, name;
+  
 - Smart Scan
 Direct-path-reads is a pre-requisite for Smart Scans - set the session parameter _SERIAL_DIRECT_READ=ALWAYS.
 To disable smart-scan set  CELL_OFFLOAD_PROCESSING=FALSE.
@@ -70,8 +75,11 @@ Virtual columns are 'calculated' columns without storing that value in the table
 They can be indexed, made part of partition key and stats can be gathered for them.
 Their value upon query/access has to be 'calculated' on the fly - and this can be offloaded to storage tier.
 
+-- LOB offloading
+-- JSON offloading
 
-
+- Non Smart-Scan offloading
+---> TBD
 
 ==============================================
 HYBRID COLUMNAR COMPRESSION
