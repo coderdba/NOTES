@@ -22,9 +22,9 @@ order by 1;
 
 prompt INFO- Non-Prod Non-RAC Databases (DB UNIQUE NAMES)
 select a.target_name || ' NonRAC Production'
-from sysman.mgmt_targets a, sysman.mgmt_target_properties m
+from sysman.mgmt_targets a, sysman.mgmt_target_properties m,
      (select target_guid from sysman.mgmt_target_properties
-        where property_name='orcl_gtp_lifecycle_status' and property_value != 'PROD') c
+        where property_name='orcl_gtp_lifecycle_status' and property_value != 'Production') c
 where a.TARGET_TYPE='oracle_database' and a.TARGET_GUID=m.TARGET_GUID and m.PROPERTY_NAME='RACOption' and m.PROPERTY_VALUE='NO'
 and  a.target_guid = c.target_guid
 order by 1;
