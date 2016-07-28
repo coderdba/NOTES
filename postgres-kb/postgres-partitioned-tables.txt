@@ -31,7 +31,7 @@ CREATE TABLE sales_jan (
 ) INHERITS (sales);
 
 CREATE TABLE sales_feb (
-    CHECK ( saledate >= DATE '2016-02-01' AND saledate < DATE '2006-03-01' )
+    CHECK ( saledate >= DATE '2016-02-01' AND saledate < DATE '2016-03-01' )
 ) INHERITS (sales);
 
 -- CREATE INDEX ON PARTITION KEY COLUMN
@@ -45,11 +45,11 @@ appdb=> CREATE OR REPLACE FUNCTION sales_insert_trigger_function ()
 RETURNS TRIGGER AS $$
 BEGIN
     IF ( NEW.saledate >= DATE '2016-01-01' AND
-         NEW.saledate < DATE '2016-03-01' ) THEN
+         NEW.saledate < DATE '2016-02-01' ) THEN
         INSERT INTO sales_jan VALUES (NEW.*);
     ELSIF ( NEW.saledate >= DATE '2016-02-01' AND
             NEW.saledate < DATE '2016-04-01' ) THEN
-        INSERT INTO measurement_y2006m03 VALUES (NEW.*);
+        INSERT INTO sales_feb VALUES (NEW.*);
     ELSE
         RAISE EXCEPTION 'Insert to sales table - date out of range.  Fix the sales_insert_trigger_function() function';
     END IF;
@@ -116,5 +116,44 @@ tgattr | tgargs | tgqual
 -------+--------+--------
    16457 | insert_sales_trigger |  16456 |      7 | O         | f            |             0 |             0 |            0 | f            | f              |       0 |
        | \x     |
+
+-- ----------------------
+-- INSERT DATA AND VERIFY
+-- ----------------------
+NOTE: Date format is MM-DD-YYYY for insert, and YYYY-DD
+
+appdb=> insert into sales values (1, '01-01-2016', 1,1,1);
+INSERT 0 0
+appdb=> select * from sales;
+ saleid |  saledate  | units | rate | amount
+--------+------------+-------+------+--------
+      1 | 2016-01-01 |     1 |    1 |      1
+(1 row)
+
+appdb=>  insert into sales values (1, '02-02-2016', 1,1,1);
+INSERT 0 0
+appdb=> select * from sales;
+ saleid |  saledate  | units | rate | amount
+--------+------------+-------+------+--------
+      1 | 2016-01-01 |     1 |    1 |      1
+      1 | 2016-01-04 |     1 |    1 |      1
+      1 | 2016-01-02 |     1 |    1 |      1
+      1 | 2016-02-02 |     1 |    1 |      1
+(4 rows)
+
+appdb=> insert into sales values (1,'02-04-2016', 1,1,1);
+INSERT 0 0
+appdb=> select * from sales;
+ saleid |  saledate  | units | rate | amount
+--------+------------+-------+------+--------
+      1 | 2016-01-01 |     1 |    1 |      1
+      1 | 2016-01-04 |     1 |    1 |      1
+      1 | 2016-01-02 |     1 |    1 |      1
+      1 | 2016-02-02 |     1 |    1 |      1
+      1 | 2016-02-04 |     1 |    1 |      1
+(5 rows)
+
+appdb=> insert into sales values (1,'04-02-2016',1,1,1);
+ERROR:  Insert to sales table - date out of range.  Fix the sales_insert_trigger_function() function
 
 
