@@ -1,4 +1,9 @@
---prompt INFO- Prod Non-RAC Databases
+-- LISTING DB UNIQUE NAMES
+
+prompt ===========================================
+prompt LISTING DB UNIQUE NAMES
+prompt ===========================================
+prompt INFO- Prod Non-RAC Databases (DB UNIQUE NAMES)
 select a.target_name || ' NonRAC Production'
 from sysman.mgmt_targets a, sysman.mgmt_target_properties m,
      (select target_guid from sysman.mgmt_target_properties
@@ -7,7 +12,7 @@ where a.TARGET_TYPE='oracle_database' and a.TARGET_GUID=m.TARGET_GUID and m.PROP
 and  a.target_guid = c.target_guid
 order by 1;
 
---prompt INFO- Prod RAC Databases
+prompt INFO- Prod RAC Databases (DB UNIQUE NAMES)
 select a.target_name  || ' RAC Production'
 from sysman.mgmt_targets a, sysman.mgmt_target_properties m
 where a.target_type='rac_database'
@@ -15,7 +20,7 @@ where a.target_type='rac_database'
   and m.property_name='orcl_gtp_lifecycle_status' and m.property_value = 'PROD'
 order by 1;
 
---prompt INFO- Non-Prod Non-RAC Databases
+prompt INFO- Non-Prod Non-RAC Databases (DB UNIQUE NAMES)
 select a.target_name || ' NonRAC Production'
 from sysman.mgmt_targets a, sysman.mgmt_target_properties m
      (select target_guid from sysman.mgmt_target_properties
@@ -24,7 +29,7 @@ where a.TARGET_TYPE='oracle_database' and a.TARGET_GUID=m.TARGET_GUID and m.PROP
 and  a.target_guid = c.target_guid
 order by 1;
 
---prompt INFO- Non-Prod RAC Databases
+prompt INFO- Non-Prod RAC Databases (DB UNIQUE NAMES)
 select a.target_name  || ' RAC Production'
 from sysman.mgmt_targets a, sysman.mgmt_target_properties m
 where a.target_type='rac_database'
