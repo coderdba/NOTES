@@ -7,10 +7,13 @@ https://www.postgresql.org/docs/9.5/static/ddl-partitioning.html
 http://wiki.openbravo.com/wiki/How_to_create_a_Trigger (Triggers explained)
 https://www.postgresql.org/docs/9.5/static/plpgsql-trigger.html (triggers)
 
--- CREATE THE MASTER TABLE 
-NOTE: Name does not need to have _partition_master
+-- LOGON
+Logon as the owner of all these objects
+Choose the DB and SCHEMA that will include all these objects
 
-CREATE TABLE sales_partition_master 
+-- CREATE THE MASTER TABLE 
+
+CREATE TABLE sales
 (
     saleid         int not null,
     saledate       date not null,
@@ -19,17 +22,17 @@ CREATE TABLE sales_partition_master
     amount         int not null
 );
 
--- ADD CHECK CONSTRAINTS
+-- CREATE CHILD/PARTITION TABLES WITH CHECK CONSTRAINT
 NOTE: DO NOT create check constraints at master table level for partition keys
       (however, master table can contain check constraints that apply to all partitions - example, valid values)
       
 CREATE TABLE sales_jan (
     CHECK ( saledate >= DATE '2016-01-01' AND saledate < DATE '2016-02-01' )
-) INHERITS (sales_partition_master);
+) INHERITS (sales);
 
 CREATE TABLE sales_feb (
     CHECK ( saledate >= DATE '2016-02-01' AND saledate < DATE '2006-03-01' )
-) INHERITS (sales_partition_master);
+) INHERITS (sales);
 
 -- CREATE INDEX ON PARTITION KEY COLUMN
 NOTE: DO NOT create indexes at master table level
@@ -37,7 +40,64 @@ NOTE: DO NOT create indexes at master table level
 CREATE INDEX sales_jan_saledate ON sales_jan (saledate);
 CREATE INDEX sales_feb_saledate ON sales_feb (saledate);
 
+-- CREATE FUNCTION FOR TRIGGER TO USE
+appdb=> CREATE OR REPLACE FUNCTION sales_insert_trigger_function ()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF ( NEW.saledate >= DATE '2016-01-01' AND
+         NEW.saledate < DATE '2016-03-01' ) THEN
+        INSERT INTO sales_jan VALUES (NEW.*);
+    ELSIF ( NEW.saledate >= DATE '2016-02-01' AND
+            NEW.saledate < DATE '2016-04-01' ) THEN
+        INSERT INTO measurement_y2006m03 VALUES (NEW.*);
+    ELSE
+        RAISE EXCEPTION 'Insert to sales table - date out of range.  Fix the sales_insert_trigger_function() function';
+    END IF;
+    RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+
+appdb=> \df
+                                     List of functions
+ Schema |             Name              | Result data type | Argument data types |  Type
+--------+-------------------------------+------------------+---------------------+---------
+ public | sales_insert_trigger_function | trigger          |                     | trigger
 
 
+appdb=> CREATE TRIGGER insert_sales_trigger
+        BEFORE INSERT ON sales
+        FOR EACH ROW EXECUTE PROCEDURE sales_insert_trigger_function();
+
+-- LIST ALL THESE OBJECTS
+
+appdb=> \dt
+          List of relations
+ Schema |   Name    | Type  | Owner
+--------+-----------+-------+--------
+ public | sales     | table | appdba
+ public | sales_feb | table | appdba
+ public | sales_jan | table | appdba
+ 
+appdb=> \di
+                    List of relations
+ Schema |        Name        | Type  | Owner  |   Table
+--------+--------------------+-------+--------+-----------
+ public | sales_feb_saledate | index | appdba | sales_feb
+ public | sales_jan_saledate | index | appdba | sales_jan
+
+appdb=> \df
+                                     List of functions
+ Schema |             Name              | Result data type | Argument data types |  Type
+--------+-------------------------------+------------------+---------------------+---------
+ public | sales_insert_trigger_function | trigger          |                     | trigger
+
+appdb=> select * from pg_trigger;
+ tgrelid |        tgname        | tgfoid | tgtype | tgenabled | tgisinternal | tgconstrrelid | tgconstrindid | tgconstraint | tgdeferrable | tginitdeferred | tgnargs |
+tgattr | tgargs | tgqual
+---------+----------------------+--------+--------+-----------+--------------+---------------+---------------+--------------+--------------+----------------+---------+-
+-------+--------+--------
+   16457 | insert_sales_trigger |  16456 |      7 | O         | f            |             0 |             0 |            0 | f            | f              |       0 |
+       | \x     |
 
 
