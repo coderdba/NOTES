@@ -5,3 +5,37 @@
 https://wiki.postgresql.org/wiki/Table_partitioning
 https://www.postgresql.org/docs/9.5/static/ddl-partitioning.html
 
+-- CREATE THE MASTER TABLE 
+NOTE: Name does not need to have _partition_master
+
+CREATE TABLE sales_partition_master 
+(
+    saleid         int not null,
+    saledate       date not null,
+    units          int not null,
+    rate           int not null,
+    amount         int not null
+);
+
+-- ADD CHECK CONSTRAINTS
+NOTE: DO NOT create check constraints at master table level for partition keys
+      (however, master table can contain check constraints that apply to all partitions - example, valid values)
+      
+CREATE TABLE sales_jan (
+    CHECK ( saledate >= DATE '2016-01-01' AND saledate < DATE '2016-02-01' )
+) INHERITS (sales_partition_master);
+
+CREATE TABLE sales_feb (
+    CHECK ( saledate >= DATE '2016-02-01' AND saledate < DATE '2006-03-01' )
+) INHERITS (sales_partition_master);
+
+-- CREATE INDEX ON PARTITION KEY COLUMN
+NOTE: DO NOT create indexes at master table level
+
+CREATE INDEX sales_jan_saledate ON sales_jan (saledate);
+CREATE INDEX sales_feb_saledate ON sales_feb (saledate);
+
+
+
+
+
