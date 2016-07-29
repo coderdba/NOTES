@@ -1,6 +1,8 @@
 --
--- NOTE - To filter by prod, non-prod, os etc, join with mgmt$target_properties
---        You may join multiple subqueries one each for prod/non-prod, os, version etc
+-- NOTE - To filter by rac/non-rac, prod, non-prod, os etc, join with mgmt$target_properties
+--        You may join multiple subqueries one each for rac/non-rac, prod/non-prod, os, version etc
+--
+-- NOTE - See also oem_data_extrac.sh on how to do it
 --
 
 set lines 100
