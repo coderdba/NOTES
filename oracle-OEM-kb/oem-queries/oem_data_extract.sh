@@ -79,8 +79,22 @@ echo INFO - Script base directory is $script_basedir
 echo "INFO - Creating list of databases from OEM repository in the file " $db_name_list_file
 
 ${ORACLE_HOME}/bin/sqlplus -s /nolog << EOF > $templog1 2>> $templog1
-connect sys/$sys_pass@OEM12CP01 as sysdba
+connect sys/$sys_pass@OEMREPODB1 as sysdba
 
+set pages 0
+set lines 100
+set head off
+set feed off
+set termout off
+
+spool $db_name_list_file
+
+--Debug-Force error for testing
+--select x from y;
+
+prompt
+prompt INFO - DB UNIQUE NAMES
+prompt
 set pages 0
 set lines 100
 set head off
@@ -199,8 +213,6 @@ where a.target_type='rac_database'
   and m.property_name='orcl_gtp_lifecycle_status' and m.property_value != 'Production'
   and a.target_guid=d.target_guid
 order by 1;
-
-
 
 spool off
 
