@@ -49,3 +49,30 @@ where a.target_type='rac_database'
   and a.target_guid=m.target_guid
   and m.property_name='orcl_gtp_lifecycle_status' and m.property_value != 'PROD'
 order by 1;
+
+--=================================
+--ALTERNATE QUERY
+-- NOT GUARANTEED
+--=================================
+
+set pages 1000
+set lines 80
+
+column prod_non_prod format a20
+column database_name format a20
+
+spool db_list_lifecyclewise
+
+select distinct p.property_value prod_non_prod, a.database_name
+from  mgmt$db_dbninstanceinfo a,  mgmt$target t, mgmt$target_properties p, mgmt$all_target_prop_defs d
+where a.target_guid = t.target_guid
+       --and a.database_name= 'DB_NAME'
+       and t.target_guid=p.target_guid
+       and p.property_name=d.property_name
+       --and p.property_value = 'Production'
+       and d.property_display_name = 'LifeCycle Status'
+order by 1,2
+;
+
+spool off
+
