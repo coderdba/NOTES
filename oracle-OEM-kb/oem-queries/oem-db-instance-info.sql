@@ -1,6 +1,20 @@
+--
+-- DB_UNIQUE_NAMEs and INSTANCES
+-- TARGET_TYPE rac_database means DB_UNIQUE_NAME of RAC DB
+-- TARGET_TYPE oracle_database means instance of RAC DB in the format DB_UNIQUE_NAME_<instance name>
+--                                   - OR - the SID of the non-rac database
+--
+-- For rac_database target-type, 'host_name' will be one of the hosts of the multiple instances
+-- For oracle_databast target-type, 'host_name' will  be the host for that instance - MORE RELIABLE FOR GETTING HOST NAMES
+--
+
+-- note: This query does not really relate a DB with its instance - just dumps data for those target types
+select  TARGET_TYPE, TARGET_NAME, HOST_NAME from mgmt$target where TARGET_TYPE in ( 'oracle_database', 'rac_database')
+order by 2,1;
+
 -- Provide DB_NAME - not DB_UNIQUE_NAME
 -- Lists db_name and db_unique_name's associated with it
--- NOTE: TARGET_TYPE = rac_database means the actual 'database' - not instance
+-- NOTE: TARGET_TYPE = rac_database means the actual 'database' DB_UNIQUE_NAME - not instance
 --       TARGET_TYPE = oracle_database is the 'instance' - not database
 
 select a.target_name db_unique_name, a.database_name db_name, b.target_name db_unique_name, 
