@@ -79,3 +79,36 @@ Service "DBSID_DGB" has 1 instance(s).
 
 
 ++ Now in Primary alert log we are not getting any more warnings.
+
+================================================
+LOG APPLY STOPPED
+
+ORA-16047 in v$dataguard_status and 
+================================================
+
+SQL> select status, error, gap_status from V$archive_dest_status where dest_id=2;
+--> This would show 'error' ora-16047
+
+Also, the following query would show error:
+SQL>  select severity, error_code,message from v$dataguard_status where dest_id=2;
+
+SEVERITY      ERROR_CODE
+------------- ----------
+MESSAGE
+--------------------------------------------------------------------------------
+Error              16047
+FAL[server, ARC3]: Error 16047 creating remote archivelog file 'RL4DB4_TTC'
+
+Error              16047
+FAL[server, ARC3]: Error 16047 creating remote archivelog file 'RL4DB4_TTC'
+
+Also, the following query would show different numbers in primary and standby:
+select thread#, max(sequence#) from v$archived_log group by thread#;
+
+FIX:
+alter system set log_archive_dest_state_2=defer;
+alter system set log_archive_dest_state_2=enabled;
+
+VERIFY:
+Run the following in both primary and standby, do a few 'archive log current' in primary, and run it:
+select thread#, max(sequence#) from v$archived_log group by thread#;
