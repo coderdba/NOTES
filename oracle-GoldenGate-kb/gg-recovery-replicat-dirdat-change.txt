@@ -1,0 +1,56 @@
+===========================================
+      CHANGING REPCAT DIRDAT MIDWAY
+===========================================
+
+https://dbasolved.com/2014/11/16/repair-replicat-after-mount-point-name-change/
+(NOTE: The content below is directly taken from the above site - probably later modified here per my own learnings)
+
+REPAIR REPLICAT AFTER MOUNT POINT NAME CHANGE
+
+November 16, 2014 ·	by curtisbl ·	in Golden Gate	· Leave a comment 
+Working on Oracle GoldenGate can be an interesting adventure. In such a case, I have been doing some migration work for a client. Half way though the migration, the target system ran out of resources need to create the tablespaces and store files export and trail files (i.e. disk space and a story for another time). The impact to the migration was that everything had to stop until resources were allocated.
+
+Part of the allocation of resources was to change the mount point name. If you know anything about Oracle GoldenGate Replicats, using a static mount point is not the best approach (slipped my mind at the time); however, I made this mistake. When the mount point name changed, all the replicats broke because they couldn’t locate the trail files where specified.
+
+Initial:
+
+When I initially setup the replicat I used a static mount point. Let’s take a look at the create replicat statement I used initially:
+
+--Add Replicat Process
+ADD REPLICAT REPM01, EXTTRAIL /orabackup/ggate/trail/ars/ra, DESC "Replicat process for a schema”
+START REPLICAT REPM01, ATCSN
+As you can see the replicat is looking for the “ra” trail files on the “/orabackup” mount point.
+
+Problem:
+
+During the allocation of space the mount point “/orabackup” was changed to “/orabkup”. How does this affect the replicat? Simple, the replicat will through an OGG-01091 error stating that it coudn’t find the trail file.
+
+ERROR OGG-01091 Unable to open file “/orabackup/ggate/trail/ars/ra000000” (error 2, No such file or directory).
+
+Solution:
+
+The solution to fixing this problem is to capture the last CSN number from the Checkpoint table.
+
+SQL> select group_name, rba, seqno, log_cmplt_csn from checkpoint where group_name = 'REPM01';
+ 
+GROUP_NA  RBA       SEQNO   LOG_CMPLT_CSN
+--------          ---------- ---------- -----------------------------------
+REPM01       544013          1       11108080706671
+Once the last completed CSN has been identified, then the replicat can be dropped, recreated with the new path to the trail file.
+
+
+GGSCI> dblogin userid ggate password
+GGSCI> delete replicat REPM01
+GGSCI> add replicat REPM01, EXTTRAIL /orabkup/ggate/trail/ars/ra, DESC "Replicat process for a schema”
+GGSCI> start replicat REPM01, atcsn 11108080706671
+GGSCI> info all
+ 
+Program     Status      Group       Lag at Chkpt  Time Since Chkpt
+ 
+MANAGER     RUNNING
+REPLICAT    RUNNING     REPM01      00:00:00      00:00:06
+Lesson Learned:
+
+When setting up locations for your trail files make sure they are not static locations. Realitve locations should be used. In most Oracle GoldenGate architectures the “dirdat” directory under $OGG_HOME is used for trails files; however, if you need more space for trail files the “dirdat” directory can be linked to a directory on a larger mount point. This will keep the replicat consistant for trail file purposes and make it easier to manage the names of the mount point if the static name changes.
+
+Enjoy!
