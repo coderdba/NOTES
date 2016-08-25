@@ -1,0 +1,183 @@
+=================================
+        EXPDP / IMPDP
+=================================
+
+====================
+EXPDP PARAMETER FILE
+====================
+USERID='/ AS SYSDBA'
+CLUSTER=Y
+DIRECTORY=gowirsh_exp_directory
+DUMPFILE=SCHEMA_DUMP.dmp
+FULL=N
+SCHEMAS=SCHEMA_NAME
+
+====================
+CONNECT AS SYSDBA
+====================
+expdp \'/ as sysdba\' attach=SYS_EXPORT_SCHEMA_02
+
+====================
+FIND RUNNING JOBS
+====================
+https://parthokonar.wordpress.com/2009/11/16/check-running-process-of-expdp-impdp-in-oracle/
+
+select s.program,s.sid, s.serial#, s.process, s.status,s.username,d.job_name,p.spid,p.pid 
+  from v$session s, v$process p, dba_datapump_sessions d
+  where p.addr=s.paddr and s.saddr=d.saddr;
+
+SQL>
+PROGRAM                                                 SID    SERIAL# PROCESS                  STATUS
+------------------------------------------------ ---------- ---------- ------------------------ --------
+USERNAME                       JOB_NAME                       SPID                            PID
+------------------------------ ------------------------------ ------------------------ ----------
+oracle@server.company.com (DW00)                      759      26481 15332                    ACTIVE
+SYS                            SYS_EXPORT_SCHEMA_01           15332                            78
+
+oracle@server.company.com  (DM00)                      639      54671 15269
+SYS                            SYS_EXPORT_SCHEMA_01           15269
+
+ude@server.company.com  (TNS V1-V3)                    510        129 15195
+SYS                            SYS_EXPORT_SCHEMA_01           15196
+
+oracle@server.company.com  (DW01)                      384      52939 10229
+SYS                            SYS_EXPORT_SCHEMA_02           10229
+
+oracle@server.company.com  (DM03)                        5       2715 10158
+SYS                            SYS_EXPORT_SCHEMA_02           10158
+
+ude@server.company.com  (TNS V1-V3)                    385       3765 10142
+SYS                            SYS_EXPORT_SCHEMA_02           10143
+
+=============================
+KILL AN EXPDP JOB
+=============================
+http://dbatricksworld.com/how-to-kill-oracle-datapump-export-job/
+
+First Method: Kill Data pump job by datapump export prompt:
+//After initiating export backup, Kindly make sure datapump job by issuing the following query as sysdba:
+
+SQL> select * from dba_datapump_jobs;
+
+OWNER_NAME JOB_NAME
+—————————— ——————————
+OPERATION JOB_MODE
+—————————— ——————————
+STATE DEGREE ATTACHED_SESSIONS DATAPUMP_SESSIONS
+—————————— ———- —————– —————–
+SYSTEM SYS_EXPORT_FULL_01
+EXPORT FULL
+EXECUTING 1 1 3
+
+//Now connect to datapump export prompt with JOB_NAME(attach) as below & issue the datapump command: KILL_JOB.
+
+[oracle@dbserver ~]$ expdp system/manager attach=SYS_EXPORT_FULL_01
+Export: Release 11.2.0.3.0 – Production on Fri Apr 11 17:01:13 2014
+Copyright (c) 1982, 2011, Oracle and/or its affiliates. All rights reserved.
+Connected to: Oracle Database 11g Release 11.2.0.3.0 – 64bit Production
+
+Job: SYS_EXPORT_FULL_01
+Owner: SYSTEM
+Operation: EXPORT
+Creator Privs: TRUE
+GUID: F6C3A9B1D87AC043E0430100007F07F7
+Start Time: Friday, 11 April, 2014 17:00:38
+Mode: FULL
+Instance: orcl
+Max Parallelism: 1
+EXPORT Job Parameters:
+Parameter Name Parameter Value:
+CLIENT_COMMAND system/******** full=y directory=bkupdir dumpfile=Full_export.dmp logfile=Export_log.LOG
+State: EXECUTING
+Bytes Processed: 0
+Current Parallelism: 1
+Job Error Count: 0
+Dump File: /backup/Export/Full_export.dmp
+bytes written: 4,096
+
+Worker 1 Status:
+Process Name: DW00
+State: EXECUTING
+Object Schema: ELET
+Object Type: DATABASE_EXPORT/SCHEMA/PROCACT_SCHEMA
+Completed Objects: 80
+Worker Parallelism: 1
+
+Export> KILL_JOB
+Are you sure you wish to stop this job ([yes]/no): yes
+[oracle@dbserver ~]$
+
+//Datapump export job has been killed successfully. Same message will be display in datapump logfile as below:
+
+[oracle@dbserver ~]$ expdp system/manager full=y directory=bkupdir dumpfile=Full_export.dmp logfile=Export_log.LOG
+Export: Release 11.2.0.3.0 – Production on Fri Apr 11 16:43:56 2014
+Copyright (c) 1982, 2011, Oracle and/or its affiliates. All rights reserved.
+Connected to: Oracle Database 11g Release 11.2.0.3.0 – 64bit Production
+Starting “SYSTEM”.”SYS_EXPORT_FULL_01″: system/******** full=y directory=bkupdir dumpfile=Full_export.dmp logfile=Export_log.LOG
+Estimate in progress using BLOCKS method…
+Processing object type DATABASE_EXPORT/SCHEMA/TABLE/TABLE_DATA
+Total estimation using BLOCKS method: 3.431 GB
+Processing object type DATABASE_EXPORT/TABLESPACE
+Processing object type DATABASE_EXPORT/PROFILE
+Processing object type DATABASE_EXPORT/SYS_USER/USER
+Processing object type DATABASE_EXPORT/SCHEMA/USER
+Processing object type DATABASE_EXPORT/ROLE
+Processing object type DATABASE_EXPORT/GRANT/SYSTEM_GRANT/PROC_SYSTEM_GRANT
+Processing object type DATABASE_EXPORT/SCHEMA/GRANT/SYSTEM_GRANT
+Processing object type DATABASE_EXPORT/SCHEMA/ROLE_GRANT
+. .. …
+Job “SYSTEM”.”SYS_EXPORT_FULL_01″ stopped due to fatal error at 16:45:35
+
+—x—
+
+Second Method: Kill Datapump job by running SQL package:
+//After inititating the oracle datapump export, ensure datapump job by issuing the following query as sysdba:
+
+SQL> select * from dba_datapump_jobs;
+
+OWNER_NAME JOB_NAME
+—————————— ——————————
+OPERATION JOB_MODE
+—————————— ——————————
+STATE DEGREE ATTACHED_SESSIONS DATAPUMP_SESSIONS
+—————————— ———- —————– —————–
+SYSTEM SYS_EXPORT_FULL_01
+EXPORT FULL
+EXECUTING 1 1 3
+
+//To kill datapump job, We need two parameter as input to SQL package are: JOB_NAME of the datapump job & OWNER_NAME who initiated export.
+
+SQL> DECLARE
+h1 NUMBER;
+BEGIN
+h1:=DBMS_DATAPUMP.ATTACH(‘SYS_EXPORT_FULL_01‘,’SYSTEM‘);
+DBMS_DATAPUMP.STOP_JOB (h1,1,0);
+END;
+/
+
+PL/SQL procedure successfully completed.
+SQL>
+
+//Datapump export job has been killed successfully, same message will be display in datapump logfile as below:
+
+[oracle@dbserver ~]$ expdp system/manager full=y directory=bkupdir dumpfile=Full_export.dmp logfile=Export_log.LOG
+Export: Release 11.2.0.3.0 – Production on Fri Apr 11 17:00:37 2014
+Copyright (c) 1982, 2011, Oracle and/or its affiliates. All rights reserved.
+Connected to: Oracle Database 11g Release 11.2.0.3.0 – 64bit Production
+
+Starting “SYSTEM”.”SYS_EXPORT_FULL_01″: system/******** full=y directory=bkupdir dumpfile=Full_export.dmp logfile=Export_log.LOG
+Estimate in progress using BLOCKS method…
+Processing object type DATABASE_EXPORT/SCHEMA/TABLE/TABLE_DATA
+Total estimation using BLOCKS method: 3.431 GB
+Processing object type DATABASE_EXPORT/TABLESPACE
+Processing object type DATABASE_EXPORT/PROFILE
+Processing object type DATABASE_EXPORT/SYS_USER/USER
+Processing object type DATABASE_EXPORT/SCHEMA/USER
+Processing object type DATABASE_EXPORT/ROLE
+Processing object type DATABASE_EXPORT/GRANT/SYSTEM_GRANT/PROC_SYSTEM_GRANT
+. .. …
+Job “SYSTEM”.”SYS_EXPORT_FULL_01″ stopped due to fatal error at 17:01:23
+
+By above two methods, we can kill oracle datapump export job.
+
+***********************************************************************
