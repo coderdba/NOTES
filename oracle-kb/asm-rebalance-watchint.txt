@@ -1,0 +1,309 @@
+When Will the Rebalance Complete (Doc ID 1477905.1)	To BottomTo Bottom	
+
+In this Document
+Purpose
+Details
+ 	Introduction
+ 	File extents relocation
+ 	Disk compacting
+ 	Adjusting the rebalance power
+ 	References
+References
+APPLIES TO:
+
+Oracle Database Products > Oracle Database Suite > Oracle Database
+Information in this document applies to any platform.
+***Checked for relevance on 22-Apr-2014*** 
+PURPOSE
+
+ This document is about disk group rebalance in Oracle Automatic Storage Management (ASM). The intent is to provide some insight into the disk group rebalance process,  how to check if the rebalance is progressing and to assist in determining when will rebalance complete.
+
+DETAILS
+
+Introduction
+
+The disk group rebalance operation has three phases:
+
+Planning
+File extents relocation
+Disk compacting
+As far as the overall time to complete is concerned, the planning phase time is insignificant so there is no need to worry about it. The file extent relocation phase will take most of the time, so the main focus will be on that. The disk compacting phase may also take significant amount of time, in particular on disk add, so we will have a closer look at that as well.
+
+It is important to understand why the rebalance is running. If we are adding a new disk, say to increase the available disk group space, it doesn't really matter how long it will take for the rebalance to complete. Similarly if we are resizing or dropping disk(s), to adjust the disk group space, we are generally not concerned with the time it takes for the rebalance to complete.
+
+But if a disk has failed and ASM has initiated rebalance, there may be a legitimate reason for concern. If the disk group is normal redundancy AND if another disk fails AND it is the partner of the disk that has already failed, the disk group will be dismounted, all the databases that use that disk group will crash and there may be loss of data. In such cases it may be important to have an idea when the rebalance operation will complete. Actually, we want to see the file extents relocation phase completed, as once it does, all the data is fully redundant again (in case the rebalance was initiated due to a disk failure).
+
+File extents relocation
+
+To have a closer look at the file extents relocation phase, I drop one of the disks with the default rebalance power. I then query GV$ASM_OPERATION to check the estimated completion time (EST_MINUTES):
+
+SQL> show parameter power
+
+NAME                                 TYPE        VALUE
+------------------------------------ ----------- ----------------
+asm_power_limit                      integer     1
+
+SQL> set time on
+16:40:57 SQL> alter diskgroup DATA1 drop disk DATA1_CD_06_CELL06;
+
+Diskgroup altered.
+
+Initial estimated time to complete is 26 minutes:
+16:41:21 SQL> select INST_ID, OPERATION, STATE, POWER, SOFAR, EST_WORK, EST_RATE, EST_MINUTES from GV$ASM_OPERATION where GROUP_NUMBER=1;
+
+   INST_ID OPERA STAT      POWER      SOFAR   EST_WORK   EST_RATE EST_MINUTES
+---------- ----- ---- ---------- ---------- ---------- ---------- -----------
+         3 REBAL WAIT          1
+         2 REBAL RUN           1        516      53736       2012          26
+         4 REBAL WAIT          1
+ 
+About 10 minutes into the rebalance, the estimate to complete is 24 minutes:
+
+16:50:25 SQL> /
+
+   INST_ID OPERA STAT      POWER      SOFAR   EST_WORK   EST_RATE EST_MINUTES
+---------- ----- ---- ---------- ---------- ---------- ---------- -----------
+         3 REBAL WAIT          1
+         2 REBAL RUN           1      19235      72210       2124          24
+         4 REBAL WAIT          1
+ 
+While that EST_MINUTES doesn't give me much confidence, I see that SOFAR (number of allocation units moved so far) is going up, which is a good sign.
+
+ASM alert log shows the time of the drop disk, the OS process ID of the ARB0 doing all the work, and most importantly - that there are no errors:
+
+Wed Jul 11 16:41:15 2012
+SQL> alter diskgroup DATA1 drop disk DATA1_CD_06_CELL06
+NOTE: GroupBlock outside rolling migration privileged region
+NOTE: requesting all-instance membership refresh for group=1
+...
+NOTE: starting rebalance of group 1/0x6ecaf3e6 (DATA1) at power 1
+Starting background process ARB0
+Wed Jul 11 16:41:24 2012
+ARB0 started with pid=41, OS id=58591
+NOTE: assigning ARB0 to group 1/0x6ecaf3e6 (DATA1) with 1 parallel I/O
+NOTE: F1X0 copy 3 relocating from 0:2 to 55:35379 for diskgroup 1 (DATA1)
+...
+
+ARB0 trace file should show which file extents are being relocated. It does, and that is how I know that ARB0 is doing what it is supposed to do:
+
+$ tail -f /u01/app/oracle/diag/asm/+asm/+ASM2/trace/+ASM2_arb0_58591.trc
+...
+ARB0 relocating file +DATA1.282.788356359 (120 entries)
+*** 2012-07-11 16:48:44.808
+ARB0 relocating file +DATA1.283.788356383 (120 entries)
+...
+*** 2012-07-11 17:13:11.761
+ARB0 relocating file +DATA1.316.788357201 (120 entries)
+*** 2012-07-11 17:13:16.326
+ARB0 relocating file +DATA1.316.788357201 (120 entries)
+...
+
+Note that there may be lot of arb0 trace files in the trace directory, so that's why we need to know the OS process ID of the ARB0 actually doing the rebalance. That information is in the alert log of the ASM instance performing the rebalance.
+
+I can also look at the pstack of the ARB0 process to see what is going on. It does show me that ASM is relocating extents (key functions on the stack being kfgbRebalExecute - kfdaExecute - kffRelocate):
+
+# pstack 58591
+#0  0x0000003957ccb6ef in poll () from /lib64/libc.so.6
+...
+#9  0x0000000003d711e0 in kfk_reap_oss_async_io ()
+#10 0x0000000003d70c17 in kfk_reap_ios_from_subsys ()
+#11 0x0000000000aea50e in kfk_reap_ios ()
+#12 0x0000000003d702ae in kfk_io1 ()
+#13 0x0000000003d6fe54 in kfkRequest ()
+#14 0x0000000003d76540 in kfk_transitIO ()
+#15 0x0000000003cd482b in kffRelocateWait ()
+#16 0x0000000003cfa190 in kffRelocate ()
+#17 0x0000000003c7ba16 in kfdaExecute ()
+#18 0x0000000003d4beaa in kfgbRebalExecute ()
+#19 0x0000000003d39627 in kfgbDriver ()
+#20 0x00000000020e8d23 in ksbabs ()
+#21 0x0000000003d4faae in kfgbRun ()
+#22 0x00000000020ed95d in ksbrdp ()
+#23 0x0000000002322343 in opirip ()
+#24 0x0000000001618571 in opidrv ()
+#25 0x0000000001c13be7 in sou2o ()
+#26 0x000000000083ceba in opimai_real ()
+#27 0x0000000001c19b58 in ssthrdmain ()
+#28 0x000000000083cda1 in main ()
+
+After about 35 minutes the EST_MINUTES drops to 0:
+
+17:16:54 SQL> /
+
+   INST_ID OPERA STAT      POWER      SOFAR   EST_WORK   EST_RATE EST_MINUTES
+---------- ----- ---- ---------- ---------- ---------- ---------- -----------
+         2 REBAL RUN           1      74581      75825       2129           0
+         3 REBAL WAIT          1
+         4 REBAL WAIT          1
+ 
+
+And soon after that, the ASM alert log shows:
+
+Disk emptied
+Disk header erased
+PST update completed successfully
+Disk closed
+Rebalance completed
+Wed Jul 11 17:17:32 2012
+NOTE: GroupBlock outside rolling migration privileged region
+NOTE: requesting all-instance membership refresh for group=1
+Wed Jul 11 17:17:41 2012
+GMON updating for reconfiguration, group 1 at 20 for pid 38, osid 93832
+NOTE: group 1 PST updated.
+SUCCESS: grp 1 disk DATA1_CD_06_CELL06 emptied
+NOTE: erasing header on grp 1 disk DATA1_CD_06_CELL06
+NOTE: process _x000_+asm2 (93832) initiating offline of disk 0.3916039210 (DATA1_CD_06_CELL06) with mask 0x7e in group 1
+NOTE: initiating PST update: grp = 1, dsk = 0/0xe96a042a, mask = 0x6a, op = clear
+GMON updating disk modes for group 1 at 21 for pid 38, osid 93832
+NOTE: PST update grp = 1 completed successfully
+NOTE: initiating PST update: grp = 1, dsk = 0/0xe96a042a, mask = 0x7e, op = clear
+GMON updating disk modes for group 1 at 22 for pid 38, osid 93832
+NOTE: cache closing disk 0 of grp 1: DATA1_CD_06_CELL06
+NOTE: PST update grp = 1 completed successfully
+GMON updating for reconfiguration, group 1 at 23 for pid 38, osid 93832
+NOTE: cache closing disk 0 of grp 1: (not open) DATA1_CD_06_CELL06
+NOTE: group 1 PST updated.
+Wed Jul 11 17:17:41 2012
+NOTE: membership refresh pending for group 1/0x6ecaf3e6 (DATA1)
+GMON querying group 1 at 24 for pid 19, osid 38421
+GMON querying group 1 at 25 for pid 19, osid 38421
+NOTE: Disk  in mode 0x8 marked for de-assignment
+SUCCESS: refreshed membership for 1/0x6ecaf3e6 (DATA1)
+NOTE: stopping process ARB0
+SUCCESS: rebalance completed for group 1/0x6ecaf3e6 (DATA1)
+NOTE: Attempting voting file refresh on diskgroup DATA1
+
+The estimated time was 26 minutes and the rebalance actually took about 36 minutes (in this particular case the disk compacting took less than a minute so I have ignored it). That is why it is more important to understand what is going on, then to know when the rebalance will complete.
+
+Note that the estimated time may also be increasing. If the system is under heavy load, the rebalance will take more time - especially with the rebalance power 1. For a large disk group (many TB) and large number of files, the rebalance can take hours and possibly days.
+
+If you want to get an idea how long will a drop disk take in your environment, you need to test it. Just drop one of the disks, while your system is under normal/typical load. Your data is fully redundant during such disk drop, so you are not exposed to a disk group dismount in case its partner disk fails during the rebalance.
+
+Disk compacting
+
+To look at the disk compacting phase, I add the same disk back, with rebalance power 10:
+
+17:26:48 SQL> alter diskgroup DATA1 add disk '/o/*/DATA1_CD_06_celll06' rebalance power 10;
+
+Diskgroup altered.
+
+Initial estimated time to complete is 6 minutes:
+17:27:22 SQL> select INST_ID, OPERATION, STATE, POWER, SOFAR, EST_WORK, EST_RATE, EST_MINUTES from GV$ASM_OPERATION where GROUP_NUMBER=1;
+
+   INST_ID OPERA STAT      POWER      SOFAR   EST_WORK   EST_RATE EST_MINUTES
+---------- ----- ---- ---------- ---------- ---------- ---------- -----------
+         2 REBAL RUN          10        489      53851       7920           6
+         3 REBAL WAIT         10
+         4 REBAL WAIT         10
+
+After about 10 minutes, the EST_MINUTES drops to 0:
+
+17:39:05 SQL> /
+
+   INST_ID OPERA STAT      POWER      SOFAR   EST_WORK   EST_RATE EST_MINUTES
+---------- ----- ---- ---------- ---------- ---------- ---------- -----------
+         3 REBAL WAIT         10
+         2 REBAL RUN          10      92407      97874       8716           0
+         4 REBAL WAIT         10
+
+And I see the following in the ASM alert log
+
+Wed Jul 11 17:39:49 2012
+NOTE: GroupBlock outside rolling migration privileged region
+NOTE: requesting all-instance membership refresh for group=1
+Wed Jul 11 17:39:58 2012
+GMON updating for reconfiguration, group 1 at 31 for pid 43, osid 115117
+NOTE: group 1 PST updated.
+Wed Jul 11 17:39:58 2012
+NOTE: membership refresh pending for group 1/0x6ecaf3e6 (DATA1)
+GMON querying group 1 at 32 for pid 19, osid 38421
+SUCCESS: refreshed membership for 1/0x6ecaf3e6 (DATA1)
+NOTE: Attempting voting file refresh on diskgroup DATA1
+
+That means that ASM has completed the file extents relocation phase of the rebalance and has started the disk compacting phase. If that is true, we should see the kfdCompact() function on the stack. And we do:
+
+# pstack 103326
+#0  0x0000003957ccb6ef in poll () from /lib64/libc.so.6
+...
+#9  0x0000000003d711e0 in kfk_reap_oss_async_io ()
+#10 0x0000000003d70c17 in kfk_reap_ios_from_subsys ()
+#11 0x0000000000aea50e in kfk_reap_ios ()
+#12 0x0000000003d702ae in kfk_io1 ()
+#13 0x0000000003d6fe54 in kfkRequest ()
+#14 0x0000000003d76540 in kfk_transitIO ()
+#15 0x0000000003cd482b in kffRelocateWait ()
+#16 0x0000000003cfa190 in kffRelocate ()
+#17 0x0000000003c7ba16 in kfdaExecute ()
+#18 0x0000000003c4b737 in kfdCompact ()
+#19 0x0000000003c4c6d0 in kfdExecute ()
+#20 0x0000000003d4bf0e in kfgbRebalExecute ()
+#21 0x0000000003d39627 in kfgbDriver ()
+#22 0x00000000020e8d23 in ksbabs ()
+#23 0x0000000003d4faae in kfgbRun ()
+#24 0x00000000020ed95d in ksbrdp ()
+#25 0x0000000002322343 in opirip ()
+#26 0x0000000001618571 in opidrv ()
+#27 0x0000000001c13be7 in sou2o ()
+#28 0x000000000083ceba in opimai_real ()
+#29 0x0000000001c19b58 in ssthrdmain ()
+#30 0x000000000083cda1 in main ()
+
+The tail on the current ARB0 trace file now shows relocating just 1 allocation unit (1 entries) at the time (another sign of the disk compacting phase):
+
+$ tail -f /u01/app/oracle/diag/asm/+asm/+ASM2/trace/+ASM2_arb0_103326.trc
+ARB0 relocating file +DATA1.321.788357323 (1 entries)
+ARB0 relocating file +DATA1.321.788357323 (1 entries)
+ARB0 relocating file +DATA1.321.788357323 (1 entries)
+...
+
+The V$ASM_OPERATION keeps showing EST_MINUTES=0 during the whole time of the disk compacting (while not helpful, this is normal and expected):
+
+17:42:39 SQL> /
+
+   INST_ID OPERA STAT      POWER      SOFAR   EST_WORK   EST_RATE EST_MINUTES
+---------- ----- ---- ---------- ---------- ---------- ---------- -----------
+         3 REBAL WAIT         10
+         4 REBAL WAIT         10
+         2 REBAL RUN          10      98271      98305       7919           0
+ 
+The X$KFGMG view shows REBALST_KFGMG=2 (yet another confirmation of the disk compacting phase):
+
+17:42:50 SQL> select NUMBER_KFGMG, OP_KFGMG, ACTUAL_KFGMG, REBALST_KFGMG from X$KFGMG;
+
+NUMBER_KFGMG   OP_KFGMG ACTUAL_KFGMG REBALST_KFGMG
+------------ ---------- ------------ -------------
+           1          1           10             2
+ 
+Once the compacting phase completes, the alert log shows "stopping process ARB0" and "rebalance completed":
+
+Wed Jul 11 17:43:48 2012
+NOTE: stopping process ARB0
+SUCCESS: rebalance completed for group 1/0x6ecaf3e6 (DATA1)
+
+In this case, the file extents relocation phase took about 12 minutes and the disk compacting phase took about 4 minutes.
+
+The compacting phase can actually take significant amount of time. In one case I have seen the file extents relocation run for 60 minutes and the disk compacting after that took another 30 minutes. But it doesn't really matter how long it takes for the compacting to complete, because as soon as the file extents relocation completes, all data is fully redundant and we are not exposed to disk group dismount due to a partner disk failure.
+
+Adjusting the rebalance power
+
+The rebalance power can be adjusted dynamically, i.e. during the rebalance. If the rebalance with the default power is 'too slow', the power can be increased. How much? To answer that questions, we need to understand the I/O load, the I/O throughput and most importantly the I/O limits the system can take. If we don't know that, the power can be increased to 5 (with 'ALTER DISKGROUP ... REBALANCE POWER 5;'). We can then check if that makes a difference. Should we go any higher with the rebalance power? Again, as long as we are not adversely impacting the database I/O performance, we can keep increasing the power. But I haven't seen much improvement beyond power 30. Note that the power can go up to 11 with disk groups with COMPATIBLE.ASM<11.2.0.2 and up to 1024 for disk groups with COMPATIBLE.ASM=>11.2.0.2.
+
+The testing is the key here. We really need to test the rebalance under the regular production load, with different values for the power. There is no point testing with no databases running or on a system with different storage characteristics.
+
+References
+
+Oracle® Automatic Storage Management Administrator's Guide 11g Release 2 (11.2)
+Chapter 1 Introduction to Oracle Automatic Storage Management
+About Online Storage Reconfigurations and Dynamic Rebalancing
+
+Oracle® Automatic Storage Management Administrator's Guide 11g Release 2 (11.2)
+Chapter 4 Administering Oracle ASM Disk Groups
+Manually Rebalancing Disk Groups
+Tuning Rebalance Operations
+
+Oracle® Database Reference 11g Release 2 (11.2)
+V$ASM_OPERATION
+
+Oracle Sun Database Machine X2-2/X2-8 High Availability Best Practices (Doc ID 1274322.1)
+Section Check ASM rebalance forward progress if you suspect a problem
+Shell script rebalance_file_progress.sh
