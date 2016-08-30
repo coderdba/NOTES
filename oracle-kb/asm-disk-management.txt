@@ -255,6 +255,113 @@ $ sqlplus "/ as sysdba"
 
 SQL> ALTER DISKGROUP TESTDB_DATA2 DROP FILE '+TESTDB_OLDDATA/mysid/app_data.nnn';
 
+ARTICLE3: http://asmsupportguy.blogspot.in/2011/11/rebalancing-act.html
+Rebalancing act
+
+ASM ensures that file extents are evenly distributed across all disks in a disk group. This is true for the initial file creation and for file resize operations. That means we should always have a balanced space distribution across all disks in a disk group.
+
+Rebalance operation
+
+Disk group rebalance is triggered automatically on ADD, DROP and RESIZE disk operations and on moving a file between hot and cold regions. Running rebalance by explicitly issuing ALTER DISKGROUP ... REBALANCE is called a manual rebalance. We might want to do that to change the rebalance power for example. We can also run the rebalance manually if a disk group becomes unbalanced for any reason.
+
+The POWER clause of the ALTER DISKGROUP ... REBALANCE statement specifies the degree of parallelism of the rebalance operation. It can be set to a minimum value of 0 which halts the current rebalance until the statement is either implicitly or explicitly re-run. A higher values may reduce the total time it takes to complete the rebalance operation.
+
+The ALTER DISKGROUP ... REBALANCE command by default returns immediately so that we can run other commands while the rebalance operation takes place in the background. To check the progress of the rebalance operations we can query V$ASM_OPERATION view.
+
+Three phase power
+
+The rebalance operation has three distinct phases. First, ASM has to come up with the rebalance plan. That will depend on the rebalance reason, disk group size, number of files in the disk group, whether or not partnership has to modified, etc. In any case this shouldn't take more than a couple of minutes.
+
+The second phase is the moving or relocating the extents among the disks in the disk group. This is where the bulk of the time will be spent. As this phase is progressing, ASM will keep track of the number of extents moved, and the actual I/O performance. Based on that it will be calculating the estimated time to completion (GV$ASM_OPERATION.EST_MINUTES). Keep in mind that this is an estimate and that the actual time may change depending on the overall (mostly disk related) load. If the reason for the rebalance was a failed disk(s) in a redundant disk group, at the end of this phase the data mirroring is fully re-established.
+
+The third phase is disk(s) compacting (ASM version 11.1.0.7 and later). The idea of the compacting phase is to move the data as close to the outer tracks of the disks as possible. Note that at this stage or the rebalance, the EST_MINUTES will keep showing 0. This is a 'feature' that will hopefully be addressed in the future. The time to complete this phase will again depend on the number of disks, reason for rebalance, etc. Overall time should be a fraction of the second phase.
+
+Some notes about rebalance operations
+Rebalance is per file operation.
+An ongoing rebalance is restarted if the storage configuration changes either when we alter the configuration, or if the configuration changes due to a failure or an outage. If the new rebalance fails because of a user error a manual rebalance may be required.
+There can be one rebalance operation per disk group per ASM instance in a cluster.
+Rebalancing continues across a failure of the ASM instance performing the rebalance.
+The REBALANCE clause (with its associated POWER and WAIT/NOWAIT keywords) can also be used in ALTER DISKGROUP commands for ADD, DROP or RESIZE disks.
+Tuning rebalance operations
+
+If the POWER clause is not specified in an ALTER DISKGROUP statement, or when rebalance is implicitly run by ADD/DROP/RESIZE disk, then the rebalance power defaults to the value of the ASM_POWER_LIMIT initialization parameter. We can adjust the value of this parameter dynamically. Higher power limit should result in a shorter time to complete the rebalance, but this is by no means linear and it will depends on the (storage system) load, available throughput and underlying disk response times.
+
+The power can be changed for a rebalance that is in progress. We just need to issue another ALTER DISKGROUP ... REBALANCE command with different value for POWER. This interrupts the current rebalance and restarts it with modified POWER.
+
+Relevant initialization parameters and disk group attributes
+
+ASM_POWER_LIMIT
+
+The ASM_POWER_LIMIT initialization parameter specifies the default power for disk rebalancing in a disk group. The range of values is 0 to 11 in versions prior to 11.2.0.2. Since version 11.2.0.2 the range of values is 0 to 1024, but that still depends on the disk group compatibility (see the notes below). The default value is 1. A value of 0 disables rebalancing.
+For disk groups with COMPATIBLE.ASM set to 11.2.0.2 or greater, the operational range of values is 0 to 1024 for the rebalance power.
+For disk groups that have COMPATIBLE.ASM set to less than 11.2.0.2, the operational range of values is 0 to 11 inclusive.
+Specifying 0 for the POWER in the ALTER DISKGROUP REBALANCE command will stop the current rebalance operation (unless you hit bug 7257618).
+_DISABLE_REBALANCE_COMPACT
+
+Setting initialization parameter _DISABLE_REBALANCE_COMPACT=TRUE will disable the compacting phase of the disk group rebalance - for all disk groups.
+
+_REBALANCE_COMPACT
+
+This is a hidden disk group attribute. Setting _REBALANCE_COMPACT=FALSE will disable the compacting phase of the disk group rebalance - for that disk group only.
+
+_ASM_IMBALANCE_TOLERANCE
+
+This initialization parameter controls the percentage of imbalance between disks. Default value is 3%.
+
+Processes
+
+The following table has a brief summary of the background processes involved in the rebalance operation.
+
+
+Process	Description
+ARBn	ASM Rebalance Process. Rebalances data extents within an ASM disk group. Possible processes are ARB0-ARB9 and ARBA.
+RBAL	ASM Rebalance Master Process. Coordinates rebalance activity. In an ASM instance, it coordinates rebalance activity for disk groups. In a database instances, it manages ASM disk groups.
+Xnnn	Exadata only - ASM Disk Expel Slave Process. Performs ASM post-rebalance activities. This process expels dropped disks at the end of an ASM rebalance.
+When a rebalance operation is in progress, the ARBn processes will generate trace files in the background dump destination directory, showing the rebalance progress.
+
+Views
+
+In an ASM instance, V$ASM_OPERATION displays one row for every active long running ASM operation executing in the current ASM instance. GV$ASM_OPERATION will show cluster wide operations.
+
+During the rebalance, the OPERATION will show REBAL, STATE will shows the state of the rebalance operation, POWER will show the rebalance power and EST_MINUTES will show an estimated time the operation should take.
+
+In an ASM instance, V$ASM_DISK displays information about ASM disks. During the rebalance, the STATE will show the current state of the disks involved in the rebalance operation.
+
+Is your disk group balanced
+
+Run the following query in your ASM instance to get the report on the disk group imbalance.
+
+SQL> column "Diskgroup" format A30 
+SQL> column "Imbalance" format 99.9 Heading "Percent|Imbalance"
+SQL> column "Variance" format 99.9 Heading "Percent|Disk Size|Variance"
+SQL> column "MinFree" format 99.9 Heading "Minimum|Percent|Free"
+SQL> column "DiskCnt" format 9999 Heading "Disk|Count"
+SQL> column "Type" format A10 Heading "Diskgroup|Redundancy"
+
+SQL> SELECT g.name "Diskgroup",
+  100*(max((d.total_mb-d.free_mb)/d.total_mb)-min((d.total_mb-d.free_mb)/d.total_mb))/max((d.total_mb-d.free_mb)/d.total_mb) "Imbalance",
+  100*(max(d.total_mb)-min(d.total_mb))/max(d.total_mb) "Variance",
+  100*(min(d.free_mb/d.total_mb)) "MinFree",
+  count(*) "DiskCnt",
+  g.type "Type"
+FROM v$asm_disk d, v$asm_diskgroup g
+WHERE d.group_number = g.group_number and
+  d.group_number <> 0 and
+  d.state = 'NORMAL' and
+  d.mount_status = 'CACHED'
+GROUP BY g.name, g.type;
+
+                                           Percent Minimum
+                                 Percent Disk Size Percent  Disk Diskgroup
+Diskgroup                      Imbalance  Variance    Free Count Redundancy
+------------------------------ --------- --------- ------- ----- ----------
+ACFS                                  .0        .0    12.5     2 NORMAL
+DATA                                  .0        .0    48.4     2 EXTERN
+PLAY                                 3.3        .0    98.1     3 NORMAL
+RECO                                  .0        .0    82.9     2 EXTERN
+
+NOTE: The above query is from Oracle Press book Oracle Automatic Storage Management, Under-the-Hood & Practical Deployment Guide, by Nitin Vengurlekar, Murali Vallath and Rich Long.
+
 ======================================
 REBALANCE - RISKS
 ======================================
