@@ -68,3 +68,78 @@ asm_diskstring                       string      ORCL:*
 
 ALTER DISKGROUP DATA01 ADD DISK 'ORCL:DISK04';
 ALTER DISKGROUP DATA01 ADD DISK 'ORCL:DISK05' rebalance;
+
+======================================
+MOVE A DATAFILE TO ANOTHER DISK GROUP
+======================================
+NOTE: NEEDS DOWNTIME
+
+http://www.dba-oracle.com/t_migrate_asm_datafiles_from_one_diskgroup_to_another.htm
+(stuff below is direct copy from the above website)
+
+Question:  I need to move datafiles from one diskgroup to another ASM diskgroup.  How do I migrate ASM files between diskgroups?
+
+Answer:  Moving data files from one ASM diskgroup to another diskgroup involves these steps:
+
+Step 1: Get the data file name:
+
+select
+   file_name
+from
+   dba_data_files;
+
+Step 2:  Identify the target diskgroup to migrate to:
+
+select
+   name
+from
+   v$asm_diskgroup;
+
+Step 3:  Take the old data file offline:
+
+alter database datafile 
+   '+MYDB_OLDDATA/mysid/app_data.nnn' 
+offline; 
+
+Step 4:  Copy the datafile to the new diskgroup (using RMAN)
+
+$ rman target / 
+
+connected to target database: TESTDB (DBID=1234) 
+
+RMAN> copy datafile '+MYDB_OLDDATA/mysid/app_data.nnn' to '+MYDB_NEWDATA'; 
+
+Step 6: Get the new filename:
+
+select    
+   file_name 
+from 
+   dba_data_files; 
+
+Step 7: Re-name the data file:
+
+SQL> alter database rename file 
+2 '+MYDB_OLDDATA/mysid/app_data.nnn' 
+3 to 
+4 '+MYDB_NEWDATA/mysid/app_data.nnn';
+
+After Oracle renames the ASM database file in the data dictionary, it will remove the original ASM database file (+MYDB_OLDDATA/mysid/app_data.nnn). 
+
+Step 8: Rename the RMAN data file:
+
+RMAN> switch datafile '+MYDB_NEWDATA/mysid/app_data.nnn' to copy;
+
+Step 9: Use RMAN recovery to the new data file:
+
+RMAN> recover datafile '+MYDB_NEWDATA/mysid/app_data.nnn';
+
+Step 10:  Put the data file online:
+
+RMAN> alter database datafile '+MYDB_NEWDATA/mysid/app_data.nnn' online;
+
+Step 11: Delete the old ASM file from the old diskgroup.
+$ ORACLE_SID=+ASM; export ORACLE_SID
+
+$ sqlplus "/ as sysdba"
+
+SQL> ALTER DISKGROUP TESTDB_DATA2 DROP FILE '+TESTDB_OLDDATA/mysid/app_data.nnn';
