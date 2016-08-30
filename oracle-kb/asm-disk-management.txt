@@ -363,6 +363,41 @@ RECO                                  .0        .0    82.9     2 EXTERN
 NOTE: The above query is from Oracle Press book Oracle Automatic Storage Management, Under-the-Hood & Practical Deployment Guide, by Nitin Vengurlekar, Murali Vallath and Rich Long.
 
 ======================================
+REBALANCE TUNING
+======================================
+https://flashdba.com/2015/04/17/asm-rebalance-too-slow-3-tips-to-improve-rebalance-times/
+1. ADD AND DROP IN SAME COMMAND
+alter diskgroup data
+add disk  'ORCL:NEWDATA1','ORCL:NEWDATA2','ORCL:NEWDATA3','ORCL:NEWDATA4',
+          'ORCL:NEWDATA5','ORCL:NEWDATA6','ORCL:NEWDATA7','ORCL:NEWDATA8'
+drop disk 'DATA1','DATA2','DATA3','DATA4',
+          'DATA5','DATA6','DATA7','DATA8'
+rebalance power 11 wait;
+
+INSTEAD OF
+alter diskgroup data
+add disk  'ORCL:NEWDATA1','ORCL:NEWDATA2','ORCL:NEWDATA3','ORCL:NEWDATA4',
+          'ORCL:NEWDATA5','ORCL:NEWDATA6','ORCL:NEWDATA7','ORCL:NEWDATA8'
+rebalance power 11 wait;
+
+AND THEN
+
+alter diskgroup data
+drop disk 'DATA1','DATA2','DATA3','DATA4',
+          'DATA5','DATA6','DATA7','DATA8'
+rebalance power 11 wait;
+
+2. Set higher power limit - can go up to 1024 in 11g and up
+
+3. Avoid The Compact Phase (for Flash Storage Systems)
+In flash storage, where data resides does not matter - so compacting data is not necessary
+What is ASM rebalance compact Phase and how it can be disabled (Doc ID 1902001.1)
+
+11g: _DISABLE_REBALANCE_COMPACT=TRUE
+12c: ALTER DISKGROUP  SET ATTRIBUTE "_rebalance_compact”="FALSE";
+
+
+======================================
 REBALANCE - RISKS
 ======================================
 https://kevinclosson.net/2016/08/21/stop-constantly-adding-disks-to-your-asm-disk-groups-resize-your-asm-disks-on-all-flash-array-storage-adding-disks-is-really-the-y2k-way-heres-why/
