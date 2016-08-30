@@ -56,10 +56,121 @@ Disk "VOL1" is a valid ASM disk on device [8, 97]
 [root@orcldb2 ~]# ls -l /dev | grep 8, | grep 97
 brw-rw----   1 root disk     8,      81 Nov  4 13:02 sdg1
 
-=============================
-ADD DISK TO DISK GROUP
-=============================
-http://harvarinder.blogspot.in/2015/01/ora-15031-disk-specification.html
+========================================
+ADD DISK TO DISK GROUP AND REBALANCE
+========================================
+ARTICLE1: http://vijaydumpa.blogspot.in/2008/01/asm-san-migration-case-study.html
+Friday, January 4, 2008
+ASM SAN migration Case Study:
+Problem: 
+I need to remove 3 old SAN disks(size of 150 G each) from my ASM database without any down time.
+
+Server, OS and DB details:
+OS: RHEL 4 Update 4 (64 bit)
+DB: 10.2.0.3.0
+Server: DELL PowerEdgeTM 2950(16G Memory, 4 CPU's(Intel(R) Xeon(R) CPU 5160 @ 3.00GHz))
+
+
+Procedure:
+1. Make sure you have free disks available to add to the ASM diskgroup, before dropping the disk's:
+
+On ASM instance:
+sqlplus / as sysdba
+
+set linesize 200;
+col path format a20;
+
+select NAME, PATH, MOUNT_STATUS, HEADER_STATUS, MODE_STATUS, TOTAL_MB, FREE_MB
+from v$asm_disk;
+
+
+2. Add new ASM disks to the diskgroup:
+
+alter diskgroup ORADB_DATA01_DG add disk 'ORCL:H_1253_1521';
+alter diskgroup ORADB_DATA01_DG add disk 'ORCL:H_1253_1522';
+alter diskgroup ORADB_DATA01_DG add disk 'ORCL:H_1253_1523';
+
+alter diskgroup ORADB_DATA01_DG REBALANCE POWER 10; or
+alter system set asm_power_limit=10 scope=memory;
+
+-- Check the rebalance operation
+select * from v$asm_operation;
+
+
+Time taken to rebalance the diskgroup: app. 90 min.
+
+
+3. Identify the disks to drop from the diskgroup:
+
+set linesize 200;
+col path format a20;
+
+select NAME, PATH, MOUNT_STATUS, HEADER_STATUS, MODE_STATUS, TOTAL_MB, FREE_MB
+from v$asm_disk;
+
+ALTER DISKGROUP ORADB_DATA01_DG DROP DISK B_1530_1091;
+ALTER DISKGROUP ORADB_DATA01_DG DROP DISK C_1530_1090;
+ALTER DISKGROUP ORADB_DATA01_DG DROP DISK D_1530_1081;
+
+alter diskgroup ORADB_DATA01_DG REBALANCE POWER 10; or
+alter system set asm_power_limit=10 scope=memory;
+
+-- Check the rebalance operation
+select * from v$asm_operation;
+
+
+Time taken to rebalance the diskgroup: app. 90 min.
+
+
+4. Physically removing the disks from the server:
+
+as root only!!!
+
+/etc/init.d/oracleasm deletedisk B_1530_1091
+/etc/init.d/oracleasm deletedisk C_1530_1090
+/etc/init.d/oracleasm deletedisk D_1530_1081
+
+
+How to find mapping of ASM disks to Physical Devices?
+
+a.
+atlxd215 | +ASM | /dev
+> /etc/init.d/oracleasm querydisk H_1253_1521
+Disk "H_1253_1521" is a valid ASM disk on device [120, 113]
+
+b.
+atlxd215 | +ASM | /dev
+> ls -l /dev | grep 120 | grep 113
+brwxrwx--- 1 oracle dba 120, 113 Oct 1 10:55 emcpowerh1
+
+[or] 
+
+atlxd215 | +ASM | /dev
+> cd oracleasm
+atlxd215 | +ASM | /dev/oracleasm
+> cd disks
+
+atlxd215 | +ASM | /dev/oracleasm/disks
+> ls -lt
+total 0
+brw-rw---- 1 oracle dba 120, 177 Oct 1 11:04 L_1253_1561
+brw-rw---- 1 oracle dba 120, 161 Oct 1 11:04 K_1253_1560
+brw-rw---- 1 oracle dba 120, 145 Oct 1 11:04 J_1253_1541
+brw-rw---- 1 oracle dba 120, 129 Oct 1 11:03 I_1253_1540
+brw-rw---- 1 oracle dba 120, 113 Oct 1 11:03 H_1253_1521
+brw-rw---- 1 oracle dba 120, 97 Oct 1 11:03 G_1253_1520
+brw-rw---- 1 oracle dba 120, 81 Oct 1 11:03 F_1253_1501
+brw-rw---- 1 oracle dba 120, 65 Oct 1 10:59 E_1253_1500
+
+c. 
+If you are using multi-path, you will need an additional step to map the physical device to the multi-path device:
+
+as root only!!!
+
+# /sbin/powermt display dev=emcpowerh1
+
+
+ARTICLE2: http://harvarinder.blogspot.in/2015/01/ora-15031-disk-specification.html
 SHOW PARAMETER ASM_DISKSTRING
 
 NAME                                 TYPE        VALUE
