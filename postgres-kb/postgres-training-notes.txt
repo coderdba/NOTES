@@ -209,3 +209,40 @@ postgres=# select datid, datname, temp_files from pg_stat_database;
  16384 | a b       |          0
 (4 rows)
 
+MONITORING
+Use the stats tables which provide snapshots of performance.
+Graphana tool can collect it periodically by changing from check to metric - it will poll and store in its own 'influx' db
+
+TABLESPACES
+It is a directory - not like Oracle's tablespace
+Files are created similar to how they are created in the default 'data' directory
+postgres=# create tablespace data2 location '/var/lib/pgsql/9.5/data2' [tablespace_option = ...] ;
+
+tablespace_option can be performance options etc.
+
+--> actually it creates a subdirectory as follows:
+/var/lib/pgsql/9.5/data2/PG_9.5_201510051  --> PG_9.5... indicates it is a non-default tablespace
+
+List tablespaces:
+postgres=# \db
+ data2      | postgres | /var/lib/pgsql/9.5/data2
+ pg_default | postgres |
+ pg_global  | postgres |
+
+postgres=# create database mydb tablespace data2;
+      CREATE DATABASE
+--> creates db in a folder like /var/lib/pgsql/9.5/data2/PG_9.5_201510051/16386
+
+postgres=# \c mydb
+You are now connected to database "mydb" as user "postgres".
+
+mydb=# create table emp (empid int primary key, name varchar(20));
+      CREATE TABLE
+
+mydb=# create table dept (deptid int primary key, name varchar(20)) tablespace data2;
+      CREATE TABLE
+
+--> the two tables get created in two different folders - emp in 'data' and dept in 'data2' folders db-id subfolders
+
+
+
