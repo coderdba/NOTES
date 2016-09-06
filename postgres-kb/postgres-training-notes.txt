@@ -235,6 +235,8 @@ postgres=# \db
  pg_default | postgres |
  pg_global  | postgres |
 
+postgres=# select * from pg_tablespaces;
+
 postgres=# create database mydb tablespace data2;
       CREATE DATABASE
 --> creates db in a folder like /var/lib/pgsql/9.5/data2/PG_9.5_201510051/16386
@@ -250,5 +252,72 @@ mydb=# create table dept (deptid int primary key, name varchar(20)) tablespace d
 
 --> the two tables get created in two different folders - emp in 'data' and dept in 'data2' folders db-id subfolders
 
+SCHEMAS
+mydb=# \c mydb
+You are now connected to database "mydb" as user "postgres".
+
+mydb=# create schema s1;
+CREATE SCHEMA
+mydb=# create schema s2 tablespace data2;
+ERROR:  syntax error at or near "tablespace"
+LINE 1: create schema s2 tablespace data2;
+                         ^
+mydb=#  create schema s2;
+CREATE SCHEMA
+
+mydb=> \dn
+ public | postgres
+ s1     | postgres
+ s2     | postgres
+
+mydb=> \dnS
+ information_schema | postgres
+ pg_catalog         | postgres
+ pg_temp_1          | postgres
+ pg_toast           | postgres
+ pg_toast_temp_1    | postgres
+ public             | postgres
+ s1                 | postgres
+ s2                 | postgres
+
+mydb=# create table s1.e1 (id int, name varchar(10));
+CREATE TABLE
+mydb=# create table s2.e1 (id int, name varchar(10));
+CREATE TABLE
+
+mydb=# \dt s*.*
+ s1     | e1   | table | postgres
+ s2     | e1   | table | postgres
+
+You cannot see the same tables from a different database:
+mydb=# \c mydb2
+You are now connected to database "mydb2" as user "postgres".
+mydb2=# \dt s*.*
+No matching relations found.
+mydb2=# \c mydb
+You are now connected to database "mydb" as user "postgres".
+mydb=# \dt s*.*
+ s1     | e1   | table | postgres
+ s2     | e1   | table | postgres
+
+USERS
+postgres# \c mydb
+
+mydb=# create user user1;
+CREATE ROLE --> user is a ROLE with LOGIN privileges
+
+mydb=# \du
+ postgres  | Superuser, Create role, Create DB, Replication, Bypass RLS | {}
+ user1 
+ |                                                            | {}
+mydb=# grant all on s1.e1 to user1;
+GRANT
+
+mydb=# set role user1;
+SET
+
+mydb=> \dt s*.*
+ s1     | e1   | table | postgres
+ s2     | e1   | table | postgres
 
 
