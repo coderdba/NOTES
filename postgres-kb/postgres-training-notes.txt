@@ -19,6 +19,7 @@ Postgres is extensible - can define new datatypes, functions, can use other lang
 ARCHITECTURE:
 http://raghavt.blogspot.in/2012/04/caching-in-postgresql.html
 http://patshaughnessy.net/2016/1/22/is-your-postgres-query-starved-for-memory
+http://rhaas.blogspot.in/2012/03/tuning-sharedbuffers-and-walbuffers.html
 
 Datafiles (data folder) - uses regular filesystems
 Memory - 
@@ -26,14 +27,23 @@ Memory -
   Page cache (not really set - it is just 'remaining os mem') --> recently read/written data - similar to db_block_buffers of Oracle
   Query memory
   Max connections (small memory used by connections)
-  work_mem (dynamic at system, session level) --> for query-sorts etc, typically small like 4-16MB, 4MB good for most OLTP systems, 
-                                                  large operations do multiple passes, and use temp files
+  work_mem (dynamic at system, user, session level) --> for query-sorts etc, typically small like 4-16MB, 
+      4MB good for most OLTP systems, large operations do multiple passes, and use temp files
+      psql> alter user username set work_mem=128MB (to set at user level - applies  to all queries of the user)
   maintenance_work_mem (dynamic) - for maintenance operations like create index that needs sort data (could be set high like a GB)
   wal_buffers - 
   temp_buffers - 
   effective_cache_size (only a hint) - 
 
 Temporary files - created as needed (similar to temp tablespace of Oracle)
+
+Checkpoints and background writer:
+      min_, max_wal_size
+      checkpoint_timeout --> default 5 min, increase it to 30 min or so to avoid too much checkpoint write overhead
+      checkpoint_completion_target
+      bgrwriter_delay
+      bgwriter_lru_maxpages
+      bgwriter_lru_multiplier
 
 
 CHECK STATUS OF THE SERVICE:
