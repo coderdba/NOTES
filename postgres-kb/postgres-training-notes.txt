@@ -7,6 +7,7 @@ commitfest.postgresql.org
 
 MISC:
 MariaDB is not opensource anymore - they have a new capability 'max...' so not opensource anymore
+Everything is case-insensitive in postgres
 
 BASICSL
 Default port - 5432
@@ -145,4 +146,66 @@ postgres=# select * from pg_database;
 =c/postgres,postgres=CTc/postgres}
  postgres  |     10 |        6 | en_US.UTF-8 | en_US.UTF-8 | f             | t            |           -1 |         13236 |         1740 |          1 |          1663 |
 (3 rows)
+
+# \l
+                                  List of databases
+   Name    |  Owner   | Encoding |   Collate   |    Ctype    |   Access privileges
+-----------+----------+----------+-------------+-------------+-----------------------
+ a b       | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 |
+ postgres  | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 |
+ template0 | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =c/postgres          +
+           |          |          |             |             | postgres=CTc/postgres
+ template1 | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =c/postgres          +
+           |          |          |             |             | postgres=CTc/postgres
+(4 rows)
+
+
+- Can create a db with spaces within
+# create database "a b";
+# \c "a b"
+# select quote_ident(datname) from pg_database;
+ quote_ident
+-------------
+ template1
+ template0
+ postgres
+ "a b"
+(4 rows)
+
+
+DATABASE INFORMATION
+https://www.postgresql.org/docs/9.5/static/monitoring-stats.html
+
+postgres=# \d pg_stat_database
+          View "pg_catalog.pg_stat_database"
+     Column     |           Type           | Modifiers
+----------------+--------------------------+-----------
+ datid          | oid                      |
+ datname        | name                     |
+ numbackends    | integer                  |
+ xact_commit    | bigint                   |
+ xact_rollback  | bigint                   |
+ blks_read      | bigint                   |
+ blks_hit       | bigint                   |
+ tup_returned   | bigint                   |
+ tup_fetched    | bigint                   |
+ tup_inserted   | bigint                   |
+ tup_updated    | bigint                   |
+ tup_deleted    | bigint                   |
+ conflicts      | bigint                   |
+ temp_files     | bigint                   |
+ temp_bytes     | bigint                   |
+ deadlocks      | bigint                   |
+ blk_read_time  | double precision         |
+ blk_write_time | double precision         |
+ stats_reset    | timestamp with time zone |
+
+postgres=# select datid, datname, temp_files from pg_stat_database;
+ datid |  datname  | temp_files
+-------+-----------+------------
+     1 | template1 |          0
+ 13236 | template0 |          0
+ 13241 | postgres  |          0
+ 16384 | a b       |          0
+(4 rows)
 
