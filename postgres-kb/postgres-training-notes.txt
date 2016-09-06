@@ -18,13 +18,23 @@ Postgres is extensible - can define new datatypes, functions, can use other lang
 
 ARCHITECTURE:
 http://raghavt.blogspot.in/2012/04/caching-in-postgresql.html
+http://patshaughnessy.net/2016/1/22/is-your-postgres-query-starved-for-memory
+
 Datafiles (data folder) - uses regular filesystems
 Memory - 
   Shared buffers (shared_buffers)--> set to upto 25% of system memory
   Page cache (not really set - it is just 'remaining os mem') --> recently read/written data - similar to db_block_buffers of Oracle
   Query memory
   Max connections (small memory used by connections)
-  work_mem --> for queries to use for sorts etc
+  work_mem (dynamic at system, session level) --> for query-sorts etc, typically small like 4-16MB, 
+                                                  large operations do multiple passes, and use temp files
+  maintenance_work_mem (dynamic) - for maintenance operations like create index that needs sort data (could be set high like a GB)
+  wal_buffers - 
+  temp_buffers - 
+  effective_cache_size (only a hint) - 
+
+Temporary files - created as needed (similar to temp tablespace of Oracle)
+
 
 CHECK STATUS OF THE SERVICE:
 $ pg_ctl status -D /var/lib/pgsql/9.5/data
