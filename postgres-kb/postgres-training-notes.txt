@@ -310,8 +310,20 @@ mydb=# \du
  postgres  | Superuser, Create role, Create DB, Replication, Bypass RLS | {}
  user1 
  |                                                            | {}
+ 
+mydb=# grant usage on schema s1 to user1;
+GRANT
+
 mydb=# grant all on s1.e1 to user1;
 GRANT
+
+mydb=# \z s1.e1
+                                Access privileges
+ Schema | Name | Type  |     Access privileges     | Column privileges | Policies
+--------+------+-------+---------------------------+-------------------+----------
+ s1     | e1   | table | postgres=arwdDxt/postgres+|                   |
+        |      |       | user1=arwdDxt/postgres    |                   |
+(1 row)
 
 mydb=# set role user1;
 SET
@@ -320,4 +332,11 @@ mydb=> \dt s*.*
  s1     | e1   | table | postgres
  s2     | e1   | table | postgres
 
+mydb=> select * from s1.e1;
+ id | name
+----+------
+(0 rows)
 
+mydb=> select * from s2.e1;
+ERROR:  permission denied for schema s2
+LINE 1: select * from s2.e1;
