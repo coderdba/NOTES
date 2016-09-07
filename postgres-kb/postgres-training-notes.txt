@@ -375,6 +375,7 @@ pg_tables
 pg_stat_all_tables
 pg_statio_all_tables
 
+psql command \d+ gives the complete table info including indexes, views etc
 
 mydb-# \d
         List of relations
@@ -431,3 +432,77 @@ mydb-# \dtS
  pg_catalog | pg_auth_members         | table | postgres
  pg_catalog | pg_authid               | table | postgres
  pg_catalog | pg_cast                 | table | postgres
+
+-----------------------
+UPDATES AND VACCUM
+-----------------------
+Updates and deletes result in 'dead tuples' - and are cleared by a vacuum process.
+
+-----------------------
+TABLE STATISTICS
+-----------------------
+https://wiki.postgresql.org/wiki/Introduction_to_VACUUM,_ANALYZE,_EXPLAIN,_and_COUNT
+
+Upon inserts/updates/deletes stats on tuples affected is collected immediately post transaction.
+
+Catalog table for that:
+mydb-# \d+ pg_stat_all_tables
+                        View "pg_catalog.pg_stat_all_tables"
+       Column        |           Type           | Modifiers | Storage | Description
+---------------------+--------------------------+-----------+---------+-------------
+ relid               | oid                      |           | plain   |
+ schemaname          | name                     |           | plain   |
+ relname             | name                     |           | plain   |
+ seq_scan            | bigint                   |           | plain   |
+ seq_tup_read        | bigint                   |           | plain   |
+ idx_scan            | bigint                   |           | plain   |
+ idx_tup_fetch       | bigint                   |           | plain   |
+ n_tup_ins           | bigint                   |           | plain   |
+ n_tup_upd           | bigint                   |           | plain   |
+ n_tup_del           | bigint                   |           | plain   |
+ n_tup_hot_upd       | bigint                   |           | plain   |
+ n_live_tup          | bigint                   |           | plain   |
+ n_dead_tup          | bigint                   |           | plain   |
+ n_mod_since_analyze | bigint                   |           | plain   |
+ last_vacuum         | timestamp with time zone |           | plain   |
+ last_autovacuum     | timestamp with time zone |           | plain   |
+ last_analyze        | timestamp with time zone |           | plain   |
+ last_autoanalyze    | timestamp with time zone |           | plain   |
+ vacuum_count        | bigint                   |           | plain   |
+ autovacuum_count    | bigint                   |           | plain   |
+ analyze_count       | bigint                   |           | plain   |
+ autoanalyze_count   | bigint                   |           | plain   |
+
+--------
+INDEXES
+--------
+\di
+\d index_name
+
+pg_indexes
+pg_stat_all_indexes
+pg_statio_all_indexes
+
+The following shows if indexes are being used or not: (idx_scan, idx_tup_read...)
+mydb-# \d+ pg_stat_all_indexes
+           View "pg_catalog.pg_stat_all_indexes"
+    Column     |  Type  | Modifiers | Storage | Description
+---------------+--------+-----------+---------+-------------
+ relid         | oid    |           | plain   |
+ indexrelid    | oid    |           | plain   |
+ schemaname    | name   |           | plain   |
+ relname       | name   |           | plain   |
+ indexrelname  | name   |           | plain   |
+ idx_scan      | bigint |           | plain   |
+ idx_tup_read  | bigint |           | plain   |
+ idx_tup_fetch | bigint |           | plain   |
+
+---------------------------
+EXPLAIN PLAN
+---------------------------
+mydb=#  explain select * from emp where empid=1;
+                             QUERY PLAN
+---------------------------------------------------------------------
+ Index Scan using emp_pkey on emp  (cost=0.15..8.17 rows=1 width=62)
+   Index Cond: (empid = 1)
+
