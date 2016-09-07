@@ -579,3 +579,78 @@ mydb=# select * from rand(10);
   745
 (11 rows)
 
+----------------------
+EXERCISE
+----------------------
+mydb=# create table t (id int, value int);
+CREATE TABLE
+
+mydb=# insert into t select i, i from generate_series(1, 10000) s(i);  
+      --> s(i) gives an alias called 'i' for the values from generate_series function)
+INSERT 0 10000
+
+mydb=# create index on t(id, value);
+CREATE INDEX
+
+mydb=# select s.i from generate_series (1,10) s(i);
+ i
+----
+  1
+  2
+  3
+  4
+  5
+  6
+  7
+  8
+  9
+ 10
+(10 rows)
+
+mydb=# select i, s.i from generate_series (1,10) s(i);
+ i  | i
+----+----
+  1 |  1
+  2 |  2
+  3 |  3
+  4 |  4
+  5 |  5
+  6 |  6
+  7 |  7
+  8 |  8
+  9 |  9
+ 10 | 10
+(10 rows)
+
+mydb=# create or replace function sum_values(p_id int)
+mydb-# returns int as $$
+mydb$# declare
+mydb$# v_sum int;
+mydb$# begin
+mydb$# select sum(value) into v_sum from t where id < p_id;
+mydb$# return v_sum;
+mydb$# end
+mydb$# $$ language plpgsql;
+CREATE FUNCTION
+mydb=# select sum_values(10) ;
+ sum_values
+------------
+         45
+(1 row)
+
+
+mydb=#  \dfS generate_series
+                                                               List of functions
+   Schema   |      Name       |         Result data type          |                        Argument data types                         |  Type
+------------+-----------------+-----------------------------------+--------------------------------------------------------------------+--------
+ pg_catalog | generate_series | SETOF bigint                      | bigint, bigint                                                     | normal
+ pg_catalog | generate_series | SETOF bigint                      | bigint, bigint, bigint                                             | normal
+ pg_catalog | generate_series | SETOF integer                     | integer, integer                                                   | normal
+ pg_catalog | generate_series | SETOF integer                     | integer, integer, integer                                          | normal
+ pg_catalog | generate_series | SETOF numeric                     | numeric, numeric                                                   | normal
+ pg_catalog | generate_series | SETOF numeric                     | numeric, numeric, numeric                                          | normal
+ pg_catalog | generate_series | SETOF timestamp without time zone | timestamp without time zone, timestamp without time zone, interval | normal
+ pg_catalog | generate_series | SETOF timestamp with time zone    | timestamp with time zone, timestamp with time zone, interval       | normal
+(8 rows)
+
+
