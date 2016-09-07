@@ -711,6 +711,79 @@ SET
 mydb=# analyze idarray;
 ANALYZE
 
+-----------------
+EXPLAIN PLAN
+-----------------
+Queries are re-parsed every time they execute - not like Oracle which tries to reuse plans.
+
+mydb=# explain  select * from emp;
+ Seq Scan on emp  (cost=0.00..19.00 rows=900 width=62)
+
+-----------------
+PREPARE STATEMENT
+-----------------
+https://www.postgresql.org/docs/9.5/static/sql-prepare.html
+
+The following is a more complex prepare a function-like SQL "q1(int)" - you can prepare simple ones too.
+
+mydb=# prepare q1(int) as select * from emp where empid=$1;
+PREPARE
+mydb=# execute q1(10);
+
+mydb=# insert into emp values (10, '10');
+INSERT 0 1
+mydb=# insert into emp values (11, '11');
+INSERT 0 1
+mydb=#  execute q1(10);
+    10 | 10
+
+mydb=# execute q1(11);
+    11 | 11
+
+-------------------
+PROCESS INFO (like v$session?)
+-------------------
+select * from pg_stat_activity;
+
+--------------------
+MONITORING
+--------------------
+Connections:
+pg_stat_activity
+pg_locks
+pg_prepared_xacts
+
+Object usage stats:
+pg_stat_database
+pg_stat_bgwriter
+pg_stat_archiver
+pg_stat_user_xxxx
+pg_statio_user_xxxx
+
+----------------------
+MAINITENANCE - VACUUM, ANALYZE, REINDEX
+----------------------
+
+VACUUM - To remove deleted rows which initially are only marked for delete - happens automatically, can be tuned
+            pg_stat_user_tables has 'dead tuples' that show vacuum to be done
+            VACCUM options - regular, ANALYZE, FULL, FREEZE
+            FULL mode - compacts the table making a copy - needs downtime for insert/delete
+            
+            VACCUM DELAY - to throttle so that transaction speed is not affected
+                  vacuum_cost_delay (0 to 1000 ms), vxxx_cost_limit, cost_page_dirty, cost_page_hit, cost_page_miss
+            
+            MANUALLY DOING VACCUM - do it only if large amounts of deletes happened
+            
+ANALYZE - Statistics update 
+
+REINDEX - does not do analyze automatically
+            Vacuum maintains indexes - usually sufficient, sometimes not sufficient
+            Reindex rebuilds one or all indexes on all tables/db/schema
+            Acquires access exclusive lock - needs DML lock
+            instead - use CREATE INDEX CONCURRENTLY - does not block DML
+
+
+
 
 
 
