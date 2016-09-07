@@ -419,6 +419,28 @@ mydb-# \dt+ emp
  public | emp  | table | postgres | 0 bytes |
 (1 row)
 
+-------------
+ARRAY DATATYPE
+-------------
+mydb=# create table idarray (id int[4]);
+CREATE TABLE
+
+mydb=# insert into idarray values ('{1,2,3,4}');
+INSERT 0 1
+
+mydb=# select * from idarray;
+    id
+-----------
+ {1,2,3,4}
+(1 row)
+
+mydb=# select * from idarray where id @> '{4}';
+    id
+-----------
+ {1,2,3,4}
+(1 row)
+
+
 -----------------------
 CATALOG TABLES
 -----------------------
@@ -652,5 +674,41 @@ mydb=#  \dfS generate_series
  pg_catalog | generate_series | SETOF timestamp without time zone | timestamp without time zone, timestamp without time zone, interval | normal
  pg_catalog | generate_series | SETOF timestamp with time zone    | timestamp with time zone, timestamp with time zone, interval       | normal
 (8 rows)
+
+
+------------------
+INDEXES
+------------------
+Hash indexes do not go to transaction log - and do not get replicated
+--> if a recovery scenario arises, hash indexes need to be rebuilt
+
+B-tree, hash, gist, sp-gist, gin, brin 
+Function based index
+
+gin - min and max values
+
+postgres'# set enable_ (and tab - tab)
+enable_bitmapscan     enable_hashjoin       enable_indexscan      enable_mergejoin      enable_seqscan        enable_tidscan
+enable_hashagg        enable_indexonlyscan  enable_material       enable_nestloop       enable_sort
+
+-------------------
+STATISTICS, ANALYZE
+-------------------
+https://www.postgresql.org/docs/9.5/static/monitoring-stats.html
+https://www.postgresql.org/docs/9.5/static/runtime-config-query.html
+https://www.postgresql.org/docs/9.5/static/planner-stats.html
+pg_stat_all_tables/indexes
+pg_stat_sys_tables/indexes
+pg_stat_user_tables/indexes
+
+mydb=# analyze idarray;
+ANALYZE
+
+mydb=# set default_statistics_target TO 100;
+SET
+mydb=# analyze idarray;
+ANALYZE
+
+
 
 
