@@ -511,3 +511,40 @@ mydb=#  explain select * from emp where empid=1;
  Index Scan using emp_pkey on emp  (cost=0.15..8.17 rows=1 width=62)
    Index Cond: (empid = 1)
 
+----------------------
+FUNCTIONS
+----------------------
+mydb=# create or replace function add(a int, b int) returns int as $$
+mydb$# begin
+mydb$# return (a+b);
+mydb$# end;
+mydb$# $$ language plpgsql;
+CREATE FUNCTION
+mydb=# \df
+                        List of functions
+ Schema | Name | Result data type | Argument data types  |  Type
+--------+------+------------------+----------------------+--------
+ public | add  | integer          | a integer, b integer | normal
+(1 row)
+
+mydb=# select add(1,100);
+ add
+-----
+ 101
+(1 row)
+
+mydb=# create table x(x1 int, x2 int);
+CREATE TABLE
+mydb=# insert into x values (1, 1);
+INSERT 0 1
+mydb=# insert into x values (2,2);
+INSERT 0 1
+mydb=# select add(x1,x2) from x;
+ add
+-----
+   2
+   4
+(2 rows)
+
+
+
