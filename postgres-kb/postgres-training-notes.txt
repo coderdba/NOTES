@@ -994,13 +994,43 @@ postgres=# \l
            |          |          |             |             | postgres=CTc/postgres
 (3 rows)
 
-
-
-
 =========================
 PASSWORD FILE
 =========================
 Password is not encrypted in the password file
 
+=============================
+PHYSICAL BACKUPS
+=============================
+Base backup
+WAL files
+Transaction log (in /var/lib/pgsql/9.5/data/pg_xlog)
+- multiple files of 16M size
+
+pg_basebackup
+
+--format=plain|tar
+--gzip
+--compress=N
+
+--max-rate=rate
+--tablespace-mapping=
+--label==backup-label
+--progress
+
+Archive backup
+- File by file
+cp %p /archiveDir/%f
+
+%p is full path to WAL file
+%f means unique filename
+need to ensure writing the full files only
+
+Streamed Archive backup
+pg_receivexlog -D targetdir --dname=... --fsync-interval=N ...
+pg_basebackup -D targetdir -dname=...
+
+CONFIGURATION:
+WAL_LEVEL in postgresql.conf
 
 
