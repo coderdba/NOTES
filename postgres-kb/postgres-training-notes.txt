@@ -924,22 +924,20 @@ PGLOG=/var/lib/pgsql/9.5/pgstartup2.log --> this line may not exist in some Linu
 
 DO NOT CREATE THE data2 directory
 
-Start the second instance: (note "-2" in the name of this copy-file)
+- WITH INIT.D
+Initialize the second instance: (note "-2" in the name of this copy-file)
 AS ROOT:
-/etc/init.d/postgresql-9.5-2 initdb <new port like 5433>
-OR
-service postgresql-9.5-2 initdb
-
+/etc/init.d/postgresql-9.5-2 initdb 
 THIS WILL CREATE data2 and files in it
 
-Change port number in postgresql.conf
+Edit /var/lib/pgsql/9.5/data2/postgresql.conf --> change the port to 5433 or other
 
-DO A 'START' of the service:
+Start the service:
 AS ROOT
 [root@ip-10-80-171-207 ~]# /etc/init.d/postgresql-9.5-2 start
 Starting postgresql-9.5-2 service:                         [  OK  ]
 
-CONNECT TO THE INSTANCE:
+Connect:
 AS 'postgres' user:
 [postgres@ip-10-80-171-207 ~]$ psql -p 5433
 psql (9.5.4)
@@ -960,6 +958,42 @@ postgres=# \l
 (4 rows)
 
 postgres=#
+
+- WITH SYSTEMD
+Initialize the instance:
+AS ROOT - provide second argument as the name of the service (based on the copy-file in /etc/systemd/system)
+# /usr/pgsql-9.5/bin/postgresql95-setup initdb postgresql-9.5-2
+Initializing database ... OK
+
+Edit /var/lib/pgsql/9.5/data2/postgresql.conf --> change the port to 5433 or other
+
+Start the service:
+# service postgresql-9.5-2 start
+Redirecting to /bin/systemctl start  postgresql-9.5-2.service
+
+Verify:
+[root@oralx0001 9.5]# ps -ef|grep 9.5
+postgres  7216     1  0 06:02 ?        00:00:00 /usr/pgsql-9.5/bin/postgres -D /var/lib/pgsql/9.5/data2
+root      7244  4568  0 06:03 pts/1    00:00:00 grep --color=auto 9.5
+postgres 16237     1  0 Sep06 ?        00:00:04 /usr/pgsql-9.5/bin/postgres
+
+Connect:
+AS POSTGRES-
+-bash-4.2$ psql -p 5433
+psql (9.5.3)
+Type "help" for help.
+
+postgres=# \l
+                                  List of databases
+   Name    |  Owner   | Encoding |   Collate   |    Ctype    |   Access privileges
+-----------+----------+----------+-------------+-------------+-----------------------
+ postgres  | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 |
+ template0 | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =c/postgres          +
+           |          |          |             |             | postgres=CTc/postgres
+ template1 | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =c/postgres          +
+           |          |          |             |             | postgres=CTc/postgres
+(3 rows)
+
 
 
 
