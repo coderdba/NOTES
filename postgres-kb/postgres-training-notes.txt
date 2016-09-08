@@ -922,10 +922,46 @@ to something like the following:
 PGDATA=/var/lib/pgsql/9.5/data2 (or Environment=PGDATA=/var/lib/pgsql/9.5/data2/)
 PGLOG=/var/lib/pgsql/9.5/pgstartup2.log --> this line may not exist in some Linux flavors
 
+DO NOT CREATE THE data2 directory
+
 Start the second instance: (note "-2" in the name of this copy-file)
+AS ROOT:
 /etc/init.d/postgresql-9.5-2 initdb <new port like 5433>
 OR
-service postgresql-9.5-2 initdb <new port like 5433>
+service postgresql-9.5-2 initdb
+
+THIS WILL CREATE data2 and files in it
+
+Change port number in postgresql.conf
+
+DO A 'START' of the service:
+AS ROOT
+[root@ip-10-80-171-207 ~]# /etc/init.d/postgresql-9.5-2 start
+Starting postgresql-9.5-2 service:                         [  OK  ]
+
+CONNECT TO THE INSTANCE:
+AS 'postgres' user:
+[postgres@ip-10-80-171-207 ~]$ psql -p 5433
+psql (9.5.4)
+Type "help" for help.
+
+postgres=# create database mydb;
+CREATE DATABASE
+postgres=# \l
+                                  List of databases
+   Name    |  Owner   | Encoding |   Collate   |    Ctype    |   Access privileges
+-----------+----------+----------+-------------+-------------+-----------------------
+ mydb      | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 |
+ postgres  | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 |
+ template0 | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =c/postgres          +
+           |          |          |             |             | postgres=CTc/postgres
+ template1 | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =c/postgres          +
+           |          |          |             |             | postgres=CTc/postgres
+(4 rows)
+
+postgres=#
+
+
 
 =========================
 PASSWORD FILE
