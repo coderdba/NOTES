@@ -867,6 +867,70 @@ PERFORMANCE
 
 
 
+=======================
+BACKUPS
+=======================
+
+-----------------
+LOGICAL BACKUP
+-----------------
+https://www.postgresql.org/docs/9.5/static/app-pgdump.html
+
+Dump of data in database
+
+Allows
+- migration between levels
+- reload db into new hardware
+- change server encoding
+- copy data to other DB's
+
+pg_dump
+- can produce SQL 'script file' or binary dump
+- 'hot' as it can be run with DB running
+- needs db to be same or lower version
+- drop (with --clean option), create, load, grants...
+- CANNOT do single tables in script method
+- Archive format (should be used with pg_restore only - cannot use with psql)
+     - formats: custom, tar, plain text
+
+-- long transaction can result in too many dead tuples being held due to running dump (like snapshot too old in Oracle)
+
+pg_restore
+- CANNOT do single tables
+- parallel works, but does not work for 'script' method
+
+You can load the dump to a db as follows:
+postgres# psql <dbname> < dumpfile.sql
+
+List, and reduce list to required tables??
+--exit-on-error
+--single-transaction
+--... ...
+
+=============================
+MULTIPLE INSTANCES
+=============================
+Make a copy of the startup file (/etc/init.d/postgresql-9.5 or /etc/systemd/system/postgresql-9.5.service)
+--> Example - copy to /etc/init.d/postgresql-9.5-2 or /etc/systemd/system/postgresql-9.5-2.service)
+
+In the copy, modify the following:
+PGDATA=/var/lib/pgsql/9.5/data (or Environment=PGDATA=/var/lib/pgsql/9.5/data/)
+PGLOG=/var/lib/pgsql/9.5/pgstartup.log --> this line may not exist in some Linux flavors 
+                                                - however, a file /var/lib/pgsql/9.5/initdb.log may be present in the f/s)
+
+to something like the following:
+PGDATA=/var/lib/pgsql/9.5/data2 (or Environment=PGDATA=/var/lib/pgsql/9.5/data2/)
+PGLOG=/var/lib/pgsql/9.5/pgstartup2.log --> this line may not exist in some Linux flavors
+
+Start the second instance: (note "-2" in the name of this copy-file)
+/etc/init.d/postgresql-9.5-2 initdb <new port like 5433>
+OR
+service postgresql-9.5-2 initdb <new port like 5433>
+
+=========================
+PASSWORD FILE
+=========================
+Password is not encrypted in the password file
 
 
 
