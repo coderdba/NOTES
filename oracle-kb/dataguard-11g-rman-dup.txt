@@ -220,6 +220,7 @@ NOTE: Review the primary parameter files for any other directory related paramet
 3.10. At standby, on Node1, Create a file with the below DUPLICATE command in it 
  cat duplicate.rman
  
+ (stby-rman-dup.cmd)
  DUPLICATE TARGET DATABASE
    FOR STANDBY
    FROM ACTIVE DATABASE
@@ -235,6 +236,8 @@ NOTE: Review the primary parameter files for any other directory related paramet
    NOFILENAMECHECK;
 
 3.11. At standby, from Node1, Run RMAN in the background. 
+
+ (stby-rman-dup.sh)
  nohup rman target sys/****@<PrimaryNode_vip1>/<Primary_uniq_name>  auxiliary sys/****@<standbynode_vip1>/<stby_uniq_name>  @duplicate.rman &
 
 3.12. Monitor nohup.out, check for any errors. 
@@ -274,6 +277,8 @@ NOTE: Make sure all the logs from all the threads are archived.
 The DUPLICATE command will create the SPFILE under ORACLE_HOME. So, we need to re-created it inside ASM. 
 
 From One of the Standby Node, 
+
+ (stby-create-spfile.sql)
  SQL> create pfile='/tmp/pfile' from spfile;
  SQL> create spfile='+<Data_DG_Name>/<Standby_Uniq_Name>/spfile<DB_NAME>.ora' from pfile='/tmp/pfile';
 
@@ -288,28 +293,24 @@ From One of the Standby Node,
  $ . oraenv
  ORACLE_SID = [MYDB11] ?  <Type the respective SID here>
 
-
 Register the standby information, 
+
+(stby-register-in-crs.sh)
  srvctl add database -d <Standby_Db_Unique_name>  -o <Oracle Home Path>  -p <SPFILE_Location_in_ASM> -n <DB_Name>  -r PHYSICAL_STANDBY  -s mount 
  srvctl add instance -d <Standby_DB_Unique_name>  -i <Node1_SID> -n <Node1_Physical_Hostname>
  srvctl add instance -d <Standby_DB_Unique_name>  -i <Node2_SID> -n <Node2_Physical_Hostname>
-
-
 
 Verify the Configuration, 
  srvctl config database -d  <Standby_DB_Unique_name>  
  srvctl config database -d  <Standby_DB_Unique_name>  –a
 
-
 Verify start/stop of the database. And check it works successfully, 
  srvctl stop database –d  <Standby_DB_Unique_name>  
  srvctl start database –d  <Standby_DB_Unique_name>
 
-
 4. Broker Configuration[edit]
 
 4.1. Add static entry in the listener.ora and reload the listener. (/usr/local/tns/listener.ora ) 
-
 
  On Primary, ( Perform this on all the nodes in the Primary ) 
  SID_LIST_LISTENER =
