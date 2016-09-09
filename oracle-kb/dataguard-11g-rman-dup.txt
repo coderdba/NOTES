@@ -6,6 +6,29 @@ Remove DG configuration - http://www.mahir-quluzade.com/2012/07/oracle-data-guar
 Remove DG configuration - (9i) http://www.oracledbasupport.co.uk/how-to-safely-remove-a-data-guard-broker-configuration-under-racnon-rac-setup-2/
 DGMGRL interface commands - https://docs.oracle.com/cd/B28359_01/server.111/b28295/cli.htm
 
+#----------------------------
+# TO AVOID ISSUES DURING SETUP 
+# --- DO THESE BEFOREHAND ---
+#
+# Create a fresh password file on primary node1
+#  --> and copy that file by hand to primary and standby - all nodes
+#
+# Create the static entry in listener.ora and reload listener
+#  --> On each node of primary and standby
+#  -->--> for DB_UNIQUE_NAME - with SID relevant to the node
+#  -->--> for DB_UNIQUE_NAME_DGMGRL - with SID relevant to the node
+#
+# Create the relevant TNS entry for DB_UNIQUE_NAME
+# --> On each node of primary and standby
+# -->--> For both primary and standby
+# -->--> Pointing to the service DB_UNIQUE_NAME
+#
+# Enter SIDs in oratab
+# --> On each node of primary and standby
+# --> For the relevant SIDs
+#----------------------------
+
+
 Contents 
 1. Prerequisites
 2. Pre-Verification
@@ -283,10 +306,11 @@ From One of the Standby Node,
  SQL> create pfile='/tmp/pfile' from spfile;
  SQL> create spfile='+<Data_DG_Name>/<Standby_Uniq_Name>/spfile<DB_NAME>.ora' from pfile='/tmp/pfile';
 
- Create init<SID>.ora file on All node on standby, and have a single parameter to point to SPFILE in ASM. 
- Eg:-
-    cat initMYDB11.ora
-    SPFILE='+DATA_DG01/MYDB1_site2/spfileMYDB1.ora'
+ *** IMPORTANT:
+   Create init<SID>.ora file on All node on standby, and have a single parameter to point to SPFILE in ASM. 
+   Eg:-
+      cat initMYDB11.ora
+      SPFILE='+DATA_DG01/MYDB1_site2/spfileMYDB1.ora'
 
 3.15. At standby, From one of the node, Register the standby with CRS 
 
