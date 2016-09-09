@@ -1,13 +1,10 @@
 Data Guard 11g R2
 
-This page is a guide to configure Data Guard. 
-
-
-Contents [hide] 
-1 1. Prerequisites
-2 2. Pre-Verification
-3 3. DataGuard Configuration
-4 4. Broker Configuration
+Contents 
+1. Prerequisites
+2. Pre-Verification
+3. DataGuard Configuration
+4. Broker Configuration
 
 1. Prerequisites
 
@@ -164,19 +161,13 @@ no rows selected
  At standby Node2, as oracle user
  scp <Your UserID>@<Primary_Node1>:<Oracle_Home>/dbs/orapw<SID>  <Oracle_Home>/dbs/orapw<SID>
 
-
 NOTE: Make sure you use correct <SID> value for each standby node. It will have 1,2,.. numbers attached to it. 
-
 
 3.5. At standby, on all the nodes, Create oratab entry 
  vi /etc/oratab
  ...
  ...
  <ORACLE_SID>:<ORACLE_HOME>:N
-
-
-
-
 
 3.6. At standby, On the Node 1, Make sure that you make a static entry in the listener.ora. 
 
@@ -192,35 +183,26 @@ eg:-
      )
    )
 
-
 Then reload the Listener: 
  lsnrctl reload listener
 
-
-NOTE: This static entry is needed for auxiliary channel connection during RMAN standby creation. 
-
+NOTE: This static entry (with name as STBY_DB_UNIQUE_NAME) is needed for auxiliary channel connection during RMAN standby creation. 
 
 3.7. At standby, on node1, Create a simple PFILE with just DB_NAME in it. 
  cd $ORACLE_HOME/dbs
  vi init<SID>.ora
    DB_NAME='<dbname>'
 
-
-
-3.8. At standby, on node1, Start the instance to NOMOUNT with the PFILE created above. 
- .oraenv
- ORACLE_SID = [RD5DB61] ? <type the SID here>
- sqlplus / as sysdba
- SQL> startup pfile='<obsolute path of the pfile>' nomount;
-
-
-
-3.9. At standby, on all the nodes, Create File directory structure for AUDIT_FILE_DEST parameter use. 
+3.8. At standby, on all the nodes, Create File directory structure for AUDIT_FILE_DEST parameter use. 
  AUDIT_FILE_DEST='/opt/oracle/admin/<standby_uniq_name>/adump'
-
-
+ 
+3.9. At standby, on node1, Start the instance to NOMOUNT with the PFILE created above. 
+ .oraenv
+ ORACLE_SID = [XYZ] ? <type the SID here>
+ sqlplus / as sysdba
+ SQL> startup pfile='<absolute path of the pfile>' nomount;
+ 
 NOTE: Review the primary parameter files for any other directory related parameters and make sure to create them. And include it the below DUPLICATE command. 
-
 
 3.10. At standby, on Node1, Create a file with the below DUPLICATE command in it 
  cat duplicate.rman
@@ -238,8 +220,6 @@ NOTE: Review the primary parameter files for any other directory related paramet
      SET REMOTE_LISTENER='<stby_scan_name>:<port>'
      SET AUDIT_FILE_DEST='/opt/oracle/admin/<standby_uniq_name>/adump'
    NOFILENAMECHECK;
-
-
 
 3.11. At standby, from Node1, Run RMAN in the background. 
  nohup rman target sys/****@<PrimaryNode_vip1>/<Primary_uniq_name>  auxiliary sys/****@<standbynode_vip1>/<stby_uniq_name>  @duplicate.rman &
