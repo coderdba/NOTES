@@ -23,15 +23,11 @@ Database Storage: ASM with OMF (Oracle Managed Files)
  -------      ----------    ---
  MYDB1      ARCHIVELOG    YES
 
-
-
 2.2. At Primary, Get the DB Size. (prim-get-db-size.sql)
  SQL> select sum(BYTES)/1024/1024/1024 from dba_data_files;
  SUM(BYTES)/1024/1024/1024
  -------------------------
                 3.12304688
-
-
 
 2.3. At Standby, Get the Diskgroup Free Size.  (stby-dg-free-size.sql)
  SQL> select name,TOTAL_MB,USABLE_FILE_MB from v$asm_diskgroup;
@@ -241,28 +237,37 @@ NOTE: Review the primary parameter files for any other directory related paramet
 3.11. At standby, from Node1, Run RMAN in the background. 
  nohup rman target sys/****@<PrimaryNode_vip1>/<Primary_uniq_name>  auxiliary sys/****@<standbynode_vip1>/<stby_uniq_name>  @duplicate.rman &
 
-
-
 3.12. Monitor nohup.out, check for any errors. 
 
-
 3.13. Verify the Log shipping & Apply 
+
  At primary,
+ (prim-switch-logfile.sql)
  SQL> alter system archive log current;
- SQL> select * from v$log;
+ 
+ (check-log.sql)
+ SQL> select thread#, group#, sequence#, ARCHIVED, STATUS
+       from v$log
+       order by 1,2;
 
  At standby,
+ (check-db-role.sql)
  SQL> select name,db_unique_name,database_role from v$database;
- SQL> select THREAD#,SEQUENCE#,ARCHIVED,APPLIED,STATUS from v$archived_log; 
-
-
+ 
+ (check-arch-log.sql)
+ SQL> select THREAD#,SEQUENCE#,ARCHIVED,APPLIED,STATUS
+      from v$archived_log
+      order by 1,2
+ 
 NOTE: Make sure all the logs from all the threads are archived. 
  Start MRP and verify for any gaps
+ 
+ (stby-recover-managed-stby.sql)
  SQL> alter database recover managed standby database using current logfile disconnect from session;
+ 
+ (stby-arch-gap-check.sql)
  SQL> select PROCESS,STATUS,THREAD#,SEQUENCE# from v$managed_standby;
  SQL> select * from v$archive_gap;
-
-
 
 3.14. Re-create SPFILE on standby Only 
 
