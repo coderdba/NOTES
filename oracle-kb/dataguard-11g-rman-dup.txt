@@ -2,6 +2,9 @@ Data Guard 11g R2
 
 Sites:
 Cheat sheet - http://www.datadisk.co.uk/html_docs/oracle_dg/cheatsheet.htm
+Remove DG configuration - http://www.mahir-quluzade.com/2012/07/oracle-data-guard-11g-how-to-safely.html
+Remove DG configuration - (9i) http://www.oracledbasupport.co.uk/how-to-safely-remove-a-data-guard-broker-configuration-under-racnon-rac-setup-2/
+DGMGRL interface commands - https://docs.oracle.com/cd/B28359_01/server.111/b28295/cli.htm
 
 Contents 
 1. Prerequisites
@@ -356,16 +359,73 @@ NOTE: Wait for few seconds to 1 minute and check the ‘lsnrctl status listener�
  alter system set dg_broker_start=TRUE scope=both;
 
 4.3. At primary, Create the Broker configuration 
+NOTE: See troubleshooting after the steps
 
 Set the environment variables to the Primary DB and then login to dgmgrl. 
  $ . oraenv
  ORACLE_SID = [MYDB11] ?  <Type the respective SID here>
  $ dgmgrl /
  DGMGRL> create configuration 'DG_<DB_Name>' as primary database is ‘<Primary_DB_Unique_Name>' connect identifier is ‘<Primary_DB_Unique_Name>’;
- DGMGRL> Add database ‘<Standby_DB_Unique_Name>’ as connect identifier is ‘<Standby_DB_Unique_Name>’ maintained as physical;
+ DGMGRL> add database ‘<Standby_DB_Unique_Name>’ as connect identifier is ‘<Standby_DB_Unique_Name>’ maintained as physical;
  DGMGRL> enable configuration;
  DGMGRL> show configuration;
+ DGMGRL> show database 'primary_db_unique_name'
+ DGMGRL> show database 'standby_db_unique_name'
+ 
+ TROUBLESHOOTING:
+ This may end up with some 'inconsistent configuration' 
+ --> with 'show configuration' saying something like the following:
+   Databases:
+    PRIM_DB_UNIQUE_NAME - Primary database
+    STANDBY_DB_UNIQUE_NAME  - Physical standby database
+      Warning: ORA-16792: configurable property value is inconsistent with database setting
 
+ To fix:
+ https://easyoradba.com/2012/12/05/warning-ora-16714-the-value-of-property-is-inconsistent-with-the-database-setting/
+ 
+ DGMGRL> show database 'STBY_DB_UNIQUE_NAME'
+
+  Database - STBY_DB_UNIQUE_NAME
+
+  Role:            PHYSICAL STANDBY
+  Intended State:  APPLY-ON
+  Transport Lag:   0 seconds (computed 0 seconds ago)
+  Apply Lag:       0 seconds (computed 0 seconds ago)
+  Apply Rate:      253.00 KByte/s
+  Real Time Query: OFF
+  Instance(s):
+    RL4DB31 (apply instance)
+      Warning: ORA-16714: the value of property ArchiveLagTarget is inconsistent with the database setting
+      Warning: ORA-16714: the value of property LogArchiveMaxProcesses is inconsistent with the database setting
+      Warning: ORA-16714: the value of property LogArchiveMinSucceedDest is inconsistent with the database setting
+
+ DGMGRL> show database 'STBY_DB_UNIQUE_NAME' InconsistentProperties
+ INCONSISTENT PROPERTIES
+   INSTANCE_NAME        PROPERTY_NAME         MEMORY_VALUE         SPFILE_VALUE         BROKER_VALUE
+         RL4DB31     ArchiveLagTarget                    0                                         0
+         RL4DB31 LogArchiveMaxProcesses                    4                                         4
+         RL4DB31 LogArchiveMinSucceedDest                    1                                         1
+
+ Now, go to standy db and set the following: 
+ (note-querying these from gv$parameter show right values, but probably they are not in spfile)
+ alter system set log_archive_max_processes=4 scope=both sid='*';
+ alter system set archive_lag_target=0 scope=both sid='*';
+ alter system set log_archive_min_succeed_dest=1 scope=both sid='*';
+
+ DGMGRL> show configuration 
+ Configuration - DG_DBNAME
+
+  Protection Mode: MaxPerformance
+  Databases:
+    PRIM_DB_UNIQUE_NAME - Primary database
+    STBY_DB_UNIQUE_NAME  - Physical standby database
+
+ Fast-Start Failover: DISABLED
+
+ Configuration Status:
+ SUCCESS
+
+ 
 4.4. Switchover Test 
 
  NOTE: Make sure that you login with the sys/password and not with OS authentication ‘/’. Otherwise the switchover will not work correctly. 
