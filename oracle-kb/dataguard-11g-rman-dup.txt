@@ -1,10 +1,16 @@
 Data Guard 11g R2
 
+Sites:
+Cheat sheet - http://www.datadisk.co.uk/html_docs/oracle_dg/cheatsheet.htm
+
 Contents 
 1. Prerequisites
 2. Pre-Verification
 3. DataGuard Configuration
 4. Broker Configuration
+
+Info:
+DG log files are in background-dump-dest as drcSID.log
 
 1. Prerequisites
 
@@ -161,19 +167,14 @@ NOTE: Make sure you use correct <SID> value for each standby node. It will have 
 
 3.5. At standby, on all the nodes, Create oratab entry 
  vi /etc/oratab
- ...
- ...
  <ORACLE_SID>:<ORACLE_HOME>:N
 
 3.6a. At primary, On the Node 1 (and node2 also), Make sure that you make a static entry in the listener.ora. 
 
-eg:- 
- . . .
- . . .
  SID_LIST_LISTENER =
    (SID_LIST =
        (SID_DESC =
-       (GLOBAL_DBNAME=<Standby_Unique_name>)
+       (GLOBAL_DBNAME=<Primary_Unique_name>)
        (SID_NAME =<Node1_SID>)
        (ORACLE_HOME =<Oracle Home Location>)
      )
@@ -182,11 +183,8 @@ eg:-
 Then reload the Listener: 
  lsnrctl reload listener
 
-3.6b. At standby, On the Node 1, Make sure that you make a static entry in the listener.ora. 
+3.6b. At standby, On the Node 1 (and Node2), Make sure that you make a static entry in the listener.ora. 
 
-eg:- 
- . . .
- . . .
  SID_LIST_LISTENER =
    (SID_LIST =
        (SID_DESC =
@@ -308,7 +306,7 @@ Verify start/stop of the database. And check it works successfully,
  srvctl stop database –d  <Standby_DB_Unique_name>  
  srvctl start database –d  <Standby_DB_Unique_name>
 
-4. Broker Configuration[edit]
+4. Broker Configuration
 
 4.1. Add static entry in the listener.ora and reload the listener. (/usr/local/tns/listener.ora ) 
 
@@ -326,53 +324,36 @@ Verify start/stop of the database. And check it works successfully,
  . . .
  )
 
-
 And then reload the listener, 
  $ lsnrctl reload listener
 
-
-
 NOTE: Wait for few seconds to 1 minute and check the ‘lsnrctl status listener’ and verify if the service name is reflecting. 
 
-
  On standby, ( Perform this on all the nodes in the Standby) 
- . . .
    (SID_DESC =
      (GLOBAL_DBNAME = <Standby_DB_Unique_Name>_DGMGRL)
      (ORACLE_HOME = <Oracle Home Path> )
      (SID_NAME = <Node’s_SID>)    <<<<<<<<<<<<<<< Use node’s respective SID
    )
- . . .
-
 
 And then, reload the listener, 
  $ lsnrctl reload listener
 
-
-
 NOTE: Wait for few seconds to 1 minute and check the ‘lsnrctl status listener’ and verify if the service name is reflecting. 
-
-
-
 
 4.2. Add broker related parameters: 
 
-
  At primary, 
- *. dg_broker_config_file1='+<Data_DG_Name>/<Primary_DB_Unique_Name>/DATAGUARDCONFIG/dg_config_file1.dat'  
- *. dg_broker_config_file2='+<FRA_DG_Name>/<Primary_DB_Unique_Name >/ DATAGUARDCONFIG /dg_config_file2.dat' 
- *. dg_broker_start=TRUE
-
-
+ (prim-broker-init-ora.sql)
+ alter system set dg_broker_config_file1='+<Data_DG_Name>/<Primary_DB_Unique_Name>/DATAGUARDCONFIG/dg_config_file1.dat' scope=both;
+ alter system set dg_broker_config_file2='+<FRA_DG_Name>/<Primary_DB_Unique_Name>/DATAGUARDCONFIG /dg_config_file2.dat' scope=both;
+ alter system set dg_broker_start=TRUE scope=both;
 
  At Standby, 
- *. dg_broker_config_file1='+<Data_DG_Name>/<Standby_DB_Unique_Name>/ DATAGUARDCONFIG /dg_config_file1.dat' 
- *. dg_broker_config_file2='+<FRA_DG_Name>/<Standby_DB_Unique_Name> / DATAGUARDCONFIG /dg_config_file2.dat' 
- *. dg_broker_start=TRUE
-
-
-
-
+ (stby-broker-init-ora.sql)
+ alter system setdg_broker_config_file1='+<Data_DG_Name>/<Standby_DB_Unique_Name>/DATAGUARDCONFIG /dg_config_file1.dat' scope=both;
+ alter system set dg_broker_config_file2='+<FRA_DG_Name>/<Standby_DB_Unique_Name>/DATAGUARDCONFIG /dg_config_file2.dat' scope=both;
+ alter system set dg_broker_start=TRUE scope=both;
 
 4.3. At primary, Create the Broker configuration 
 
@@ -385,12 +366,7 @@ Set the environment variables to the Primary DB and then login to dgmgrl.
  DGMGRL> enable configuration;
  DGMGRL> show configuration;
 
-
-
-
-
 4.4. Switchover Test 
-
 
  NOTE: Make sure that you login with the sys/password and not with OS authentication ‘/’. Otherwise the switchover will not work correctly. 
  $ dgmgrl sys/*********
