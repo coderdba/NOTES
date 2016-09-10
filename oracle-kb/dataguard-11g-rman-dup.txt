@@ -395,61 +395,7 @@ Set the environment variables to the Primary DB and then login to dgmgrl.
  DGMGRL> show configuration;
  DGMGRL> show database 'primary_db_unique_name'
  DGMGRL> show database 'standby_db_unique_name'
- 
- TROUBLESHOOTING:
- This may end up with some 'inconsistent configuration' 
- --> with 'show configuration' saying something like the following:
-   Databases:
-    PRIM_DB_UNIQUE_NAME - Primary database
-    STANDBY_DB_UNIQUE_NAME  - Physical standby database
-      Warning: ORA-16792: configurable property value is inconsistent with database setting
 
- To fix:
- https://easyoradba.com/2012/12/05/warning-ora-16714-the-value-of-property-is-inconsistent-with-the-database-setting/
- 
- DGMGRL> show database 'STBY_DB_UNIQUE_NAME'
-
-  Database - STBY_DB_UNIQUE_NAME
-
-  Role:            PHYSICAL STANDBY
-  Intended State:  APPLY-ON
-  Transport Lag:   0 seconds (computed 0 seconds ago)
-  Apply Lag:       0 seconds (computed 0 seconds ago)
-  Apply Rate:      253.00 KByte/s
-  Real Time Query: OFF
-  Instance(s):
-    RL4DB31 (apply instance)
-      Warning: ORA-16714: the value of property ArchiveLagTarget is inconsistent with the database setting
-      Warning: ORA-16714: the value of property LogArchiveMaxProcesses is inconsistent with the database setting
-      Warning: ORA-16714: the value of property LogArchiveMinSucceedDest is inconsistent with the database setting
-
- DGMGRL> show database 'STBY_DB_UNIQUE_NAME' InconsistentProperties
- INCONSISTENT PROPERTIES
-   INSTANCE_NAME        PROPERTY_NAME         MEMORY_VALUE         SPFILE_VALUE         BROKER_VALUE
-         RL4DB31     ArchiveLagTarget                    0                                         0
-         RL4DB31 LogArchiveMaxProcesses                    4                                         4
-         RL4DB31 LogArchiveMinSucceedDest                    1                                         1
-
- Now, go to standy db and set the following: 
- (note-querying these from gv$parameter show right values, but probably they are not in spfile)
- alter system set log_archive_max_processes=4 scope=both sid='*';
- alter system set archive_lag_target=0 scope=both sid='*';
- alter system set log_archive_min_succeed_dest=1 scope=both sid='*';
-
- DGMGRL> show configuration 
- Configuration - DG_DBNAME
-
-  Protection Mode: MaxPerformance
-  Databases:
-    PRIM_DB_UNIQUE_NAME - Primary database
-    STBY_DB_UNIQUE_NAME  - Physical standby database
-
- Fast-Start Failover: DISABLED
-
- Configuration Status:
- SUCCESS
-
- 
 4.4. Switchover Test 
 
  NOTE: Make sure that you login with the sys/password and not with OS authentication ‘/’. Otherwise the switchover will not work correctly. 
@@ -522,3 +468,103 @@ Set the environment variables to the Primary DB and then login to dgmgrl.
  Configuration Status:
  SUCCESS
 
+==========================
+TROUBLESHOOTING
+==========================
+ 
+ -------------------
+ TROUBLESHOOTING 1
+ -------------------
+ This may end up with some 'inconsistent configuration' 
+ --> with 'show configuration' saying something like the following:
+   Databases:
+    PRIM_DB_UNIQUE_NAME - Primary database
+    STANDBY_DB_UNIQUE_NAME  - Physical standby database
+      Warning: ORA-16792: configurable property value is inconsistent with database setting
+
+ To fix:
+ https://easyoradba.com/2012/12/05/warning-ora-16714-the-value-of-property-is-inconsistent-with-the-database-setting/
+ 
+ DGMGRL> show database 'STBY_DB_UNIQUE_NAME'
+
+  Database - STBY_DB_UNIQUE_NAME
+
+  Role:            PHYSICAL STANDBY
+  Intended State:  APPLY-ON
+  Transport Lag:   0 seconds (computed 0 seconds ago)
+  Apply Lag:       0 seconds (computed 0 seconds ago)
+  Apply Rate:      253.00 KByte/s
+  Real Time Query: OFF
+  Instance(s):
+    I1 (apply instance)
+      Warning: ORA-16714: the value of property ArchiveLagTarget is inconsistent with the database setting
+      Warning: ORA-16714: the value of property LogArchiveMaxProcesses is inconsistent with the database setting
+      Warning: ORA-16714: the value of property LogArchiveMinSucceedDest is inconsistent with the database setting
+
+ DGMGRL> show database 'STBY_DB_UNIQUE_NAME' InconsistentProperties
+ INCONSISTENT PROPERTIES
+   INSTANCE_NAME        PROPERTY_NAME         MEMORY_VALUE         SPFILE_VALUE         BROKER_VALUE
+         I1     ArchiveLagTarget                    0                                         0
+         I1 LogArchiveMaxProcesses                    4                                         4
+         I1 LogArchiveMinSucceedDest                    1                                         1
+
+ Now, go to standy db and set the following: 
+ (note-querying these from gv$parameter show right values, but probably they are not in spfile)
+ alter system set log_archive_max_processes=4 scope=both sid='*';
+ alter system set archive_lag_target=0 scope=both sid='*';
+ alter system set log_archive_min_succeed_dest=1 scope=both sid='*';
+
+ DGMGRL> show configuration 
+ Configuration - DG_DBNAME
+
+  Protection Mode: MaxPerformance
+  Databases:
+    PRIM_DB_UNIQUE_NAME - Primary database
+    STBY_DB_UNIQUE_NAME  - Physical standby database
+
+ Fast-Start Failover: DISABLED
+
+ Configuration Status:
+ SUCCESS
+ 
+ -------------------
+ TROUBLESHOOTING 2
+ -------------------
+ If errors like ORA-16610 appear, wait it out
+ 
+ DGMGRL> show configuration;
+
+Configuration - dg_DBNAME
+
+  Protection Mode: MaxPerformance
+  Databases:
+    PRIM_DB_UNIQUE_NAME - Primary database
+    STBY_DB_UNIQUE_NAME  - Physical standby database
+
+Fast-Start Failover: DISABLED
+
+Configuration Status:
+ORA-16610: command "ENABLE DATABASE RL4DB3_TTC" in progress
+DGM-17017: unable to determine configuration status
+
+ -------------------
+ TROUBLESHOOTING 3
+ -------------------
+ For ORA-16532, set the broker configuration file names again explicitly in the database showing the error
+DGMGRL> show configuration;
+
+Configuration - dg_DBNAME
+
+  Protection Mode: MaxPerformance
+  Databases:
+    PRIM_DB_UNIQUE_NAME - Primary database
+    STBY_DB_UNIQUE_NAME  - Physical standby database
+      Warning: ORA-16532: Data Guard broker configuration does not exist
+
+Fast-Start Failover: DISABLED
+
+Configuration Status:
+WARNING
+
+
+ 
