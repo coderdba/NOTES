@@ -1,0 +1,65 @@
+http://itwithcoffee.blogspot.in/2014/04/asm-disk-mount-status-closed-and-header.html
+
+ASM Disk mount status closed and header status member / v$asm_disk name value empty
+Environment
+RAC two nodes with five ASM Disks on Virtual Box
+
+
+Problem
+Four of the disks have a mount status of CACHED and mode status of ONLINE.
+This means that the disk is currently part of ASM disk group.
+But, one disk has a  mount status of CLOSED.
+
+
+Header_status=MEMBER
+Disk is a member of an existing disk group.
+Mount_status=CACHED
+Disk is present in the storage system, and is part of a disk group being accessed by ASM
+Mount_status=CLOSED
+Disk is present in the storage system but is not being accessed by ASM
+
+Solution
+SQL> select name, path, mount_status, mode_status, header_status from v$asm_disk;
+
+NAME       PATH                   MOUNT_ST  MODE_ST     HEADER_ST
+-----------  -----------------   --------------  --------------  --------------
+                ORCL:DISK01    CLOSED        ONLINE        MEMBER
+DISK02      ORCL:DISK02    CACHED       ONLINE        MEMBER
+DISK03      ORCL:DISK03    CACHED       ONLINE        MEMBER
+DISK04      ORCL:DISK04    CACHED       ONLINE        MEMBER
+DISK05      ORCL:DISK05    CACHED       ONLINE        MEMBER
+
+
+[oracle@rac1 ~]$ oracleasm listdisks
+DISK01 (sdb1)
+DISK02  (sdc1)
+DISK03 (sdd1)
+DISK04 (sde1)
+DISK05 (sdf1)
+
+In Oracle docs says,
+If ASM recognizes a disk header as that of an Oracle object, such as the header of an Oracle datafile, 
+the disk is discovered, but can only be added to a disk group with the FORCE keyword. 
+Such a disk appears in V$ASM_DISK with a header status of FOREIGN.
+
+SQL> alter diskgroup DATA add disk 'ORCL:DISK01' force;
+
+Diskgroup altered.
+
+SQL> select path, mount_status, header_status, mode_status from v$asm_disk;
+
+PATH                    MOUNT_S HEADER_ST  MODE_ST
+------------------- ------------- ---------------  ------------
+ORCL:DISK01     CACHED     MEMBER        ONLINE
+ORCL:DISK02     CACHED     MEMBER        ONLINE
+ORCL:DISK03     CACHED     MEMBER        ONLINE
+ORCL:DISK04     CACHED     MEMBER        ONLINE
+ORCL:DISK05     CACHED     MEMBER        ONLINE
+
+Or you can use dd statement.
+
+To correct this you will have to clear the disk header to add it again:
+
+# dd if=/dev/zero of=/dev/sdb1(your device path) bs=4096 count=5000
+
+This command will clear the disk header and after that disk will be added successfully.
