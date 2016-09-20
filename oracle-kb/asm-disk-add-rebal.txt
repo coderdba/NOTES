@@ -1,0 +1,71 @@
+
+
+ASM administration
+ASM "Automatic Storage Management" as we experience simplifies DBA's manage storage. In coordination with OMF (oracle managed files) it helps us get away by avoiding micro-management  of datafiles, where files can be added by referring to diskgroups.
+
+Oracle recommendation is to keep asm disks of same size
+Some of the administration you can do with ASM & see the benefits of adding/removing storage while database remains available.
+
+In 11gR2 you need to connect as "sysasm" to add/drop disks, mount/dismount diskgroups
+
+Below find some commands while you are working with ASM
+
+
+Adding Diskgroup
+create diskgroup data external redundancy disk '/dev/rhdiskasm001';
+
+Drop diskgroup
+drop diskgroup data including contents;
+
+
+Find asm disks allocated
+SELECT group_number, disk_number, mount_status, header_status, state, path  FROM   v$asm_disk;
+
+ASM disks which can be added to diskgroups--> CANDIDATE/ FORMER
+SELECT group_number, disk_number, mount_status, header_status, state, path  
+FROM   v$asm_disk
+where header_status='CANDIDATE' OR HEADER_STATUS='FORMER' ;
+
+GROUP_Nu DISK_NUMBER MOUNT_S HEADER_STATU STATE    PATH
+------------   -----------            -------      ------------    --------                  -----------------------------
+           0           1                       CLOSED  FORMER       NORMAL          /dev/rhdiskasm011
+           0          63                      CLOSED  CANDIDATE NORMAL          /dev/rhdiskasm064
+           0           3                       CLOSED  FORMER       NORMAL           /dev/rhdiskasm006
+           0          37                      CLOSED  CANDIDATE NORMAL           /dev/rhdiskasm137_T2
+           0          38                      CLOSED  CANDIDATE NORMAL           /dev/rhdiskasm138_T2
+Query disks in a specific diskgroup
+select d.group_number, d.disk_number, d.name, d.path, dg.name, dg.group_number from 
+v$asm_disk d, v$asm_diskgroup dg
+where d.group_number=dg.group_number
+and dg.name='&NAME';
+
+Add disk
+alter diskgroup DATA add disk '/dev/rhdiskasm104_T2' rebalance power 11;
+http://dbadrive.blogspot.in/2012/06/asm-administration.html
+
+Drop disk from Diskgroup
+alter diskgroup DATA drop disk DATA_0000;
+or
+alter diskgroup DATA drop disk DATA_0001 rebalance power 11;
+or
+alter diskgroup DATA drop disk DATA_0002, DATA_0003, DATA_0004 rebalance power 11;
+
+To monitor the progress of rebalancing operation
+
+SQL> SELECT group_number, operation, state, power,sofar,est_work, est_minutes 
+FROM v$asm_operation;
+GROUP_NUMBER OPERA STAT      POWER      SOFAR   EST_WORK   EST_MINUTES
+     ------------           -----     ----        ----------    ----------     ----------           -----------
+           4                      REBAL RUN          11            100918         321268                   35
+During rebalancing you can alos monitor the work & see the size of disk & how much of it is free.
+
+select group_number, name, total_mb/1024 "SizeofDisk_GB", free_mb/1024 "FreesizeofDisk_now_GB"  from v$asm_disk_stat where group_number=4 and name LIKE 'DATA_00%' ;
+GROUP_NUMBER NAME                           SizeofDisk_GB FreesizeofDisk_now_GB
+------------ ------------------------------ ------------- ---------------------
+           4 DATA_0085                         50.5810547            20.9111328
+           4 DATA_0081                         50.5810547            20.9101563
+           4 DATA_0082                         50.5810547            20.9130859
+           4 DATA_0083                         50.5810547            20.9140625
+           4 DATA_0084                         50.5810547            20.9121094
+           4 DATA_0077                         50.5810547            20.9140625
+           4 DATA_0078                         50.5810547            20.9140625
