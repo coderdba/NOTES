@@ -78,3 +78,25 @@ SQL> CREATE DISKGROUP dummy1 external redundancy
 (NOTE- name clause can sometimes give problem - try then without name, and then query v$asm_disk what name it gave)
 --> without 'name' clause it gives names like DUMMY1_0001 where DUMMY1 is the diskgroup name
 
+SQL> select a.name dg_name, b.header_status, b.name, b.path, b.mount_status, b.mode_status, b.state, 
+     b.redundancy, b.total_mb, b.free_mb
+from v$asm_diskgroup a,
+     v$asm_disk b
+where a.group_number=b.group_number
+order by 1,3,4;
+
+$ asmcmd
+ASMCMD> lsdg
+State    Type    Rebal  Sector  Block       AU  Total_MB   Free_MB  Req_mir_free_MB  Usable_file_MB  Offline_disks  Voting_files  Name
+MOUNTED  EXTERN  N         512   4096  1048576  10485720  10485511                0        10485511              0             N  DUMMY1/
+MOUNTED  EXTERN  N         512   4096  1048576  10485720  10485511                0        10485511              0             N  DUMMY2/
+MOUNTED  EXTERN  N         512   4096  1048576  10485720  10485511                0        10485511              0             N  DUMMY3/
+MOUNTED  EXTERN  N         512   4096  1048576  10485720  10485511                0        10485511              0             N  DUMMY4/
+MOUNTED  EXTERN  N         512   4096  1048576  10485720  10485511                0        10485511              0             N  DUMMY5/
+MOUNTED  EXTERN  N         512   4096  1048576  10536915  10536696                0        10536696              0             N  DUMMY6/
+
+* Set a DB environment (not ASM)
+$ sqlplus / as sysdba
+SQL> create tablespace dummyts1 datafile '+DUMMY1';
+
+
