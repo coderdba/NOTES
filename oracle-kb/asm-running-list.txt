@@ -11,9 +11,28 @@ brw-r----- 1 oracle dba 253,  384 Sep 20 03:42 ASM001
 brw-r----- 1 oracle dba 253,  385 Sep 20 03:39 ASM002
 brw-r----- 1 oracle dba 253,  386 Sep 20 03:37 ASM003
 
+http://www.mahir-quluzade.com/2013/05/which-device-is-mapped-oracle-asm-disk.html
+$ oracleasm querydisk ASM001
+Disk "ASM001" is a valid ASM disk
+
+$ oracleasm querydisk -d ASM001
+Disk "ASMNEW001" is a valid ASM disk on device /dev/dm-785[253,785]
+
+$ ls -l /dev/* | grep 253, | grep 785
+
+$ ls -l /dev/* | grep 253, | grep 785
+brw-rw----  1 root root 253,   785 Sep 13 15:51 /dev/dm-785
+brw-rw---- 1 root   disk 253,  785 Sep 13 15:51 asm_disk_001p1
+
 SQL> SELECT name, header_status, path FROM V$ASM_DISK where header_status = 'CANDIDATE';
 
-# /lib/udev: ./scsi_id -g -u -s /dev/oracleasm/disks/ASM001
+https://linux.die.net/man/8/scsi_id
+# /lib/udev/scsi_id -g -u -s /dev/dm-785
+# cd /dev
+# ls -l */asm_disk_001p1
+brw-rw---- 1 root disk 253, 785 Sep 13 15:51 mapper/asm_disk_001p1
+lrwxrwxrwx 1 root root        9 Sep 13 15:51 mpath/asm_disk_001p1 -> ../dm-785
+
 
 
 
