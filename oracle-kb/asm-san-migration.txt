@@ -173,4 +173,346 @@ deleted datafile copy
 datafile copy file name=+DATA/orcl/datafile/users.261.689589837 RECID=14 STAMP=689683255
 Deleted 1 objects
 
+------------------------
+TEMPFILES
+------------------------
+Probably it is easier to drop and re-create temp tablespaces with files pointing to new diskgroup.
 
+OR, follow steps in the links provided earlier in this doc.
+
+------------------------
+WHOLE DB
+------------------------
+Taken directly from: http://www.orafaq.com/node/1947
+
+How To Move The Database To Different Diskgroup Migrating from External Redundancy to Normal Redundancy
+
+ Submitted by reddy_uk on Mon, 2007-12-03 14:09
+articles: 
+RDBMS Server
+Oracle RDBMS Server - Enterprise Edition - Version: 10.2.0.2
+OS: Applies to any OS, But this is tested on AIX5.3L
+
+Goal:
+
+Moving Data between Disk groups
+ASM is a Storage Manager built for Oracle Database file’s, One can store Data files, Temp files, Redologs, Archive logs, Flashback recovery, backupsets and also spfile.
+
+This Notes helps if the Disk groups are created with some redundancy and one want to change the redundancy (e.g. External to Normal, Normal to High) or Migrating data from one Diskgroup to another.
+
+Redundancy of the Disk cannot be changed on the fly, Better way is to move the Data from Disk groups.
+
+The purpose of the Document is to help move the Data from external Redundancy Diskgroup to Normal Redundancy Diskgroup
+
+Note: One need level 0 Backup (or Cold Backup) of the Database before going further
+
+Solution
+Create a new diskgroup with desired redundancy and move the existing data to newly created diskgroup.
+
+1) If we have extra disk space available,then we can create a new diskgroup and move the files from old diskgroup to it.
+
+-- Initially I have 3 diskgroup with external redundancy as:
+
+This blog will move the database in all the diskgroups to one diskgroup
+
+export ORACLE_HOME=/opt/oracle/product/10.2.0.2/asm1
+
+export PATH=$ORACLE_HOME/bin:$PATH
+
+export ORACLE_SID=+ASM1
+
+SQL> select state,name from v$asm_diskgroup;
+
+STATE NAME
+
+----------- ------------------------------
+
+MOUNTED DATA1
+
+MOUNTED RMAN1
+
+MOUNTED SYS1
+
+SQL> !ls -ltr /dev/rhdisk*
+
+crw------- 2 root system 14, 1 Feb 5 15:58 /dev/rhdisk1
+
+crw------- 1 root system 14, 0 May 14 13:41 /dev/rhdisk0
+
+crw-r----- 1 root oinstall 14, 2 May 14 17:13 /dev/rhdisk2
+
+crw-r----- 1 root oinstall 14, 7 Jul 11 09:26 /dev/rhdisk7
+
+crw------- 1 oracle dba 14, 9 Jul 11 09:26 /dev/rhdisk9
+
+crw-r--r-- 1 oracle oinstall 14, 8 Jul 11 09:26 /dev/rhdisk8
+
+crw------- 1 oracle dba 14, 14 Jul 11 09:26 /dev/rhdisk14
+
+crw-r--r-- 1 oracle oinstall 14, 13 Jul 11 09:26 /dev/rhdisk13
+
+crw-r----- 1 root oinstall 14, 12 Jul 11 09:26 /dev/rhdisk12
+
+crw------- 1 oracle dba 14, 11 Jul 11 09:26 /dev/rhdisk11
+
+crw------- 1 oracle dba 14, 10 Jul 11 09:26 /dev/rhdisk10
+
+crw------- 1 oracle dba 14, 16 Jul 11 09:26 /dev/rhdisk16
+
+crw------- 1 oracle dba 14, 15 Jul 11 09:26 /dev/rhdisk15
+
+crw------- 1 oracle dba 14, 6 Jul 11 12:05 /dev/rhdisk6
+
+crw------- 1 oracle dba 14, 5 Jul 11 12:06 /dev/rhdisk5
+
+crw------- 1 oracle dba 14, 4 Jul 11 12:06 /dev/rhdisk4
+
+crw-r--r-- 1 oracle oinstall 14, 3 Jul 11 12:06 /dev/rhdisk3
+
+SQL> show PARAMETER ASM_DISKSTRING
+
+NAME TYPE VALUE
+
+------------------------------------ ----------- ------------------------------
+
+asm_diskstring string
+
+SQL> !ssh node2 ls -l /dev/rhdisk*
+
+crw------- 2 root system 15, 0 Feb 5 10:23 /dev/rhdisk0
+
+crw------- 1 root system 15, 1 Feb 5 10:47 /dev/rhdisk1
+
+crw------- 1 oracle dba 15, 11 Jul 11 09:33 /dev/rhdisk10
+
+crw------- 1 oracle dba 15, 10 Jul 11 09:35 /dev/rhdisk11
+
+crw-r----- 1 root oinstall 15, 12 Jul 11 09:36 /dev/rhdisk12
+
+crw-r--r-- 1 oracle oinstall 15, 13 Jul 11 09:37 /dev/rhdisk13
+
+crw------- 1 oracle dba 15, 14 Jul 11 09:38 /dev/rhdisk14
+
+crw------- 1 oracle dba 15, 15 Jul 11 09:40 /dev/rhdisk15
+
+crw------- 1 oracle dba 15, 16 Jul 11 09:42 /dev/rhdisk16
+
+crw-r----- 1 root oinstall 15, 2 Jul 11 12:07 /dev/rhdisk2
+
+crw-r--r-- 1 oracle oinstall 15, 3 Jul 11 12:07 /dev/rhdisk3
+
+crw------- 1 oracle dba 15, 4 Jul 11 12:07 /dev/rhdisk4
+
+crw------- 1 oracle dba 15, 5 Jul 11 12:07 /dev/rhdisk5
+
+crw------- 1 oracle dba 15, 6 Jul 11 12:07 /dev/rhdisk6
+
+crw-r----- 1 root oinstall 15, 7 Jul 11 09:30 /dev/rhdisk7
+
+crw-r--r-- 1 oracle oinstall 15, 8 Jul 11 09:31 /dev/rhdisk8
+
+crw------- 1 oracle dba 15, 9 Jul 11 09:32 /dev/rhdisk9
+2) Create a new diskgroup with normal redundancy as :
+
+SQL> create diskgroup DATA2 normal redundancy failgroup datafg01 disk '/dev/rhdisk9' failgroup datafg02 disk '/dev/rhdisk14';
+
+Diskgroup created.
+
+SQL> select state,name,type from v$asm_diskgroup;
+
+STATE NAME TYPE
+
+----------- ------------------------------ ------
+
+MOUNTED DATA1 EXTERN
+
+MOUNTED RMAN1 EXTERN
+
+MOUNTED SYS1 EXTERN
+
+MOUNTED DATA2 NORMAL
+
+export ORACLE_HOME=/opt/oracle/product/10.2.0.2/db1
+
+export PATH=$ORACLE_HOME/bin:$PATH
+
+export ORACLE_SID=db1
+3)Backup the current database as follows:
+
+SQL> show parameter db_name
+
+NAME TYPE VALUE
+
+------------------------------------ ----------- ------------------------------
+
+db_name string db
+
+SQL> show parameter control
+
+NAME TYPE VALUE
+
+------------------------------------ ----------- ------------------------------
+
+control_file_record_keep_time integer 7
+
+control_files string +SYS1/db/controlfile/current.257.623341273
+
+SQL> alter database backup controlfile to '+DATA2';
+
+Database altered.
+
+SQL> alter system set control_files='+DATA2\db\CONTROLFILE\Backup.256.627662879' SCOPE=SPFILE;
+
+System altered.
+
+-- Connect to rman
+
+home/oracle > rman target /
+
+Recovery Manager: Release 10.2.0.2.0 - Production on Wed Jul 11 14:53:59 2007
+
+Copyright (c) 1982, 2005, Oracle. All rights reserved.
+
+connected to target database: DB (DBID=732666905)
+
+RMAN> shutdown immediate;=== if its RAC shutdown from node 2 also
+
+using target database control file instead of recovery catalog
+
+database closed
+
+database dismounted
+
+Oracle instance shut down
+
+RMAN> startup nomount;
+
+connected to target database (not started)
+
+Oracle instance started
+
+Total System Global Area 2063597568 bytes
+
+Fixed Size 2072480 bytes
+
+Variable Size 469762144 bytes
+
+Database Buffers 1577058304 bytes
+
+Redo Buffers 14704640 bytes
+
+RMAN> restore controlfile from '+SYS1\db\CONTROLFILE\Current.257.623341273';
+
+Starting restore at 11-JUL-07
+
+allocated channel: ORA_DISK_1
+
+channel ORA_DISK_1: sid=145 instance=db1 devtype=DISK
+
+channel ORA_DISK_1: copied control file copy
+
+output filename=+DATA2/db/controlfile/backup.256.627662879
+
+Finished restore at 11-JUL-07
+
+RMAN> alter database mount;
+
+database mounted
+
+released channel: ORA_DISK_1
+
+RMAN> backup as copy database format '+DATA2';
+4)Switch the database to copy. At this moment we are switching to the new Diskgroup
+
+== A SWITCH is equivalent to using the PL/SQL "alter database rename file" statement.
+
+RMAN> switch database to copy;
+
+RMAN > alter database open;==wil not work
+this is a bug in 10.2.0.2
+
+exit out and
+
+sqlplus “/ as sysdba”
+
+alter database open
+
+shutdown immediate;
+
+startup
+
+alter system set db_create_file_dest ='+DATA2';
+5)Add new tempfile to newly created database.
+
+SQL> create bigfile temporary tablespace temp03 tempfile size 100M;
+
+Tablespace created.
+
+SQL> alter database default temporary tablespace temp03;
+
+Database altered.
+
+Drop any existing tempfile on the old diskgroup
+
+SQL> drop tablespace temp;
+
+Tablespace dropped.
+6)Find out how many members we have have in redolog groups, make sure that we have only one member in each log group.(drop other members).
+
+SQL> select * from v$log;
+
+Suppose we have 4 log groups, then add one member to each log group as following:
+
+SQL> alter database add logfile member '+data2' to group 1;
+
+Database altered.
+
+SQL> alter database add logfile member '+data2' to group 2;
+
+Database altered.
+
+SQL> alter database add logfile member '+data2' to group 3;
+
+Database altered.
+
+SQL> alter database add logfile member '+data2' to group 4;
+
+Database altered.
+
+SQL> 
+Then we can drop the old logfile member from earlier diskgroups as:
+
+Issue the below command till all the logfiles are in valid state
+
+alter system switch logfile;
+
+SQL> alter database drop logfile member '+SYS1/db/onlinelog/group_2.260.623341307';
+
+Database altered.
+
+SQL> select * from v$logfile;
+Logfiles from group 3 and 4 cannot be dropped at this point from node 1 as node 2 is still down
+
+start the database on node 2 and delete the old logfiles in the data1/sys1 diskgroup
+
+7)Use the following query to verify that all the files are moved to new diskgroup with desired redundancy:
+
+SQL> select name from v$controlfile
+
+union
+
+select name from v$datafile
+
+union
+
+select name from v$tempfile
+
+union
+
+select member from v$logfile
+
+union
+
+select filename from v$block_change_tracking
+union
+select name from v$flashback_database_logfile;
