@@ -6,7 +6,7 @@ Online - http://ittichaicham.com/2009/10/online-san-storage-migration-for-oracle
 Online - http://www.dbaref.com/home/asm/exactstepstomigrateasmdiskgroupstoanothersanwithoutdowntime
 Online - http://rudreshgwd.blogspot.in/2012/08/online-migration-of-asm-disk-groups.html
 
-RMAN move datafile - https://docs.oracle.com/database/121/OSTMG/GUID-3B8D0956-0888-452D-A9E4-9FB8D98577E0.htm#OSTMG89997
+RMAN move datafile - 
   FOR DATAFILES:
   12C - https://docs.oracle.com/database/121/OSTMG/GUID-3B8D0956-0888-452D-A9E4-9FB8D98577E0.htm#OSTMG89997
   11G - 
@@ -18,3 +18,160 @@ RMAN move datafile - https://docs.oracle.com/database/121/OSTMG/GUID-3B8D0956-08
   Whole DB - http://www.orafaq.com/node/1947
   
   Migrating from non-asm to asm: https://docs.oracle.com/cd/B19306_01/backup.102/b14191/rcmasm.htm#BRADV12000
+  
+==============================
+MOVE TO DIFFERENT DISKGROUP
+==============================
+-----------------
+DATAFILES
+-----------------
+Taken directly from https://docs.oracle.com/database/121/OSTMG/GUID-3B8D0956-0888-452D-A9E4-9FB8D98577E0.htm#OSTMG89997
+
+Moving Data Files Between Oracle ASM Disk Groups Using RMAN
+You may want to move an active data file in an ARCHIVELOG mode database from one Oracle ASM disk group to another. 
+You can use RMAN BACKUP AS COPY to copy the data file to the new disk group and SET NEWNAME and SWITCH commands to 
+rename the data file in the control file.
+
+You can also use the ALTER DATABASE MOVE DATAFILE. SQL statement to move data files. For information about moving data 
+files online with ALTER DATABASE MOVE DATAFILE, refer to "Moving Data Files Between Disk Groups With ALTER DATABASE".
+
+For this scenario using RMAN, assume that you are using disk groups DATA and USERDATA and you want to move 
+the data file users.261.689589837 to disk group USERDATA. 
+
+Ensure that ARCHIVELOG mode is enabled for the database before beginning the procedure to move data files.
+
+To move a data file from one Oracle ASM disk group to another disk group using the RMAN BACKUP AS COPY procedure 
+with the SET NEWNAME and SWITCH commands, perform the following steps.
+
+Start RMAN and connect to the target database.
+
+For example:
+
+$ rman
+RMAN> CONNECT TARGET SYS@orcl
+target database Password: XXXXXXXXX
+connected to target database: ORCL (DBID=1217369048)
+Generate a report that shows the names of the data files.
+
+Run the following REPORT command after connecting RMAN to the target database. Note the data file name of the file to be moved.
+
+For example:
+
+RMAN> REPORT SCHEMA;
+
+Report of database schema for database with db_unique_name ORCL
+ 
+List of Permanent Datafiles
+===========================
+File Size(MB) Tablespace           RB segs Datafile Name
+---- -------- -------------- ------- ------------------------
+1    740      SYSTEM         ***     +DATA/orcl/datafile/system.258.689589737
+2    570      SYSAUX         ***     +DATA/orcl/datafile/sysaux.259.689589785
+3    55       UNDOTBS1       ***     +DATA/orcl/datafile/undotbs1.260.689589831
+4    5        USERS          ***     +DATA/orcl/datafile/users.261.689589837
+
+List of Temporary Files
+=======================
+File Size(MB) Tablespace           Maxsize(MB) Tempfile Name
+---- -------- -------------- ----------- --------------------
+1    20       TEMP           32767       +DATA/orcl/tempfile/temp.262.689589851
+Back up the data file to the new Oracle ASM disk group.
+
+Run the BACKUP AS COPY command to back up the data file on DATA to USERDATA.
+
+For example:
+
+RMAN> BACKUP AS COPY
+        DATAFILE "+DATA/orcl/datafile/users.261.689589837"
+        FORMAT   "+USERDATA";
+
+Starting backup at 16-JUN-09
+allocated channel: ORA_DISK_1
+channel ORA_DISK_1: SID=51 device type=DISK
+channel ORA_DISK_1: starting datafile copy
+input datafile file number=00004 name=+DATA/orcl/datafile/users.261.689589837
+output file name=+USERDATA/orcl/datafile/users.256.689682663
+  tag=TAG20090616T103101 RECID=13 STAMP=689682663
+channel ORA_DISK_1: datafile copy complete, elapsed time: 00:00:01
+Finished backup at 16-JUN-09
+You could also specify the data file by the data file number and data file type.
+
+For example:
+
+BACKUP AS COPY
+  DATAFILE 4
+  FORMAT   "+USERDATA";
+Offline the data file that you intend to move to a new disk group.
+
+Run the following SQL command in the RMAN client. Use two single quotation marks around the name of the data file, not double quotation marks.
+
+For example:
+
+RMAN> SQL "ALTER DATABASE DATAFILE 
+       ''+DATA/orcl/datafile/users.261.689589837'' OFFLINE";
+
+sql statement: ALTER DATABASE DATAFILE
+     ''+DATA/orcl/datafile/users.261.689589837''  OFFLINE
+Point the control file to the newly created copy of the data file.
+
+Run the SWITCH...TO COPY command in the RMAN client. The TO COPY option of SWITCH switches the data file to the most recent copy of the data file.
+
+For example:
+
+RMAN> SWITCH DATAFILE "+DATA/orcl/datafile/users.261.689589837" TO COPY;
+
+datafile 4 switched to datafile copy
+    "+USERDATA/orcl/datafile/users.256.689682663"
+The output of this command displays the new name of the data file.
+
+Recover the renamed data file.
+
+Run the RECOVER command in the RMAN client.
+
+For example:
+
+RMAN> RECOVER DATAFILE "+USERDATA/orcl/datafile/users.256.689682663";
+
+Starting recover at 16-JUN-09
+using channel ORA_DISK_1
+starting media recovery
+media recovery complete, elapsed time: 00:00:01
+Finished recover at 16-JUN-09
+Bring the data file online.
+
+Run the SQL command in the RMAN client. Use two single quotation marks around the name of the data file, not double quotation marks.
+
+For example:
+
+RMAN> SQL "ALTER DATABASE DATAFILE
+      ''+USERDATA/orcl/datafile/users.256.689682663'' ONLINE";
+
+sql statement: ALTER DATABASE DATAFILE
+   ''+USERDATA/orcl/datafile/users.256.689682663'' ONLINE
+Delete the data file copy from the original Oracle ASM disk group.
+
+In this scenario, +DATA/orcl/datafile/users.261.689589837 is the original data file in DATA. 
+Because you issued SET NEWNAME and SWITCH commands for this data file, the original file is 
+now recorded in the RMAN repository as a data file copy. Run a DELETE command in the RMAN client to remove this file.
+
+For example:
+
+RMAN> DELETE DATAFILECOPY "+DATA/orcl/datafile/users.261.689589837";
+
+released channel: ORA_DISK_1
+allocated channel: ORA_DISK_1
+channel ORA_DISK_1: SID=51 device type=DISK
+List of Datafile Copies
+=======================
+Key     File S Completion Time Ckp SCN    Ckp Time       
+------- ---- - --------------- ---------- ---------------
+14      4    A 16-JUN-09       864471     16-JUN-09      
+        Name: +DATA/orcl/datafile/users.261.689589837
+        Tag: TAG20090615T084217
+
+Do you really want to delete the above objects (enter YES or NO)? y
+deleted datafile copy
+datafile copy file name=+DATA/orcl/datafile/users.261.689589837 RECID=14 STAMP=689683255
+Deleted 1 objects
+
+
