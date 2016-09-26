@@ -42,7 +42,7 @@ Sections:
 * SPFILE (TBD)
 
 -----------------
-DATAFILES
+DATAFILES - NON SYSTEM/SYSAUX/UNDO TABLESPACES
 -----------------
 Taken directly from https://docs.oracle.com/database/121/OSTMG/GUID-3B8D0956-0888-452D-A9E4-9FB8D98577E0.htm#OSTMG89997
 Moving Data Files Between Oracle ASM Disk Groups Using RMAN
@@ -191,6 +191,87 @@ Do you really want to delete the above objects (enter YES or NO)? y
 deleted datafile copy
 datafile copy file name=+DATA/orcl/datafile/users.261.689589837 RECID=14 STAMP=689683255
 Deleted 1 objects
+
+------------------------
+DATAFILES - SYSTEM/SYSAUX TABLESPACES
+------------------------
+https://www.linkedin.com/pulse/how-move-datafiles-from-one-asm-diskgroup-another-ahmed-abdellatif
+Move SYSTEM and SYSAUX datafiles to another ASM diskgroup
+For System and SYSAUX an approach similar to the one given below can be used
+
+1) Create a Copy of datafile in target Diskgroup:
+
+RMAN> backup as copy tablespace sysaux format '+FRA';
+
+Starting backup at 29-AUG-13
+using channel ORA_DISK_1
+channel ORA_DISK_1: starting datafile copy
+input datafile file number=00002 name=+DATA/rac/datafile/sysaux.257.824552199
+output file name=+FRA/rac/datafile/sysaux.258.824725695 tag=TAG20130829T102810 RECID=3 STAMP=824725742
+channel ORA_DISK_1: datafile copy complete, elapsed time: 00:00:56
+Finished backup at 29-AUG-13
+
+2) Then shutdown the database and restart to a mounted state
+
+RMAN> shutdown immediate;
+
+database closed
+database dismounted
+Oracle instance shut down
+
+RMAN> startup mount;
+
+connected to target database (not started)
+Oracle instance started
+database mounted
+
+Total System Global Area 400846848 bytes
+
+Fixed Size 2213776 bytes
+Variable Size 159385712 bytes
+Database Buffers 234881024 bytes
+Redo Buffers 4366336 bytes
+
+3) Switch the datafiles to the copy
+
+RMAN> switch tablespace sysaux to copy;
+
+datafile 2 switched to datafile copy "+FRA/rac/datafile/sysaux.258.824725695"
+
+4) Recover the changes made to these tablespaces
+
+RMAN> recover database;
+
+Starting recover at 29-AUG-13
+allocated channel: ORA_DISK_1
+channel ORA_DISK_1: SID=1 device type=DISK
+
+starting media recovery
+media recovery complete, elapsed time: 00:00:02
+
+Finished recover at 29-AUG-13
+
+RMAN>
+
+5) Open the database
+
+RMAN> sql 'alter database open';
+
+sql statement: alter database open
+
+RMAN>
+
+6) Verify the new file location.
+
+SQL> SELECT FILE_NAME FROM DBA_DATA_FILES;
+
+FILE_NAME
+--------------------------------------------------------------------------------
++FRA/rac/datafile/users.257.824724469
++DATA/rac/datafile/undotbs1.258.824552199
++FRA/rac/datafile/sysaux.258.824725695
++DATA/rac/datafile/system.256.824552197
+
 
 ------------------------
 TEMPFILES
