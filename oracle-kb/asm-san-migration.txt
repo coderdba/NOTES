@@ -604,3 +604,77 @@ NAME
 7. Remove the backup spfile
 
 rm /tmp/spfileBACKUP.ora
+
+----------------------------
+SPFILE
+----------------------------
+http://kb.dbatoolz.com/tp/3372.move_spfile_asm_diskgroup_oracle_rac.html
+##
+## "Move" spfile from:
+##    +OLDLOC/DBNAME/spfileDBNAME.ora
+##  to:
+##    +NEWLOC/DBNAME/spfileDBNAME.ora
+##
+
+## NOTE:
+##   in this example there are FOUR nodes:
+##      rac1
+##      rac2
+##      rac3
+##      rac4
+
+
+## run all steps from first node
+##
+## "copy" spfile to +NEWLOC
+sqlplus /nolog
+connect / as sysdba
+create pfile='/u01/app/oracle/admin/DBNAME/scripts/init_new.ora' from spfile='+OLDLOC/DBNAME/spfileDBNAME.ora';
+create spfile='+NEWLOC/DBNAME/spfileDBNAME.ora' from pfile='/u01/app/oracle/admin/DBNAME/scripts/init_new.ora';
+exit
+
+## modify init*.ora files to point to new location
+##
+echo "SPFILE='+NEWLOC/DBNAME/spfileDBNAME.ora'" > /u01/app/oracle/product/10.2.0/db_1/dbs/initDBNAME1.ora
+ssh rac2 "echo \"SPFILE='+NEWLOC/DBNAME/spfileDBNAME.ora'\" > /u01/app/oracle/product/10.2.0/db_1/dbs/initDBNAME2.ora"
+ssh rac3 "echo \"SPFILE='+NEWLOC/DBNAME/spfileDBNAME.ora'\" > /u01/app/oracle/product/10.2.0/db_1/dbs/initDBNAME3.ora"
+ssh rac4 "echo \"SPFILE='+NEWLOC/DBNAME/spfileDBNAME.ora'\" > /u01/app/oracle/product/10.2.0/db_1/dbs/initDBNAME4.ora"
+
+## modify OCR with new SPFILE location
+##
+export ORACLE_HOME=$CRS_HOME
+export PATH=$ORACLE_HOME/bin:$PATH
+srvctl modify database -d DBNAME -p +NEWLOC/DBNAME/spfileDBNAME.ora
+
+## bounce ALL instances to switch to new SPFILE
+##
+export ORACLE_HOME=$CRS_HOME
+export PATH=$ORACLE_HOME/bin:$PATH
+srvctl stop database -d DBNAME
+srvctl start database -d DBNAME
+
+## all services will be down because DB got bounced -- restart it
+##
+srvctl start service -d DBNAME
+
+
+
+## drop old spfile
+##
+export ORACLE_HOME=/u01/app/oracle/product/10.2.0/asm
+export PATH=$ORACLE_HOME/bin:$PATH
+export ORACLE_SID=+ASM1
+sqlplus /nolog
+connect / as sysdba
+ALTER DISKGROUP OLDLOC DROP FILE '+OLDLOC/DBNAME/spfileDBNAME.ora';
+exit
+
+## verify "old" spfile is gone from OLDLOC
+##
+export ORACLE_HOME=/u01/app/oracle/product/10.2.0/asm
+export PATH=$ORACLE_HOME/bin:$PATH
+export ORACLE_SID=+ASM1
+asmcmd
+ASMCMD> find / *spfile*
++NEWLOC/DBNAME/PARAMETERFILE/spfile.259.667587125
++NEWLOC/DBNAME/spfileDBNAME.ora
