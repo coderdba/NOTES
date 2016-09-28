@@ -1,0 +1,49 @@
+====================================
+      ORACLE TUNING SETS
+====================================
+
+==========================
+COPYING OFF A TUNING SET
+==========================
+https://taliphakanozturken.wordpress.com/2011/12/20/moving-sql-tuning-set-sts-accross-databases/
+
+1. Create a staging table to hold the content of an existing tuning set
+
+set echo on
+
+BEGIN
+DBMS_SQLTUNE.create_stgtab_sqlset (table_name => 'STS_STG_TABLE',
+schema_name => 'SCOTT'
+);
+
+END;
+/
+
+set echo off
+
+2. 'Pack' the tuning set into this table
+
+set echo on
+
+BEGIN
+
+DBMS_SQLTUNE.pack_stgtab_sqlset (sqlset_name => 'MY_TUNING_SET_ON_12SEP_250TOP',
+sqlset_owner => 'SYS',
+staging_table_name => 'STS_STG_TABLE',
+staging_schema_owner => 'SCOTT'
+);
+
+END;
+/
+
+set echo off
+
+3. Export the staging table and copy export file to server which you want to move STS
+
+Parfile: sts-exp-stg-tab.par
+
+userid='/ as sysdba'
+file=sts-exp-stg-tab.dmp
+log=sts-exp-stg-tab.log
+tables=scott.STS_STG_TABLE
+
