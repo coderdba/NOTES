@@ -47,3 +47,31 @@ file=sts-exp-stg-tab.dmp
 log=sts-exp-stg-tab.log
 tables=scott.STS_STG_TABLE
 
+4. Import the staging table to the other DB
+NOTE: If to create a 'copy tuning set on the same DB, 
+            then make a copy of the table, 
+            and update the column 'NAME' of the copy table with the new tuning set name
+            
+* If importing to another database:
+imp userid=user/pass@DB2 file=stg_table.dmp log=stg_table_imp.log 
+fromuser=scott touser=scott recordlength=65535 feedback=1000000
+(After import, if you want a different name to the tuning set, then update the column NAME accordingly)
+
+* If making a copy locally
+CREATE TABLE SCOTT.STS_STG_TABLE_TOP25 as select * from scott.sts_stg_table;
+UPDATE SCOTT.STS_STG_TABLE_TOP25 set NAME='MY_TUNING_SET_ON_12SEP_25TOP';
+
+5. Add/Create new tuning set from the contents of the table
+Script: sts-cr-sts-from-stg-tab.sql
+BEGIN
+DBMS_SQLTUNE.unpack_stgtab_sqlset (sqlset_name => 'FFODS_PREED20160912AWRET25',
+sqlset_owner => 'SYS',
+replace => TRUE,
+staging_table_name => 'STS_STG_TABLE_25',
+staging_schema_owner => 'SCOTT'
+);
+
+END;
+/
+
+
