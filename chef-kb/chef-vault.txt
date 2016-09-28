@@ -3,4 +3,95 @@
 =================================
 
 https://blog.chef.io/2016/01/21/chef-vault-what-is-it-and-what-can-it-do-for-you/
+http://hedge-ops.com/chef-vault-tutorial/ --> good with tips on knife.rb
+https://github.com/chef/chef-vault
+https://blog.chef.io/2013/09/19/managing-secrets-with-chef-vault/
 
+=========================
+CREATING A VAULT
+=========================
+- Create a folder ~/data_bags (like E:/data_bags on the chef-toolchain Bill's kitchen like setup)
+- Create a data-bag item in a json format: 
+  File: testuser.json (in ~/data_bags)
+  Content:  {"testuser":"testpassword"}
+  
+- Create the vault - decryptable by two users user1 and user2
+    This uploads two data bag items to a data bag called “credentials”:
+
+    testuser which has the credentials for testuser user as in the json above
+    testuser_keys which stores the metadata about which clients can read and edit this data bag 
+    --> this is implicit - no need to mention that in json - TAKEN FROM THE settings we use in knife commands
+    (as you specified above in the search criteria and administrators list)
+
+
+$ knife vault create credentials testuser -A user1,user2 -M client -S 'name:*' -J testuser.json
+--> NOTE: -S 'name:*' is for allowing this vault to be used in any server
+           It can be filtered by servername patterns or directive 'policy_name:...' where policy is the policy/role of servers
+            (like policy_name:webserver)
+--> NOTE: 'credentials' is the vault, and 'testuser' is the item in it
+
+--> NOTE: The "-M client" directive is necessary or add the following in knife.rb:
+            knife[:vault_mode] = 'client'
+            
+            
+- List the vaults: ('credentials' is the vault)
+$ knife vault show credentials -M client
+testuser --> is the item
+$
+
+G:\.chef>knife vault show credentials testuser -M client
+id:       testuser
+testuser: testpassword
+
+- List as data bag (with unencrypted content):
+G:\.chef>knife data bag show credentials testuser
+WARNING: Encrypted data bag detected, but no secret provided for decoding.  Displaying encrypted data.
+id:       testuser
+testuser:
+  cipher:         aes-256-cbc
+  encrypted_data: JlyZ61XP3iGVpYaneedeQkPsd/qmrsRIROhAQhanRxQ=
+
+  iv:             rRJi4mbcw2fvDdvmyvNTaw==
+
+  version:        1
+  
+- List the administrators and clients for the data bag:
+
+G:\.chef>knife data bag show credentials testuser_keys
+(testuser is the item, testuser_keys is an implicit directive to show the admins and clients)
+G:\.chef>knife data bag show credentials testuser_keys                                 
+WARNING: Unencrypted data bag detected, ignoring any provided secret options.          
+WinSrv20121:  qJeyOWxUQVWZi9BWhAl1P8NxbGX7GWQoaOcybPdRvN3iNrbDdYJF+3lwroib             
+zxwQp6Ft7VubamyEnfU1UYyrKtVUJkKsNzZvWpWP+slq7zWELZMewWNMiKkW                           
+ePe8XZRXiiMITlB6g2ghwA4uoWwQkkzpeAv0wYmxPJrCSNYdaFb7zGoJAG+4                           
+vv3035Aq0LAm8k6CaD4GYQ4WxdnueV/WKn9wT4ns2kOUvZy6FXxZA5nokIUW                           
+mWF0tb4OHwtHywm0C1vc2WzdX4Px9uYSjxCCpMIT1+E1b0V6Jllk9L/zvk/w                           
+DXf//I1unLF4x2xi72N+a0f5sbs/Qo5D4vCEswJyag==                                           
+                                                                                       
+admins:       user1                                                                   
+clients:                                                                               
+  WinSrv20121                                                                          
+  ora12ccl                                                                             
+  rhel72                                                                               
+                                                                              
+user1:       xXB8cif4OB3J+WAXgZTIvWLmZcuCDY1BMGYfCpxOkFW2U0s9Gwe51zxBsnUo             
+3Eu3gaR0k54jSBX5YNit8/Zs2YpXXbZvJmx/9iuWA1UlU4sdM+W0TADHk970                           
+apH/xHvr4pTvYrI80A2n7/0QAlJ6FSsFKsZzuLPOANuRhL4+g/Qv5e9p/nT1                           
+FoKfFXqYN/gQpB+ateL85rggpUg9zpFW+LCKM01Xab+MVKm/TbBigL65YRrW                           
+6IkWuhKSxN8FFd2o/F9oAxWP3wsUA2QLI0GfjIY275ttHe7fVwQsQtpPoFzI                           
+JesrDIGqW8UEVNBFv8zu6Lswj7lC3CLFLLTIsVuu8Q==                                           
+                                                                                       
+id:           testuser_keys                                                            
+ora12ccl:     mkcHgHCZGKImjk/Jv9pG2TQxNo0e4ZKniuk/UFsyS4neRsQyEq2ObGVASBpA             
+LPMsQaz6w9CTUn8Wol9iP4u+gFW3D4iUlVmx5Sl7/32RB79HfFzhZsHNyMVc                           
+edkavYOr4XUUfob8Zzg7GJtjcD12LRrFRZvifdU50SE5IAefI/dZW8I7tG7U                           
+xYCDiLGWQROBrEI1QzvKoEZ4Enn2Dp2SHoyg4kSxaEEOAzh0IZW5DDomUK1Z                           
+QCSzOnqI5HRr29fSOQ4TDKy92FA/czHtKldTqcxcZeeE1MfHk04E8oc8J+zq                           
+doNrtY6BeB/DejYTywm9ak/4yPCorGdvwtDzSqanfA== 
+
+rhel72:       z+0cYAo6z0tbbceYkBks6hMPicK3S2GMNG9B7dGMm/6Im96in5gVojvWzNWW             
+RRHPpHlgNBM9McUEWV5oFu+u30+jpUwul8sIePyiMncj7Pq1a6epONLwg47f                           
+jrVnOsLgQc3O5CVZhoEmcST+RTBH1T2HF74355POejf/wgq6ILhLnDP9e8xT                           
+LSZL3LTD49fnBeo5x2LRXzs1OTCafmXsse4iGObn3YpPly+H3O+NtPuvW6zn                           
+Hz+iyR5XRnqx/KDhUmnTA8HLRNXXoskizxBhI8ydiNgAfbsKsfvnKKyZww+i                           
+cRSEMAnf8R1MZ+Hp/5Ts++46gdAfLBtwPXprBgc/sQ==                                           
