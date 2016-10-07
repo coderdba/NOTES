@@ -25,6 +25,17 @@ postgres=# \dx
 ---------+---------+------------+--------------------------------------------------------------
  dblink  | 1.1     | public     | connect to other PostgreSQL databases from within a database
  plpgsql | 1.0     | pg_catalog | PL/pgSQL procedural language
+ 
+ postgres=# SELECT oid::regprocedure FROM pg_proc WHERE proname = 'dblink';
+ 
+            oid
+---------------------------
+ dblink(text)
+ dblink(text,boolean)
+ dblink(text,text)
+ dblink(text,text,boolean)
+(4 rows)
+
 
 
 ----------------------------------
@@ -107,7 +118,8 @@ empdw# --> logged on as 'postgres' superuser now
 
 - Run this insert statement:
 
+--> try with and without ::text
 INSERT INTO empdw
     SELECT id, name 
-    FROM public.dblink('dbname=appdb', 'SELECT id, name FROM emp')
+    FROM public.dblink('dbname=appdb'::text, 'SELECT id, name FROM emp'::text)
     AS t(id integer, name varchar);
