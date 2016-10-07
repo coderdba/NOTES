@@ -2,9 +2,9 @@
     FILESYSTEM MANAGEMENT
 ======================================
 
-===========================
-CREATE AND MOUNT FILESYSTEM
-===========================
+==================================================================
+CREATE AND MOUNT FILESYSTEM - WITHOUT LOGICAL VOLUMES IN THE DISK
+==================================================================
 
 # fdisk /dev/sdb
 Welcome to fdisk (util-linux 2.23.2).
@@ -32,6 +32,8 @@ The partition table has been altered!
 
 Calling ioctl() to re-read partition table.
 Syncing disks.
+
+* Verify:
 [root@oralx0001 dev]# ls -l sd*
 brw-rw----. 1 root disk 8,  0 May  7 15:15 sda
 brw-rw----. 1 root disk 8,  1 May  7 15:15 sda1
@@ -100,4 +102,64 @@ drwx------. 2 root root 16384 Jun 22 01:13 lost+found
 ==========================================================
 EXTENDING AN F/S WITH A NEW DISK
 ==========================================================
+TBD
 Not tried yet - can be difficult to remove that disk from that f/s later without negative effects
+
+==========================================================
+LOGICAL VOLUME MANAGEMENT - LVM
+==========================================================
+# lvm
+
+lvm> pvdisplay
+  --- Physical volume ---
+  PV Name               /dev/sda2
+  VG Name               rootvg
+  PV Size               59.51 GiB / not usable 3.00 MiB
+  Allocatable           yes
+  PE Size               4.00 MiB
+  Total PE              15234
+  Free PE               3436
+  Allocated PE          11798
+  PV UUID               pN9llD-xHo4-jsRn-L3tC-pUhH-eeKi-CcR4Oc
+
+lvm> lvdisplay
+  --- Logical volume ---
+  LV Path                /dev/rootvg/root
+  LV Name                root
+  VG Name                rootvg
+  LV UUID                fSGL2Y-1aXW-3bdz-erU2-kXIv-g0dy-okz3fZ
+  LV Write Access        read/write
+  LV Creation host, time localhost, 2015-03-17 10:11:16 -0500
+  LV Status              available
+  # open                 1
+  LV Size                9.77 GiB
+  Current LE             2500
+  Segments               1
+  Allocation             inherit
+  Read ahead sectors     auto
+  - currently set to     8192
+  Block device           253:1
+
+  --- Logical volume ---
+  LV Path                /dev/rootvg/tmp
+  LV Name                tmp
+  VG Name                rootvg
+  LV UUID                PYefZu-O0RP-vxs6-XydQ-wccs-4prd-rewIvg
+  LV Write Access        read/write
+  LV Creation host, time localhost, 2015-03-17 10:11:17 -0500
+  LV Status              available
+  # open                 1
+  LV Size                4.88 GiB
+  Current LE             1250
+  Segments               1
+  Allocation             inherit
+  Read ahead sectors     auto
+  - currently set to     8192
+  Block device           253:2
+
+  --- Logical volume ---
+  LV Path                /dev/rootvg/apps
+...
+...
+...
+and so on ...
