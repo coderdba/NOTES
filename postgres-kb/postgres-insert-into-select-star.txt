@@ -2,18 +2,20 @@
       INSERT INTO SELECT * FROM
 =================================================
 
-http://stackoverflow.com/questions/6083132/postgresql-insert-into-select
+http://stackoverflow.com/questions/6083132/postgresql-insert-into-select --> local 'remote' connection
 http://stackoverflow.com/questions/12297402/postgresql-dblink-in-stored-functions-from-local-to-remote-database
+http://stackoverflow.com/questions/3862648/how-to-use-install-dblink-in-postgresql --> with user/pass for real remote DB
 
 DBLINK FUNCTION:
 https://www.postgresql.org/docs/9.5/static/contrib-dblink-function.html
 http://stackoverflow.com/questions/29516922/postgressql-dblink-no-function-matches-the-given-name-and-argument-types
 https://www.postgresql.org/message-id/f642fc4f-d81f-48a0-ae6f-30a210e42f4c@11g2000prv.googlegroups.com
 
+
 ----------------------------------
 CREATE THE EXTENSION 'DBLINK'
 ----------------------------------
-$ psql
+$ psql <dbname>
 
 postgres=# create extension dblink;
 CREATE EXTENSION
@@ -114,7 +116,7 @@ TBD
 - Logon to 'appdw' database (to insert into its table FROM a remote table from appdb database)
 
 $ psql appdw
-empdw# --> logged on as 'postgres' superuser now
+appdw=# empdw# --> logged on as 'postgres' superuser now
 
 - Run this insert statement:
 
@@ -123,3 +125,16 @@ INSERT INTO empdw
     SELECT id, name 
     FROM public.dblink('dbname=appdb'::text, 'SELECT id, name FROM emp'::text)
     AS t(id integer, name varchar);
+    
+appdw=# INSERT INTO empdw
+    SELECT id, name 
+    FROM public.dblink('dbname=appdb', 'SELECT id, name FROM emp')
+    AS t(id integer, name varchar);
+    
+appdw=# select * from empdw;
+ id | name
+----+------
+  1 | 1
+  1 | 1
+(2 rows)
+
