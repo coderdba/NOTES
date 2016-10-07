@@ -311,7 +311,7 @@ appdev   - can use databases and create tables, create stored procedures on thos
 appuser  - can use databases and do DML on tables, execute stored procedures
 
 -------------------------------------
-CREATE DB AND OBJECTS AS APPDBA
+CREATE A DB AND OBJECTS AS APPDBA
 -------------------------------------
 - Logon as APPDBA
 $ psql -U appdba -d postgres -h pgserver0001 -W
@@ -466,12 +466,9 @@ appdb=# \dt
  public | salary | table | appuser
 (4 rows)
 
-appdb=# alter table public.salary to appdba;
-ERROR:  syntax error at or near "to"
-LINE 1: alter table public.salary to appdba;
-                                  ^
 appdb=# alter table public.salary  owner to appdba;
 ALTER TABLE
+
 appdb=# \dt
         List of relations
  Schema |  Name  | Type  | Owner
@@ -489,7 +486,6 @@ appdb=# \dt app*.*
  appdbschema1 | emp  | table | appdba
  appdbschema2 | emp  | table | appdba
 
-
 -- Grant privileges on tables/schemas to roles
 Logon as appdba to appdb database.
 appdb=> grant usage on schema appdbschema1 to appread_role;
@@ -505,6 +501,44 @@ appdb=> grant select, insert, update, delete on all tables in schema appdbschema
 -- Revoking privileges
 Logon as appdba to appdb database.
 appdb=> revoke insert, update, delete on all tables in schema appdbschema1 from appwrite_role;
+
+---------------------------------------------------
+CREATE ANOTHER 'WAREHOUSE' DB AND OBJECTS AS APPDBA - IN A DIFFERENT DISK
+---------------------------------------------------
+
+- First, create a tablespace
+$ psql
+postgres# CREATE TABLESPACE ts1 LOCATION '/disk1/postgres/data';
+
+This will create a directory similar to "/disk1/postgres/data/PG_9.5_201510051"
+
+- Next, create the database with that tablespace
+postgres#  CREATE DATABASE appdw TABLESPACE TS1 OWNER APPDBA;
+
+This will create a new folder similar to "/disk1/postgres/data/PG_9.5_201510051/16476"
+
+- Create a DW (Data Warehouse) table for emp table
+$ psql -U appdba -d postgres -h oralx0001 -W
+Password for user appdba:
+
+postgres=> \c appdw
+Password for user appdba:
+You are now connected to database "appdw" as user "appdba".
+
+appdw=>  create table empdw (id int, name varchar(10));
+CREATE TABLE
+appdw=> \d
+        List of relations
+ Schema | Name  | Type  | Owner
+--------+-------+-------+--------
+ public | empdw | table | appdba
+
+appdw=> grant select, insert, update, delete, truncate on empdw  to appuser;
+GRANT
+
+- Load data from appdb.emp to appdw.empdw
+
+
 
 - - - - - - 
 -- CAUTION - do not give the privileges like the following.  
