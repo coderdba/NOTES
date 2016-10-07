@@ -116,7 +116,7 @@ TBD
 - Logon to 'appdw' database (to insert into its table FROM a remote table from appdb database)
 
 $ psql appdw
-appdw=# empdw# --> logged on as 'postgres' superuser now
+appdw=# --> logged on as 'postgres' superuser now
 
 - Run this insert statement:
 
@@ -136,5 +136,39 @@ appdw=# select * from empdw;
 ----+------
   1 | 1
   1 | 1
+(2 rows)
+
+----------------------------------
+THE TRIAL - AS APPUSER USER (NON-SUPERUSER)
+----------------------------------
+TBD
+- Logon to 'appdw' database as appuser user (to insert into its table FROM a remote table from appdb database)
+
+$ psql -U appuser -d appdw -h oralx0001 -W
+
+appdw=> --> logged on as 'appuser' non-superuser now
+
+- Run this insert statement:
+
+--> try with and without ::text
+INSERT INTO empdw
+    SELECT id, name 
+    FROM public.dblink('host=the_allowed_hostname dbname=appdb user=appuser password=appuser'::text, 'SELECT id, name FROM emp'::text)
+    AS t(id integer, name varchar);
+    
+INSERT INTO empdw
+    SELECT id, name 
+    FROM public.dblink('host=the_allowed_hostname dbname=appdb user=appuser password=appuser', 'SELECT id, name FROM emp')
+    AS t(id integer, name varchar);
+    
+appdw=> select * from empdw;
+ id | name
+----+------
+  1 | 1
+  1 | 1
+  1 | 1
+  1 | 1
+(4 rows)
+
 (2 rows)
 
