@@ -1,0 +1,173 @@
+http://gavinsoorma.com/2011/08/goldengate-replication-using-a-data-definition-file-and-defgen-utility/
+
+GoldenGate replication using a data definition file and DEFGEN utility
+Some time back I had written a post on GoldenGate column mapping and transformations.
+
+I have been asked the question several times regarding how can we replicate data between tables which are not similar in structure or where the target table has columns which are just a subset of the columns present in the source table.
+
+Let us look at a simple example to see how this can be done using the DEFGEN utility of GoldenGate.
+
+In this example we have a source table MYOBJECTS2 (based on DBA_TABLES) and the target table structure is different as it has only three columns – OWNER, OBJECT_NAME and OBJECT_TYPE as shown below.
+
+The table has 113238 rows which we need to replicate to the target database.
+
+Source table
+
+SQL> desc myobjects2
+ Name                                      Null?    Type
+ ----------------------------------------- -------- ----------------------------
+ OWNER                                              VARCHAR2(30)
+ OBJECT_NAME                                        VARCHAR2(128)
+ SUBOBJECT_NAME                                     VARCHAR2(30)
+ OBJECT_ID                                          NUMBER
+ DATA_OBJECT_ID                                     NUMBER
+ OBJECT_TYPE                                        VARCHAR2(19)
+ CREATED                                            DATE
+ LAST_DDL_TIME                                      DATE
+ TIMESTAMP                                          VARCHAR2(19)
+ STATUS                                             VARCHAR2(7)
+ TEMPORARY                                          VARCHAR2(1)
+ GENERATED                                          VARCHAR2(1)
+ SECONDARY                                          VARCHAR2(1)
+ NAMESPACE                                          NUMBER
+ EDITION_NAME                                       VARCHAR2(30)
+ 
+Target table
+
+SQL> desc  myobjects2
+ Name                                      Null?    Type
+ ----------------------------------------- -------- ----------------------------
+ OWNER                                              VARCHAR2(30)
+ OBJECT_NAME                                        VARCHAR2(128)
+ OBJECT_TYPE                                        VARCHAR2(19)
+Since the source and target table definitions are different, we first need to create what is called a data definition file which contains the definition of the source table.
+
+This is done using the DEFGEN utility and after the file is created, we transfer the same to the target server.
+
+We first create a DEFGEN parameter file as shown below:
+
+GGSCI (dev1) 1> edit params defgen
+
+defsfile ./dirsql/myobjects2.sql
+userid ggs_owner password ggs_owner
+table ggs_owner.myobjects2;
+
+ 
+We then run DEFGEN and specify the parameter file to be used which is the one we have just created.
+
+$ ./defgen paramfile /export/home/oracle/gg/dirprm/defgen.prm
+
+This will create a file called myobjects2.sql in the /dirsql subdirectory with the following contents:
+
+
+* Definitions created/modified  2011-08-01 08:16
+*
+*  Field descriptions for each column entry:
+*
+*     1    Name
+*     2    Data Type
+*     3    External Length
+*     4    Fetch Offset
+*     5    Scale
+*     6    Level
+*     7    Null
+*     8    Bump if Odd
+*     9    Internal Length
+*    10    Binary Length
+*    11    Table Length
+*    12    Most Significant DT
+*    13    Least Significant DT
+*    14    High Precision
+*    15    Low Precision
+*    16    Elementary Item
+*    17    Occurs
+*    18    Key Column
+*    19    Sub Data Type
+*
+*
+Definition for table GGS_OWNER.MYOBJECTS2
+Record length: 532
+Syskey: 0
+Columns: 15
+OWNER            64     30        0  0  0 1 0     30     30      0 0 0 0 0 1    0 1 0
+OBJECT_NAME      64    128       36  0  0 1 0    128    128      0 0 0 0 0 1    0 1 0
+SUBOBJECT_NAME   64     30      170  0  0 1 0     30     30      0 0 0 0 0 1    0 1 0
+OBJECT_ID        64     50      206  0  0 1 0     50     50     50 0 0 0 0 1    0 1 2
+DATA_OBJECT_ID   64     50      262  0  0 1 0     50     50     50 0 0 0 0 1    0 1 2
+OBJECT_TYPE      64     19      318  0  0 1 0     19     19      0 0 0 0 0 1    0 1 0
+CREATED         192     19      342  0  0 1 0     19     19     19 0 5 0 0 1    0 1 0
+LAST_DDL_TIME   192     19      364  0  0 1 0     19     19     19 0 5 0 0 1    0 1 0
+TIMESTAMP        64     19      386  0  0 1 0     19     19      0 0 0 0 0 1    0 1 0
+STATUS           64      7      410  0  0 1 0      7      7      0 0 0 0 0 1    0 1 0
+TEMPORARY        64      1      422  0  0 1 0      1      1      0 0 0 0 0 1    0 1 0
+GENERATED        64      1      428  0  0 1 0      1      1      0 0 0 0 0 1    0 1 0
+SECONDARY        64      1      434  0  0 1 0      1      1      0 0 0 0 0 1    0 1 0
+NAMESPACE        64     50      440  0  0 1 0     50     50     50 0 0 0 0 1    0 1 2
+EDITION_NAME     64     30      496  0  0 1 0     30     30      0 0 0 0 0 1    0 1 0
+End of definition
+We then will ftp or copy this data definitions file which we have just generated to the target machine. In this case we are copying the file to the same ./dirsql subdirectory under the GoldenGate root directory on the target machine.
+
+In our example, we are running an initial data load and not online change synchronization. But the same example can be extended to cover online change replication as well.
+
+Since this is an initial data load remember for the Extract process, we need to use the SOURCEISTABLE keyword and for the Replicat process we need to use the SPECIALRUN keyword.
+
+GGSCI (dev1) 1> add extract ext1, sourceistable
+
+These are the contents of the parameter file for extract process ext1
+
+extract ext1
+userid ggs_owner, password ggs_owner
+rmthost dev2 , mgrport 7809
+rmttask replicat, group rep1
+table ggs_owner.myobjects2;
+
+On the target we create a replicat process and replicat parameter file.
+
+GGSCI (dev2) 1> add replicat rep1 specialrun
+
+The replicat rep1 parameter file has the following contents:
+
+REPLICAT rep1
+USERID ggs_owner, PASSWORD ggs_owner
+SOURCEDEFS ./dirsql/myobjects2.sql
+MAP ggs_owner.myobjects2, TARGET ggs_owner.myobjects2,
+colmap (
+owner=owner, object_name=object_name,object_type=object_type)
+;
+Note the column mapping using the COLMAP clause and how we have only mapped the three columns which we require. The SOURCEDEFS keyword will specify the location of the data definitions file which we have copied from the source machine and which was generated via the DEFGEN utility.
+
+On the source GoldenGate environment, we start the extract ext1 using the START EXTRACT EXT1 command. Note that we do not have to start the replicat process REP1 on the target as this is done automatically by the initial load extract process.
+
+We can see that after a while the extract process has stopped because it has extracted and loaded all the 113238 rows into the source table and if we see the report via the VIEW REPORT EXT1 command, we can see the insert operations which have taken place.
+
+Processing table GGS_OWNER.MYOBJECTS2
+***********************************************************************
+*                   ** Run Time Statistics **                         *
+***********************************************************************
+
+Report at 2011-08-01 08:42:40 (activity since 2011-08-01 08:42:13)
+Output to rep1:
+From Table GGS_OWNER.MYOBJECTS2:
+       #                   inserts:    113238
+       #                   updates:         0
+       #                   deletes:         0
+       #                  discards:         0
+ 
+On the target, we can see via the VIEW REPORT REP1 command, the column mapping which has taken place.
+
+MAP resolved (entry GGS_OWNER.MYOBJECTS2):
+  MAP GGS_OWNER.MYOBJECTS2, TARGET ggs_owner.myobjects2, colmap ( owner=owner, object_name=object_name,object_type=object_type) ;
+2011-08-01 08:42:23  WARNING OGG-00869  No unique key is defined for table MYOBJECTS2. All viable columns will be used to represent the key, but may not guar
+antee uniqueness.  KEYCOLS may be used to define the key.
+Using the following key columns for target table GGS_OWNER.MYOBJECTS2: OWNER, OBJECT_NAME, OBJECT_TYPE.
+
+***********************************************************************
+*                   ** Run Time Statistics **                         *
+***********************************************************************
+
+Report at 2011-08-01 08:42:45 (activity since 2011-08-01 08:42:23)
+From Table GGS_OWNER.MYOBJECTS2 to GGS_OWNER.MYOBJECTS2:
+       #                   inserts:    113238
+       #                   updates:         0
+       #                   deletes:         0
+       #                  discards:         0
