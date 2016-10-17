@@ -1,0 +1,91 @@
+==============================================================================
+          LOAD DATA INTO POSTGRES TABLE FROM FLAT FILE
+==============================================================================
+
+- CREATE A TABLE
+
+Logon as appdba user into appdb database.
+$ psql -U appdba -d appdb -h pglx0001 -W
+ 
+appdb=> create table empload (id integer, name varchar(10));
+CREATE TABLE
+
+appdb=# alter table empload add primary key (id);
+ALTER TABLE
+
+appdb=> \d empload
+           Table "public.empload"
+ Column |         Type          | Modifiers
+--------+-----------------------+-----------
+ id     | integer               |
+ name   | character varying(10) |
+
+
+- CREATE A DATAFILE
+$ vi empload1.dat
+101,'101'
+102,'102'
+
+- LOAD THE DATA
+NOTE: Only superusers are allowed to copy from file to table.  Other users (including table owner) get the following error:
+  appdb=> COPY empload FROM '/var/lib/pgsql/gowrish/empload1.dat' (DELIMITER ',' );
+  ERROR:  must be superuser to COPY to or from a file
+  HINT:  Anyone can COPY to stdout or from stdin. psql's \copy command also works for anyone.
+
+As a superuser (like postgres user) do the copy:
+  $ psql
+  postgres=# \c appdb
+  You are now connected to database "appdb" as user "postgres".
+
+  appdb=# COPY empload FROM '/var/lib/pgsql/gowrish/empload1.dat' (DELIMITER ',' );
+  COPY 2
+
+  appdb=# select * from empload;
+   id  | name
+  -----+-------
+   101 | '101'
+   102 | '102'
+  (2 rows)
+
+- CREATE ANOTHER FILE WITH '|' AS DELIMITER AND DO THE COPY
+$ vi empload2.dat
+103,'103'
+104,'104'
+
+ appdb=# COPY empload FROM '/var/lib/pgsql/gowrish/empload2.dat' (DELIMITER '|' );
+ COPY 2
+ 
+appdb=# select * from empload;
+ id  | name
+-----+-------
+ 101 | '101'
+ 102 | '102'
+ 103 | '103'
+ 104 | '104'
+(4 rows)
+
+- CREATE ANOTHER FILE WITH ONE ROW 'already in the table' AND DO THE COPY
+NOTE- This errors out as soon as the duplicate comes by (103 in the listing below)
+NOTE - Also ROLLS BACK successful rows also (105 in the listing below)
+
+$ vi empload3.dat
+105|'105'
+103|'103' 
+106|'106'
+
+appdb=# COPY empload FROM '/var/lib/pgsql/gowrish/empload3.dat' (DELIMITER '|' );
+ERROR:  duplicate key value violates unique constraint "empload_pkey"
+DETAIL:  Key (id)=(103) already exists.
+CONTEXT:  COPY empload, line 1
+
+appdb=#  select * from empload;
+ id  | name
+-----+-------
+ 101 | '101'
+ 102 | '102'
+ 103 | '103'
+ 104 | '104'
+(4 rows)
+
+
+
