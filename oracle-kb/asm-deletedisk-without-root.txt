@@ -1,0 +1,205 @@
+==================================================
+ORACLEASM DELETEDISK WITHOUT ROOT - DOES NOT WORK
+==================================================
+
+==================
+THE DISKS
+==================
+[oracle@rac1n1 ~]$ cd /dev
+[oracle@rac1n1 dev]$ ls -l |grep ora
+drwxr-xr-x. 4 root    root           0 Oct 17 19:31 oracleasm
+
+[oracle@rac1n1 dev]$ cd oracleasm
+
+[oracle@rac1n1 oracleasm]$ ls -l
+total 0
+drwxr-xr-x. 1 root   root 0 Oct 17 20:01 disks
+drwxrwx---. 1 oracle dba  0 Oct 17 19:31 iid
+
+[oracle@rac1n1 oracleasm]$ cd disks
+
+[oracle@rac1n1 disks]$ ls -l
+total 0
+brw-rw----. 1 oracle dba 8, 17 Oct 17 19:31 DISK01
+brw-rw----. 1 oracle dba 8, 33 Oct 17 19:31 DISK02
+brw-rw----. 1 oracle dba 8, 49 Oct 17 19:31 DISK03
+brw-rw----. 1 oracle dba 8, 65 Oct 17 19:31 DISK04
+brw-rw----. 1 oracle dba 8, 81 Oct 17 19:32 DISK05
+brw-rw----. 1 oracle dba 8, 97 Oct 17 20:04 DUMMYDISK
+
+
+==============
+as root
+==============
+
+NODE1
+
+[root@rac1n1 sfdisk]# oracleasm listdisks                    
+DISK01                                                       
+DISK02                                                       
+DISK03                                                       
+DISK04                                                       
+DISK05                                                       
+DUMMYDISK    
+                                                
+[root@rac1n1 sfdisk]# oracleasm deletedisk DUMMYDISK         
+Clearing disk header: done                                   
+Dropping disk: done                                          
+
+
+[root@rac1n1 sfdisk]# oracleasm listdisks
+DISK01
+DISK02
+DISK03
+DISK04
+DISK05   
+
+NODE2 (dummydisk still shows up - NEED TO REMOVE RUNNING SCANDISKS ON NODE2)
+
+[root@rac1n2 dev]# oracleasm listdisks
+DISK01
+DISK02
+DISK03
+DISK04
+DISK05
+DUMMYDISK
+
+[root@rac1n2 dev]# oracleasm scandisks
+Reloading disk partitions: done
+Cleaning any stale ASM disks...
+Cleaning disk "DUMMYDISK"
+
+Scanning system for ASM disks...
+[root@rac1n2 dev]# oracleasm listdisks
+DISK01
+DISK02
+DISK03
+DISK04
+DISK05    
+
+====================
+AS ORACLE
+==================== 
+
+
+TRIAL STEPS - did not clear the dummy disk though it did clear disk header
+--> NEEDED TO DO ROOT STEPS AGAIN (see after these initial sections) 
+
+NODE1     
+
+[oracle@rac1n1 disks]$ id
+uid=54321(oracle) gid=54321(oinstall) groups=54321(oinstall),54322(dba) context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023
+
+[oracle@rac1n1 disks]$ oracleasm deletedisk DUMMYDISK
+Clearing disk header: done
+Dropping disk: failed
+Unable to delete disk "DUMMYDISK"
+
+[oracle@rac1n1 disks]$ oracleasm listdisks
+DISK01
+DISK02
+DISK03
+DISK04
+DISK05
+DUMMYDISK
+
+[oracle@rac1n1 disks]$ oracleasm scandisks  
+Reloading disk partitions: done             
+Cleaning any stale ASM disks...             
+Cleaning disk "DUMMYDISK"                   
+Scanning system for ASM disks... 
+           
+[oracle@rac1n1 disks]$ oracleasm listdisks  
+DISK01                                      
+DISK02                                      
+DISK03                                      
+DISK04                                      
+DISK05                                      
+DUMMYDISK 
+
+NODE2
+
+[oracle@rac1n2 ~]$ oracleasm scandisks
+Reloading disk partitions: done
+Cleaning any stale ASM disks...
+Cleaning disk "DUMMYDISK"
+Scanning system for ASM disks...
+
+[oracle@rac1n2 ~]$ oracleasm listdisks
+DISK01
+DISK02
+DISK03
+DISK04
+DISK05
+DUMMYDISK  
+
+NODE1 AGAIN (as root)
+
+[vagrant@rac1n1 ~]$ sudo su - root                       
+Last login: Mon Oct 17 19:52:57 IST 2016 on pts/0        
+[root@rac1n1 ~]# oracleasm listdisks                     
+DISK01                                                   
+DISK02                                                   
+DISK03                                                   
+DISK04                                                   
+DISK05                                                   
+DUMMYDISK   
+                                             
+[root@rac1n1 ~]# oracleasm deletedisk DUMMYDISK          
+Disk "DUMMYDISK" defines an unmarked device              
+Dropping disk: done                                      
+[root@rac1n1 ~]# oracleasm listdisks                     
+DISK01                                                   
+DISK02                                                   
+DISK03                                                   
+DISK04                                                   
+DISK05                                                   
+
+
+ 
+NODE2 AGAIN (note - oracle does not work though it says cleaning DUMMYDISK, need to do with root)
+ 
+[vagrant@rac1n2 ~]$ sudo su - oracle
+
+Last login: Mon Oct 17 20:08:16 IST 2016 on pts/0
+[oracle@rac1n2 ~]$ oracleasm listdisks
+DISK01
+DISK02
+DISK03
+DISK04
+DISK05
+DUMMYDISK
+
+[oracle@rac1n2 ~]$ oracleasm scandisks
+Reloading disk partitions: done
+Cleaning any stale ASM disks...
+Cleaning disk "DUMMYDISK"
+Scanning system for ASM disks...
+
+[oracle@rac1n2 ~]$ oracleasm listdisks
+DISK01
+DISK02
+DISK03
+DISK04
+DISK05
+DUMMYDISK
+
+[oracle@rac1n2 ~]$ logout
+
+[vagrant@rac1n2 ~]$ sudo su - root
+Last login: Mon Oct 17 20:10:21 IST 2016 on pts/0
+
+[root@rac1n2 ~]# oracleasm scandisks
+Reloading disk partitions: done
+Cleaning any stale ASM disks...
+Cleaning disk "DUMMYDISK"
+Scanning system for ASM disks...
+
+[root@rac1n2 ~]# oracleasm listdisks
+DISK01
+DISK02
+DISK03
+DISK04
+DISK05
+                                
+  
