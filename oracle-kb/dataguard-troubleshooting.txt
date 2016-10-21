@@ -1,0 +1,23 @@
+===========================
+INCONSISTENT PROPERTIES 1
+===========================
+Sometimes dataguard feels that some parameters are not set in the db.
+This happens when settings are default anyway and not explicitly set in the spfile
+
+http://blog.contractoracle.com/2009/07/ora-16714-dataguard-broker-sensitive-to.html
+http://ajaythotangare.blogspot.in/2013/04/dataguard-warning-ora-16714-value-of.html
+
+DGMGRL> show database 'DB1_UNIQUE_NAME' InconsistentProperties
+INCONSISTENT PROPERTIES
+   INSTANCE_NAME        PROPERTY_NAME         MEMORY_VALUE         SPFILE_VALUE         BROKER_VALUE
+       DB11      LogArchiveTrace                    0            (missing)                    0
+       DB11     LogArchiveFormat         %t_%s_%r.dbf            (missing)         %t_%s_%r.dbf
+       DB11      LogArchiveTrace                    0            (missing)                    0
+       DB11     LogArchiveFormat         %t_%s_%r.dbf            (missing)         %t_%s_%r.dbf
+       
+       
+REASON: The spfile somehow is missing/incorrect LOG_ARCHIVE_TRACE and LOG_ARCHIVE_FORMAT settings 
+FIX:  Set those parameters with BOTH option and ALL INSTANCES in the DB
+
+SQL> alter system set archive_lag_trace=0 scope=both sid='*';
+SQL> alter system set log_archive_format='%t_%s_%r.dbf' scope=both sid='*';
