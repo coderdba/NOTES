@@ -1,5 +1,415 @@
-http://oracleinaction.com/12c-connect-pdbs-with-same-name/ --> create a service at pdb level
-  http://docs.oracle.com/database/121/CNCPT/cdblogic.htm#CNCPT89398
+--> ALL METHODS - VERY GOOD
+http://en.community.dell.com/techcenter/enterprise-solutions/w/oracle_solutions/5063.how-to-connect-to-pluggable-databases-in-oracle-rac-12cr1
 
+--> service at pdb level, handling different DBs with same pdb name
+http://oracleinaction.com/12c-connect-pdbs-with-same-name/ 
+
+--> oracle basic connection doc
+http://docs.oracle.com/database/121/CNCPT/cdblogic.htm#CNCPT89398
+
+--> service at pdb level
 http://www.zhongweicheng.com/?p=1321
+
+======================================
+--> ALL METHODS - VERY GOOD
+http://en.community.dell.com/techcenter/enterprise-solutions/w/oracle_solutions/5063.how-to-connect-to-pluggable-databases-in-oracle-rac-12cr1
+--> The text below is taken as is from the site above
+======================================
+
+How to connect to Pluggable Databases in Oracle RAC 12cR1?
+ORACLE SOLUTIONS
+
+Applies To:
+
+Oracle Database       -     Oracle 12cR1 12.1.0.1.0 Enterprise Edition
+
+Operating System(s)  –     Oracle Linux 6.4 with kernel 2.6.39-400.109.17.1.el6uek.x86-64   &                                           Red Hat Enterprise Linux with kernel 2.6.32-431.el6.x86_64
+
+Storage Platform(s)   -      Dell EqualLogic PS 5000 & Dell EqualLogic PS 6110
+
+Problem:
+
+How to connect to Pluggable Databases in Oracle RAC 12cR1?
+
+Solution:
+
+There are four ways in which a connection with the pluggable databases (PDBs) can be established.
+
+1.  Using the default service with the same name as the pdb name, which gets created by the database software automatically.
+
+2.  Using user defined services, created with pdb property using the SRVCTL utility that associates the service with the pluggable databases
+
+3.  Using alter session command and setting the container to the desired container
+
+4.  Using the Enterprise Manager Express
+
+ 1.Using the Default Service for connecting to the PDB
+
+To establish a connection with the pdb using the default service the following needs to be done.
+
+   An entry needs to be made in the tnsnames.ora file that defines databases addresses that allow us to        establish a connection with the database.
+   The status of the pdb needs to be changed from mounted to read write mode.
+ Entry to be made in the tnsnames.ora file :
+
+In case of Oracle RAC 12c, although a default service with the same name as the pluggable database name automatically gets created by the database software, the tnsnames.ora file, nevertheless, gets generated with a single entry only, pertaining to the global database. For example in the case of a two node Oracle RAC 12c , where cpdb is the global database, pdb1 and pdb2 are the two pluggable databases created and cpdb1 and cpdb2 are the two instances, the default entry in tnsnames.ora file is as shown below:-
+
+CPDB =
+
+(DESCRIPTION =
+
+   (ADDRESS = (PROTOCOL = TCP)(HOST = OracleRACscan.dbase.lab)(PORT = 1521))
+
+   (CONNECT_DATA =
+
+     (SERVER = DEDICATED)
+
+     (SERVICE_NAME = cpdb.dbase.lab)
+
+   )
+
+)
+
+So relevant entries need to be created for the default service name of pluggable databases in the tnsnames.ora file as shown below:
+
+PDB1 =
+
+(DESCRIPTION =                                                             
+
+   (ADDRESS = (PROTOCOL = TCP) (HOST = OracleRACscan.dbase.lab)(PORT = 1521))
+
+   (CONNECT_DATA =
+
+     (SERVER = DEDICATED)
+
+     (SERVICE_NAME = pdb1.dbase.lab)
+
+   )
+
+)
+
+PDB2 =
+
+(DESCRIPTION =
+
+   (ADDRESS = (PROTOCOL = TCP) (HOST = OracleRACscan.dbase.lab)(PORT = 1521))
+
+   (CONNECT_DATA =
+
+     (SERVER = DEDICATED)
+
+     (SERVICE_NAME = pdb2.dbase.lab)
+
+   )
+
+)
+
+Changing the status of the pluggable database:
+
+When the pdbs are created, by default, the open_mode is ‘Mounted’ only. This can be verified as follows:
+
+SQL> select name, open_mode from v$pdbs;
+
+NAME                           OPEN_MODE
+
+------------------------------ ----------
+
+PDB$SEED                       READ ONLY
+
+PDB1                           MOUNTED
+
+PDB2                           MOUNTED
+
+The following command opens all the pluggable databases in a read write mode.
+
+SQL> Alter pluggable database all open;
+
+After this connection can be established with the database using sqlplus as follows:
+
+[oracle@node1 bin]$ sqlplus sys/oracle@pdb1 as sysdba
+
+SQL*Plus: Release 12.1.0.1.0 Production on Tue Oct 8 11:23:32 2013
+
+Copyright (c) 1982, 2013, Oracle. All rights reserved.
+
+Connected to:
+
+Oracle Database 12c Enterprise Edition Release 12.1.0.1.0 - 64bit Production With the Partitioning, Real Application Clusters, Automatic Storage Management, OLAP, Advanced Analytics and Real Application Testing options
+
+ 2. Using the User Defined Service for connecting to the PDB
+
+ The default service outlined above should be used only for administrative purposes and it should not be used for applications. Always user defined services need to be used for applications because user defined services can be customized to fit the requirements of the applications. Establishing a connection using user defined services involves the following steps:
+
+1.  Create a database service with PDB property using the SRVCTL utility
+
+2.  Create an entry in the tnsnames.ora file for the service created
+
+3.  Start the service
+
+4.  Connect to the database using the service with the pdb property, created in step a
+
+ 
+
+a. Create a database service with PDB Property using the SRVCTL utility
+
+The following commands using the SRVCTL utility, create two database services hr1 and sales1 to be associated with the pluggable database pdb1 :
+
+[[oracle@node1 bin]$ srvctl add service -db cpdb -service hr1 -pdb pdb1 -preferred cpdb1 -available cpdb2
+
+[oracle@node1 bin]$ srvctl add service -db cpdb -service sales1 -pdb pdb1 -preferred cpdb1 -available cpdb2
+
+ The pdb property can be viewed from the data dictionary view all_services.
+
+SQL> SELECT NAME, PDB FROM all_services;
+
+ NAME                       PDB
+
+pdb1.dbase.lab             PDB1
+
+hr1                        PDB1
+
+sales1                     PDB1
+
+The command $ srvctl config service –db <databasename> also lists the available services.
+
+b.Create an entry in the tnsnames.ora file for the database service created
+
+ We can create the HR_PDB1 and SALES_PDB1, net service names which the hr application and sales application can use, respectively, to connect to the pluggable database, pdb1, as follows:
+
+ HR_PDB1 =
+
+(DESCRIPTION =
+
+   (ADDRESS = (PROTOCOL = TCP)(HOST = OracleRACscan.dbase.lab)(PORT = 1521))
+
+   (CONNECT_DATA =
+
+     (SERVER = DEDICATED)
+
+     (SERVICE_NAME = hr1.dbase.lab)
+
+   )
+
+)
+
+SALES_PDB1 =
+
+(DESCRIPTION =
+
+   (ADDRESS = (PROTOCOL = TCP)(HOST = OracleRACscan.dbase.lab)(PORT = 1521))
+
+   (CONNECT_DATA =
+
+     (SERVER = DEDICATED)
+
+     (SERVICE_NAME = sales1.dbase.lab)
+
+   )
+
+)
+
+ c. Start the Service
+
+[oracle@nsnode1 bin]$ srvctl status service -db cpdb -service hr1
+
+Service hr1 is not running
+
+ [oracle@nsnode1 bin]$ srvctl start service -db cpdb -service hr1
+
+Starting the service associated with a pdb automatically opens the pdb in a read write mode.
+
+d. Connect to the database service 
+
+A user connects to the pdb using a database service having the pdb property.
+
+For example, the SYS user can connect to the pdb1 using the database service HR_PDB1 associated with pdb1 as follows:
+
+SQL> connect sys/oracle@HR_PDB1 AS SYSDBA
+
+Connected.
+
+SQL> SHOW CON_ID;
+
+ CON_ID
+
+3
+
+SQL> SHOW CON_NAME;
+
+CON_NAME
+
+PDB1
+
+3.Using the Alter Session Command for connecting to the PDB
+
+By default, when you connect to the RAC instance, you connect to the CDB$ROOT. Each RAC instance opens up the PDB as a whole and a single system image is available. When you want to change the session to a pdb, you can do so, by altering the session and setting the container to the desired container. The query, show con_name can be used to verify the name of the current container.
+
+[oracle@node1 bin]$ sqlplus / as sysdba
+
+SQL*Plus: Release 12.1.0.1.0 Production on Wed Oct 9 13:56:27 2013
+
+Copyright (c) 1982, 2013, Oracle. All rights reserved. 
+
+Connected to:
+
+Oracle Database 12c Enterprise Edition Release 12.1.0.1.0 - 64bit Production
+
+With the Partitioning, Real Application Clusters, Automatic Storage Management, OLAP,
+
+Advanced Analytics and Real Application Testing options
+
+SQL> show con_name;
+
+CON_NAME
+
+CDB$ROOT
+
+SQL> ALTER SESSION SET CONTAINER = PDB1;
+
+Session altered.
+
+SQL> SHOW CON_NAME;
+
+CON_NAME
+
+PDB1
+
+ SQL> ALTER SESSION SET CONTAINER = PDB2;
+
+Session altered.
+
+SQL> SHOW CON_ID;
+
+CON_ID
+
+4
+
+SQL> ALTER SESSION SET CONTAINER = CDB$ROOT;
+
+Session altered.
+
+ SQL> SHOW CON_NAME;
+
+CON_NAME
+
+CDB$ROOT
+
+ The container Id descriptions are as follows:
+
+Container ID
+
+Description
+
+0
+
+Whole CDB
+
+1
+
+CDB$ROOT
+
+2
+
+PDB$SEED
+
+3 to 254
+
+PDBs
+
+ In this specific example,  con_id 3 represents pdb1 and con_id 4 represents pdb2.
+
+[grid@node1 bin]$ echo $ORACLE_HOME
+
+/u01/app/12.1.0/grid
+
+ [grid@node1 bin]$ echo $ORACLE_SID
+
++ASM1
+
+[grid@node1 bin]$ sqlplus / as sysdba
+
+ SQL*Plus: Release 12.1.0.1.0 Production on Wed Oct 9 13:51:39 2013
+
+Copyright (c) 1982, 2013, Oracle. All rights reserved.
+
+Connected to:
+
+Oracle Database 12c Enterprise Edition Release 12.1.0.1.0 - 64bit Production
+
+With the Real Application Clusters and Automatic Storage Management options
+
+ SQL> show con_id;
+
+CON_ID
+
+0
+
+ SQL> show con_name;
+
+ CON_NAME
+
+Non Consolidated
+
+ 4.Using the Enterprise Manager(EM) Express for connecting to the PDB
+
+When the database is created using Database Configuration Assistant (DBCA), at the time of completion the URL for the EM Express is provided by DBCA. The URL has the format http://<hostname>:portnumber/em with 5500 as the default port id.
+
+ Before going to that URL to access the EM Express, one needs to issue the following SQL statement to confirm the port for the EM Express:
+
+SQL> SELECT dbms_xdb_config.gethttpsport from dual;
+
+GETHTTPSPORT
+
+       5500
+
+If the output is as shown above, one can connect to the URL displayed by the DBCA.
+
+However if the output is null such as
+
+GETHTTPSPORT
+
+-------------
+
+then, one has to execute the PL/SQL procedure, DBMS_XDB_CONFIG.SETHTTPSPORT to set the HTTPS port for the EM Express. For example:
+
+SQL> exec dbms_xdb_config.sethttpsport(5500);
+
+PL/SQL procedure successfully completed.
+
+After this one try and access the EM Express using the URL.
+
+ A HTTP port can also be configured for the EM Express as given below:
+
+SQL> select dbms_xdb_config.gethttpport from dual;
+
+ SQL> exec dbms_xdb_config.sethttpport(8080);
+
+To set the EM Express port for the pdbs, one needs to change the container to the respective pdbs and execute the PL /SQL Procedure for setting the port for that container.
+
+After doing that one can check the HTTP port for the cpdb,pdb1 and pdb2 as follows:
+
+SQL> select dbms_xdb_config.gethttpport from dual;
+
+GETHTTPPORT
+
+       8080
+
+SQL> alter session set container = pdb1;
+
+Session altered.
+
+SQL> select dbms_xdb_config.gethttpport from dual;
+
+ GETHTTPPORT
+
+       8081
+
+SQL> alter session set container = pdb2;
+
+Session altered.
+
+SQL> select dbms_xdb_config.gethttpport from dual;
+
+GETHTTPPORT
+
+       8082 
 
