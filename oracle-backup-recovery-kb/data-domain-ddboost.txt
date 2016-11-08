@@ -1,0 +1,186 @@
+Configuring DDBOOST libraries and doing a backup: https://gruffdba.wordpress.com/2015/08/01/configuring-dd-boost-on-linux-for-oracle-rman/
+
+NOTE: Content below is direct copy from the website above
+
+Configuring DD Boost on Linux for Oracle RMAN
+
+Posted on August 1, 2015 by gruffdba	• Posted in Linux, Oracle, RMAN	• Tagged Boost, configure, data domain, DD Boost, install, lockbox	• 2 Comments
+In this post, we are going to install the DD Boost module for Oracle RMAN.
+
+In the previous post, Configuring DD Boost Replication for Oracle RMAN, we enabled DD Boost on the Data Domain and set up storage units that replicate automatically between sites.
+
+In this post, we are going to install and configure the DD Boost for Oracle RMAN module so that our RMAN backups can leverage the performance benefits of DD Boost.
+
+
+The DD Boost for Oracle RMAN module installs as an RMAN MML library. The 1.3 version for Linux is shipped as a tar file which is installed on the Oracle Linux host.
+
+Download the tar file as the Oracle user.
+
+Un-taring the file creates yields the following files:
+
+[oracle@rstemc64vm23 boost]$ ls
+install.sh         libcryptocme2.so    libDDBoost.so  readme.txt
+libccme_base.so    libCSP-lb.so        libddobk.so    RMAN_1.1.1.3-415543_RMAN_linux_64.tar
+libcryptocme2.sig  libCSP-Security.so  license.txt
+The Oracle environment must be sourced before executing the install.sh script:
+
+[oracle@rstemc64vm22 boost]$ ./install.sh
+Installing the Data Domain plugin for RMAN ... 
+Copying libraries to /u01/app/oracle/product/11.2.0/dbhome_1/lib
+cp libddobk.so /u01/app/oracle/product/11.2.0/dbhome_1/lib/libddobk.so
+cp libDDBoost.so /u01/app/oracle/product/11.2.0/dbhome_1/lib/libDDBoost.so
+Successfully installed the Data Domain plugin for RMAN
+To write backups to the DD Boost system, our Oracle RMAN client needs to authenticate against the DD Boost user we defined on the appliance. In our example we used the username ddboostora and used the same password as username.
+
+The typical method to authenticate is to create a lockbox.
+
+This is a simple RMAN script that establishes the Oracle server as a trusted user of the DD Boost service of the Data Domain. The following shows our lockbox RMAN script where we set the username and password, and send the authentication request to rstdd0205mgmt.emc.com.
+
+run {
+allocate channel dd0 type sbt PARMS='SBT_LIBRARY=/u01/app/oracle/product/11.2.0/dbhome_1/lib/libddobk.so,ENV=(ORACLE_HOME=/u01/app/oracle/product/11.2.0/dbhome_1)';
+
+send 'set username ddboostora password mypassword servername rstdd0205mgmt.emc.com';
+
+release channel dd0;
+}
+Launch RMAN and connect to any local instance. You do not need to connect to a catalog. Then execute the lockbox script:
+
+rman target /
+
+Recovery Manager: Release 11.2.0.4.0 - Production on Sat Aug 1 03:53:13 2015
+
+Copyright (c) 1982, 2011, Oracle and/or its affiliates.  All rights reserved.
+
+connected to target database: XIO11WSB (DBID=2386171380)
+
+RMAN> @lockbox_dd0205.rcv
+
+<output removed to aid clarity>
+
+using target database control file instead of recovery catalog
+allocated channel: dd0
+channel dd0: SID=267 device type=SBT_TAPE
+channel dd0: Data Domain Boost API
+
+sent command to channel: dd0
+
+released channel: dd0
+Now that the DD Boost MML library is installed on our Oracle server and we have authenticated against the Data Domain, we can incorporate DD Boost into our RMAN backup script.
+
+As stated, DD Boost uses the RMAN MML library to facilitate the offloading of certain parts of the deduplication and compression process from the Data Domain appliance to the database server. This means that RMAN will think it is writing the backup files to a tape, and not to a disk.
+
+We will therefore be setting the RMAN channels to type sbt.
+
+In our example, the channel allocate command will look as follows:
+
+configure channel device type sbt maxopenfiles 4 parms '
+BLKSIZE=1048576,
+SBT_LIBRARY=/u01/app/oracle/product/11.2.0/dbhome_1/lib/libddobk.so,
+ENV(STORAGE_UNIT=dd0205_boost,BACKUP_HOST=rstdd0205mgmt.emc.com,
+ORACLE_HOME=/u01/app/oracle/product/11.2.0/dbhome_1)
+';
+You can see above that the channel allocate command references the library we installed earlier. You can also see where I have highlighted the storage unit to use, and the DNS entry for the Data Domain we will write the backup to.
+
+The complete backup to DD Boost script is as follows:
+
+configure controlfile autobackup on;
+configure retention policy to recovery window of 3 days;
+configure default device type to sbt;
+configure backup optimization on;
+
+configure channel device type sbt maxopenfiles 4 parms 'BLKSIZE=1048576,SBT_LIBRARY=/u01/app/oracle/product/11.2.0/dbhome_1/lib/libddobk.so,ENV=(STORAGE_UNIT=dd0205_boost,BACKUP_HOST=rstdd0205mgmt.emc.com,ORACLE_HOME=/u01/app/oracle/product/11.2.0/dbhome_1)';
+
+configure device type sbt backup type to backupset parallelism 4;
+
+run {
+
+   sql 'alter system switch logfile';
+
+   set controlfile autobackup format for device type sbt to "%d_%F.ctl";
+
+   backup as backupset incremental level 0 filesperset 1 database tag 'FULL_BACKUP' format '%d_df_%U.bk' plus archivelog tag 'FULL_BACKUP' format '%d_al_%U.bk';
+
+}
+In this simple RMAN script we are running an RMAN level zero backup of the database and including the archivelogs in our backup. The script forces a log switch before the backup starts. The backup is tagged with the tag FULL_BACKUP.
+
+The FILESPERSET parameter is set to one. In older releases of the Data Domain system, setting the FILESPERSET parameter to one was required to achieve de-duplication. Since DDOS 5.2 this restriction is no longer required, but is shown here for backwards compatibility.
+
+The backup script uses four channels to run the backup. In this lab we have a 4 vCPU system and our ASM +DATA diskgroup is comprised of four LUNs, so four channels is an appropriate setting.
+
+The channel allocate command sets the tape block size to 1MB.
+
+Executing this RMAN script should backup the database to the Data Domain via DD Boost.
+
+Starting backup at 01-AUG-15
+using channel ORA_SBT_TAPE_1
+using channel ORA_SBT_TAPE_2
+using channel ORA_SBT_TAPE_3
+using channel ORA_SBT_TAPE_4
+channel ORA_SBT_TAPE_1: starting incremental level 0 datafile backup set
+channel ORA_SBT_TAPE_1: specifying datafile(s) in backup set
+input datafile file number=00005 name=+XIO11WSA_DATA/xio11wsb/datafile/soe.266.872465669
+channel ORA_SBT_TAPE_1: starting piece 1 at 01-AUG-15
+channel ORA_SBT_TAPE_2: starting incremental level 0 datafile backup set
+channel ORA_SBT_TAPE_2: specifying datafile(s) in backup set
+input datafile file number=00006 name=+XIO11WSA_DATA/xio11wsb/datafile/slob.270.875128257
+channel ORA_SBT_TAPE_2: starting piece 1 at 01-AUG-15
+channel ORA_SBT_TAPE_3: starting incremental level 0 datafile backup set
+channel ORA_SBT_TAPE_3: specifying datafile(s) in backup set
+input datafile file number=00003 name=+XIO11WSA_DATA/xio11wsb/datafile/undotbs1.258.869709245
+channel ORA_SBT_TAPE_3: starting piece 1 at 01-AUG-15
+channel ORA_SBT_TAPE_4: starting incremental level 0 datafile backup set
+channel ORA_SBT_TAPE_4: specifying datafile(s) in backup set
+input datafile file number=00002 name=+XIO11WSA_DATA/xio11wsb/datafile/sysaux.257.869709245
+channel ORA_SBT_TAPE_4: starting piece 1 at 01-AUG-15
+channel ORA_SBT_TAPE_4: finished piece 1 at 01-AUG-15
+piece handle=XIO11WSB_df_dmqdfs4d_1_1.bk tag=FULL_BACKUP comment=API Version 2.0,MMS Version 1.1.1.3
+channel ORA_SBT_TAPE_4: backup set complete, elapsed time: 00:01:05
+channel ORA_SBT_TAPE_4: starting incremental level 0 datafile backup set
+channel ORA_SBT_TAPE_4: specifying datafile(s) in backup set
+input datafile file number=00001 name=+XIO11WSA_DATA/xio11wsb/datafile/system.256.869709245
+channel ORA_SBT_TAPE_4: starting piece 1 at 01-AUG-15
+channel ORA_SBT_TAPE_3: finished piece 1 at 01-AUG-15
+piece handle=XIO11WSB_df_dlqdfs4d_1_1.bk tag=FULL_BACKUP comment=API Version 2.0,MMS Version 1.1.1.3
+channel ORA_SBT_TAPE_3: backup set complete, elapsed time: 00:01:30
+channel ORA_SBT_TAPE_3: starting incremental level 0 datafile backup set
+channel ORA_SBT_TAPE_3: specifying datafile(s) in backup set
+input datafile file number=00004 name=+XIO11WSA_DATA/xio11wsb/datafile/users.259.869709245
+channel ORA_SBT_TAPE_3: starting piece 1 at 01-AUG-15
+channel ORA_SBT_TAPE_4: finished piece 1 at 01-AUG-15
+piece handle=XIO11WSB_df_dnqdfs6e_1_1.bk tag=FULL_BACKUP comment=API Version 2.0,MMS Version 1.1.1.3
+channel ORA_SBT_TAPE_4: backup set complete, elapsed time: 00:00:25
+channel ORA_SBT_TAPE_3: finished piece 1 at 01-AUG-15
+piece handle=XIO11WSB_df_doqdfs77_1_1.bk tag=FULL_BACKUP comment=API Version 2.0,MMS Version 1.1.1.3
+channel ORA_SBT_TAPE_3: backup set complete, elapsed time: 00:00:01
+channel ORA_SBT_TAPE_2: finished piece 1 at 01-AUG-15
+piece handle=XIO11WSB_df_dkqdfs4d_1_1.bk tag=FULL_BACKUP comment=API Version 2.0,MMS Version 1.1.1.3
+channel ORA_SBT_TAPE_2: backup set complete, elapsed time: 00:01:37
+channel ORA_SBT_TAPE_1: finished piece 1 at 01-AUG-15
+piece handle=XIO11WSB_df_djqdfs4d_1_1.bk tag=FULL_BACKUP comment=API Version 2.0,MMS Version 1.1.1.3
+channel ORA_SBT_TAPE_1: backup set complete, elapsed time: 00:04:15
+Finished backup at 01-AUG-15
+
+Starting backup at 01-AUG-15
+current log archived
+using channel ORA_SBT_TAPE_1
+using channel ORA_SBT_TAPE_2
+using channel ORA_SBT_TAPE_3
+using channel ORA_SBT_TAPE_4
+channel ORA_SBT_TAPE_1: starting archived log backup set
+channel ORA_SBT_TAPE_1: specifying archived log(s) in backup set
+input archived log thread=1 sequence=5136 RECID=5401 STAMP=886567308
+channel ORA_SBT_TAPE_1: starting piece 1 at 01-AUG-15
+channel ORA_SBT_TAPE_1: finished piece 1 at 01-AUG-15
+piece handle=XIO11WSB_al_dpqdfscd_1_1.bk tag=FULL_BACKUP comment=API Version 2.0,MMS Version 1.1.1.3
+channel ORA_SBT_TAPE_1: backup set complete, elapsed time: 00:00:03
+Finished backup at 01-AUG-15
+After a period of time, we can use the NFS mounts to see if the RMAN backup replicated to the second site:
+
+[oracle@rstemc64vm23 ~]$ ls /nfs_mount/rstdd0205_boost_rep
+XIO11WSB_al_d7qdfs43_1_1.bk  XIO11WSB_al_deqdfs46_1_1.bk            XIO11WSB_df_djqdfs4d_1_1.bk
+XIO11WSB_al_d8qdfs43_1_1.bk  XIO11WSB_al_dfqdfs47_1_1.bk            XIO11WSB_df_dkqdfs4d_1_1.bk
+XIO11WSB_al_d9qdfs43_1_1.bk  XIO11WSB_al_dgqdfs47_1_1.bk            XIO11WSB_df_dlqdfs4d_1_1.bk
+XIO11WSB_al_daqdfs43_1_1.bk  XIO11WSB_al_dhqdfs48_1_1.bk            XIO11WSB_df_dmqdfs4d_1_1.bk
+XIO11WSB_al_dbqdfs46_1_1.bk  XIO11WSB_al_diqdfs49_1_1.bk            XIO11WSB_df_dnqdfs6e_1_1.bk
+XIO11WSB_al_dcqdfs46_1_1.bk  XIO11WSB_al_dpqdfscd_1_1.bk            XIO11WSB_df_doqdfs77_1_1.bk
+XIO11WSB_al_ddqdfs46_1_1.bk  XIO11WSB_c-2386171380-20150801-00.ctl
