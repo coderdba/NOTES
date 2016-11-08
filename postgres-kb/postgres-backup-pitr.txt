@@ -69,6 +69,38 @@ archive_command = 'test ! -f /var/lib/pgsql/9.5/backups/wal/%f && cp %p /var/lib
 # systemctl start postgresql-9.5
 
 - Verify
+Go to the directory /var/lib/pgsql/9.5/backups/wal and find older serial number files backed up there.
+In the pg_xlog directory, newer serial number files will be present - which will be later backed up.
+
+===========================================
+BASE BACKUP - MANUAL METHOD
+===========================================
+
+- Mark the instance to be in backup mode (like tablespace/datafile begin backup in oracle)
+-bash-4.2$ psql
+psql (9.5.3)
+Type "help" for help.
+
+postgres=# SELECT pg_start_backup('label');  --> give this or any other label
+ pg_start_backup
+-----------------
+ 0/9000028
+(1 row)
+
+- Copy the contents of the 'data' directory to somewhere 
+NOTE: Use this folder and command or some other method or to-tape commands
+
+$ tar cvf /var/lib/pgsql/9.5/backups/base_backup_<label>.tar data
+
+- Mark the end of backup (like end backup in oracle)
+postgres=# SELECT pg_stop_backup();
+NOTICE:  pg_stop_backup complete, all required WAL segments have been archived
+ pg_stop_backup
+----------------
+ 0/90000C0
+(1 row)
+
+
 
 
 
