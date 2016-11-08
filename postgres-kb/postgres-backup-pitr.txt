@@ -33,10 +33,42 @@ Backup WAL files - 'WAL archiving'
 ==========================
 ENABLE WAL
 ==========================
+https://www.postgresql.org/docs/9.5/static/continuous-archiving.html#BACKUP-ARCHIVING-WAL
+
 WAL has to be set up at Postgres startup properly. Otherwise backup errors out:
-    postgres=# SELECT pg_start_backup('label');
-    ERROR:  WAL level not sufficient for making an online backup
-    HINT:  wal_level must be set to "archive", "hot_standby", or "logical" at server start.
+
+postgres=# SELECT pg_start_backup('label');
+ERROR:  WAL level not sufficient for making an online backup
+HINT:  wal_level must be set to "archive", "hot_standby", or "logical" at server start.
+    
+- Edit data/postgresql.conf and modify as follows 
+
+wal_level=archive
+archive_mode=on
+archive_command='command to copy wal files to a backup location'
+
+wal_level = archive                    # minimal, archive, hot_standby, or logical
+                                       # (change requires restart)
+
+# - Archiving -
+
+archive_mode = on               # enables archiving; off, on, or always
+                                # (change requires restart)
+                                
+archive_command = 'test ! -f /var/lib/pgsql/9.5/data/pg_xlog/%f && cp %p /var/lib/pgsql/9.5/backups/wal/%f'
+#archive_command = ''           # command to use to archive a logfile segment
+                                # placeholders: %p = path of file to archive
+                                #               %f = file name only
+                                # e.g. 'test ! -f /mnt/server/archivedir/%f && cp %p /mnt/server/archivedir/%f'
+
+- Restart postgres
+# systemctl start postgresql-9.5
+
+- Verify
+
+
+
+
     
 
 
