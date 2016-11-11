@@ -100,6 +100,13 @@ server starting
 -bash-4.2$ < 2016-11-11 04:50:43.188 CST >LOG:  redirecting log output to logging collector process
 < 2016-11-11 04:50:43.188 CST >HINT:  Future log output will appear in directory "pg_log".
 
+---------------------
+To stop this instance:
+---------------------
+$ pg_ctl stop
+waiting for server to shut down.... done
+server stopped
+
 ==========================================================
 Initialize the instance in CUSTOM DIRECTORY
 ==========================================================
@@ -110,6 +117,119 @@ $ pg_ctl -D /var/lib/pgsql/9.5/data2 start
 server starting
 -bash-4.2$ < 2016-11-11 05:06:10.282 CST >LOG:  redirecting log output to logging collector process
 < 2016-11-11 05:06:10.282 CST >HINT:  Future log output will appear in directory "pg_log".
+
+---------------------
+To stop this instance:
+---------------------
+$ pg_ctl -D /var/lib/pgsql/9.5/data2 stop
+waiting for server to shut down.... done
+server stopped
+
+===================================
+TRY START BOTH INSTANCES
+===================================
+
+--------------------------------------------------
+DOES NOT WORK - IF PORT IS SAME FOR BOTH INSTANCES
+--------------------------------------------------
+- Start one instance
+$ pg_ctl start
+server starting
+-bash-4.2$ < 2016-11-11 04:50:43.188 CST >LOG:  redirecting log output to logging collector process
+< 2016-11-11 04:50:43.188 CST >HINT:  Future log output will appear in directory "pg_log".
+
+- Try start the other instance --> This errors out as below
+$ pg_ctl -D /var/lib/pgsql/9.5/data2 start
+server starting
+-bash-4.2$ < 2016-11-11 05:09:31.259 CST >LOG:  could not bind IPv4 socket: Address already in use
+< 2016-11-11 05:09:31.259 CST >HINT:  Is another postmaster already running on port 5432? If not, wait a few seconds and retry.
+< 2016-11-11 05:09:31.259 CST >WARNING:  could not create listen socket for "localhost"
+< 2016-11-11 05:09:31.259 CST >FATAL:  could not create any TCP/IP sockets
+
+--------------------------------------------------
+WORKS- IF PORT IS DIFFERENT FOR BOTH INSTANCES
+--------------------------------------------------
+Edit data or data2 /postgres.conf and change port of one of them.
+Then start the instances one after the other.
+
+- Start the first instance (the default data directory one)
+-bash-4.2$ pg_ctl start
+server starting
+-bash-4.2$ < 2016-11-11 05:15:22.298 CST >LOG:  redirecting log output to logging collector process
+< 2016-11-11 05:15:22.298 CST >HINT:  Future log output will appear in directory "pg_log".
+
+-bash-4.2$ ps -ef|grep postgr
+root      1582 60806  0 05:05 pts/0    00:00:00 sudo su - postgres
+root      1585  1582  0 05:05 pts/0    00:00:00 su - postgres
+postgres  1586  1585  0 05:05 pts/0    00:00:00 -bash
+postgres  1774     1  0 05:15 pts/0    00:00:00 /usr/pgsql-9.5/bin/postgres
+postgres  1775  1774  0 05:15 ?        00:00:00 postgres: logger process
+postgres  1777  1774  0 05:15 ?        00:00:00 postgres: checkpointer process
+postgres  1778  1774  0 05:15 ?        00:00:00 postgres: writer process
+postgres  1779  1774  0 05:15 ?        00:00:00 postgres: wal writer process
+postgres  1780  1774  0 05:15 ?        00:00:00 postgres: autovacuum launcher process
+postgres  1781  1774  0 05:15 ?        00:00:00 postgres: stats collector process
+postgres  1782  1586  0 05:15 pts/0    00:00:00 ps -ef
+postgres  1783  1586  0 05:15 pts/0    00:00:00 grep --color=auto postgr
+
+- Start the second one which has data2 as the directory
+-bash-4.2$ pg_ctl -D /var/lib/pgsql/9.5/data2 start
+server starting
+-bash-4.2$ < 2016-11-11 05:15:35.521 CST >LOG:  redirecting log output to logging collector process
+< 2016-11-11 05:15:35.521 CST >HINT:  Future log output will appear in directory "pg_log".
+
+-bash-4.2$ ps -ef|grep postgr
+root      1582 60806  0 05:05 pts/0    00:00:00 sudo su - postgres
+root      1585  1582  0 05:05 pts/0    00:00:00 su - postgres
+postgres  1586  1585  0 05:05 pts/0    00:00:00 -bash
+postgres  1774     1  0 05:15 pts/0    00:00:00 /usr/pgsql-9.5/bin/postgres
+postgres  1775  1774  0 05:15 ?        00:00:00 postgres: logger process
+postgres  1777  1774  0 05:15 ?        00:00:00 postgres: checkpointer process
+postgres  1778  1774  0 05:15 ?        00:00:00 postgres: writer process
+postgres  1779  1774  0 05:15 ?        00:00:00 postgres: wal writer process
+postgres  1780  1774  0 05:15 ?        00:00:00 postgres: autovacuum launcher process
+postgres  1781  1774  0 05:15 ?        00:00:00 postgres: stats collector process
+postgres  1786     1  0 05:15 pts/0    00:00:00 /usr/pgsql-9.5/bin/postgres -D /var/lib/pgsql/9.5/data2
+postgres  1787  1786  0 05:15 ?        00:00:00 postgres: logger process
+postgres  1789  1786  0 05:15 ?        00:00:00 postgres: checkpointer process
+postgres  1791  1786  0 05:15 ?        00:00:00 postgres: writer process
+postgres  1792  1786  0 05:15 ?        00:00:00 postgres: wal writer process
+postgres  1793  1786  0 05:15 ?        00:00:00 postgres: autovacuum launcher process
+postgres  1794  1786  0 05:15 ?        00:00:00 postgres: stats collector process
+postgres  1795  1586  0 05:15 pts/0    00:00:00 ps -ef
+postgres  1796  1586  0 05:15 pts/0    00:00:00 grep --color=auto postgr
+
+- Stop it
+-bash-4.2$  pg_ctl -D /var/lib/pgsql/9.5/data2 stop
+waiting for server to shut down.... done
+server stopped
+-bash-4.2$ ps -ef|grep postgr
+root      1582 60806  0 05:05 pts/0    00:00:00 sudo su - postgres
+root      1585  1582  0 05:05 pts/0    00:00:00 su - postgres
+postgres  1586  1585  0 05:05 pts/0    00:00:00 -bash
+postgres  1774     1  0 05:15 pts/0    00:00:00 /usr/pgsql-9.5/bin/postgres
+postgres  1775  1774  0 05:15 ?        00:00:00 postgres: logger process
+postgres  1777  1774  0 05:15 ?        00:00:00 postgres: checkpointer process
+postgres  1778  1774  0 05:15 ?        00:00:00 postgres: writer process
+postgres  1779  1774  0 05:15 ?        00:00:00 postgres: wal writer process
+postgres  1780  1774  0 05:15 ?        00:00:00 postgres: autovacuum launcher process
+postgres  1781  1774  0 05:15 ?        00:00:00 postgres: stats collector process
+postgres  1799  1586  0 05:16 pts/0    00:00:00 ps -ef
+postgres  1800  1586  0 05:16 pts/0    00:00:00 grep --color=auto postgr
+
+- Stop the first one also
+-bash-4.2$ pg_ctl stop
+waiting for server to shut down.... done
+server stopped
+-bash-4.2$ ps -ef|grep postgr
+root      1582 60806  0 05:05 pts/0    00:00:00 sudo su - postgres
+root      1585  1582  0 05:05 pts/0    00:00:00 su - postgres
+postgres  1586  1585  0 05:05 pts/0    00:00:00 -bash
+postgres  1802  1586  0 05:16 pts/0    00:00:00 ps -ef
+postgres  1803  1586  0 05:16 pts/0    00:00:00 grep --color=auto postgr
+
+
+
 
 
 
