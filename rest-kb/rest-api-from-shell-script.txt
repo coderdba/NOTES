@@ -4,6 +4,7 @@ CALLING REST API FROM SHELL SCRIPT
 
 http://www.ovirt.org/develop/api/rest-api/rest-api-using-bash-automation/
 http://stackoverflow.com/questions/7172784/how-to-post-json-data-with-curl-from-terminal-commandline-to-test-spring-rest
+http://stackoverflow.com/questions/32131416/variables-inside-curl-post-command-using-shell-script-and-while-loop - for embedding variable in the body
 
 =========================
 GET AND POST, HEADERS
@@ -36,3 +37,22 @@ function callPOSTService {
     echo "Calling URI (POST): " ${uri}
     curl -X POST -H "${HEADER_ACCEPT}" -H "${HEADER_CONTENT_TYPE}" -u "${USER_NAME}:${USER_PASSW}" "$certAtt" "${ENGINE_URL}${uri}" -d "${xml}" 2> /dev/null > "${COMM_FILE}"
 }
+
+=============================================
+EMBEDDING VARIABLES IN THE BODY (or elsewhere)
+=============================================
+http://stackoverflow.com/questions/32131416/variables-inside-curl-post-command-using-shell-script-and-while-loop
+
+End the single quoted string and switch to double quotes around the variable.
+
+EXAMPLE1:
+Instead of this:
+curl -X POST -u user:pass --data '<automation><operation action="assemble" package="service Item"/></automation>' http://localhost:8080/form
+
+use this:
+curl -X POST -u user:pass --data '<automation><operation action="assemble" package="'"$packagename"'"/></automation>' http://localhost:8080/form
+
+EXAMPLE2: adminpass is the variable here
+curl -H "Accept: application/json" -H "Content-type: application/json" -X POST -d '{"username":"testuser","password":"'"$adminpass"'","connectionNumber":"1"}' https://host.company.com/PasswordVault/WebServices/auth/Cyberark/CyberArkAuthenticationService.svc/Logon
+
+
