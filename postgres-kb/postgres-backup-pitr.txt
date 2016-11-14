@@ -217,7 +217,31 @@ $ mv /var/lib/pgsql/9.5/data /var/lib/pgsql/9.5/data-crash
 
 - Restore the DB to time 3
 
+-- Restore the base backup to original location
+$ cd /
+$ tar xvfp /var/lib/pgsql/9.5/backups/data/20161114base1.tar
+$ cd /var/lib/pgsql/9.5/data --> and verify
 
+-- Note down the archived wal's
+$ cd /var/lib/pgsql/9.5/backups/data/wal
+$ ls -l
+-rw-------. 1 postgres postgres 16777216 Nov 14 00:52 000000010000000000000001
+-rw-------. 1 postgres postgres 16777216 Nov 14 00:58 000000010000000000000002
+-rw-------. 1 postgres postgres 16777216 Nov 14 00:59 000000010000000000000003
+-rw-------. 1 postgres postgres      297 Nov 14 00:59 000000010000000000000003.00000028.backup
+-rw-------. 1 postgres postgres 16777216 Nov 14 01:14 000000010000000000000004
+
+-- Remove the restored wal's in pg_xlog
+$ cd /var/lib/pgsql/9.5/data/pg_xlog
+$ rm *
+
+-- Check if there are unarchived logs in the 'data-crash' directory
+$ cd /var/lib/pgsql/9.5/data-crash/pg_xlog
+$ ls -l
+-rw-------. 1 postgres postgres      297 Nov 14 00:59 000000010000000000000003.00000028.backup
+-rw-------. 1 postgres postgres 16777216 Nov 14 01:14 000000010000000000000004
+-rw-------. 1 postgres postgres 16777216 Nov 14 01:14 000000010000000000000005
+-rw-------. 1 postgres postgres 16777216 Nov 14 00:59 000000010000000000000006
 
 - You should see only empty table 1 and table 2 - and should not see table3
 
