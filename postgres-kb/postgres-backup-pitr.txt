@@ -120,6 +120,83 @@ Crash the DB
 Restore the DB to time 3
 You should see only empty table 1 and table 2 - and should not see table3
 
+-------------------
+DETAILED STEPS 
+-------------------
+- Initialize a new DB
+$ initdb
+--> This creates the 'data' folder and basic structures in the folder
+
+$ pg_ctl start
+--> This starts the instance
+
+- Enable WAL & WAL archiving
+Create a backup directory /var/lib/pgsql/9.5/backups/data/wal (data represents the main instance folder)
+
+In data/postgresql.conf set the following:
+wal_level = archive
+archive_mode = on
+archive_command = 'test ! -f /var/lib/pgsql/9.5/backups/data/wal/%f && cp %p /var/lib/pgsql/9.5/backups/data/wal/%f'
+
+- Restart postgres 
+Either use pg_ctl stop/start or if it is only one instance, then systemctl as below
+
+[root@oralx0001 ~]# systemctl stop postgresql-9.5
+[root@oralx0001 ~]# systemctl start postgresql-9.5
+
+[root@oralx0001 ~]# ps -ef|grep postgr
+root     31726 31689  0 00:10 pts/1    00:00:00 sudo su - postgres
+root     32184 31726  0 00:11 pts/1    00:00:00 su - postgres
+postgres 32192 32184  0 00:11 pts/1    00:00:00 -bash
+postgres 32726     1  0 00:26 ?        00:00:00 /usr/pgsql-9.5/bin/postgres -D /var/lib/pgsql/9.5/data
+
+- Force a log-switch to verify if WAL archiving is running well
+$ psql
+postgres=# select pg_switch_xlog();
+ pg_switch_xlog
+----------------
+ 0/17BF720
+(1 row)
+
+Check if WAL is archived in /var/lib/pgsql/9.5/backups/data/wal:
+$ ls -l
+total 16384
+-rw-------. 1 postgres postgres 16777216 Nov 14 00:52 000000010000000000000001
+
+- Create a table table1 - note down the time (time 1)
+$ psql
+postgres=# create database db1;
+postgres=# \c db1
+
+db1=# create table table1 (c1 int, c2 int);
+CREATE TABLE
+
+$ date
+Mon Nov 14 00:55:26 CST 2016
+
+- Create a backup
+postgres=# SELECT pg_start_backup('20161114base1');
+
+$ tar cvf /var/lib/pgsql/9.5/backups/data/20161114base1.tar /var/lib/pgsql/9.5/data
+
+postgres=# SELECT pg_stop_backup();
+
+- Create another table table2 - note down the time (time 2)
+
+$ psql
+postgres=# \c db1
+db1=# create table table2 (c1 int, c2 int);
+CREATE TABLE
+
+$ date
+Mon Nov 14 01:01:18 CST 2016
+
+Wait for 10 min - note down the time (time 3)
+Create yet another table table3 - note down the time (time 4)
+Insert some rows into talbes 1 and 2
+Crash the DB
+Restore the DB to time 3
+You should see only empty table 1 and table 2 - and should not see table3
 
 
 
