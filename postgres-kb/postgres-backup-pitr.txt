@@ -172,7 +172,7 @@ db1=# create table table1 (c1 int, c2 int);
 CREATE TABLE
 
 $ date
-Mon Nov 14 00:55:26 CST 2016
+Mon Nov 14 00:55:26 CST 2016 (time 1)
 
 - Create a backup
 postgres=# SELECT pg_start_backup('20161114base1');
@@ -189,14 +189,37 @@ db1=# create table table2 (c1 int, c2 int);
 CREATE TABLE
 
 $ date
-Mon Nov 14 01:01:18 CST 2016
+Mon Nov 14 01:01:18 CST 2016 (time 2)
 
-Wait for 10 min - note down the time (time 3)
-Create yet another table table3 - note down the time (time 4)
-Insert some rows into talbes 1 and 2
-Crash the DB
-Restore the DB to time 3
-You should see only empty table 1 and table 2 - and should not see table3
+- Wait for 10 min - note down the time (time 3)
+$ date
+date
+Mon Nov 14 01:10:28 CST 2016 (time 3)
+
+- Create yet another table table3 
+$ psql
+postgres=# \c db1
+db1=# create table table3 (c1 int, c2 int);
+CREATE TABLE
+
+- Insert some rows into talbes 1 and 2 - note down the time (time 4)
+db1=# insert into table1 values (1,1);
+INSERT 0 1
+db1=# insert into table2 values (1,1);
+INSERT 0 1
+
+$ date
+Mon Nov 14 01:14:05 CST 2016 - time 4
+
+- Crash the DB
+$ pg_ctl stop
+$ mv /var/lib/pgsql/9.5/data /var/lib/pgsql/9.5/data-crash
+
+- Restore the DB to time 3
+
+
+
+- You should see only empty table 1 and table 2 - and should not see table3
 
 
 
