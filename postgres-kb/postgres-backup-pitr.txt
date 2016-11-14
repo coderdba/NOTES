@@ -243,7 +243,46 @@ $ ls -l
 -rw-------. 1 postgres postgres 16777216 Nov 14 01:14 000000010000000000000005
 -rw-------. 1 postgres postgres 16777216 Nov 14 00:59 000000010000000000000006
 
+-- Copy the not yet archived logs from data-crash directory to the main pg_xlog directory
+$ cp /var/lib/pgsql/9.5/data-crash/pg_xlog/*[5-6] /var/lib/pgsql/9.5/data/pg_xlog
+
+-- Create a file recovery.conf in the 'data' directory with the following content:
+The recovery_target_time should be the 'time 3' timestamp (Mon Nov 14 01:10:28 CST 2016)
+
+restore_command = 'cp /var/lib/pgsql/9.5/backups/data/wal/%f %p'
+recovery_target_time = '2016-11-14 01:10:28'
+
+-- Start the instance
+$ pg_ctl start
+
 - You should see only empty table 1 and table 2 - and should not see table3
+
+$ psql
+psql (9.5.3)
+Type "help" for help.
+
+postgres=# \c db1
+You are now connected to database "db1" as user "postgres".
+db1=# \dt
+         List of relations
+ Schema |  Name  | Type  |  Owner
+--------+--------+-------+----------
+ public | table1 | table | postgres
+ public | table2 | table | postgres
+(2 rows)
+
+db1=# select count(*)  from table1;
+ count
+-------
+     0
+(1 row)
+
+db1=# select count(*) from table2;
+ count
+-------
+     0
+(1 row)
+
 
 
 
