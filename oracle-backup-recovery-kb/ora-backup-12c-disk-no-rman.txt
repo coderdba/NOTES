@@ -112,18 +112,22 @@ COMMANDS WITH BETTER PIECE NAMES, SEPARATE ARCHLOG, CONTROLFILE AND SPFILE BACKU
 
 Command file contents:
 run {
- allocate channel ch1 type Disk maxpiecesize = 1900M FORMAT '/backups/level0_%t_set%s_piece%p_dbid%I_dbname%d';
+ allocate channel ch1 type Disk maxpiecesize = 1900M FORMAT '/apps/ddbackup/gowrish/backups/%d_dbid%I_level0_datafile_%T_%t_set%s_piece%p';
  backup incremental level 0 tag hot_level0 filesperset 1 database;
- backup archivelog all delete all input FORMAT '/backups/level0_%t_set%s_piece%p_dbid%I_dbname%d';
- backup spfile format '/backups/spfile_%s_%T_dbid%I_dbname%d.rman';
- backup current controlfile format '/backups/ctl_%t_dbid%I_dbname%d.rman';
+ backup archivelog all delete all input FORMAT '/apps/ddbackup/gowrish/backups/%d_dbid%I_archlog_%T_%t_set%s_piece%p';
+ backup spfile format '/apps/ddbackup/gowrish/backups/%d_dbid%I_spfile_%T_%t_set%s_piece%p';
+ backup current controlfile format '/apps/ddbackup/gowrish/backups/%d_dbid%I_ctl_%T_%t_set%s_piece%p';
 }
 
-Backup pieces in the disk folder: (note controlfile and spfile are backed up separately)
-rw-r----- 1 oracle asmadm   19136512 Nov 15 07:40 ctl_927963637_dbid4232537016_dbnameDB12C1.rman
--rw-r----- 1 oracle asmadm 1266655232 Nov 15 07:39 level0_927963587_set8_piece1_dbid4232537016_dbnameDB12C1
--rw-r----- 1 oracle asmadm  707223552 Nov 15 07:39 level0_927963594_set9_piece1_dbid4232537016_dbnameDB12C1
--rw-r----- 1 oracle asmadm      98304 Nov 15 07:40 spfile_19_20161115_dbid4232537016_dbnameDB12C1.rman
+Backup pieces in the disk folder: (note archlogs, controlfile and spfile are backed up separately)
+-rw-r----- 1 oracle asmadm     240128 Nov 15 07:55 DB12C1_dbid4232537016_archlog_20161115_927964533_set32_piece1
+-rw-r----- 1 oracle asmadm   19136512 Nov 15 07:55 DB12C1_dbid4232537016_ctl_20161115_927964537_set34_piece1
+-rw-r----- 1 oracle asmadm 1266655232 Nov 15 07:54 DB12C1_dbid4232537016_level0_datafile_20161115_927964480_set22_piece1
+-rw-r----- 1 oracle asmadm  707223552 Nov 15 07:54 DB12C1_dbid4232537016_level0_datafile_20161115_927964495_set23_piece1
+-rw-r----- 1 oracle asmadm  494411776 Nov 15 07:55 DB12C1_dbid4232537016_level0_datafile_20161115_927964502_set24_piece1
+...
+...
+-rw-r----- 1 oracle asmadm      98304 Nov 15 07:55 DB12C1_dbid4232537016_spfile_20161115_927964536_set33_piece1
 
 In addition controlfile and spfile autobackup are done in ASM default locations:
 Starting Control File and SPFILE Autobackup at 15-NOV-16
