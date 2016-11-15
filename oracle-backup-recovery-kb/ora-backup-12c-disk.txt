@@ -1,0 +1,63 @@
+=========================================================================
+ORACLE 12C DATABASE BACKUP TO DISK - USING CONTROLFILE - not rman catalog
+=========================================================================
+
+http://www.thegeekstuff.com/2013/08/oracle-rman-backup/
+http://mcbordeaux.free.fr/oracle/PacktPub.Oracle.Database.12c.Backup.and.Recovery.Survival.Guide.Sep.2013.pdf
+
+=================
+DB DETAILS
+=================
+DB_NAME = DB12C1
+DB_UNIQUE_NAME = DB12C1_P
+RAC NODES = 2
+
+=================
+DISPLAY SETTINGS
+=================
+$/home/oracle/gowrish/backups/12c: rman target /
+
+Recovery Manager: Release 12.1.0.2.0 - Production on Tue Nov 15 06:56:37 2016
+
+Copyright (c) 1982, 2014, Oracle and/or its affiliates.  All rights reserved.
+
+connected to target database: DB12C1 (DBID=4232537016)
+
+RMAN> show all;
+
+using target database control file instead of recovery catalog
+RMAN configuration parameters for database with db_unique_name DB12C1_P are:
+CONFIGURE RETENTION POLICY TO REDUNDANCY 1; # default
+CONFIGURE BACKUP OPTIMIZATION OFF; # default
+CONFIGURE DEFAULT DEVICE TYPE TO DISK; # default
+CONFIGURE CONTROLFILE AUTOBACKUP ON; # default
+CONFIGURE CONTROLFILE AUTOBACKUP FORMAT FOR DEVICE TYPE DISK TO '%F'; # default
+CONFIGURE DEVICE TYPE DISK PARALLELISM 1 BACKUP TYPE TO BACKUPSET; # default
+CONFIGURE DATAFILE BACKUP COPIES FOR DEVICE TYPE DISK TO 1; # default
+CONFIGURE ARCHIVELOG BACKUP COPIES FOR DEVICE TYPE DISK TO 1; # default
+CONFIGURE MAXSETSIZE TO UNLIMITED; # default
+CONFIGURE ENCRYPTION FOR DATABASE OFF; # default
+CONFIGURE ENCRYPTION ALGORITHM 'AES128'; # default
+CONFIGURE COMPRESSION ALGORITHM 'BASIC' AS OF RELEASE 'DEFAULT' OPTIMIZE FOR LOAD TRUE ; # default
+CONFIGURE RMAN OUTPUT TO KEEP FOR 7 DAYS; # default
+CONFIGURE ARCHIVELOG DELETION POLICY TO NONE; # default
+CONFIGURE SNAPSHOT CONTROLFILE NAME TO '/u02/app/oracle/product/12.1.0.2.RAC/dbs/snapcf_DB12C11.f'; # default
+
+=========================
+DISPLAY EXISTING BACKUPS (none if doing for the first time)
+=========================
+RMAN> list backup;
+specification does not match any backup in the repository
+
+RMAN> list backupset;
+specification does not match any backup in the repository
+
+==========================
+MAKE DATABASE ARCHIVELOG
+==========================
+$ srvctl stop database -d DB12C1_P
+$ srvctl start database -d DB12C1_P -o mount
+$ sqlplus / as sysdba
+SQL> alter database archivelog;
+$ srvctl stop database -d DB12C1_P
+$ srvctl start database -d DB12C1_P
