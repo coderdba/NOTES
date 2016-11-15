@@ -2,8 +2,13 @@
 ORACLE 12C DATABASE BACKUP TO DISK - USING CONTROLFILE - not rman catalog
 =========================================================================
 
-http://www.thegeekstuff.com/2013/08/oracle-rman-backup/
+Backup - http://www.thegeekstuff.com/2013/08/oracle-rman-backup/
 http://mcbordeaux.free.fr/oracle/PacktPub.Oracle.Database.12c.Backup.and.Recovery.Survival.Guide.Sep.2013.pdf
+https://dbaseworld.wordpress.com/2012/01/10/rman-script-for-full-hot-backup-including-spfile-and-controlfile/
+
+https://ksadba.wordpress.com/2009/03/14/spfile-backup-and-recovery/
+
+Restore - http://www.thegeekstuff.com/2014/11/oracle-rman-restore/
 
 =================
 DB DETAILS
@@ -41,7 +46,7 @@ CONFIGURE ENCRYPTION ALGORITHM 'AES128'; # default
 CONFIGURE COMPRESSION ALGORITHM 'BASIC' AS OF RELEASE 'DEFAULT' OPTIMIZE FOR LOAD TRUE ; # default
 CONFIGURE RMAN OUTPUT TO KEEP FOR 7 DAYS; # default
 CONFIGURE ARCHIVELOG DELETION POLICY TO NONE; # default
-CONFIGURE SNAPSHOT CONTROLFILE NAME TO '/u02/app/oracle/product/12.1.0.2.RAC/dbs/snapcf_DB12C11.f'; # default
+CONFIGURE SNAPSHOT CONTROLFILE NAME TO '/u01/app/oracle/product/12.1.0.2/dbs/snapcf_DB12C11.f'; # default
 
 =========================
 DISPLAY EXISTING BACKUPS (none if doing for the first time)
@@ -61,3 +66,38 @@ $ sqlplus / as sysdba
 SQL> alter database archivelog;
 $ srvctl stop database -d DB12C1_P
 $ srvctl start database -d DB12C1_P
+
+================================
+PERFORM FULL BACKUP PLUS ARCHLOG
+================================
+Create a command file: disk-bkup-db-plus-archlog.cmd
+RUN
+{
+ALLOCATE CHANNEL c1 DEVICE TYPE DISK FORMAT '/apps/ddbackup/gowrish/backups/full_plus_log_%u_%s_%p';
+BACKUP AS COMPRESSED BACKUPSET DATABASE PLUS ARCHIVELOG;
+BACKUP CURRENT CONTROLFILE;
+}
+
+Perform the backup:
+$ rman target /
+RMAN> @disk-bkup-db-plus-archlog.cmd
+...
+... displays messages of backups of datafiles, archlogs etc
+...
+... Towards the end displays this:
+Starting Control File and SPFILE Autobackup at 15-NOV-16
+piece handle=+FRA_DG01/DB12C1_P/AUTOBACKUP/2016_11_15/s_927962706.15645.927962707 comment=NONE
+Finished Control File and SPFILE Autobackup at 15-NOV-16
+released channel: c1
+
+RMAN>
+
+List the backup pieces:
+/backupdisk/gowrish/backups: ls -l
+total 1070884
+-rw-r----- 1 oracle asmadm   2834944 Nov 15 07:21 full_plus_log_01rkv5bd_1_1
+-rw-r----- 1 oracle asmadm 437739520 Nov 15 07:23 full_plus_log_02rkv5bf_2_1
+-rw-r----- 1 oracle asmadm 167976960 Nov 15 07:24 full_plus_log_03rkv5fc_3_1
+-rw-r----- 1 oracle asmadm 164765696 Nov 15 07:24 full_plus_log_04rkv5h4_4_1
+-rw-r----- 1 oracle asmadm     28160 Nov 15 07:25 full_plus_log_05rkv5ie_5_1
+-rw-r----- 1 oracle asmadm  19136512 Nov 15 07:25 full_plus_log_06rkv5if_6_1
