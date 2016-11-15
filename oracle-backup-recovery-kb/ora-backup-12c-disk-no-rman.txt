@@ -70,10 +70,14 @@ $ srvctl start database -d DB12C1_P
 ================================
 PERFORM FULL BACKUP PLUS ARCHLOG
 ================================
+
+------------------
+BASIC COMMAND FILE (see better more elaborate one in next sections)
+------------------
 Create a command file: disk-bkup-db-plus-archlog.cmd
 RUN
 {
-ALLOCATE CHANNEL c1 DEVICE TYPE DISK FORMAT '/apps/ddbackup/gowrish/backups/full_plus_log_%u_%s_%p';
+ALLOCATE CHANNEL c1 DEVICE TYPE DISK FORMAT '/backups/full_plus_log_%u_%s_%p';
 BACKUP AS COMPRESSED BACKUPSET DATABASE PLUS ARCHIVELOG;
 BACKUP CURRENT CONTROLFILE;
 }
@@ -93,7 +97,7 @@ released channel: c1
 RMAN>
 
 List the backup pieces:
-/backupdisk/gowrish/backups: ls -l
+/backups: ls -l
 total 1070884
 -rw-r----- 1 oracle asmadm   2834944 Nov 15 07:21 full_plus_log_01rkv5bd_1_1
 -rw-r----- 1 oracle asmadm 437739520 Nov 15 07:23 full_plus_log_02rkv5bf_2_1
@@ -101,3 +105,23 @@ total 1070884
 -rw-r----- 1 oracle asmadm 164765696 Nov 15 07:24 full_plus_log_04rkv5h4_4_1
 -rw-r----- 1 oracle asmadm     28160 Nov 15 07:25 full_plus_log_05rkv5ie_5_1
 -rw-r----- 1 oracle asmadm  19136512 Nov 15 07:25 full_plus_log_06rkv5if_6_1
+
+------------------------------------------------------------------------------------------
+COMMANDS WITH BETTER PIECE NAMES, SEPARATE ARCHLOG, CONTROLFILE AND SPFILE BACKUP COMMANDS
+------------------------------------------------------------------------------------------
+
+Command file contents:
+run {
+ allocate channel ch1 type Disk maxpiecesize = 1900M FORMAT '/backups/level0_%t_set%s_piece%p_dbid%I_dbname%d';
+ backup incremental level 0 tag hot_level0 filesperset 1 database;
+ backup archivelog all delete all input FORMAT '/backups/level0_%t_set%s_piece%p_dbid%I_dbname%d';
+ backup spfile format '/backups/spfile_%s_%T_dbid%I_dbname%d.rman';
+ backup current controlfile format '/backups/ctl_%t_dbid%I_dbname%d.rman';
+}
+
+Backup pieces in the disk folder: (note controlfile and spfile are backed up separately)
+rw-r----- 1 oracle asmadm   19136512 Nov 15 07:40 ctl_927963637_dbid4232537016_dbnameDB12C1.rman
+-rw-r----- 1 oracle asmadm 1266655232 Nov 15 07:39 level0_927963587_set8_piece1_dbid4232537016_dbnameDB12C1
+-rw-r----- 1 oracle asmadm  707223552 Nov 15 07:39 level0_927963594_set9_piece1_dbid4232537016_dbnameDB12C1
+-rw-r----- 1 oracle asmadm      98304 Nov 15 07:40 spfile_19_20161115_dbid4232537016_dbnameDB12C1.rman
+
