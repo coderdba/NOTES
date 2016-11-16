@@ -92,3 +92,93 @@ Type  Redund  Striped  Time             Sys  Name
                                         Y    AUTOBACKUP/
                                         Y    CONTROLFILE/
                                         Y    ONLINELOG/
+                                        
+------------------------------------------------------------------------
+CREATE/RETAIN PFILE IN $ORACLE_HOME/dbs (for each instance in each node)
+------------------------------------------------------------------------
+/u01/app/oracle/product/12.1.0.2/dbs: cat initDB12C11.ora
+SPFILE='+DATA_DG01/DB12C1_P/spfileDB12C1.ora'
+
+------------------------------------------------------------------------
+RESTORE SPFILE TO ASM
+------------------------------------------------------------------------
+https://docs.oracle.com/cd/E24693_01/backup.11203/e10642/rcmadvre.htm#i1006328 (for spfile and controlfile)
+
+- First, create the directory in ASM to receive the spfile
+ASMCMD> cd DATA_DG01
+ASMCMD> mkdir DB12C1_P
+
+- Next restore the spfile from backup
+$ rman target /
+RMAN> set dbid 4232537016;
+RMAN> startup nomount;
+
+NOTE- this gives errors, but does a startup anyway
+
+    startup failed: ORA-01078: failure in processing system parameters
+    ORA-01565: error in identifying file '+DATA_DG01/DB12C1_P/spfileDB12C1.ora'
+    ORA-17503: ksfdopn:10 Failed to open file +DATA_DG01/DB12C1_P/spfileDB12C1.ora
+    ORA-15173: entry 'DB12C1_P' does not exist in directory '/'
+    ORA-06512: at line 4
+
+    starting Oracle instance without parameter file for retrieval of spfile
+    Oracle instance started
+
+    Total System Global Area    1073741824 bytes
+
+    Fixed Size                     2932632 bytes
+    Variable Size                402653288 bytes
+    Database Buffers             658505728 bytes
+    Redo Buffers                   9650176 bytes
+
+RMAN> run { allocate channel c1 device type disk;
+restore spfile from '/backups/DB12C1_dbid4232537016_spfile_20161115_927964536_set33_piece1';
+}
+
+allocated channel: c1
+channel c1: SID=578 device type=DISK
+
+Starting restore at 16-NOV-16
+
+channel c1: restoring spfile from AUTOBACKUP /backups/DB12C1_dbid4232537016_spfile_20161115_927964536_set33_piece1
+channel c1: SPFILE restore from AUTOBACKUP complete
+Finished restore at 16-NOV-16
+released channel: c1
+
+- RESTART THE DATABASE SO THAT IT ASSUMES THE RIGHT DBNAME instead of DUMMY
+$ srvctl stop database -d DB12C1_P
+$ srvctl start database -d DB12C1_P -o nomount
+$ rman target /
+connected to target database: DB12C1 (not mounted)  --> should show the right db name - not DUMMY
+RMAN>
+
+-------------------------------------------
+RECOVER THE CONTROLFILE
+-------------------------------------------
+https://docs.oracle.com/cd/E24693_01/backup.11203/e10642/rcmadvre.htm#i1006328 (for spfile and controlfile)
+
+RMAN> run{allocate channel c1 device type disk;
+restore controlfile from '/apps/ddbackup/gowrish/backups/DB12C1_dbid4232537016_ctl_20161116_928030640_set40_piece1';
+}
+
+using target database control file instead of recovery catalog
+allocated channel: c1
+channel c1: SID=462 instance=DB12C11 device type=DISK
+
+Starting restore at 16-NOV-16
+
+channel c1: restoring control file
+channel c1: restore complete, elapsed time: 00:00:01
+output file name=+DATA_DG01/DB12C1_P/CONTROLFILE/current.435.928036311
+output file name=+FRA_DG01/DB12C1_P/CONTROLFILE/current.15846.928036311
+Finished restore at 16-NOV-16
+released channel: c1
+
+RMAN> alter database mount;
+
+Statement processed
+
+RMAN> restore database;
+RMAN> recover database;
+RMAN> alter database open;
+
