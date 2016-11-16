@@ -114,13 +114,15 @@ total 1070884
 COMMANDS WITH BETTER PIECE NAMES, SEPARATE ARCHLOG, CONTROLFILE AND SPFILE BACKUP COMMANDS
 ------------------------------------------------------------------------------------------
 
+VERSION1:
+
 Command file contents:
 run {
- allocate channel ch1 type Disk maxpiecesize = 1900M FORMAT '/apps/ddbackup/gowrish/backups/%d_dbid%I_level0_datafile_%T_%t_set%s_piece%p';
+ allocate channel ch1 type Disk maxpiecesize = 1900M FORMAT '/backups/%d_dbid%I_level0_datafile_%T_%t_set%s_piece%p';
  backup incremental level 0 tag hot_level0 filesperset 1 database;
- backup archivelog all delete all input FORMAT '/apps/ddbackup/gowrish/backups/%d_dbid%I_archlog_%T_%t_set%s_piece%p';
- backup spfile format '/apps/ddbackup/gowrish/backups/%d_dbid%I_spfile_%T_%t_set%s_piece%p';
- backup current controlfile format '/apps/ddbackup/gowrish/backups/%d_dbid%I_ctl_%T_%t_set%s_piece%p';
+ backup archivelog all delete all input FORMAT '/backups/%d_dbid%I_archlog_%T_%t_set%s_piece%p';
+ backup spfile format '/backups/%d_dbid%I_spfile_%T_%t_set%s_piece%p';
+ backup current controlfile format '/backups/%d_dbid%I_ctl_%T_%t_set%s_piece%p';
 }
 
 Backup pieces in the disk folder: (note archlogs, controlfile and spfile are backed up separately)
@@ -137,6 +139,24 @@ In addition controlfile and spfile autobackup are done in ASM default locations:
 Starting Control File and SPFILE Autobackup at 15-NOV-16
 piece handle=+FRA_DG01/DB12C1_P/AUTOBACKUP/2016_11_15/s_927963639.15648.927963751 comment=NONE
 Finished Control File and SPFILE Autobackup at 15-NOV-16
+
+VERSION2:
+http://www.juliandyke.com/Research/RMAN/BackupCommand.php
+RUN
+{
+  ALLOCATE CHANNEL ch11 TYPE DISK MAXPIECESIZE 10G;
+  BACKUP
+  FORMAT '/u03/app/oracle/TEST/%d_D_%T_%u_s%s_p%p'
+  DATABASE
+  CURRENT CONTROLFILE
+  FORMAT '/u03/app/oracle/TEST/%d_C_%T_%u'
+  SPFILE
+  FORMAT '/u03/app/oracle/TEST/%d_S_%T_%u'
+  PLUS ARCHIVELOG
+  FORMAT '/u03/app/oracle/TEST/%d_A_%T_%u_s%s_p%p';
+  RELEASE CHANNEL ch11;
+}
+
 
 --------------------------------
 BACKUP ARCHIVELOGS ONLY
