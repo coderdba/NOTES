@@ -141,7 +141,22 @@ piece handle=+FRA_DG01/DB12C1_P/AUTOBACKUP/2016_11_15/s_927963639.15648.92796375
 Finished Control File and SPFILE Autobackup at 15-NOV-16
 
 VERSION2:
-http://www.juliandyke.com/Research/RMAN/BackupCommand.php
+Customized:
+RUN
+{
+  ALLOCATE CHANNEL ch1 TYPE DISK MAXPIECESIZE 10G;
+  BACKUP incremental level 0 tag hot_level0 filesperset 1
+  FORMAT '/apps/ddbackup/gowrish/backups/%d_dbid%I_level0_datafile_%T_%t_set%s_piece%p'
+  DATABASE
+  CURRENT CONTROLFILE
+  FORMAT '/apps/ddbackup/gowrish/backups/%d_dbid%I_ctl_%T_%t_set%s_piece%p'
+  SPFILE
+  FORMAT '/apps/ddbackup/gowrish/backups/%d_dbid%I_spfile_%T_%t_set%s_piece%p'
+  PLUS ARCHIVELOG delete input
+  FORMAT '/apps/ddbackup/gowrish/backups/%d_dbid%I_archlog_%T_%t_set%s_piece%p';
+}
+
+Generic from website: http://www.juliandyke.com/Research/RMAN/BackupCommand.php
 RUN
 {
   ALLOCATE CHANNEL ch11 TYPE DISK MAXPIECESIZE 10G;
@@ -157,6 +172,19 @@ RUN
   RELEASE CHANNEL ch11;
 }
 
+VERSION3: with autobackup of controlfile and spfile
+RUN
+{
+  ALLOCATE CHANNEL ch1 TYPE DISK MAXPIECESIZE 10G;
+  BACKUP incremental level 0 tag hot_level0 filesperset 1
+  FORMAT '/backups/%d_dbid%I_level0_datafile_%T_%t_set%s_piece%p'
+  DATABASE
+  PLUS ARCHIVELOG delete input
+  FORMAT 'backups/%d_dbid%I_archlog_%T_%t_set%s_piece%p';
+  
+  CONFIGURE CONTROLFILE AUTOBACKUP FORMAT FOR DEVICE TYPE DISK TO '/backups/%d_dbid%I_ctl_spfile_%F';
+  backup current controlfile|spfile; 
+}
 
 --------------------------------
 BACKUP ARCHIVELOGS ONLY
@@ -176,6 +204,27 @@ run {
  allocate channel ch1 type Disk maxpiecesize = 1900M FORMAT '/apps/ddbackup/gowrish/backups/%d_dbid%I_ctl_%T_%t_set%s_piece%p';
  backup current controlfile format '/apps/ddbackup/gowrish/backups/%d_dbid%I_ctl_%T_%t_set%s_piece%p';
 }
+
+---------------------------------
+AUTOBACKUP CONTROLFILE, SPFILE
+---------------------------------
+RMAN> CONFIGURE CONTROLFILE AUTOBACKUP FORMAT FOR DEVICE TYPE DISK TO '/backups/%d_dbid%I_ctl_spfile_%F';
+RMAN> backup current controlfile|spfile;
+
+Starting backup at 16-NOV-16
+using channel ORA_DISK_1
+channel ORA_DISK_1: starting full datafile backup set
+channel ORA_DISK_1: specifying datafile(s) in backup set
+including current control file in backup set
+channel ORA_DISK_1: starting piece 1 at 16-NOV-16
+channel ORA_DISK_1: finished piece 1 at 16-NOV-16
+piece handle=+FRA_DG01/DB12C1_P/BACKUPSET/2016_11_16/ncnnf0_tag20161116t053831_0.15755.928042713 tag=TAG20161116T053831 comment=NONE
+channel ORA_DISK_1: backup set complete, elapsed time: 00:00:01
+Finished backup at 16-NOV-16
+
+Starting Control File and SPFILE Autobackup at 16-NOV-16
+piece handle=/backups/DB12C1_dbid4232537016_ctl_spfile_c-4232537016-20161116-06 comment=NONE
+Finished Control File and SPFILE Autobackup at 16-NOV-16
 
 ---------------------------------
 RESTORE PREVIEW
