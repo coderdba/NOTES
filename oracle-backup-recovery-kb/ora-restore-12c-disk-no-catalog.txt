@@ -1,0 +1,41 @@
+=========================================================================
+ORACLE 12C DATABASE RESTORE USING DISK BACKUP - USING CONTROLFILE - not rman catalog
+=========================================================================
+
+https://docs.oracle.com/cd/E24693_01/backup.11203/e10642/rcmadvre.htm#i1006453 --> advanced scenarios
+https://docs.oracle.com/cd/E24693_01/backup.11203/e10642/rcmadvre.htm#i1006328 --> using backup controlfile
+https://docs.oracle.com/cd/E24693_01/backup.11203/e10642/rcmadvre.htm#CHDBEDCH --> restoring spfile
+
+http://oracle11ggotchas.com/articles/UsingRMANtorestoreadatabasetoanotherserverinanASMenvironment.htm
+
+=====================================================
+RECOVERY WITH CONTROLFILE, SPFILE AND REDOLOGS INTACT
+=====================================================
+
+------------------------
+STARTUP NOMOUNT
+------------------------
+$ srvctl start database -d DB12C1_P -o nomount
+
+$ sqlplus / as sysdba
+SQL> select * from v$database;
+select * from v$database
+              *
+ERROR at line 1:
+ORA-01507: database not mounted
+
+------------------------
+DO THE RECOVERY
+------------------------
+Command file: recover-simple.cmd
+
+set dbid 4232537016; 
+run {
+allocate channel c1 device type disk;
+alter database mount;
+restore database;
+recover database;
+alter database open;
+}
+
+
