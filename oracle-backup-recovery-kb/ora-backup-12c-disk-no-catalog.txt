@@ -189,6 +189,25 @@ RUN
   backup current controlfile|spfile; 
 }
 
+VERSION3A: with new archlog after main backup and autobackup of controlfile and spfile
+
+CONFIGURE CONTROLFILE AUTOBACKUP FORMAT FOR DEVICE TYPE DISK TO '/apps/ddbackup/gowrish/backups/%d_dbid%I_ctl_spfile_%F';
+RUN
+{
+  ALLOCATE CHANNEL ch1 TYPE DISK MAXPIECESIZE 10G;
+  BACKUP incremental level 0 tag hot_level0 filesperset 1
+  FORMAT '/apps/ddbackup/gowrish/backups/%d_dbid%I_level0_datafile_%T_%t_set%s_piece%p'
+  DATABASE
+  PLUS ARCHIVELOG delete input
+  FORMAT '/apps/ddbackup/gowrish/backups/%d_dbid%I_archlog_%T_%t_set%s_piece%p';
+
+  alter system archive log current;
+  BACKUP ARCHIVELOG ALL delete all input
+  FORMAT '/apps/ddbackup/gowrish/backups/%d_dbid%I_archlog_%T_%t_set%s_piece%p';
+
+  backup current controlfile;
+}
+
 --------------------------------
 BACKUP ARCHIVELOGS ONLY
 --------------------------------
