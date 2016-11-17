@@ -1,0 +1,40 @@
+https://docs.oracle.com/database/121/BRADV/rcmcatdb.htm#BRADV11001
+NOTE: The doc talks about catalog DB which is non-CDB. Here, I have used a CDB-PDB for the catalog
+
+------------------
+CREATE THE CATALOG
+------------------
+Create a Container database with PDB DB12C2PD1
+Create a tablespace rman at pdb level
+Create a user rman password rman (or other) at pdb level
+Create a tns entry for the PDB
+DB12C2PD1=
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = rac01-scan)(PORT = 1522))
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = DB12C2PD1)
+    )
+  )
+
+Connect to this 'rman' schema using RMAN as follows:
+$ rman target /
+RMAN> connect catalog rman/rman@DB12C2PD1
+
+Create the catalog:
+- to create in default tablespace of the 'rman' user:
+RMAN> CREATE CATALOG;
+recovery catalog created
+
+- to create in another tablespace ts1
+NOTE: If the name of the tablespace itself is a reserved word, then make it uppercase and enclose in quotes like tablespace 'PROFILE'
+RMAN> CREATE CATALOG TABLESPACE ts1;
+recovery catalog created
+
+-------------------
+Register a database
+-------------------
+
+
+
+
