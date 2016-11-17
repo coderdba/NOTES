@@ -119,6 +119,12 @@ ASMCMD> mkdir DB12C1_P
 
 - Startup nomount (use RMAN for this, as srvctl does not do even nomount startup when spfile is missing)
 $ rman target /
+
+-- If using catalog connect to the catalog
+NOTE: Do the connect catalog every time you re-logon to rman
+  RMAN> connect catalog rman/rman@DB12C2PD1
+  connected to recovery catalog database
+
 RMAN> set dbid 4232537016;
 RMAN> startup nomount;
 
@@ -141,10 +147,16 @@ NOTE- this gives errors, but does a startup anyway
     Redo Buffers                   9650176 bytes
 
 - Next restore the spfile from backup
+
+IF USING CONTROLFILE AND NOT CATALOG:
 RMAN> run { allocate channel c1 device type disk;
 restore spfile from '/backups/DB12C1_dbid4232537016_spfile_20161115_927964536_set33_piece1';
 }
 
+IF USING CATALOG:
+RMAN> restore controlfile;
+
+--> Messages common to both cases
 allocated channel: c1
 channel c1: SID=578 device type=DISK
 
@@ -155,7 +167,9 @@ channel c1: SPFILE restore from AUTOBACKUP complete
 Finished restore at 16-NOV-16
 released channel: c1
 
-- RESTART THE DATABASE SO THAT IT ASSUMES THE RIGHT DBNAME instead of DUMMY
+-------------------------------------------------------------------------
+RESTART THE DATABASE SO THAT IT ASSUMES THE RIGHT DBNAME instead of DUMMY
+-------------------------------------------------------------------------
 $ srvctl stop database -d DB12C1_P
 $ srvctl start database -d DB12C1_P -o nomount
 $ rman target /
@@ -167,11 +181,17 @@ RECOVER THE CONTROLFILE
 -------------------------------------------
 https://docs.oracle.com/cd/E24693_01/backup.11203/e10642/rcmadvre.htm#i1006328 (for spfile and controlfile)
 
+IF USING CONTROLFILE AND NOT CATALOG:
 RMAN> run{allocate channel c1 device type disk;
 restore controlfile from '/apps/ddbackup/gowrish/backups/DB12C1_dbid4232537016_ctl_20161116_928030640_set40_piece1';
 }
 
+IF USING CATALOG:
+RMAN> restore controlfile;
+
+--> Messages (mostly same for both cases except for the first line below)
 using target database control file instead of recovery catalog
+
 allocated channel: c1
 channel c1: SID=462 instance=DB12C11 device type=DISK
 
@@ -184,14 +204,16 @@ output file name=+FRA_DG01/DB12C1_P/CONTROLFILE/current.15846.928036311
 Finished restore at 16-NOV-16
 released channel: c1
 
+-----------------------
+MOUNT, RESTORE, RECOVER
+-----------------------
 RMAN> alter database mount;
-
 Statement processed
 
 RMAN> restore database;
 RMAN> recover database;
 RMAN> alter database open resetlogs;
 
-NOTE: Restored archivelogs get deleted automatically
+NOTE: Restored archivelogs get deleted automatically??
 
 
