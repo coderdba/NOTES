@@ -48,14 +48,18 @@ recover database;
 alter database open;
 }
 
-==========================================================
-RECOVERY WITH CONTROLFILE AND SPFILE GONE, REDOLOGS INTACT
-==========================================================
+===============================================================================
+RECOVERY WITH CONTROLFILE AND SPFILE GONE, ARCHLOGS ON DISK AND REDOLOGS INTACT
+===============================================================================
+
+-----------------------------
+STOP THE DATABASE
+-----------------------------
+$ srvctl stop database -d DB12C1_P
 
 ----------------------------------------------------
 REMOVE THE DATA DISKGROUP DIRECTORY OF THE DATABASE
 ----------------------------------------------------
-
 $ asmcmd
 
 ASMCMD> cd DATA_DG01
@@ -85,9 +89,7 @@ Type  Redund  Striped  Time             Sys  Name
                                         Y    PARAMETERFILE/
                                         Y    PASSWORD/
                                         Y    TEMPFILE/
-
-
-
+                                             spfiledb12c1.ora => +DATA_DG01/DB_UNKNOWN/PARAMETERFILE/SPFILE.442.928044463
 ASMCMD> pwd
 +FRA_DG01/DB12C1_P
 ASMCMD> ls -l
@@ -108,7 +110,7 @@ RESTORE SPFILE TO ASM
 ------------------------------------------------------------------------
 https://docs.oracle.com/cd/E24693_01/backup.11203/e10642/rcmadvre.htm#i1006328 (for spfile and controlfile)
 
-- First, create the directory in ASM to receive the spfile
+- First, create the directory in ASM to receive the spfile (if had been removed earlier)
 ASMCMD> cd DATA_DG01
 ASMCMD> mkdir DB12C1_P
 
