@@ -1,0 +1,396 @@
+===================================
+ORACLE 12C DATAGUARD CREATION STEPS - using rman duplicate
+===================================
+Sections:
+SCRIPTS TO USE
+MANUAL STEPS
+
+===============
+SCRIPTS TO USE
+===============
+1. tnsnames.ora - both, all nodes 
+2. checklogs.sql - primary db
+3. addstandbylogs.sql - primary db 
+4. setinitparam-primary.sql - primary db
+5. oratab entries - standby, all nodes, similar to primary nodes
+5a. standby.asm - standby, ASM
+6. This has to be done differently probably - orapwd.sh - password file - create on primary, copy to standby both nodes as $ORACLE_HOME/dbs/orapwdINSTANCE
+7. listenerprimary.ora - primary, all nodes
+8. listenerstandby.ora - standby, all nodes
+9. inittemp.ora - standby, node1 as $ORACLE_HOME/dbs/inittempINSTANCE.ora
+10. adump.sh - standby, all nodes
+10a. srvctl_initial_config.sh - standby
+11. startupstandby.sh - Startup nomount - standby, node1
+12. rmandup.cmd - Create rman command file - standby, node1
+13. rmandup.sh - Run rman duplicate - standby, node1
+14. logswitchprimary.sql - primary
+15. verifystandby.sql - standby
+16. recovermanagedstandby.sql - standby
+17. createspfilestandby.sql - standby
+18. initstandby.ora - standby, all nodes
+19. srvctl_add_database.sh - standby
+20. verifystandbyrestart.sh - standby
+21. brokerprimary.sql - primary
+22. brokerstandby.sql - standby
+23. brokerprimary.dgmgrl - primary
+24. Do switchovers (step file to be added)
+
+
+===============
+MANUAL STEPS
+===============
+12c - Build - Data Guard
+
+1. Environment
+Linux 64 bit, RAC, Clusterware 12.1.0.2 with ASM, 12.1.0.2 CDB with PDB
+
+2. Pre-Verification
+2.1. At Primary, Verify if Archiving/Force Logging is enabled.
+SQL> select NAME,LOG_MODE,FORCE_LOGGING from v$database;
+NAME      LOG_MODE     FORCE_LOGGING
+--------- ------------ ---------------------------------------
+DB12C1   ARCHIVELOG   YES
+
+2.2. At Primary, Get the DB Size.
+ SQL> select sum(BYTES)/1024/1024/1024 from dba_data_files;
+
+SUM(BYTES)/1024/1024/1024
+-------------------------
+               2.50488281
+
+2.3. At Standby, Get the Diskgroup Free Size.
+SQL> select name,TOTAL_MB,USABLE_FILE_MB from v$asm_diskgroup;
+NAME                             TOTAL_MB USABLE_FILE_MB
+------------------------------ ---------- --------------
+FRA_DG01                           262142          34946
+GRD_DG01                            30714           9872
+Verify if the USABLE_FILE_MB can accomodate the DB size checked in the step 1.2.
+
+2.4. Gather the following details and use these environment details appropriately.
+DB_NAME (This will be same for both primary and standby)
+At Primary,
+DB_UNIQUE_NAME for primary,
+SID value for each node .
+Physical Hostname of each node.
+Primary SCAN name and its port.
+At Standby,
+DB_UNIQUE_NAME for standby,
+SID value for each node.
+Physical Hostname of each node.
+Standby SCAN name and its port.
+
+3. DataGuard Configuration
+3.1. On both Primary & Standby sites on all the node’s tnsnames.ora should have TNS entry for its DB_UNIQUE_NAME.(/usr/local/tns/tnsnames.ora )
+ <Primary_DB_Unique_Name> =
+     (DESCRIPTION =
+         (ADDRESS = (PROTOCOL = TCP)(HOST = <Primary Scan Name> )(PORT = <Port>))
+         (CONNECT_DATA =
+               (SERVER=DEDICATED)
+               (SERVICE_NAME = <Primary_DB_Unique_Name>)
+         )
+     )
+ <Stby_DB_Unique_name> =
+     (DESCRIPTION =
+           (ADDRESS = (PROTOCOL = TCP)(HOST = <Standby Scan Name>)(PORT = <Port>))
+           (CONNECT_DATA =
+                 (SERVER=DEDICATED)
+                 (SERVICE_NAME = <Stby_DB_Unique_name>)
+           )
+     )
+
+3.2. At Primary, Create standby redo logs
+
+Gather the below details about Online Redo Log:
+•       Check the Number of threads, and the Number of Groups per thread with the below SQL.
+SQL> select thread#,groups from v$thread;
+•       Check the the Online Redo Log size.
+SQL> select distinct BYTES from v$log;
+
+Create standby redo log:
+•       Standby redo log should have the same number of threads as that of Online Redo Log.
+•       Standby redo log should have one additional group per thread than the Online Redo Log's.
+•       Standby redo log size should be the same size as that of Online Redo Log Size
+
+ Eg:- If  log size is 1073741824,  number of threads 2, and number of groups are two, then you will create standby logs as below:
+
+ ALTER DATABASE ADD STANDBY LOGFILE THREAD 1
+ GROUP 21 SIZE 1073741824,
+ GROUP 22 SIZE 1073741824,
+ GROUP 23 SIZE 1073741824;
+
+ ALTER DATABASE ADD STANDBY LOGFILE THREAD 2
+ GROUP 24 SIZE 1073741824,
+ GROUP 25 SIZE 1073741824,
+ GROUP 26 SIZE 1073741824;
+
+ NOTE: This is just an example. You have to change it accordingly as per the environment as described above.
+
+3.3. At Primary, set/modify the following parameters.
+ db_unique_name='<db_name>_STBY'
+
+ log_archive_config='dg_config=(<Primary_Unique_name>,<Stby_Unique_Name>)'
+
+ log_archive_dest_1='LOCATION=USE_DB_RECOVERY_FILE_DEST VALID_FOR=(ALL_LOGFILES,ALL_ROLES) DB_UNIQUE_NAME=<Primary_unique_name>'
+
+ log_archive_dest_2='SERVICE=<Stby_Unique_Name> LGWR  ASYNC  VALID_FOR=(ONLINE_LOGFILES,PRIMARY_ROLE)DB_UNIQUE_NAME=<Stby_Uniq_Name>'
+
+ standby_file_management=AUTO
+
+ fal_client='<Primary_Uniq_Name>'
+
+ fal_server='<Stby_Uniq_Name>'
+
+3.4. Copy password file from Primary to All the Standby nodes.
+Please note password file is created in ASM for 12c databases.Please follow below steps to copy it .
+
+1.      Check the path of password file for primary  in ASM.
+
+      ASMCMD> pwget --dbuniquename DB12C1_PRIM
++DATA_DG01/DB12C1_PRIM/PASSWORD/pwddb12c1_prim.556.877944919
+
+         2.copy this file to $ORACLE_HOME/dbs  of primary
+
+ASMCMD> pwcopy --dbuniquename DB12C1_PRIM  +DATA_DG01/DB12C1_PRIM/PASSWORD/pwddb12c1_prim.556.877944919  /u01/app/oracle/product/12.1.0.2.RAC/dbs/orapwDB12C11
+copying +DATA_DG01/DB12C1_PRIM/PASSWORD/pwddb12c1_prim.556.877944919 -> / u01/app/oracle/product/12.1.0.2.RAC/dbs /orapwDB12C11
+ASMCMD-9456: password file should be located on an ASM disk group
+
+2.      Modify the primary database  with srvctl to point to  $ORACLE_HOME/dbs  location  password file instead of ASM.
+
+   srvctl modify database -db <db_unique_name>  -pwfile <password_file_path>
+
+
+3.      Scp  password  file  from $ORACLE_HOME/dbs  of primary to $ORACLE_HOME/dbs of standby in all the node.
+
+
+$ /u01/app/oracle/product/12.1.0.2.RAC/dbs: ls -ltr orapwDB12C11
+-rw-r----- 1 oracle oradba 7680 Apr 28 04:51 orapwDB12C11
+
+NOTE: Make sure you use correct <SID> value for each standby node. It will have 1,2,.. numbers attached to it.
+
+
+3.5. At standby, on all the nodes, Create oratab entry
+ vi /etc/oratab
+ ...
+ ...
+ <ORACLE_SID>:<ORACLE_HOME>:N
+
+3.6. At standby, On the Node 1, Make sure that you make a static entry in the listener.ora.
+eg:-
+ . . .
+ . . .
+ SID_LIST_LISTENER =
+   (SID_LIST =
+       (SID_DESC =
+       (GLOBAL_DBNAME=<Standby_Unique_name>)
+       (SID_NAME =<Node1_SID>)
+       (ORACLE_HOME =<Oracle Home Location>)
+     )
+   )
+Then reload the Listener:
+ lsnrctl reload listener
+NOTE: This static entry is needed for auxiliary channel connection during RMAN standby creation.
+
+3.7. At standby, on node1, Create a simple PFILE with just DB_NAME in it.
+ cd $ORACLE_HOME/dbs
+ vi init<SID>.ora
+   DB_NAME='<dbname>'
+
+3.8. At standby, on node1, Start the instance to NOMOUNT with the PFILE created above.
+ .oraenv
+ ORACLE_SID = [DB12C11] ? <type the SID here>
+ sqlplus / as sysdba
+ SQL> startup pfile='<obsolute path of the pfile>' nomount;
+
+3.9. At standby, on all the nodes, Create File directory structure for AUDIT_FILE_DEST parameter use.
+ AUDIT_FILE_DEST='/opt/oracle/admin/<standby_uniq_name>/adump'
+NOTE: Review the primary parameter files for any other directory related parameters and make sure to create them. And include it the below DUPLICATE command.
+
+3.10. At standby, on Node1, Create a file with the below DUPLICATE command in it
+ cat duplicate.rman
+
+ DUPLICATE TARGET DATABASE
+   FOR STANDBY
+   FROM ACTIVE DATABASE
+   DORECOVER
+   SPFILE
+     SET DB_UNIQUE_NAME='<Stby_uniqu_name>'
+     SET LOG_ARCHIVE_DEST_1='LOCATION=USE_DB_RECOVERY_FILE_DEST  valid_for=(all_logfiles,all_roles)db_unique_name=<Stby_uniq_name>'
+     SET LOG_ARCHIVE_DEST_2='SERVICE=<Primary_uniq_name> lgwr async valid_for=(online_logfiles,primary_role)db_unique_name=<Primary_uniq_name>'
+     SET FAL_CLIENT='<Stby_uniq_name>'
+     SET FAL_SERVER='<Primary_uniq_name>'
+     SET REMOTE_LISTENER='<stby_scan_name>:<port>'
+     SET AUDIT_FILE_DEST='/opt/oracle/admin/<standby_uniq_name>/adump'
+   NOFILENAMECHECK;
+
+3.11. At standby, from Node1, Run RMAN in the background.
+ nohup rman target sys/****@<PrimaryNode_vip1>/<Primary_uniq_name>  auxiliary sys/****@<standbynode_vip1>/<stby_uniq_name>  @duplicate.rman &
+
+3.12. Monitor nohup.out, check for any errors.
+
+3.13. Verify the Log shipping & Apply
+•       At primary,
+ SQL> alter system archive log current;
+ SQL> select * from v$log;
+•       At standby,
+ SQL> select name,db_unique_name,database_role from v$database;
+ SQL> select THREAD#,SEQUENCE#,ARCHIVED,APPLIED,STATUS from v$archived_log;
+NOTE: Make sure all the logs from all the threads are archived.
+•       Start MRP and verify for any gaps
+ SQL> alter database recover managed standby database using current logfile disconnect from session;
+ SQL> select PROCESS,STATUS,THREAD#,SEQUENCE# from v$managed_standby;
+ SQL> select * from v$archive_gap;
+
+3.14. Re-create SPFILE on standby Only
+The DUPLICATE command will create the SPFILE under ORACLE_HOME. So, we need to re-created it inside ASM.
+From One of the Standby Node,
+ SQL> create pfile='/tmp/pfile' from spfile;
+ SQL> create spfile='+<Data_DG_Name>/<Standby_Uniq_Name>/ PARAMET ERFILE/spfile<DB_NAME>.ora' from pfile='/tmp/pfile';
+
+Create init<SID>.ora file on All node on standby, and have a single parameter to point to SPFILE in ASM.
+ Eg:-
+    cat initDB12C11.ora
+    SPFILE='+DATA_DG01/DB12C1_STBY/PARAMETERFILE/spfileDB12C1.ora'
+
+3.15. At standby, From one of the node, Register the standby with CRS
+
+Make sure you set the environment before you issue srvctl,
+ $ . oraenv
+ ORACLE_SID = [DB12C11] ?  <Type the respective SID here>
+Register the standby information,
+ srvctl add database -d <Standby_Db_Unique_name>  -o <Oracle Home Path>  -p <SPFILE_Location_in_ASM> -n <DB_Name>  -r PHYSICAL_STANDBY  -s mount
+ srvctl add instance -d <Standby_DB_Unique_name>  -i <Node1_SID> -n <Node1_Physical_Hostname>
+ srvctl add instance -d <Standby_DB_Unique_name>  -i <Node2_SID> -n <Node2_Physical_Hostname>
+
+Verify the Configuration,
+ srvctl config database -d  <Standby_DB_Unique_name>
+ srvctl config database -d  <Standby_DB_Unique_name>  –a
+Verify start/stop of the database. And check it works successfully,
+ srvctl stop database –d  <Standby_DB_Unique_name>
+ srvctl start database –d  <Standby_DB_Unique_name>
+
+Note: Please modify the password file for standby with srvctl  to point to $ORACLE_HOME/dbs
+
+
+srvctl modify database -db <db_unique_name>  -pwfile <password_file_path>
+
+4. Broker Configuration
+4.1. Add static entry in the listener.ora and reload the listener. (/usr/local/tns/listener.ora )
+
+On Primary, ( Perform this on all the nodes in the Primary )
+ SID_LIST_LISTENER =
+   (SID_LIST =
+ . . .
+ . . .
+   (SID_DESC =
+     (GLOBAL_DBNAME = <Primary_db_unique_name>_DGMGRL)
+     (ORACLE_HOME = <Oracle Home Path> )
+     (SID_NAME = <Node’s_SID> )    <<<<<<<<<<<<<<< Use node’s respective SID
+   )
+ . . .
+ . . .
+ )
+And then reload the listener,
+ $ lsnrctl reload listener
+
+NOTE: Wait for few seconds to 1 minute and check the ‘lsnrctl status listener’ and verify if the service name is reflecting.
+
+On standby, ( Perform this on all the nodes in the Standby)
+ . . .
+   (SID_DESC =
+     (GLOBAL_DBNAME = <Standby_DB_Unique_Name>_DGMGRL)
+     (ORACLE_HOME = <Oracle Home Path> )
+     (SID_NAME = <Node’s_SID>)    <<<<<<<<<<<<<<< Use node’s respective SID
+   )
+ . . .
+And then, reload the listener,
+ $ lsnrctl reload listener
+
+NOTE: Wait for few seconds to 1 minute and check the ‘lsnrctl status listener’ and verify if the service name is reflecting.
+
+4.2. Add broker related parameters:
+
+At primary,
+ *. dg_broker_config_file1='+<Data_DG_Name>/<Primary_DB_Unique_Name>/DATAGUARDCONFIG/dg_config_file1.dat'
+ *. dg_broker_config_file2='+<FRA_DG_Name>/<Primary_DB_Unique_Name>/DATAGUARDCONFIG/dg_config_file2.dat'
+ *. dg_broker_start=TRUE
+
+At Standby,
+ *. dg_broker_config_file1='+<Data_DG_Name>/<Standby_DB_Unique_Name>/DATAGUARDCONFIG/dg_config_file1.dat'
+ *. dg_broker_config_file2='+<FRA_DG_Name>/<Standby_DB_Unique_Name>/DATAGUARDCONFIG/dg_config_file2.dat'
+ *. dg_broker_start=TRUE
+
+4.3. At primary, Create the Broker configuration
+Set the environment variables to the Primary DB and then login to dgmgrl.
+ $ . oraenv
+ ORACLE_SID = [] ?  <Type the respective SID here>
+
+ $ dgmgrl sys/XXXXXX
+DGMGRL for Linux: Version 12.1.0.2.0 - 64bit Production
+Copyright (c) 2000, 2013, Oracle. All rights reserved.
+Welcome to DGMGRL, type "help" for information.
+Connected as SYSDG.
+
+ DGMGRL> create configuration 'DG_DB12C1' as primary database is 'DB12C1_PRIM' connect identifier is 'DB12C1_PRIM';
+
+ DGMGRL> Add database 'DB12C1_STBY' as connect identifier is 'DB12C1_STBY'; DGMGRL> enable configuration;
+ DGMGRL> show configuration;
+
+Note: Known Issue:
+
+1.      If you get ORA-16698 while creating configuration then follow the below metalink note: Doc ID 1582179.1
+
+4.4. Switchover Test
+
+NOTE: Make sure that you login with the sys/password and not with OS authentication ‘/’. Otherwise the switchover will not work correctly.
+
+$ /home/oracle: dgmgrl
+DGMGRL for Linux: Version 12.1.0.2.0 - 64bit Production
+Copyright (c) 2000, 2013, Oracle. All rights reserved.
+Welcome to DGMGRL, type "help" for information.
+DGMGRL> connect sys
+Password:
+Connected as SYSDG.
+DGMGRL> show configuration;
+Configuration - DG_DB12C1
+  Protection Mode: MaxPerformance
+  Members:
+  DB12C1_PRIM - Primary database
+    DB12C1_STBY  - Physical standby database
+Fast-Start Failover: DISABLED
+Configuration Status:
+SUCCESS   (status updated 40 seconds ago)
+DGMGRL> switchover to 'DB12C1_STBY';
+Performing switchover NOW, please wait...
+Operation requires a connection to instance "DB12C11" on database "DB12C1_STBY"
+Connecting to instance "DB12C11"...
+Connected as SYSDBA.
+New primary database "DB12C1_STBY" is opening...
+Oracle Clusterware is restarting database "DB12C1_PRIM" ...
+Switchover succeeded, new primary is "DB12C1_STBY"
+DGMGRL> show configuration;
+Configuration - DG_DB12C1
+  Protection Mode: MaxPerformance
+  Members:
+  DB12C1_STBY  - Primary database
+    DB12C1_PRIM - Physical standby database
+Fast-Start Failover: DISABLED
+Configuration Status:
+SUCCESS   (status updated 74 seconds ago)
+DGMGRL> switchover to 'DB12C1_PRIM';
+Performing switchover NOW, please wait...
+Operation requires a connection to instance "DB12C11" on database "DB12C1_PRIM"
+Connecting to instance "DB12C11"...
+Connected as SYSDBA.
+New primary database "DB12C1_PRIM" is opening...
+Oracle Clusterware is restarting database "DB12C1_STBY" ...
+Switchover succeeded, new primary is "DB12C1_PRIM"
+DGMGRL> show configuration;
+Configuration - DG_DB12C1
+  Protection Mode: MaxPerformance
+  Members:
+  DB12C1_PRIM - Primary database
+    DB12C1_STBY  - Physical standby database
+Fast-Start Failover: DISABLED
+Configuration Status:
+SUCCESS   (status updated 132 seconds ago)
+
