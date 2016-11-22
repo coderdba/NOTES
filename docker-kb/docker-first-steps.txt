@@ -64,6 +64,9 @@ MODIFY AN IMAGE - EXAMPLE1
 ---------------------------
 https://docs.docker.com/engine/userguide/storagedriver/imagesandcontainers/
 
+NOTE: This creates a new image based on an existing image
+HOWEVER, that new image becomes a child of the existing image - so, you cannot delete the existing image when child exists
+
 - Create a work directory like /home/docker/ubuntu1
 
 - Create a file in that directory 'Dockerfile' with the following content:
@@ -108,3 +111,69 @@ d1b55fd07600        10 months ago       /bin/sh -c #(nop) CMD ["/bin/bash"]     
 <missing>           10 months ago       /bin/sh -c #(nop) ADD file:3f4708cf445dc1b537   131.3 MB
 
 
+- Try deleting the parent image 'ubuntu:15.04'
+$ docker rmi d1b55fd07600
+Error response from daemon: conflict: unable to delete d1b55fd07600 (cannot be forced) - image has dependent child images
+
+- Now, try deleting the child image 'ubuntu-changed' first
+$ docker rmi 0845be754499
+Error response from daemon: conflict: unable to delete 0845be754499 (must be forced) - image is being used by stopped container 24d9bda64c85
+
+No idea which is that 'stopped container 24d9bda64c85' - TBD
+
+- Now, try deleting the child image by force option
+]$ docker rmi -f 0845be754499
+Untagged: changed-ubuntu:latest
+Deleted: sha256:0845be754499e1cfb5d02244674157664c970eb5f393a6726abf5ff9fcf023ce
+
+$ docker images
+REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+ubuntu              latest              e4415b714b62        5 days ago          128.1 MB
+hello-world         latest              c54a2cc56cbb        4 months ago        1.848 kB
+ubuntu              15.04               d1b55fd07600        10 months ago       131.3 MB
+
+- Now, try deleting the parent
+$ docker rmi d1b55fd07600
+Error response from daemon: conflict: unable to delete d1b55fd07600 (must be forced) - image is being used by stopped container 64750038156f
+
+-- Check what images are running or stopped 
+----> you will see the 'stopped' container in the listing
+$ docker ps -a
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS                         PORTS               NAMES
+f768c4d88927        0845be754499        "/bin/cat /tmp/newfil"   11 minutes ago      Exited (0) 11 minutes ago                          kickass_wozniak
+417b0c13a564        0845be754499        "/bin/echo 'hello wor"   11 minutes ago      Exited (0) 11 minutes ago                          elated_archimedes
+3e19c71effa4        0845be754499        "/bin/echo hello"        12 minutes ago      Created                                            peaceful_bartik
+d3e8790ff8eb        0845be754499        "/bin/cat /tmp/newfil"   12 minutes ago      Created                                            reverent_saha
+24d9bda64c85        0845be754499        "cat /tmp/newfile"       13 minutes ago      Created                                            loving_hamilton
+64750038156f        ubuntu:15.04        "/bin/echo 'hello wor"   22 minutes ago      Exited (0) 21 minutes ago                          peaceful_wright
+0085f870f9c5        ubuntu              "/bin/echo 'hello wor"   22 minutes ago      Exited (0) 22 minutes ago                          nauseous_payne
+baecd3935cab        hello-world         "/hello"                 52 minutes ago      Exited (0) 52 minutes ago                          compassionate_ritchie
+578fe996e866        ubuntu              "/bin/echo 'hello you"   52 minutes ago      Exited (0) 52 minutes ago                          peaceful_mirzakhani
+613d05a82920        ubuntu              "/bin/echo 'Hello wor"   About an hour ago   Exited (0) About an hour ago                       admiring_goldwasser
+671844140cc8        ubuntu              "/bin/echo 'Hello wor"   About an hour ago   Exited (0) About an hour ago                       modest_perlman
+
+-- Remove the parent with force option
+$ docker rmi -f d1b55fd07600
+Untagged: ubuntu:15.04
+Untagged: ubuntu@sha256:2fb27e433b3ecccea2a14e794875b086711f5d49953ef173d8a03e8707f1510f
+Deleted: sha256:d1b55fd07600b2e26d667434f414beee12b0771dfd4a2c7b5ed6f2fc9e683b43
+
+-- Verify if the stopped process is now gone
+$ docker ps -a
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS                         PORTS               NAMES
+f768c4d88927        0845be754499        "/bin/cat /tmp/newfil"   12 minutes ago      Exited (0) 12 minutes ago                          kickass_wozniak
+417b0c13a564        0845be754499        "/bin/echo 'hello wor"   12 minutes ago      Exited (0) 12 minutes ago                          elated_archimedes
+3e19c71effa4        0845be754499        "/bin/echo hello"        12 minutes ago      Created                                            peaceful_bartik
+d3e8790ff8eb        0845be754499        "/bin/cat /tmp/newfil"   13 minutes ago      Created                                            reverent_saha
+24d9bda64c85        0845be754499        "cat /tmp/newfile"       13 minutes ago      Created                                            loving_hamilton
+64750038156f        d1b55fd07600        "/bin/echo 'hello wor"   22 minutes ago      Exited (0) 22 minutes ago                          peaceful_wright
+0085f870f9c5        ubuntu              "/bin/echo 'hello wor"   22 minutes ago      Exited (0) 22 minutes ago                          nauseous_payne
+baecd3935cab        hello-world         "/hello"                 53 minutes ago      Exited (0) 53 minutes ago                          compassionate_ritchie
+578fe996e866        ubuntu              "/bin/echo 'hello you"   53 minutes ago      Exited (0) 53 minutes ago                          peaceful_mirzakhani
+613d05a82920        ubuntu              "/bin/echo 'Hello wor"   About an hour ago   Exited (0) About an hour ago                       admiring_goldwasser
+671844140cc8        ubuntu              "/bin/echo 'Hello wor"   About an hour ago   Exited (0) About an hour ago                       modest_perlman
+
+$ docker images
+REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+ubuntu              latest              e4415b714b62        5 days ago          128.1 MB
+hello-world         latest              c54a2cc56cbb        4 months ago        1.848 kB
