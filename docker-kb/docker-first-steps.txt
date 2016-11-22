@@ -38,10 +38,60 @@ ubuntu              latest              e4415b714b62        5 days ago          
 hello-world         latest              c54a2cc56cbb        4 months ago        1.848 kB
 ubuntu              15.04               d1b55fd07600        10 months ago       131.3 MB
 
+================================
+RUNNING A SPECIFIC IMAGE VERSION
+================================
+$ docker images
+REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+ubuntu              latest              e4415b714b62        5 days ago          128.1 MB
+hello-world         latest              c54a2cc56cbb        4 months ago        1.848 kB
+ubuntu              15.04               d1b55fd07600        10 months ago       131.3 MB
+
+$ docker run ubuntu /bin/echo 'hello world'
+hello world
+
+$ docker run ubuntu:15.04 /bin/echo 'hello world'
+hello world
+
 ================================================
 IMAGES AND CONTAINERS
 ================================================
 TBD
 https://docs.docker.com/engine/userguide/storagedriver/imagesandcontainers/
+
+---------------------------
+MODIFY AN IMAGE - EXAMPLE1
+---------------------------
+https://docs.docker.com/engine/userguide/storagedriver/imagesandcontainers/
+
+- Create a work directory like /home/docker/ubuntu1
+
+- Create a file in that directory 'Dockerfile' with the following content:
+ FROM ubuntu:15.04
+ RUN echo "Hello world" > /tmp/newfile
+ 
+- Build a new image:
+$ docker build -t changed-ubuntu .
+
+$ docker build -t changed-ubuntu .
+Sending build context to Docker daemon 2.048 kB
+Step 1 : FROM ubuntu:15.04
+ ---> d1b55fd07600
+Step 2 : RUN echo "Hello world" > /tmp/newfile
+ ---> Running in 1ce71b20527a
+ ---> 0845be754499
+Removing intermediate container 1ce71b20527a
+Successfully built 0845be754499
+
+$ docker images
+REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+changed-ubuntu      latest              0845be754499        6 seconds ago       131.3 MB --> The new one
+ubuntu              latest              e4415b714b62        5 days ago          128.1 MB
+hello-world         latest              c54a2cc56cbb        4 months ago        1.848 kB
+ubuntu              15.04               d1b55fd07600        10 months ago       131.3 MB
+
+- Verify
+$ docker run changed-ubuntu /bin/cat /tmp/newfile
+Hello world
 
 
