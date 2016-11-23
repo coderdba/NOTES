@@ -3,3 +3,49 @@ https://groups.google.com/forum/#!topic/docker-user/HlPU1XIVw40
 http://cloudgeekz.com/625/howto-create-a-docker-image-for-rhel.html
 
 http://stackoverflow.com/questions/27518646/docker-creating-base-image-with-rhel-iso
+
+===========================================
+CREATE DOCKER  IMAGE FROM RUNNING MACHINE
+===========================================
+https://groups.google.com/forum/#!topic/docker-user/HlPU1XIVw40
+
+- Create tar file of source machine contents
+On a running machine, tar the '/' directory contents into a zipped tar file - exclude some not needed directories
+
+# tar --numeric-owner --exclude=/proc --exclude=/sys --exclude=/disk1 --exclude=/var/cache --exclude=/usr/share/{foomatic,backgrounds,perl5,fonts,cups,qt4,groff,kde4,icons,pixmaps,emacs,gnome-background-properties,sounds,gnome,games,desktop-directories}  --exclude=/var/log -zcvf /disk1/rhel72.64bit.chef.base.tar.gz /
+
+- Copy the tar file to the docker-host
+Copy the file across to the host where docker image needs to be created
+
+- Create the image
+On the docker-image host run this:
+# cat rhel72.64bit.chef.base.tar.gz | docker import - rhel64bit/7.2
+sha256:32dd8258b76a8af6422816378deaec625fcb0f3a044b581802f108e3b263eb40
+
+- Verify
+# docker images
+REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+rhel64bit/7.2       latest              32dd8258b76a        28 seconds ago      2.646 GB
+
+# docker run rhel64bit/7.2 echo hello
+hello
+
+# docker run rhel64bit/7.2 hostname
+da4b2d9dcd19
+
+# docker run rhel64bit/7.2  uname -a
+Linux 90904c73d27f 3.10.0-229.7.2.el7.x86_64 #1 SMP Fri May 15 21:38:46 EDT 2015 x86_64 x86_64 x86_64 GNU/Linux
+
+# docker run rhel64bit/7.2 df -k
+Filesystem                                                                                       1K-blocks    Used Available Use% Mounted on
+/dev/mapper/docker-8:17-2490388-71d8a2780a99fc70abdc20178dfb37dcb7867272491421d0683b634b77ef0c2a  10474496 2824880   7649616  27% /
+tmpfs                                                                                              4002388       0   4002388   0% /dev
+tmpfs                                                                                              4002388       0   4002388   0% /sys/fs/cgroup
+/dev/sdb1                                                                                         51473888 4724188  44111928  10% /etc/hosts
+shm                                                                                                  65536       0     65536   0% /dev/shm
+tmpfs                                                                                              4002388       0   4002388   0% /proc/kcore
+tmpfs                                                                                              4002388       0   4002388   0% /proc/timer_list
+tmpfs                                                                                              4002388       0   4002388   0% /proc/timer_stats
+tmpfs                                                                                              4002388       0   4002388   0% /proc/sched_debug
+
+
