@@ -1,0 +1,149 @@
+==========================
+DOCKER NGINX CONTAINER
+==========================
+
+https://www.digitalocean.com/community/tutorials/how-to-share-data-between-the-docker-container-and-the-host - for nginx and volume share
+https://docs.docker.com/engine/tutorials/networkingcontainers/ - for finding ip of the container
+
+- Download ngix image
+$ docker pull nginx
+
+- Create a local directory to store logs from the container locally
+
+- Run nginx container (--name=nginx) from nginx image
+    -d is for run as daemon
+    -v is to link /var/log/nginx of container to local directory ~/nginxlogs
+    -p is to forward port 5000 of the host to 80 of nginx
+    nginx at the end is the image name
+
+$ docker run --name=nginx -d -v ~/nginxlogs:/var/log/nginx -p 5000:80 nginx
+e214bbce201d0f3c5ff759ba0a48a73e7f1d68b07e8f3704bc51dc4ee4111f16
+
+- List the status of the container
+$ docker ps -a
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS                         PORTS                           NAMES
+e214bbce201d        nginx               "nginx -g 'daemon off"   9 seconds ago       Up 7 seconds                   443/tcp, 0.0.0.0:5000->80/tcp   nginx
+2a99f16f24e6        ubuntu              "/bin/bash"              About an hour ago   Exited (0) About an hour ago                                   sick_jones
+39b42648a35c        ubuntu              "echo hello"             About an hour ago   Exited (0) About an hour ago    backstabbing_bell
+
+- Get the IP address of the container (assuming container uses bridged network with host)
+    "IPv4Address": "172.17.0.2/16",
+
+$ docker network inspect bridge
+[
+    {
+        "Name": "bridge",
+        "Id": "683c712e106b89ec844beb9f6848d2ac7d1523951b86acb4dcadc4284f9e52a4",
+        "Scope": "local",
+        "Driver": "bridge",
+        "EnableIPv6": false,
+        "IPAM": {
+            "Driver": "default",
+            "Options": null,
+            "Config": [
+                {
+                    "Subnet": "172.17.0.0/16",
+                    "Gateway": "172.17.0.1"
+                }
+            ]
+        },
+        "Internal": false,
+        "Containers": {
+            "e214bbce201d0f3c5ff759ba0a48a73e7f1d68b07e8f3704bc51dc4ee4111f16": {
+                "Name": "nginx",
+                "EndpointID": "54484eef8f2556ae5883fb8e667c361c390307472f48c7a6f7d729fccc6089ee",
+                "MacAddress": "02:42:ac:11:00:02",
+                "IPv4Address": "172.17.0.2/16",
+                "IPv6Address": ""
+            }
+        },
+        "Options": {
+            "com.docker.network.bridge.default_bridge": "true",
+            "com.docker.network.bridge.enable_icc": "true",
+            "com.docker.network.bridge.enable_ip_masquerade": "true",
+            "com.docker.network.bridge.host_binding_ipv4": "0.0.0.0",
+            "com.docker.network.bridge.name": "docker0",
+            "com.docker.network.driver.mtu": "1500"
+        },
+        "Labels": {}
+    }
+]
+
+- Ping the container from host
+$ ping 172.17.0.2
+PING 172.17.0.2 (172.17.0.2) 56(84) bytes of data.
+64 bytes from 172.17.0.2: icmp_seq=1 ttl=64 time=0.094 ms
+64 bytes from 172.17.0.2: icmp_seq=2 ttl=64 time=0.062 ms
+
+- Access nginx using container's port
+$ curl http://172.17.0.2:80
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+    body {
+        width: 35em;
+        margin: 0 auto;
+        font-family: Tahoma, Verdana, Arial, sans-serif;
+    }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, the nginx web server is successfully installed and
+working. Further configuration is required.</p>
+
+<p>For online documentation and support please refer to
+<a href="http://nginx.org/">nginx.org</a>.<br/>
+Commercial support is available at
+<a href="http://nginx.com/">nginx.com</a>.</p>
+
+<p><em>Thank you for using nginx.</em></p>
+</body>
+</html>
+
+- Access nginx through host's port forwarding
+$ curl http://oralx0001:5000
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+    body {
+        width: 35em;
+        margin: 0 auto;
+        font-family: Tahoma, Verdana, Arial, sans-serif;
+    }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, the nginx web server is successfully installed and
+working. Further configuration is required.</p>
+
+<p>For online documentation and support please refer to
+<a href="http://nginx.org/">nginx.org</a>.<br/>
+Commercial support is available at
+<a href="http://nginx.com/">nginx.com</a>.</p>
+
+<p><em>Thank you for using nginx.</em></p>
+</body>
+</html>
+
+- Access nginx from a browser (need to use port forwarding at this time)
+http://oralx0001:5000 
+
+- Stop the container using the container id
+$ docker stop e214bbce201d
+e214bbce201d
+
+- List the status of the containers
+$  docker ps -a
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS                         PORTS               NAMES
+e214bbce201d        nginx               "nginx -g 'daemon off"   2 minutes ago       Exited (0) 4 seconds ago                           nginx
+2a99f16f24e6        ubuntu              "/bin/bash"              About an hour ago   Exited (0) About an hour ago                       sick_jones
+39b42648a35c        ubuntu              "echo hello"             About an hour ago   Exited (0) About an hour ago                       backstabbing_bell
+
+
+
