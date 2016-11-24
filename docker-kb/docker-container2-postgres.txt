@@ -1,0 +1,74 @@
+=================================
+DOCKER POSTGRES CONTAINER
+=================================
+
+Work in progress - not every step - including "run the container as a daemon" may be correct
+
+- Download
+$ docker pull postgres
+
+- Run the container as daemon
+$ docker run --name=postgres1 -d postgres
+
+- Verify if container is running
+$ docker ps -a
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS                          PORTS               NAMES
+371040c4c83f        postgres            "/docker-entrypoint.s"   2 minutes ago       Up 2 minutes                    5432/tcp            postgres1
+
+- Get its network attributes
+NOTE: You see two different IPs for postgres and nginx containers
+NOTE: The IPs are not constant as is - if you stop both containers and start nginx first, it may get lower IP next time
+
+Postgres1 - 172.17.0.2
+Nginx - 172.17.0.3
+
+$ docker network inspect bridge
+[
+    {
+        "Name": "bridge",
+        "Id": "683c712e106b89ec844beb9f6848d2ac7d1523951b86acb4dcadc4284f9e52a4",
+        "Scope": "local",
+        "Driver": "bridge",
+        "EnableIPv6": false,
+        "IPAM": {
+            "Driver": "default",
+            "Options": null,
+            "Config": [
+                {
+                    "Subnet": "172.17.0.0/16",
+                    "Gateway": "172.17.0.1"
+                }
+            ]
+        },
+        "Internal": false,
+        "Containers": {
+            "371040c4c83f232894f9e0c2901aa67f9cb9260475a2207bb269ae3a6be59b6b": {
+                "Name": "postgres1",
+                "EndpointID": "3dc4a438777457d4a10da64c10a327495b5b827db2bbb95779b162a91630620d",
+                "MacAddress": "02:42:ac:11:00:02",
+                "IPv4Address": "172.17.0.2/16",
+                "IPv6Address": ""
+            },
+            "e214bbce201d0f3c5ff759ba0a48a73e7f1d68b07e8f3704bc51dc4ee4111f16": {
+                "Name": "nginx",
+                "EndpointID": "d5b60cdb3f06b8859a80f78bb1442a45aa246802edfd85d955c1a7c9bdd61c2a",
+                "MacAddress": "02:42:ac:11:00:03",
+                "IPv4Address": "172.17.0.3/16",
+                "IPv6Address": ""
+            }
+        },
+        "Options": {
+            "com.docker.network.bridge.default_bridge": "true",
+            "com.docker.network.bridge.enable_icc": "true",
+            "com.docker.network.bridge.enable_ip_masquerade": "true",
+            "com.docker.network.bridge.host_binding_ipv4": "0.0.0.0",
+            "com.docker.network.bridge.name": "docker0",
+            "com.docker.network.driver.mtu": "1500"
+        },
+        "Labels": {}
+    }
+]
+
+- Connect to postgres
+IP=172.17.0.2
+Port=5432/tcp? (from docker ps)
