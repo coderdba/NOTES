@@ -1,0 +1,87 @@
+==============================================
+USING DEBOOTRSTRAP AND CHROOT IN UBUNTU
+==============================================
+
+Debootstrap can be used to install Ubuntu from web locations to a directory in a running Ubuntu/Debian box.
+Chroot is used to change the 'root' to the debootstrap install and use the installation in that folder as the OS.
+Further such debootstrapped folders can be tarred and used as input to create Docker images.
+
+http://www.thegeekstuff.com/2010/01/debootstrap-minimal-debian-ubuntu-installation/
+http://linoxide.com/linux-how-to/2-ways-create-docker-base-image/
+
+======================================================
+CREATE A UBUNTU SERVER VM USING VAGRANT AND VIRTUALBOX
+======================================================
+Specific Vagrantfile settings:
+NOTE: the 'box' need not be the same version of the debootstrap you are going to create later.
+
+config.vm.box = 'bento/ubuntu-14.04'
+config.vm.synced_folder "../../stage/UbuntuGuest", "/hostshare"
+
+Do vagrant up with the above settings in Vagrantfile.
+
+=======================================================
+CREATE A DEBOOTSTRAP INSTALL OF UBUNTU MINIMAL FROM WEB
+=======================================================
+NOTE: The version/flavor of the host o/s and debootstrap install o/s need not be same
+
+Create a folder /root/debootstrap (or other mountpoint /debootstrap)
+
+# cd /root/debootstrap
+# nohup debootstrap trusty trusty > x 2>> x
+
+This creates a minimal image of 'trusty' - Ubuntu 14.04 - in a subfolder /root/debootstrap/trusty
+
+# chroot /root/debootstrap/trusty /bin/bash
+# << now you are in the bash of this chroot o/s location >>
+
+-----------------------
+CUSTOMIZE
+-----------------------
+Change contents of some files:
+/etc/hostname has the hostname --> initially same as the host's hostname itself - you can change it if you want
+/etc/hosts
+/etc/resolv.conf 
+
+Add users
+Change root password
+
+Install more packages if necessary
+Install software (like postgres, nginx)
+...
+...
+
+====================================
+TAR THE CONTENTS FOR FUTURE USE
+====================================
+# cd /root/debootstrap/trusty
+# tar cvf /hostshare/trusty.tar 
+
+-------------------------
+HOW TO USE IT WITH CHROOT
+-------------------------
+Copy the tar file to another debian/ubuntu machine
+Untar the content to a folder in it
+Chroot to that folder
+Use it
+
+====================================
+CREATE A DOCKER IMAGE USING THE TAR
+====================================
+Copy the tar file to a machine that has Docker.
+
+$ cat /tmp/trusty-debootstrap.tar |docker import - ubuntutrusty
+sha256:d59a16db7c12f9ea3889f1ec4371a90918e420d69cdaaf6b807949ffd8f6966e
+
+$ docker images
+REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+ubuntutrusty        latest              d59a16db7c12        8 seconds ago       237.8 MB
+
+- VERIFY (note that the host itself was a RHEL machine, and the docker image is Ubuntu)
+$ docker run ubuntutrusty lsb_release -a
+Distributor ID: Ubuntu
+Description:    Ubuntu 14.04 LTS
+Release:        14.04
+Codename:       trusty
+No LSB modules are available.
+
