@@ -1,6 +1,9 @@
 =================================
 DOCKER POSTGRES CONTAINER
 =================================
+https://hub.docker.com/_/postgres/  (for this, need to login using your docker hub account)
+https://github.com/sameersbn/docker-postgresql
+https://docs.docker.com/engine/examples/postgresql_service/
 
 Work in progress - not every step - including "run the container as a daemon" may be correct
 
@@ -8,12 +11,12 @@ Work in progress - not every step - including "run the container as a daemon" ma
 $ docker pull postgres
 
 - Run the container as daemon
-$ docker run --name=postgres1 -d postgres
+$ docker run --name postgres1 -e POSTGRES_PASSWORD=mysecretpassword -d postgres
+997af6789cb843694c0e0293a45e5e19083dcb3e45f4737fd8a82095d5b94248
 
-- Verify if container is running
 $ docker ps -a
-CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS                          PORTS               NAMES
-371040c4c83f        postgres            "/docker-entrypoint.s"   2 minutes ago       Up 2 minutes                    5432/tcp            postgres1
+CONTAINER ID  IMAGE               COMMAND                  CREATED             STATUS           PORTS               NAMES
+997af6789cb8  postgres            "/docker-entrypoint.s"   5 seconds ago       Up 5 seconds     5432/tcp            postgres1
 
 - Get its network attributes
 NOTE: You see two different IPs for postgres and nginx containers
@@ -69,6 +72,17 @@ $ docker network inspect bridge
     }
 ]
 
-- Connect to postgres
+- Connect to postgres using psql
 IP=172.17.0.2
 Port=5432/tcp? (from docker ps)
+
+From the website, generic command:
+$ docker run -it --rm --link some-postgres:postgres postgres psql -h postgres -U postgres
+
+Specific command used:
+$ docker run -it --rm --link postgres1:postgres postgres psql -h postgres -U postgres
+Password for user postgres:
+psql (9.6.1)
+Type "help" for help.
+
+postgres=# \dt
