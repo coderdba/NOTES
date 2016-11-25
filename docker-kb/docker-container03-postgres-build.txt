@@ -193,12 +193,19 @@ https://hub.docker.com/_/postgres/
 NOTE: for the image from  the hub, this is how to run a container some-postgres from image postgres:
             $ docker run --name some-postgres -e POSTGRES_PASSWORD=mysecretpassword -d postgres
 
-For our image:
+- Without port forwarding:
 $ docker run --name pg_test -d eg_postgresql
 
 $ docker ps
 CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS               NAMES
 94ca468576de        eg_postgresql       "/usr/lib/postgresql/"   5 seconds ago       Up 4 seconds        5432/tcp            pg_test
+
+- With port forwarding:
+$ docker run --name pg_test -P -d eg_postgresql
+
+$ docker ps
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS                     NAMES
+2e0c81ee7652        eg_postgresql       "/usr/lib/postgresql/"   5 seconds ago       Up 3 seconds        0.0.0.0:32779->5432/tcp   pg_test
 
 ------------------------------------
 CONNECT TO POSTGRES IN THE CONTAINER
@@ -209,14 +216,17 @@ IP = 172.17.0.3
 - Port is exposed in Dockerfile
 EXPOSE 5432
 
-- Connect one time
+- ------------------------------------------------------------------------------------------------
+- Connect using 'psql' installed in the container (not the psql on the host/client)
+- ------------------------------------------------------------------------------------------------
+NOTE: This needs the image name also to be provided in the command though container is already invoked using that image name
+
 From the website, generic command:
 $ docker run -it --rm --link some-postgres:postgres postgres psql -h postgres -U postgres
+Explained:
+$ docker run -it -rm --link <container>:<alias> <image> psql -h <alias> -U <postgres user>
 
 Specific command used:
-NOTE: Not sure what all three postgres here means
-$ docker run -it --rm --link pg_test:postgres postgres psql -h postgres -U docker
---> simplify using different notations instead of 'postgres' everywhere
 $ docker run -it --rm --link pg_test:pg eg_postgresql psql -h pg -U docker
 Password for user docker:
 docker=# 
@@ -228,9 +238,21 @@ pg_test
 $ docker run -it --rm --link pg_test:pg eg_postgresql psql -h pg -U docker
 docker: Error response from daemon: Cannot link to a non running container: /pg_test AS /determined_curie/pg.
 
+- ------------------------------------------------------------------------------------------------
+- Connect using 'psql' installed on the host/client
+- ------------------------------------------------------------------------------------------------
+- Using forwarded port and localhost of the host
+$ psql -h localhost -p 32779 -d docker -U docker --password
+Password for user docker:
+docker=#
+
+- Using IP and port of the container
+$ psql -h 172.17.0.3 -p 5432 -d docker -U docker --password
+Password for user docker:
+docker=#
 
 ------------------
-CONTAINER LINKING
+REFERENCE - CONTAINER LINKING
 ------------------
 $ docker run --rm -t -i --link pg_test:pg eg_postgresql bash
 postgres@a3972f70644f:/$ hostname
@@ -239,7 +261,6 @@ postgres@a3972f70644f:/$ echo $PG_PORT_5432_TCP_ADDR
 172.17.0.3
 postgres@a3972f70644f:/$ echo $PG_PORT_5432_TCP_PORT
 5432
-
 
 ======================================
 REFERENCE - POSTGRES INSTALL STEPS 
