@@ -205,23 +205,29 @@ IP = 172.17.0.3
 - Port is exposed in Dockerfile
 EXPOSE 5432
 
-- Connect 
+- Connect one time
 From the website, generic command:
 $ docker run -it --rm --link some-postgres:postgres postgres psql -h postgres -U postgres
 
 Specific command used:
 NOTE: Not sure what all three postgres here means
 $ docker run -it --rm --link pg_test:postgres postgres psql -h postgres -U docker
+--> simplify using different notations instead of 'postgres' everywhere
+$ docker run -it --rm --link pg_test:pg eg_postgresql psql -h pg -U docker
 Password for user docker:
-psql (9.6.1)
-SSL connection (protocol: TLSv1.2, cipher: ECDHE-RSA-AES256-GCM-SHA384, bits: 256, compression: off)
-Type "help" for help.
-
 docker=# 
 
-But, this failed:
-$  docker run -it --rm --link pg_test:eg_postgresql postgres psql -h postgres -U docker
-psql: could not translate host name "postgres" to address: Name or service not known
+------------------
+CONTAINER LINKING
+------------------
+$ docker run --rm -t -i --link pg_test:pg eg_postgresql bash
+postgres@a3972f70644f:/$ hostname
+a3972f70644f
+postgres@a3972f70644f:/$ echo $PG_PORT_5432_TCP_ADDR
+172.17.0.3
+postgres@a3972f70644f:/$ echo $PG_PORT_5432_TCP_PORT
+5432
+
 
 ======================================
 REFERENCE - POSTGRES INSTALL STEPS 
