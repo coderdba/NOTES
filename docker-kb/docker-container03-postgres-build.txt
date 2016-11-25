@@ -148,6 +148,39 @@ Step 13 : CMD /usr/lib/postgresql/9.6/bin/postgres -D /var/lib/postgresql/9.6/ma
 Removing intermediate container f4b0d481ff18
 Successfully built 2d048f6340e2
 
+----------------------
+VERIFY IMAGE IS CREATED OR NOT
+----------------------
+$ docker  images
+REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+eg_postgresql       latest              2d048f6340e2        9 minutes ago       403.2 MB
+
+===========================================
+RUN IN FOREGROUND
+===========================================
+Note that this seems to start the instance at the time of invocation, 
+--> and upon control-c it stops the instance and then the container.
+      
+$ docker run --rm -P --name pg_test eg_postgresql
+
+[docker@oralx0001 postgres1]$ docker run --rm -P --name pg_test eg_postgresql
+2016-11-25 10:35:23 UTC [5-1] LOG:  database system was interrupted; last known up at 2016-11-25 10:23:44 UTC
+2016-11-25 10:35:23 UTC [5-2] LOG:  database system was not properly shut down; automatic recovery in progress
+2016-11-25 10:35:23 UTC [5-3] LOG:  redo starts at 0/14EE858
+2016-11-25 10:35:23 UTC [5-4] LOG:  invalid record length at 0/14EE880: wanted 24, got 0
+2016-11-25 10:35:23 UTC [5-5] LOG:  redo done at 0/14EE858
+2016-11-25 10:35:23 UTC [5-6] LOG:  last completed transaction was at log time 2016-11-25 10:23:44.937805+00
+2016-11-25 10:35:23 UTC [5-7] LOG:  MultiXact member wraparound protections are now enabled
+2016-11-25 10:35:23 UTC [1-1] LOG:  database system is ready to accept connections
+2016-11-25 10:35:23 UTC [9-1] LOG:  autovacuum launcher started
+
+^C
+
+2016-11-25 10:36:06 UTC [1-2] LOG:  received fast shutdown request
+2016-11-25 10:36:06 UTC [1-3] LOG:  aborting any active transactions
+2016-11-25 10:36:06 UTC [9-2] LOG:  autovacuum launcher shutting down
+2016-11-25 10:36:06 UTC [6-1] LOG:  shutting down
+2016-11-25 10:36:06 UTC [1-4] LOG:  database system is shut down
 
 
 ======================================
