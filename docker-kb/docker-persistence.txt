@@ -7,9 +7,12 @@ http://stackoverflow.com/questions/28574433/do-docker-containers-retain-file-cha
 http://stackoverflow.com/questions/30853247/how-to-edit-file-after-i-shell-to-a-docker-container
 http://stackoverflow.com/questions/19585028/i-lose-my-data-when-the-container-exits --> read this
 http://stackoverflow.com/questions/36423620/postgres-in-docker-persistent-data --> for postgres
+
+READ THESE:
 https://docs.docker.com/engine/tutorials/dockervolumes/#/mount-a-host-directory-as-a-data-volume --> host volumes
 https://monax.io/2015/06/17/docker-persistence/?redirect_from_eris=true --> persistent data container
 https://www.andreagrandi.it/2015/02/21/how-to-create-a-docker-image-for-postgresql-and-persist-data/ --> postgres
+https://docs.docker.com/engine/tutorials/dockervolumes/#/mount-a-host-directory-as-a-data-volume
 
 Observation:
 $ docker run --rm -t -i --link pg_test:pg eg_postgresql bash
@@ -17,7 +20,36 @@ In a postgres container, going into it using 'bash' and doing some file-changes 
 However, changes done to postgres instance - like new DB's - they persisted.
 This has something to do with -rm optin?? But even without rm option the files changes are being undone??
 
-Fix:  
+
+Real Fix:
+Connect with 'exec' to the actual running container insted of 'run'
+$ docker exec -i -t pg_test /bin/bash
+$ cd /var/lib/postgresql
+postgres@6bc771f8c3dc:~$ ls -l
+total 4
+drwxr-xr-x. 3 postgres postgres 4096 Nov 25 10:23 9.6
+postgres@6bc771f8c3dc:~$ touch ddd
+postgres@6bc771f8c3dc:~$ ls -l
+total 4
+drwxr-xr-x. 3 postgres postgres 4096 Nov 25 10:23 9.6
+-rw-r--r--. 1 postgres postgres    0 Nov 25 12:55 ddd
+postgres@6bc771f8c3dc:~$ echo ddd > ddd
+postgres@6bc771f8c3dc:~$ exit
+
+$ docker stop pg_test
+pg_test
+$ docker start pg_test
+pg_test
+
+$  docker exec -i -t pg_test /bin/bash
+$ cd /var/lib/postgresql
+$ ls -l
+total 8
+drwxr-xr-x. 3 postgres postgres 4096 Nov 25 10:23 9.6
+-rw-r--r--. 1 postgres postgres    4 Nov 25 12:55 ddd
+
+
+Sort of Fix:  
 http://stackoverflow.com/questions/19585028/i-lose-my-data-when-the-container-exits
 Every time a 'run' is done a container is created temporarily.
 The changes done to it will vanish of sorts when we exit out of it.
