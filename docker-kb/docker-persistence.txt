@@ -11,3 +11,37 @@ $ docker run --rm -t -i --link pg_test:pg eg_postgresql bash
 In a postgres container, going into it using 'bash' and doing some file-changes - the changes vanished upon restart of the container.
 However, changes done to postgres instance - like new DB's - they persisted.
 This has something to do with -rm optin?? But even without rm option the files changes are being undone??
+
+Fix:  
+http://stackoverflow.com/questions/19585028/i-lose-my-data-when-the-container-exits
+Every time a 'run' is done a container is created temporarily.
+The changes done to it will vanish of sorts when we exit out of it.
+However, we can find that 'exited' conatiner, start it, attach it and see the changes back in that version of the container.
+
+$ docker run -t -i --link pg_test:pg eg_postgresql bash
+postgres@12e1629ff15c:/$ date > /tmp/datefile
+postgres@12e1629ff15c:/$ cat /tmp/datefile
+Fri Nov 25 12:17:49 UTC 2016
+postgres@12e1629ff15c:/$ exit
+
+NOTE: The command below lists the 'exited' containers - suspicious_almeida is the one that we exited just now
+[docker@oralx0001 ssh1]$ docker ps -a
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS                           PORTS                     NAMES
+12e1629ff15c        eg_postgresql       "bash"                   25 seconds ago      Exited (0) 8 seconds ago                                   suspicious_almeida
+6bc771f8c3dc        eg_postgresql       "/usr/lib/postgresql/"   56 seconds ago      Up 54 seconds                    0.0.0.0:32788->5432/tcp   pg_test
+9712a27a0752        eg_postgresql       "bash"                   13 minutes ago      Exited (0) 13 minutes ago                                  boring_montalcini0
+
+- Restart that one, attach and look for the file in /tmp
+$ docker start suspicious_almeida
+suspicious_almeida
+[docker@oralx0001 ssh1]$ docker ps
+CONTAINER ID        IMAGE               COMMAND                  CREATED              STATUS              PORTS                     NAMES
+12e1629ff15c        eg_postgresql       "bash"                   47 seconds ago       Up 7 seconds        5432/tcp                  suspicious_almeida
+6bc771f8c3dc        eg_postgresql       "/usr/lib/postgresql/"   About a minute ago   Up About a minute   0.0.0.0:32788->5432/tcp   pg_test
+997af6789cb8        postgres            "/docker-entrypoint.s"   30 hours ago         Up 30 hours         5432/tcp                  postgres1
+
+$ docker attach 12e1629ff15c
+$ cd tmp
+$ ls -l
+-rw-r--r--. 1 postgres postgres 29 Nov 25 12:17 datefile
+
