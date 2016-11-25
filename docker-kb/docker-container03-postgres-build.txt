@@ -6,6 +6,8 @@ https://docs.docker.com/engine/examples/postgresql_service/
 
 See REFERENCE section for postgres install steps for Ubuntu
 
+For apt-get install issue - http://stackoverflow.com/questions/27273412/cannot-install-packages-inside-docker-ubuntu-image
+
 ======================================
 PULL UBUNTU 16.04 IMAGE
 ======================================
@@ -17,8 +19,134 @@ BUILD POSTGRES IMAGE
 https://docs.docker.com/engine/examples/postgresql_service/
 
 -------------------------------
-Dockerfile contents
+Dockerfile 
 -------------------------------
+Installs prerequisite software
+Installs keys to the postgres repo (this actually failed - see notes below)
+Installs postgres server, client and contrib
+Starts postgres
+Creates a superuser called docker with password docker
+
+NOTE - this image actually has a 'running' postgres instance - though as an image it wont be really 'running'
+      --> when a container is created using this image, postgres instance will be actually 'running' in it already
+
+Note apt-get -qq update --> this is necessary to create a package list  first
+Note install wget --> because the base image does not have wget
+Note - the postgres site says add keys with the following command
+wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | \
+  sudo apt-key add -
+sudo apt-get update
+
+However, that exact thing fails for both wget+apt-key part.
+Therefore, commented that line and retained only apt-get update
+--> this needed modification with --allow-unauthenticated in the line that installs postgres, python etc
+
+----------------------
+Dockerfile contents
+----------------------
+#
+# example Dockerfile for https://docs.docker.com/examples/postgresql_service/
+#
+
+FROM ubuntu:16.04
+#MAINTAINER SvenDowideit@docker.com
+
+# added
+#RUN apt-get install wget
+RUN apt-get -qq update
+RUN apt-get -y install wget
+
+# Add the PostgreSQL PGP key to verify their Debian packages.
+# It should be the same key as https://www.postgresql.org/media/keys/ACCC4CF8.asc
+#
+# Old
+#RUN apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8
+# Latest from Postgres site for Ubuntu 16.04 - https://www.postgresql.org/download/linux/ubuntu/
+#RUN apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8
+#RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
+RUN apt-get update
+#RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - apt-get update
+
+# Add PostgreSQL's repository. It contains the most recent stable release
+#     of PostgreSQL, ``9.6``.
+#
+# Old for 'precise' ubuntu 12.04 version
+#RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ precise-pgdg main" > /etc/apt/sources.list.d/pgdg.list
+# Latest from Postgres site for Ubuntu 16.04 - https://www.postgresql.org/download/linux/ubuntu/
+RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ xenial-pgdg main" > /etc/apt/sources.list.d/pgdg.list
+
+# Install ``python-software-properties``, ``software-properties-common`` and PostgreSQL 9.6
+#  There are some warnings (in red) that show up during the build. You can hide
+#  them by prefixing each apt-get statement with DEBIAN_FRONTEND=noninteractive
+#RUN apt-get update && apt-get install -y python-software-properties software-properties-common postgresql-9.6 postgresql-client-9.6 postgresql-contrib-9.6
+RUN apt-get update && apt-get install -y --allow-unauthenticated python-software-properties software-properties-common postgresql-9.6 postgresql-client-9.6 postgresql-contrib-9.6
+
+# Note: The official Debian and Ubuntu images automatically ``apt-get clean``
+# after each ``apt-get``
+
+# Run the rest of the commands as the ``postgres`` user created by the ``postgres-9.6`` package when it was ``apt-get installed``
+USER postgres
+
+# Create a PostgreSQL role named ``docker`` with ``docker`` as the password and
+# then create a database `docker` owned by the ``docker`` role.
+# Note: here we use ``&&\`` to run commands one after the other - the ``\``
+#       allows the RUN command to span multiple lines.
+RUN    /etc/init.d/postgresql start &&\
+    psql --command "CREATE USER docker WITH SUPERUSER PASSWORD 'docker';" &&\
+    createdb -O docker docker
+
+# Adjust PostgreSQL configuration so that remote connections to the
+# database are possible.
+RUN echo "host all  all    0.0.0.0/0  md5" >> /etc/postgresql/9.6/main/pg_hba.conf
+
+# And add ``listen_addresses`` to ``/etc/postgresql/9.6/main/postgresql.conf``
+RUN echo "listen_addresses='*'" >> /etc/postgresql/9.6/main/postgresql.conf
+
+# Expose the PostgreSQL port
+EXPOSE 5432
+
+# Add VOLUMEs to allow backup of config, logs and databases
+VOLUME  ["/etc/postgresql", "/var/log/postgresql", "/var/lib/postgresql"]
+
+# Set the default command to run when starting the container
+CMD ["/usr/lib/postgresql/9.6/bin/postgres", "-D", "/var/lib/postgresql/9.6/main", "-c", "config_file=/etc/postgresql/9.6/main/postgresql.conf"]
+
+--------------------------------
+BUILD the image  'eg_postgresql'
+--------------------------------
+docker build -t eg_postgresql .
+
+------------------------
+SCREEN OUTPUT - main configuration parts
+------------------------
+Step 8 : RUN /etc/init.d/postgresql start &&    psql --command "CREATE USER docker WITH SUPERUSER PASSWORD 'docker';" &&    createdb -O docker docker
+ ---> Running in 9710b82f6bae
+ * Starting PostgreSQL 9.6 database server
+   ...done.
+CREATE ROLE
+ ---> 4359bb92e60f
+Removing intermediate container 9710b82f6bae
+Step 9 : RUN echo "host all  all    0.0.0.0/0  md5" >> /etc/postgresql/9.6/main/pg_hba.conf
+ ---> Running in 356df5b1b85c
+ ---> 65c379cb6d39
+Removing intermediate container 356df5b1b85c
+Step 10 : RUN echo "listen_addresses='*'" >> /etc/postgresql/9.6/main/postgresql.conf
+ ---> Running in cc697472f895
+ ---> f790933408e4
+Removing intermediate container cc697472f895
+Step 11 : EXPOSE 5432
+ ---> Running in df937b71c612
+ ---> 712b55fb908a
+Removing intermediate container df937b71c612
+Step 12 : VOLUME /etc/postgresql /var/log/postgresql /var/lib/postgresql
+ ---> Running in 4a066bbcb142
+ ---> 5bb073f2afc6
+Removing intermediate container 4a066bbcb142
+Step 13 : CMD /usr/lib/postgresql/9.6/bin/postgres -D /var/lib/postgresql/9.6/main -c config_file=/etc/postgresql/9.6/main/postgresql.conf
+ ---> Running in f4b0d481ff18
+ ---> 2d048f6340e2
+Removing intermediate container f4b0d481ff18
+Successfully built 2d048f6340e2
 
 
 
