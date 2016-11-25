@@ -182,6 +182,46 @@ $ docker run --rm -P --name pg_test eg_postgresql
 2016-11-25 10:36:06 UTC [6-1] LOG:  shutting down
 2016-11-25 10:36:06 UTC [1-4] LOG:  database system is shut down
 
+======================================
+RUN A CONTAINER AS A DAEMON
+======================================
+https://hub.docker.com/_/postgres/
+NOTE: for the image from  the hub, this is how to run a container some-postgres from image postgres:
+            $ docker run --name some-postgres -e POSTGRES_PASSWORD=mysecretpassword -d postgres
+
+For our image:
+$ docker run --name pg_test -d eg_postgresql
+
+$ docker ps
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS               NAMES
+94ca468576de        eg_postgresql       "/usr/lib/postgresql/"   5 seconds ago       Up 4 seconds        5432/tcp            pg_test
+
+------------------------------------
+CONNECT TO POSTGRES IN THE CONTAINER
+------------------------------------
+- Get the IP of the container using 'docker network inspect bridge'
+IP = 172.17.0.3
+
+- Port is exposed in Dockerfile
+EXPOSE 5432
+
+- Connect 
+From the website, generic command:
+$ docker run -it --rm --link some-postgres:postgres postgres psql -h postgres -U postgres
+
+Specific command used:
+NOTE: Not sure what all three postgres here means
+$ docker run -it --rm --link pg_test:postgres postgres psql -h postgres -U docker
+Password for user docker:
+psql (9.6.1)
+SSL connection (protocol: TLSv1.2, cipher: ECDHE-RSA-AES256-GCM-SHA384, bits: 256, compression: off)
+Type "help" for help.
+
+docker=# 
+
+But, this failed:
+$  docker run -it --rm --link pg_test:eg_postgresql postgres psql -h postgres -U docker
+psql: could not translate host name "postgres" to address: Name or service not known
 
 ======================================
 REFERENCE - POSTGRES INSTALL STEPS 
