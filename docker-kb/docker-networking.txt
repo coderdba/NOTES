@@ -217,3 +217,31 @@ round-trip min/avg/max/stddev = 0.077/0.090/0.112/0.000 ms
 --> Both these IPs connect - both belong to the same container postgres
 $ psql -h 172.17.0.2 -p 5432 -U postgres --password
 $ psql -h 172.18.0.2 -p 5432 -U docker --password
+
+-- Connect using port forwarding
+NOTE: Forwarding one port can be done using one network only - uses the network that is assigned first during container creation
+---- start container as daemon with port forwarding
+$ docker run --name postgres1 -P -d postgres
+0830c4c8d88ec713bb1262dd0e50c67b68078c78661b5a1072eb8e8203d2124a
+NOTE: This container connects to host with default bridge network
+
+$ docker ps
+CONTAINER ID   IMAGE               COMMAND                  CREATED             STATUS              PORTS                     NAMES
+0830c4c8d88e   postgres            "/docker-entrypoint.s"   4 seconds ago       Up 3 seconds        0.0.0.0:32799->5432/tcp   postgres1
+0b6feebdaacc   postgres            "/docker-entrypoint.s"   41 minutes ago      Up 41 minutes       0.0.0.0:32798->5432/tcp   postgres2
+6bc771f8c3dc   eg_postgresql       "/usr/lib/postgresql/"   16 hours ago        Up 15 hours         0.0.0.0:32796->5432/tcp   pg_test
+
+---- connect using the forwarded port
+This does not ask for password
+$ psql -h localhost -p 32799 -U postgres
+postgres#
+
+---- connect one more network to the same container
+$ docker network connect  my-bridge-network postgres1
+
+postgres - bridge - 172.17.0.2
+postgres - my-network-bridge - 172.18.0.2
+
+$ psql -h localhost -p 32799 -U postgres
+postgres#
+
