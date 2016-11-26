@@ -23,37 +23,21 @@ In a postgres container, going into it using 'bash' and doing some file-changes 
 However, changes done to postgres instance - like new DB's - they persisted.
 This has something to do with -rm optin?? But even without rm option the files changes are being undone??
 
-Real Fix:
-http://askubuntu.com/questions/505506/how-to-get-bash-or-ssh-into-a-running-container-in-background-mode
-Connect with 'exec' or 'attach' to the actual running container insted of 'run'
-$ docker exec -i -t pg_test /bin/bash (or sudo docker exec -i -t pg_test /bin/bash)
-( - you can use the container id also instead of name pg_test )
-postgres@6bc771f8c3dc$ cd /var/lib/postgresql
-postgres@6bc771f8c3dc:~$ ls -l
-total 4
-drwxr-xr-x. 3 postgres postgres 4096 Nov 25 10:23 9.6
-postgres@6bc771f8c3dc:~$ touch ddd
-postgres@6bc771f8c3dc:~$ ls -l
-total 4
-drwxr-xr-x. 3 postgres postgres 4096 Nov 25 10:23 9.6
--rw-r--r--. 1 postgres postgres    0 Nov 25 12:55 ddd
-postgres@6bc771f8c3dc:~$ echo ddd > ddd
-postgres@6bc771f8c3dc:~$ exit
-
-$ docker stop pg_test
-pg_test
-$ docker start pg_test
-pg_test
-
-$  docker exec -i -t pg_test /bin/bash
-$ cd /var/lib/postgresql
-$ ls -l
-total 8
-drwxr-xr-x. 3 postgres postgres 4096 Nov 25 10:23 9.6
--rw-r--r--. 1 postgres postgres    4 Nov 25 12:55 ddd
-
-
-Sort of Fix:  
+REASON: That is because the 'bash' command is not modifying the linked running container.  
+        The 'run' spawns a temporary container and bash modifies it.  
+        Once the run exits, the temporary container is exited and if -rm is used it will also be removed.
+        Therefore, the running container is not changed, instead, the temporary container is changed - which also vanishes upon exit/rm.
+        The look and feel of both containers can be same if using same image.
+        (see also note below)
+        
+        NOTE: In the case of postgres container, if run is used to invoke psql on the image using a temporary container, that psql
+              connects to the running container by 'link' (see postgres container notes). 
+              Then, any DB changes are done actually to the DB in the linked container and not the temporary container.
+              Therefore, the db changes in running container persists.
+              
+------------------------------
+Sort of Fix: If after run...bash changes were done to the temp container, how to see those after exiting - see below
+------------------------------
 http://stackoverflow.com/questions/19585028/i-lose-my-data-when-the-container-exits
 Every time a 'run' is done a container is created temporarily.
 The changes done to it will vanish of sorts when we exit out of it.
@@ -86,3 +70,35 @@ $ cd tmp
 $ ls -l
 -rw-r--r--. 1 postgres postgres 29 Nov 25 12:17 datefile
 
+------------------------------
+Real Fix: If you wanted to actually access the running container and do some filesystem or software changes within it.
+------------------------------
+NOTE: ideally, if those must be really-really permanent, then that running container must be saved as a new image, 
+      and container restarted using that new image that contains all changes to f/s or software.
+http://askubuntu.com/questions/505506/how-to-get-bash-or-ssh-into-a-running-container-in-background-mode
+Connect with 'exec' or 'attach' to the actual running container insted of 'run'
+$ docker exec -i -t pg_test /bin/bash (or sudo docker exec -i -t pg_test /bin/bash)
+( - you can use the container id also instead of name pg_test )
+postgres@6bc771f8c3dc$ cd /var/lib/postgresql
+postgres@6bc771f8c3dc:~$ ls -l
+total 4
+drwxr-xr-x. 3 postgres postgres 4096 Nov 25 10:23 9.6
+postgres@6bc771f8c3dc:~$ touch ddd
+postgres@6bc771f8c3dc:~$ ls -l
+total 4
+drwxr-xr-x. 3 postgres postgres 4096 Nov 25 10:23 9.6
+-rw-r--r--. 1 postgres postgres    0 Nov 25 12:55 ddd
+postgres@6bc771f8c3dc:~$ echo ddd > ddd
+postgres@6bc771f8c3dc:~$ exit
+
+$ docker stop pg_test
+pg_test
+$ docker start pg_test
+pg_test
+
+$  docker exec -i -t pg_test /bin/bash
+$ cd /var/lib/postgresql
+$ ls -l
+total 8
+drwxr-xr-x. 3 postgres postgres 4096 Nov 25 10:23 9.6
+-rw-r--r--. 1 postgres postgres    4 Nov 25 12:55 ddd
