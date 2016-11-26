@@ -217,9 +217,14 @@ IP = 172.17.0.3
 EXPOSE 5432
 
 - ------------------------------------------------------------------------------------------------
-- Connect using 'psql' installed in the container (not the psql on the host/client)
+- Connect using 'psql' installed in the image - through another container using the same image (not the psql on the host/client)
 - ------------------------------------------------------------------------------------------------
-NOTE: This needs the image name also to be provided in the command though container is already invoked using that image name
+NOTE: This 'run' command actually creates another temporary container using the same image as the postgres container we have already.
+      The --rm option removes that temporary container upon completion of the work.
+      THE REASON to do this way is just this - we need psql and the image has it - so, spawn a temporary container just to use psql.
+      --> If psql is there on your host or other app server, then you dont need this method
+      NOTE: The 'link' directive exposes the running container to this temporary container to access 
+                  - so we wont need IP of the running container for the temporary container to connect
 
 From the website, generic command:
 $ docker run -it --rm --link some-postgres:postgres postgres psql -h postgres -U postgres
@@ -241,6 +246,8 @@ docker: Error response from daemon: Cannot link to a non running container: /pg_
 - ------------------------------------------------------------------------------------------------
 - Connect using 'psql' installed on the host/client
 - ------------------------------------------------------------------------------------------------
+NOTE: This method requires psql of postgres available on the host machine
+
 - Using forwarded port and localhost of the host
 $ psql -h localhost -p 32779 -d docker -U docker --password
 Password for user docker:
