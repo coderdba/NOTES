@@ -116,7 +116,7 @@ $ docker network inspect my-bridge-network
 $ docker network connect  my-bridge-network postgres1
 
 -- Assigning specific network during create time
-$ docker run -d --network=my-bridge-network --name db training/postgres
+$ docker run -d --network=my-bridge-network --name db postgres2
 
 -- Verify containers assigned to the new network
 $ docker network inspect my-bridge-network
@@ -147,7 +147,7 @@ $ docker network inspect my-bridge-network
                 "IPv6Address": ""
             },
             "d322168790fd17428a12ea39a4a7b0413197d55311d7861bc2c389d809ce3827": {
-                "Name": "postgtres2",
+                "Name": "postgres2",
                 "EndpointID": "41d9783e05f5d5587959f18cf4e9cb5a894a53bd58aef0c300eb5a2fa08032e7",
                 "MacAddress": "02:42:ac:12:00:03",
                 "IPv4Address": "172.18.0.3/16",
@@ -180,3 +180,35 @@ NOTE: The container postgres1 is assinged to both the original bridge and the ne
             }
         },
 
+================================
+CONNECTING BETWEEN CONTAINERS
+================================
+
+- Setup
+postgres1 and pg_test are in bridge network (172.17.x.x)
+postgres1 and postgres2 are in my-bridge-network (172.18.x.x) (postgres1 in both networks)
+
+- IPs
+pg_test   172.17.0.3
+postgres1 172.17.0.2 --> bridge
+postgres1 172.18.0.2 --> my-bridge-network
+postgres2 172.18.0.3
+
+- Connect between containers
+$ docker exec -it postgres2 bash
+
+-- Does not connect across network domains
+root@0b6feebdaacc:/# ping 172.17.0.2
+PING 172.17.0.2 (172.17.0.2): 56 data bytes
+^C--- 172.17.0.2 ping statistics ---
+13 packets transmitted, 0 packets received, 100% packet loss
+
+-- Connects within the same domain
+root@0b6feebdaacc:/# ping 172.18.0.2
+PING 172.18.0.2 (172.18.0.2): 56 data bytes
+64 bytes from 172.18.0.2: icmp_seq=0 ttl=64 time=0.112 ms
+64 bytes from 172.18.0.2: icmp_seq=1 ttl=64 time=0.081 ms
+64 bytes from 172.18.0.2: icmp_seq=2 ttl=64 time=0.077 ms
+^C--- 172.18.0.2 ping statistics ---
+3 packets transmitted, 3 packets received, 0% packet loss
+round-trip min/avg/max/stddev = 0.077/0.090/0.112/0.000 ms
