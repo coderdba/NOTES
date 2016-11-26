@@ -245,3 +245,40 @@ postgres - my-network-bridge - 172.18.0.2
 $ psql -h localhost -p 32799 -U postgres
 postgres#
 
+=================================
+EXPOSING A PORT
+=================================
+Ports of containers can be exposed only during creation time.
+
+-----------------------
+With -expose directive
+-----------------------
+$  docker run --name postgres3 -expose=22 -P -d postgres
+50bd843a56769279f391f8358115183641e2c04a7e5d2b1aee1568465fc06d6c
+
+NOTE- it is unclear if 22 was also mapped - we see only 5432 having been mapped below:
+$ docker ps
+CONTAINER ID        IMAGE     COMMAND                  CREATED             STATUS              PORTS                     NAMES
+50bd843a5676        postgres  "/docker-entrypoint.s"   3 seconds ago       Up 2 seconds        0.0.0.0:32803->5432/tcp   postgres3
+0830c4c8d88e        postgres  "/docker-entrypoint.s"   45 minutes ago      Up 45 minutes       0.0.0.0:32799->5432/tcp   postgres1
+0b6feebdaacc        postgres  "/docker-entrypoint.s"   About an hour ago   Up About an hour    0.0.0.0:32798->5432/tcp   postgres2
+
+$ docker inspect postgres3 
+--> this shows container configuration
+--> it is showing only 5432 as exposed as well as mapped port
+--> unclear what happened to exposing 22
+
+ "ExposedPorts": {
+                "5432/tcp": {}
+            },
+
+ "Ports": {
+                "5432/tcp": [
+                    {
+                        "HostIp": "0.0.0.0",
+                        "HostPort": "32803"
+                    }
+                ]
+
+
+
