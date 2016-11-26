@@ -83,3 +83,100 @@ $ docker network inspect bridge
 $ docker network disconnect bridge postgres1
 $ docker network connect bridge postgres1
 
+- Create a network
+$ docker network create -d bridge my-bridge-network
+
+-- No containers in this network yet
+$ docker network inspect my-bridge-network
+[
+    {
+        "Name": "my-bridge-network",
+        "Id": "0469b6f22a60b58143a07d2fbce9e85b2ed7a4cea4943bde9cd763da534da9dd",
+        "Scope": "local",
+        "Driver": "bridge",
+        "EnableIPv6": false,
+        "IPAM": {
+            "Driver": "default",
+            "Options": {},
+            "Config": [
+                {
+                    "Subnet": "172.18.0.0/16",
+                    "Gateway": "172.18.0.1/16"
+                }
+            ]
+        },
+        "Internal": false,
+        "Containers": {},
+        "Options": {},
+        "Labels": {}
+    }
+]
+
+- Add containers to this new network
+$ docker network connect  my-bridge-network postgres1
+
+-- Assigning specific network during create time
+$ docker run -d --network=my-bridge-network --name db training/postgres
+
+-- Verify containers assigned to the new network
+$ docker network inspect my-bridge-network
+[
+    {
+        "Name": "my-bridge-network",
+        "Id": "0469b6f22a60b58143a07d2fbce9e85b2ed7a4cea4943bde9cd763da534da9dd",
+        "Scope": "local",
+        "Driver": "bridge",
+        "EnableIPv6": false,
+        "IPAM": {
+            "Driver": "default",
+            "Options": {},
+            "Config": [
+                {
+                    "Subnet": "172.18.0.0/16",
+                    "Gateway": "172.18.0.1/16"
+                }
+            ]
+        },
+        "Internal": false,
+        "Containers": {
+            "997af6789cb843694c0e0293a45e5e19083dcb3e45f4737fd8a82095d5b94248": {
+                "Name": "postgres1",
+                "EndpointID": "b6ead86cacfead1129235a1f41976c457811ecb1104dbdc13e3ac2cbc1dceb61",
+                "MacAddress": "02:42:ac:12:00:02",
+                "IPv4Address": "172.18.0.2/16",
+                "IPv6Address": ""
+            },
+            "d322168790fd17428a12ea39a4a7b0413197d55311d7861bc2c389d809ce3827": {
+                "Name": "postgtres2",
+                "EndpointID": "41d9783e05f5d5587959f18cf4e9cb5a894a53bd58aef0c300eb5a2fa08032e7",
+                "MacAddress": "02:42:ac:12:00:03",
+                "IPv4Address": "172.18.0.3/16",
+                "IPv6Address": ""
+            }
+        },
+        "Options": {},
+        "Labels": {}
+    }
+]
+
+-- Verify containers connected to the original 'bridge' network
+NOTE: The container postgres1 is assinged to both the original bridge and the new network
+
+        "Internal": false,
+        "Containers": {
+            "6bc771f8c3dcbc1314ba0190811e504206af41fdda8f666fe5cee0d178203d20": {
+                "Name": "pg_test",
+                "EndpointID": "e49fa37347adb4ba33f58d4bc9dc8db01fb545be88cb168778a7fd8c4a1614fe",
+                "MacAddress": "02:42:ac:11:00:03",
+                "IPv4Address": "172.17.0.3/16",
+                "IPv6Address": ""
+            },
+            "997af6789cb843694c0e0293a45e5e19083dcb3e45f4737fd8a82095d5b94248": {
+                "Name": "postgres1",
+                "EndpointID": "5765bd07e515c728715f640085fd8d13fce9025eb7b5cb5d8653c952efb3e1a9",
+                "MacAddress": "02:42:ac:11:00:02",
+                "IPv4Address": "172.17.0.2/16",
+                "IPv6Address": ""
+            }
+        },
+
