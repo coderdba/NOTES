@@ -17,39 +17,41 @@ CREATE A VAULT
 ============================================
 https://blog.chef.io/2016/01/21/chef-vault-what-is-it-and-what-can-it-do-for-you/
 
+--------------------------------------
 - Create a json file with the entries
-  File: E:\datbags\pwv_users.json  (could be in other directories also)
-  Content:  {"pwvu1":"pwvu1p"}
+--------------------------------------
+  File: E:\datbags\pwv_users_pwvu1.json  (could be in other directories also)
+  Content:  {"password":"pwvu1password"}  
   
+  And, create another for second item:
+  File: E:\datbags\pwv_users_pwvu2.json  (could be in other directories also)
+  Content:  {"password":"pwvu2password"}
+  
+  NOTE: 'password' in the json denotes what we are looking for - say, password of an item (see item in the create command)
+        It can be other things like key or name and such field-names
+  
+--------------------------------------
 - Create the vault 
+--------------------------------------
 NOTE: Replace u1,u2 with approrpriate users that can edit this vault
-      If the directory names give error, fix that or run from that directory itself with ./pwv_users.json
+      If the directory names give error, fix that or run from that directory itself with ./pwv_users_pwvu1.json
 
-Breakdown:
-$ knife vault create <vault name> <item name> -A <admin user list> -M client -S <node list> <json file>
-$ knife vault create pwv_users pwvu1item -A u1,u2 -M client -S 'name:*' -J E:\databags\pwv_users.json
-NOTE: 'item name' could be same as the first field in the json for simplicity
+Command Breakdown:  $ knife vault create <vault name> <item name> -A <admin user list> -M client -S <node list> <json file>
 
-- - - - - 
-- List the vaults: ('pwv_users' is the vault)
+Add one item: $ knife vault create pwv_users pwvu1 -A u1,u2 -M client -S 'name:*' -J E:\databags\pwv_users_pwvu1.json
+Add another : $ knife vault create pwv_users pwvu2 -A u1,u2 -M client -S 'name:*' -J E:\databags\pwv_users_pwvu2.json
+
+--------------------------------------
+- Verify
+--------------------------------------
 $ knife vault show pwv_users -M client
-testuser --> is the item
-$
+pwvu1
+pwvu2
 
-G:\.chef>knife vault show credentials testuser -M client
-id:       testuser
-testuser: testpassword
+$ knife vault show pwv_users pwvu1 -M client
+id:       pwvu1
+password: pwvu1password
 
-- List as data bag (with unencrypted content):
-G:\.chef>knife data bag show credentials testuser
-WARNING: Encrypted data bag detected, but no secret provided for decoding.  Displaying encrypted data.
-id:       testuser
-testuser:
-  cipher:         aes-256-cbc
-  encrypted_data: JlyZ61XP3iGVpYaneedeQkPsd/qmrsRIROhAQhanRxQ=
-
-  iv:             rRJi4mbcw2fvDdvmyvNTaw==
-
-  version:        1
-  
-- List the administrators and clients for the data bag:
+$ knife vault show pwv_users pwvu2 -M client
+id:       pwvu2
+password: pwvu2password
