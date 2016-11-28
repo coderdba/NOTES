@@ -1,0 +1,55 @@
+==============================================
+CHEF VAULT FULL EXAMPLE 1
+==============================================
+
+Create a vault
+-Create a vault
+-Assign uesrs that can administer it
+-Assign servers it can be deployed on
+
+Decrypt it in chef code in a node
+-Create a cookbook that uses the vault and writes the decrypted item into a file in /tmp
+-Assign the cookbook to a node
+-Watch the node chef-run and verify
+
+============================================
+CREATE A VAULT
+============================================
+https://blog.chef.io/2016/01/21/chef-vault-what-is-it-and-what-can-it-do-for-you/
+
+- Create a json file with the entries
+  File: E:\datbags\pwv_users.json  (could be in other directories also)
+  Content:  {"pwvu1":"pwvu1p"}
+  
+- Create the vault 
+NOTE: Replace u1,u2 with approrpriate users that can edit this vault
+      If the directory names give error, fix that or run from that directory itself with ./pwv_users.json
+
+Breakdown:
+$ knife vault create <vault name> <item name> -A <admin user list> -M client -S <node list> <json file>
+$ knife vault create pwv_users pwvu1item -A u1,u2 -M client -S 'name:*' -J E:\databags\pwv_users.json
+NOTE: 'item name' could be same as the first field in the json for simplicity
+
+- - - - - 
+- List the vaults: ('pwv_users' is the vault)
+$ knife vault show pwv_users -M client
+testuser --> is the item
+$
+
+G:\.chef>knife vault show credentials testuser -M client
+id:       testuser
+testuser: testpassword
+
+- List as data bag (with unencrypted content):
+G:\.chef>knife data bag show credentials testuser
+WARNING: Encrypted data bag detected, but no secret provided for decoding.  Displaying encrypted data.
+id:       testuser
+testuser:
+  cipher:         aes-256-cbc
+  encrypted_data: JlyZ61XP3iGVpYaneedeQkPsd/qmrsRIROhAQhanRxQ=
+
+  iv:             rRJi4mbcw2fvDdvmyvNTaw==
+
+  version:        1
+  
+- List the administrators and clients for the data bag:
