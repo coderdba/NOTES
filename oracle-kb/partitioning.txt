@@ -1,0 +1,97 @@
+=======================================
+ORACLE PARTITIONING
+=======================================
+https://oracle-base.com/articles/11g/partitioning-enhancements-11gr1
+
+==============================
+RANGE PARTITION ON CHAR COLUMN
+==============================
+CREATE TABLE datechar (
+  id           NUMBER,
+  datechar     CHAR(8)
+)
+PARTITION BY RANGE (datechar)
+(
+  PARTITION p1 VALUES less than ('20000201'),
+  PARTITION p2 VALUES less than ('20000301'),
+  PARTITION p3 VALUES less than ('20000401')
+);
+
+SQL> insert into datechar values (1, '20000131');
+
+1 row created.
+
+SQL> c/1/2
+  1* insert into datechar values (2, '20000131')
+SQL> c/0131/0229
+  1* insert into datechar values (2, '20000229')
+SQL> /
+
+1 row created.
+
+SQL> c/0229/0301
+  1* insert into datechar values (2, '20000301')
+SQL> /
+
+1 row created.
+
+SQL> insert into datechar values (2, '20000401');
+ERROR at line 1:
+ORA-14400: inserted partition key does not map to any partition
+
+SQL> select * from datechar partition (p1);
+
+        ID DATECHAR
+---------- --------
+         1 20000131
+
+SQL> c/p1/p2
+  1* select * from datechar partition (p2)
+SQL> /
+
+        ID DATECHAR
+---------- --------
+         2 20000229
+
+SQL> c/p2/p3
+  1* select * from datechar partition (p3)
+SQL> /
+
+        ID DATECHAR
+---------- --------
+         2 20000301
+
+SQL> select * from datechar where datechar > '20000201';
+
+        ID DATECHAR
+---------- --------
+         2 20000229
+         2 20000301
+
+=======================================
+PARTITION USING VIRTUAL COLUMN
+=======================================
+NOTE: The first_letter should be VARCHAR2(1) or CHAR(1).  But with that, got the following error (TBD - debug)
+  first_letter VARCHAR2(1)
+  *
+ERROR at line 4:
+ORA-12899: value too large for column "FIRST_LETTER" (actual: 1, maximum: 4)
+
+
+CREATE TABLE users (
+  id           NUMBER,
+  username     VARCHAR2(20),
+  first_letter VARCHAR2(20)   
+    GENERATED ALWAYS AS
+      (
+        UPPER(SUBSTR(TRIM(username), 1, 1))
+      ) VIRTUAL
+)
+PARTITION BY LIST (first_letter)
+(
+  PARTITION part_a_g VALUES ('A','B','C','D','E','F','G'),
+  PARTITION part_h_n VALUES ('H','I','J','K','L','M','N'),
+  PARTITION part_o_u VALUES ('O','P','Q','R','S','T','U'),
+  PARTITION part_v_z VALUES ('V','W','X','Y','Z')
+);
+
