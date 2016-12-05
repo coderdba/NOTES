@@ -1,0 +1,643 @@
+===================================================
+      HADOOP INSTALL CONFIG ON SINGLE NODE
+===================================================
+http://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-common/SingleCluster.html
+More detailed - https://docs.hortonworks.com/HDPDocuments/HDP2/HDP-2.4.2/bk_installing_manually_book/content/ch_getting_ready_chapter.html
+http://stackoverflow.com/questions/18862875/what-exactly-is-hadoop-namenode-formatting
+Note: Also, try Cloudera Virtualbox sandbox VM option
+
+Tutorials:
+http://www.tutorialspoint.com/hadoop/hadoop_enviornment_setup.htm
+http://had00b.blogspot.in/2013/08/setup-apache-hadoop-on-your-machine.html
+http://www.thegeekstuff.com/2012/02/hadoop-pseudo-distributed-installation/
+http://www.kunal.vagabond.in/Technical/hadoop.htm
+
+Configuration setting list:
+https://hadoop.apache.org/docs/r2.4.1/hadoop-project-dist/hadoop-hdfs/hdfs-default.xml
+http://www.cloudera.com/documentation/cdh/5-1-x/CDH5-High-Availability-Guide/cdh5hag_hdfs_ha_software_config.html
+
+Troubleshooting:
+http://solaimurugan.blogspot.in/2014/06/issues-solution-hdfs-high-availability.html
+USEFUL - FOR rpc setting error in start-dfs.sh - http://stackoverflow.com/questions/23719912/incorrect-configuration-namenode-address-dfs-namenode-rpc-address-is-not-config
+
+MACHINE DETAILS
+OS - Linux (Redhat/Oracle)
+Install User - can be any user - does not require to be root or other specially set up user
+
+DOWNLOAD LOCATION
+http://hadoop.apache.org/releases.html
+  http://www.apache.org/dyn/closer.cgi/hadoop/common/hadoop-2.7.2/hadoop-2.7.2.tar.gz
+    http://mirror.fibergrid.in/apache/hadoop/common/hadoop-2.7.2/hadoop-2.7.2.tar.gz
+    
+INSTALL FOLDER
+/disk1/opt/hadoop  (or /opt/hadoop)
+
+DOWNLOAD
+wget http://mirror.fibergrid.in/apache/hadoop/common/hadoop-2.7.2/hadoop-2.7.2.tar.gz
+
+UNZIP
+gunzip hadoop-2.7.2.tar.gz
+tar xvfp gunzip hadoop-2.7.2.tar.gz
+
+This installs Hadoop to folder /disk1/opt/hadoop/hadoop-2.7.2
+
+INSTALL SSH AND RSYNC
+http://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-common/SingleCluster.html
+
+-Install ssh
+If it does not exist, (which ssh), install it
+
+-Setup ssh to localhost
+  $ ssh-keygen -t dsa -P '' -f ~/.ssh/id_dsa
+  $ cat ~/.ssh/id_dsa.pub >> ~/.ssh/authorized_keys
+  $ chmod 0600 ~/.ssh/authorized_keys
+  
+-Install rsync
+# yum install rsync
+
+-- - - - - - - 
+REFERENCES FOR CONFIGURATION
+-- - - - - - -
+Refer: http://had00b.blogspot.in/2013/08/setup-apache-hadoop-on-your-machine.html
+http://www.kunal.vagabond.in/Technical/hadoop.htm
+
+Refer: http://www.tutorialspoint.com/hadoop/hadoop_enviornment_setup.htm
+# HADOOP RELATED BEGIN
+#export JAVA_HOME=/usr/java/latest
+#export JAVA_HOME=/disk1/opt/java/32/jdk1.8.0_91
+export JAVA_HOME=/disk1/opt/java/64/jdk1.8.0_91
+export HADOOP_HOME=/disk1/opt/hadoop/hadoop-2.7.2
+export HADOOP_CONF_DIR=$HADOOP_HOME/etc/hadoop
+export HADOOP_PREFIX=$HADOOP_HOME
+export HADOOP_INSTALL=$HADOOP_HOME
+export HADOOP_MAPRED_HOME=$HADOOP_HOME
+export HADOOP_COMMON_HOME=$HADOOP_HOME
+export HADOOP_HDFS_HOME=$HADOOP_HOME
+export YARN_HOME=$HADOOP_HOME
+export HADOOP_COMMON_LIB_NATIVE_DIR=$HADOOP_HOME/lib/native
+#export HADOOP_OPTS="$HADOOP_OPTS -XX:-PrintWarnings -Djava.net.preferIPv4Stack=true -Djava.library.path=/disk1/opt/hadoop/hadoop-2.7.2/lib/native"
+export HADOOP_OPTS="$HADOOP_OPTS  -Djava.net.preferIPv4Stack=true -Djava.library.path=/disk1/opt/hadoop/hadoop-2.7.2/lib/native"
+export PATH=$JAVA_HOME/bin:$PATH:$HADOOP_HOME/sbin:$HADOOP_HOME/bin
+# HADOOP RELATED END
+
+# MAVEN BEGIN
+M3_HOME=/disk1/opt/maven/apache-maven-3.3.9
+PATH=$M3_HOME/bin:$PATH
+# MAVEN END
+
+alias hh='cd $HADOOP_HOME'
+alias hc='cd $HADOOP_HOME/etc/hadoop'
+alias hnn='cd /disk1/data/hadoop/hdfs/namenode'
+alias hdn='cd /disk1/data/hadoop/hdfs/datanode'
+
+===================================
+CONFIGURE - PSEUDO-DISTRIBUTED MODE
+===================================
+ENVIRONMENT
+export JAVA_HOME=/usr/java/latest
+export HADOOP_HOME=/disk1/opt/hadoop/hadoop-2.7.2
+export HADOOP_INSTALL=$HADOOP_HOME
+export HADOOP_MAPRED_HOME=$HADOOP_HOME 
+export HADOOP_COMMON_HOME=$HADOOP_HOME 
+export HADOOP_HDFS_HOME=$HADOOP_HOME 
+export YARN_HOME=$HADOOP_HOME 
+export HADOOP_COMMON_LIB_NATIVE_DIR=$HADOOP_HOME/lib/native 
+export PATH=$PATH:$HADOOP_HOME/sbin:$HADOOP_HOME/bin 
+
+DIRECTORIES
+/disk1/data/hadoop/hdfs
+/disk1/data/hadoop/hdfs/namenode
+/disk1/data/hadoop/hdfs/datanode
+
+CONFIGURATION FILE DESCRIPTIONS
+Location -  HADOOP_HOME/etc/hadoop
+Files- (description TBD)
+capacity-scheduler.xml
+core-site.xml --> contains information such as the port number used for Hadoop instance, 
+                  memory allocated for the file system, memory limit for storing the data, and size of Read/Write buffers.
+hadoop-policy.xml
+hdfs-site.xml --> configure hdfs filesystems and replication count etc
+httpfs-site.xml
+kms-acls.xml
+kms-site.xml
+mapred-queues.xml.template
+mapred-site.xml.template --> to specify the framework (like yarn) for mapreduce
+ssl-client.xml.example
+ssl-server.xml.example
+yarn-site.xml --> to bring in yarn 
+hadoop-env.sh --> environment variables setup for hadoop
+
+HADOOP-ENV.SH
+NOTE: If using the standard jre --> export JAVA_HOME=/usr/java/latest
+
+# The java implementation to use.
+#export JAVA_HOME=${JAVA_HOME}
+export JAVA_HOME=/disk1/opt/java/64/jdk1.8.0_91
+
+#export HADOOP_CONF_DIR=${HADOOP_CONF_DIR:-"/etc/hadoop"}
+export HADOOP_CONF_DIR=/disk1/opt/hadoop/hadoop-2.7.2/etc/hadoop
+
+CORE-SITE.XML
+<configuration>
+   <property>
+      <name>fs.default.name </name>
+      <value> hdfs://localhost:9000 </value> 
+   </property>
+</configuration>
+
+HDFS-SITE.XML
+<configuration>
+   <property>
+      <name>dfs.replication</name>
+      <value>1</value>
+   </property>
+    
+   <property>
+      <name>dfs.name.dir</name>
+      <value>file:////disk1/data/hadoop/hdfs/namenode </value>
+   </property>
+    
+   <property>
+      <name>dfs.data.dir</name> 
+      <value>file:////disk1/data/hadoop/hdfs/datanode </value> 
+   </property>
+</configuration>
+
+YARN-SITE.XML
+<configuration>
+  <property>
+      <name>yarn.nodemanager.aux-services</name>
+      <value>mapreduce_shuffle</value> 
+   </property>
+</configuration>
+
+MAPRED-SITE.XML
+<configuration>
+   <property> 
+      <name>mapreduce.framework.name</name>
+      <value>yarn</value>
+   </property>
+</configuration>
+
+FORMAT NAMENODE
+
+$ hdfs namenode -format
+
+NOTE: This creates the following directory 'namenode' and subdirectory 'current' and files:
+(also, datanode directory is not created with this step)
+/disk1/data/hadoop/hdfs/namenode/current: ls -l
+total 16
+-rw-r--r--. 1 353 Jun 24 00:01 fsimage_0000000000000000000
+-rw-r--r--. 1  62 Jun 24 00:01 fsimage_0000000000000000000.md5
+-rw-r--r--. 1   2 Jun 24 00:01 seen_txid
+-rw-r--r--. 1 203 Jun 24 00:01 VERSION
+
+On-screen messages:
+
+16/06/24 00:01:02 INFO namenode.NameNode: STARTUP_MSG:
+/************************************************************
+STARTUP_MSG: Starting NameNode
+STARTUP_MSG:   host = myhost.company.com/110.63.166.133
+STARTUP_MSG:   args = [-format]
+STARTUP_MSG:   version = 2.7.2
+STARTUP_MSG:   classpath = /disk1/opt/hadoop/hadoop-2.7.2/etc/hadoop:/disk1/opt/hadoop/hadoop-2.7.2/share/hadoop/common/lib/xmlenc-0.52.jar:... ... ... ...
+16/06/24 00:01:02 INFO namenode.NameNode: registered UNIX signal handlers for [TERM, HUP, INT]
+16/06/24 00:01:02 INFO namenode.NameNode: createNameNode [-format]
+16/06/24 00:01:03 WARN util.NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+Formatting using clusterid: CID-9823b5b1-8701-475f-a6c5-414957175f3b
+16/06/24 00:01:03 INFO namenode.FSNamesystem: No KeyProvider found.
+16/06/24 00:01:03 INFO namenode.FSNamesystem: fsLock is fair:true
+16/06/24 00:01:03 INFO blockmanagement.DatanodeManager: dfs.block.invalidate.limit=1000
+16/06/24 00:01:03 INFO blockmanagement.DatanodeManager: dfs.namenode.datanode.registration.ip-hostname-check=true
+16/06/24 00:01:03 INFO blockmanagement.BlockManager: dfs.namenode.startup.delay.block.deletion.sec is set to 000:00:00:00.000
+16/06/24 00:01:03 INFO blockmanagement.BlockManager: The block deletion will start around 2016 Jun 24 00:01:03
+16/06/24 00:01:03 INFO util.GSet: Computing capacity for map BlocksMap
+16/06/24 00:01:03 INFO util.GSet: VM type       = 64-bit
+16/06/24 00:01:03 INFO util.GSet: 2.0% max memory 889 MB = 17.8 MB
+16/06/24 00:01:03 INFO util.GSet: capacity      = 2^21 = 2097152 entries
+16/06/24 00:01:03 INFO blockmanagement.BlockManager: dfs.block.access.token.enable=false
+16/06/24 00:01:03 INFO blockmanagement.BlockManager: defaultReplication         = 1
+16/06/24 00:01:03 INFO blockmanagement.BlockManager: maxReplication             = 512
+16/06/24 00:01:03 INFO blockmanagement.BlockManager: minReplication             = 1
+16/06/24 00:01:03 INFO blockmanagement.BlockManager: maxReplicationStreams      = 2
+16/06/24 00:01:03 INFO blockmanagement.BlockManager: replicationRecheckInterval = 3000
+16/06/24 00:01:03 INFO blockmanagement.BlockManager: encryptDataTransfer        = false
+16/06/24 00:01:03 INFO blockmanagement.BlockManager: maxNumBlocksToLog          = 1000
+16/06/24 00:01:03 INFO namenode.FSNamesystem: fsOwner             = <<username>> (auth:SIMPLE)
+16/06/24 00:01:03 INFO namenode.FSNamesystem: supergroup          = supergroup
+16/06/24 00:01:03 INFO namenode.FSNamesystem: isPermissionEnabled = true
+16/06/24 00:01:03 INFO namenode.FSNamesystem: HA Enabled: false
+16/06/24 00:01:03 INFO namenode.FSNamesystem: Append Enabled: true
+16/06/24 00:01:04 INFO util.GSet: Computing capacity for map INodeMap
+16/06/24 00:01:04 INFO util.GSet: VM type       = 64-bit
+16/06/24 00:01:04 INFO util.GSet: 1.0% max memory 889 MB = 8.9 MB
+16/06/24 00:01:04 INFO util.GSet: capacity      = 2^20 = 1048576 entries
+16/06/24 00:01:04 INFO namenode.FSDirectory: ACLs enabled? false
+16/06/24 00:01:04 INFO namenode.FSDirectory: XAttrs enabled? true
+16/06/24 00:01:04 INFO namenode.FSDirectory: Maximum size of an xattr: 16384
+16/06/24 00:01:04 INFO namenode.NameNode: Caching file names occuring more than 10 times
+16/06/24 00:01:04 INFO util.GSet: Computing capacity for map cachedBlocks
+16/06/24 00:01:04 INFO util.GSet: VM type       = 64-bit
+16/06/24 00:01:04 INFO util.GSet: 0.25% max memory 889 MB = 2.2 MB
+16/06/24 00:01:04 INFO util.GSet: capacity      = 2^18 = 262144 entries
+16/06/24 00:01:04 INFO namenode.FSNamesystem: dfs.namenode.safemode.threshold-pct = 0.9990000128746033
+16/06/24 00:01:04 INFO namenode.FSNamesystem: dfs.namenode.safemode.min.datanodes = 0
+16/06/24 00:01:04 INFO namenode.FSNamesystem: dfs.namenode.safemode.extension     = 30000
+16/06/24 00:01:04 INFO metrics.TopMetrics: NNTop conf: dfs.namenode.top.window.num.buckets = 10
+16/06/24 00:01:04 INFO metrics.TopMetrics: NNTop conf: dfs.namenode.top.num.users = 10
+16/06/24 00:01:04 INFO metrics.TopMetrics: NNTop conf: dfs.namenode.top.windows.minutes = 1,5,25
+16/06/24 00:01:04 INFO namenode.FSNamesystem: Retry cache on namenode is enabled
+16/06/24 00:01:04 INFO namenode.FSNamesystem: Retry cache will use 0.03 of total heap and retry cache entry expiry time is 600000 millis
+16/06/24 00:01:04 INFO util.GSet: Computing capacity for map NameNodeRetryCache
+16/06/24 00:01:04 INFO util.GSet: VM type       = 64-bit
+16/06/24 00:01:04 INFO util.GSet: 0.029999999329447746% max memory 889 MB = 273.1 KB
+16/06/24 00:01:04 INFO util.GSet: capacity      = 2^15 = 32768 entries
+16/06/24 00:01:04 INFO namenode.FSImage: Allocated new BlockPoolId: BP-167146619-<<IP Address>>-1466744464389
+16/06/24 00:01:04 INFO common.Storage: Storage directory /disk1/data/hadoop/hdfs/namenode has been successfully formatted.
+16/06/24 00:01:04 INFO namenode.NNStorageRetentionManager: Going to retain 1 images with txid >= 0
+16/06/24 00:01:04 INFO util.ExitUtil: Exiting with status 0
+16/06/24 00:01:04 INFO namenode.NameNode: SHUTDOWN_MSG:
+/************************************************************
+SHUTDOWN_MSG: Shutting down NameNode at <<hostname>>/<<IP Address>>
+************************************************************/
+
+START DFS
+$ start-dfs.sh
+(NOTE - see the native library warning at the end - this needs fix - see fixes after these messages below)
+
+16/06/24 00:18:53 WARN util.NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+Incorrect configuration: namenode address dfs.namenode.servicerpc-address or dfs.namenode.rpc-address is not configured.
+Starting namenodes on []
+localhost: *************************************************************************
+localhost: << banner messages due to ssh >>
+localhost: *************************************************************************
+localhost: starting namenode, logging to /disk1/opt/hadoop/hadoop-2.7.2/logs/hadoop-<username>-namenode-<hostname>.out
+localhost: *************************************************************************
+localhost: << banner messages due to ssh >>
+localhost: *************************************************************************
+localhost: starting datanode, logging to /disk1/opt/hadoop/hadoop-2.7.2/logs/hadoop-<username>-namenode-<hostname>.out
+Starting secondary namenodes [0.0.0.0]
+0.0.0.0: *************************************************************************
+localhost: << banner messages due to ssh >>
+0.0.0.0: *************************************************************************
+0.0.0.0: starting secondarynamenode, logging to /disk1/opt/hadoop/hadoop-2.7.2/logs/hadoop-<username>-namenode-<hostname>.out
+16/06/24 00:19:09 WARN util.NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+
+FIX FOR NATIVE LIBRARY WARNING
+http://stackoverflow.com/questions/19943766/hadoop-unable-to-load-native-hadoop-library-for-your-platform-warning
+
+- Hadoop native libraries are in HADOOP_HOME/lib/native (/disk1/opt/hadoop/hadoop-2.7.2/lib/native)
+- Check if the library is 64 bit:
+$ ldd libhadoop.so.1.0.0
+./libhadoop.so.1.0.0: /lib64/libc.so.6: version `GLIBC_2.14' not found (required by ./libhadoop.so.1.0.0)
+linux-vdso.so.1 =>  (0x00007fff43510000)
+libdl.so.2 => /lib64/libdl.so.2 (0x00007f9be553a000)
+libc.so.6 => /lib64/libc.so.6 (0x00007f9be51a5000)
+/lib64/ld-linux-x86-64.so.2 (0x00007f9be5966000)
+
+- Modify HADOOP_OPTS as follows in hadoop-env.sh (and also can include in .profile)
+export HADOOP_OPTS="-XX:-PrintWarnings -Djava.net.preferIPv4Stack=true -Djava.library.path=/disk1/opt/hadoop/hadoop-2.7.2/lib/native"
+
+- More errors:
+sed: -e expression #1, char 6: unknown option to `s'
+-c: Unknown cipher type 'cd'
+....
+....
+Using: ssh: Could not resolve hostname using: Name or service not known
+-: ssh: Could not resolve hostname -: Name or service not known
+INFO: ssh: Could not resolve hostname info: Name or service not known
+from: ssh: Could not resolve hostname from: Name or service not known
+
+===>> This may require  building hadoop from source as the o/s is 64 bit: http://cleverowl.uk/2015/06/30/compiling-2-7-0-on-64-bit-linux/
+
+========================================
+BUILD HADOOP FROM SOURCE FOR 64BIT LINUX
+========================================
+http://cleverowl.uk/2015/06/30/compiling-2-7-0-on-64-bit-linux/
+https://svn.apache.org/repos/asf/hadoop/common/trunk/BUILDING.txt
+-OR-
+https://svn.apache.org/repos/asf/hadoop/common/branches/MR-4327/BUILDING.txt
+
+DOWNLOAD 64BIT JDK
+http://download.oracle.com/otn-pub/java/jdk/8u91-b14/jdk-8u91-linux-x64.tar.gz
+wget --no-check-certificate --no-cookies --header "Cookie: oraclelicense=accept-securebackup-cookie" http://download.oracle.com/otn-pub/java/jdk/8u91-b14/jdk-8u91-linux-x64.tar.gz
+
+EXTRACT JDK
+Extract the downloaded file into /disk1/opt/java/64/
+say, /disk1/opt/java/64/jdk1.8.0_91
+Set environment in .profile and hadoop-env.sh:
+export JAVA_HOME=/disk1/opt/java/64/jdk1.8.0_91
+
+DOWNLOAD 32BIT JDK
+(also, keep a 32bit one also in the case that runs hadoop well without recompile)
+http://download.oracle.com/otn-pub/java/jdk/8u91-b14/jdk-8u91-linux-i586.tar.gz
+
+DOWNLOAD MAVEN
+http://redrockdigimark.com/apachemirror/maven/maven-3/3.3.9/binaries/apache-maven-3.3.9-bin.tar.gz
+Unzip into /disk1/opt/maven/apache-maven-3.3.9
+
+Set environment in .profile:
+M3_HOME=/disk1/opt/maven/apache-maven-3.3.9
+PATH=$M3_HOME/bin:$PATH
+
+INSTALL REQUIRED LINUX PACKAGES
+# yum install cmake
+# yum install openssl-devel
+# yum install zlib
+# yum install zlib-devel
+
+INSTALL BUILD TOOLS
+# yum groupinstall "Development Tools" "Development Libraries"
+
+INSTALL PROTOCOL BUFFERS
+NOTE: Do as root user
+
+Download
+# wget https://github.com/google/protobuf/releases/download/v2.5.0/protobuf-2.5.0.tar.gz
+
+Unzip to /disk1/opt/protocol-buffers/protobuf-2.5.0
+# tar -xzf protobuf-2.5.0.tar.gz
+      
+cd /disk1/opt/protocol-buffers/protobuf-2.5.0
+# ./configure
+# make
+# make install
+
+DOWNLOAD HADOOP SOURCE
+$ wget http://mirror.fibergrid.in/apache/hadoop/common/hadoop-2.7.2/hadoop-2.7.2-src.tar.gz
+$ tar zxf hadoop-2.7.2-src.tar.gz
+$ cd hadoop-2.7.2-src
+
+============================
+COMPILATION & ISSUES
+============================
+$ cd hadoop-2.7.2-src
+$ mvn package -Pdist,native -DskipTests -Dtar
+
+[INFO] Scanning for projects...
+Downloading: https://repo.maven.apache.org/maven2/org/apache/felix/maven-bundle-plugin/2.5.3/maven-bundle-plugin-2.5.3.pom
+[ERROR] [ERROR] Some problems were encountered while processing the POMs:
+[WARNING] 'build.plugins.plugin.version' for org.apache.maven.plugins:maven-javadoc-plugin is missing. @ line 395, column 19
+[ERROR] Unresolveable build extension: Plugin org.apache.felix:maven-bundle-plugin:2.5.3 or one of its dependencies could not be resolved:                              Failed to read artifact descriptor for org.apache.felix:maven-bundle-plugin:jar:2.5.3 @
+ @
+[ERROR] The build could not read 1 project -> [Help 1]
+[ERROR]
+[ERROR]   The project org.apache.hadoop:hadoop-main:2.7.2 (/disk1/stage/hadoop/hadoop-2.7.2-src/pom.xml) has 1 error
+[ERROR]     Unresolveable build extension: Plugin org.apache.felix:maven-bundle-plugin:2.5.3 or one of its dependencies could not be resolv                             ed: Failed to read artifact descriptor for org.apache.felix:maven-bundle-plugin:jar:2.5.3: Could not transfer artifact org.apache.felix:mav                             en-bundle-plugin:pom:2.5.3 from/to central (https://repo.maven.apache.org/maven2): sun.security.validator.ValidatorException: PKIX path bui                             lding failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target -> [H                             elp 2]
+[ERROR]
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR]
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/ProjectBuildingException
+[ERROR] [Help 2] http://cwiki.apache.org/confluence/display/MAVEN/PluginManagerException
+
+ISSUE - PKIX DOWLOAD ERROR
+PKIX download error fix - https://confluence.atlassian.com/kb/unable-to-connect-to-ssl-services-due-to-pkix-path-building-failed-779355358.html
+            https://confluence.atlassian.com/kb/connecting-to-ssl-services-802171215.html
+      https://maven.apache.org/guides/mini/guide-repository-ssl.html
+      
+      THIS WORKED - http://stackoverflow.com/questions/21252800/how-to-tell-maven-to-disregard-ssl-errors-and-trusting-all-certs
+
+-Download the certificate of maven repo site
+$ openssl s_client -connect repo.maven.apache.org:443  < /dev/null | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p'
+
+$ keytool -v -alias mavensrv -import -file maven-repo.crt -keystore maven-repo.crt.jks
+Enter keystore password: password
+Re-enter new password: password
+Owner: CN=repo.maven.apache.org, O="Sonatype, Inc", L=Fulton, ST=MD, C=US
+Issuer: EMAILADDRESS=stosupport@target.com, CN=Target Bluecoat SSL Intercept CA, OU=Bluecoat, O=Target Corporation, L=Minneapolis, ST=MN, C=US
+Serial number: 161090e900000000
+Valid from: Thu Jul 31 19:00:00 CDT 2014 until: Wed Aug 09 07:00:00 CDT 2017
+Certificate fingerprints:
+         MD5:  9B:2C:BC:C5:21:85:3F:B3:28:45:87:45:B9:5C:F4:2E
+         SHA1: 93:55:25:B7:C4:F9:80:50:B3:3E:2A:4E:AE:C6:95:F1:15:A3:68:36
+         SHA256: 3A:01:C2:0C:74:42:0B:9C:20:22:70:01:E4:D3:92:AC:8B:D5:CC:7F:89:C3:38:A5:C1:00:A4:73:45:BB:9C:F6
+         Signature algorithm name: SHA256withRSA
+         Version: 3
+
+Extensions:
+
+#1: ObjectId: 2.16.840.1.113730.1.13 Criticality=false
+0000: 16 81 92 54 61 72 67 65   74 20 72 65 73 65 72 76  ...Target reserv
+0010: 65 73 20 74 68 65 20 72   69 67 68 74 20 74 6F 20  es the right to
+0020: 6D 6F 6E 69 74 6F 72 2C   20 72 65 76 69 65 77 2C  monitor, review,
+0030: 20 72 65 74 72 69 65 76   65 2C 20 61 6E 64 20 72   retrieve, and r
+0040: 65 74 61 69 6E 20 49 6E   66 6F 72 6D 61 74 69 6F  etain Informatio
+0050: 6E 20 73 74 6F 72 65 64   20 6F 6E 20 6F 72 20 61  n stored on or a
+0060: 63 63 65 73 73 65 64 20   74 68 72 6F 75 67 68 20  ccessed through
+0070: 69 74 73 20 49 6E 66 6F   72 6D 61 74 69 6F 6E 20  its Information
+0080: 52 65 73 6F 75 72 63 65   73 20 61 74 20 61 6E 79  Resources at any
+0090: 20 74 69 6D 65                                      time
+
+
+#2: ObjectId: 2.5.29.35 Criticality=false
+AuthorityKeyIdentifier [
+KeyIdentifier [
+0000: 5B 6B C4 66 6E B5 62 3A   7F 2A 6D 94 25 03 FC 60  [k.fn.b:.*m.%..`
+0010: 8A 7D 72 4E                                        ..rN
+]
+]
+
+#3: ObjectId: 2.5.29.19 Criticality=false
+BasicConstraints:[
+  CA:false
+  PathLen: undefined
+]
+
+#4: ObjectId: 2.5.29.32 Criticality=false
+CertificatePolicies [
+  [CertificatePolicyId: [2.5.29.32.0]
+[PolicyQualifierInfo: [
+  qualifierID: 1.3.6.1.5.5.7.2.2
+  qualifier: 0000: 30 81 95 1A 81 92 54 61   72 67 65 74 20 72 65 73  0.....Target res
+0010: 65 72 76 65 73 20 74 68   65 20 72 69 67 68 74 20  erves the right
+0020: 74 6F 20 6D 6F 6E 69 74   6F 72 2C 20 72 65 76 69  to monitor, revi
+0030: 65 77 2C 20 72 65 74 72   69 65 76 65 2C 20 61 6E  ew, retrieve, an
+0040: 64 20 72 65 74 61 69 6E   20 49 6E 66 6F 72 6D 61  d retain Informa
+0050: 74 69 6F 6E 20 73 74 6F   72 65 64 20 6F 6E 20 6F  tion stored on o
+0060: 72 20 61 63 63 65 73 73   65 64 20 74 68 72 6F 75  r accessed throu
+0070: 67 68 20 69 74 73 20 49   6E 66 6F 72 6D 61 74 69  gh its Informati
+0080: 6F 6E 20 52 65 73 6F 75   72 63 65 73 20 61 74 20  on Resources at
+0090: 61 6E 79 20 74 69 6D 65                            any time
+
+]]  ]
+]
+
+#5: ObjectId: 2.5.29.15 Criticality=false
+KeyUsage [
+  DigitalSignature
+  Non_repudiation
+  Key_Encipherment
+]
+
+#6: ObjectId: 2.5.29.17 Criticality=false
+SubjectAlternativeName [
+  DNSName: repo.maven.apache.org
+]
+
+Trust this certificate? [no]:  yes
+Certificate was added to keystore
+[Storing maven-repo.crt.jks]
+$ ls -ltr
+   1919 Jun 26 04:38 maven-repo.crt
+   1440 Jun 26 04:41 maven-repo.crt.jks
+
+-Setup maven environment variable
+NOTE:  Main ones are --> 
+      -Dmaven.wagon.http.ssl.insecure=true -Dmaven.wagon.http.ssl.allowall=true -Dmaven.wagon.http.ssl.ignore.validity.dates=true
+
+export MAVEN_OPTS="-Xmx512m -Djavax.net.ssl.trustStore=/disk1/stage/hadoop/hadoop-2.7.2-src/maven-repo.crt.jks \
+                     -Djavax.net.ssl.trustStoreType=jks \
+                     -Djavax.net.ssl.trustStorePassword=password  \
+                     -Djavax.net.ssl.keyStore=/disk1/stage/hadoop/hadoop-2.7.2-src/maven-repo.crt \
+                     -Djavax.net.ssl.keyStoreType=jks \
+                     -Djavax.net.ssl.keyStorePassword=password \
+-Dmaven.wagon.http.ssl.insecure=true \
+-Dmaven.wagon.http.ssl.allowall=true \
+-Dmaven.wagon.http.ssl.ignore.validity.dates=true \
+-Djava.net.preferIPv4Stack=true"
+
+-Run the mvn command to build again:
+$ cd hadoop-2.7.2-src
+$ mvn package -Pdist,native -DskipTests -Dtar
+
+-It downloads many things into the following subdirectories under 'src' directory:
+hadoop-project
+hadoop-assemblies
+hadoop-project-dist
+hadoop-maven-plugins
+
+-Upon completion:
+/disk1/stage/hadoop/hadoop-2.7.2-src/hadoop-dist/target: ls -l
+total 572716
+drwxr-xr-x. 2        4096 Jun 26 05:36 antrun
+-rw-r--r--. 1        1876 Jun 26 05:36 dist-layout-stitching.sh
+-rw-r--r--. 1         649 Jun 26 05:36 dist-tar-stitching.sh
+drwxr-xr-x. 9        4096 Jun 26 05:36 hadoop-2.7.2
+-rw-r--r--. 1   195180537 Jun 26 05:36 hadoop-2.7.2.tar.gz
+-rw-r--r--. 1        2826 Jun 26 05:36 hadoop-dist-2.7.2.jar
+-rw-r--r--. 1   391243102 Jun 26 05:37 hadoop-dist-2.7.2-javadoc.jar
+drwxr-xr-x. 2        4096 Jun 26 05:36 javadoc-bundle-options
+drwxr-xr-x. 2        4096 Jun 26 05:36 maven-archiver
+drwxr-xr-x. 2        4096 Jun 26 05:36 test-dir
+
+
+Last few messages on screen:
+main:
+     [exec] $ tar cf hadoop-2.7.2.tar hadoop-2.7.2
+     [exec] $ gzip -f hadoop-2.7.2.tar
+     [exec]
+     [exec] Hadoop dist tar available at: /disk1/stage/hadoop/hadoop-2.7.2-src/hadoop-dist/target/hadoop-2.7.2.tar.gz
+     [exec]
+[INFO] Executed tasks
+[INFO]
+[INFO] --- maven-javadoc-plugin:2.8.1:jar (module-javadocs) @ hadoop-dist ---
+[INFO] Building jar: /disk1/stage/hadoop/hadoop-2.7.2-src/hadoop-dist/target/hadoop-dist-2.7.2-javadoc.jar
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary:
+[INFO]
+[INFO] Apache Hadoop Main ................................. SUCCESS [ 49.673 s]
+[INFO] Apache Hadoop Project POM .......................... SUCCESS [ 21.800 s]
+[INFO] Apache Hadoop Annotations .......................... SUCCESS [ 17.200 s]
+[INFO] Apache Hadoop Assemblies ........................... SUCCESS [  0.100 s]
+[INFO] Apache Hadoop Project Dist POM ..................... SUCCESS [  9.655 s]
+[INFO] Apache Hadoop Maven Plugins ........................ SUCCESS [ 15.883 s]
+[INFO] Apache Hadoop MiniKDC .............................. SUCCESS [01:01 min]
+[INFO] Apache Hadoop Auth ................................. SUCCESS [ 31.968 s]
+[INFO] Apache Hadoop Auth Examples ........................ SUCCESS [  6.994 s]
+[INFO] Apache Hadoop Common ............................... SUCCESS [02:11 min]
+[INFO] Apache Hadoop NFS .................................. SUCCESS [  4.212 s]
+[INFO] Apache Hadoop KMS .................................. SUCCESS [ 53.515 s]
+[INFO] Apache Hadoop Common Project ....................... SUCCESS [  0.038 s]
+[INFO] Apache Hadoop HDFS ................................. SUCCESS [02:11 min]
+[INFO] Apache Hadoop HttpFS ............................... SUCCESS [ 23.570 s]
+[INFO] Apache Hadoop HDFS BookKeeper Journal .............. SUCCESS [ 27.848 s]
+[INFO] Apache Hadoop HDFS-NFS ............................. SUCCESS [  3.186 s]
+[INFO] Apache Hadoop HDFS Project ......................... SUCCESS [  0.047 s]
+[INFO] hadoop-yarn ........................................ SUCCESS [  0.023 s]
+[INFO] hadoop-yarn-api .................................... SUCCESS [ 35.525 s]
+[INFO] hadoop-yarn-common ................................. SUCCESS [ 44.449 s]
+[INFO] hadoop-yarn-server ................................. SUCCESS [  0.057 s]
+[INFO] hadoop-yarn-server-common .......................... SUCCESS [  8.602 s]
+[INFO] hadoop-yarn-server-nodemanager ..................... SUCCESS [ 14.752 s]
+[INFO] hadoop-yarn-server-web-proxy ....................... SUCCESS [  2.587 s]
+[INFO] hadoop-yarn-server-applicationhistoryservice ....... SUCCESS [  5.718 s]
+[INFO] hadoop-yarn-server-resourcemanager ................. SUCCESS [ 18.874 s]
+[INFO] hadoop-yarn-server-tests ........................... SUCCESS [  3.738 s]
+[INFO] hadoop-yarn-client ................................. SUCCESS [  4.824 s]
+[INFO] hadoop-yarn-server-sharedcachemanager .............. SUCCESS [  2.544 s]
+[INFO] hadoop-yarn-applications ........................... SUCCESS [  0.019 s]
+[INFO] hadoop-yarn-applications-distributedshell .......... SUCCESS [  2.055 s]
+[INFO] hadoop-yarn-applications-unmanaged-am-launcher ..... SUCCESS [  1.526 s]
+[INFO] hadoop-yarn-site ................................... SUCCESS [  0.039 s]
+[INFO] hadoop-yarn-registry ............................... SUCCESS [  4.167 s]
+[INFO] hadoop-yarn-project ................................ SUCCESS [  4.057 s]
+[INFO] hadoop-mapreduce-client ............................ SUCCESS [  0.030 s]
+[INFO] hadoop-mapreduce-client-core ....................... SUCCESS [ 17.782 s]
+[INFO] hadoop-mapreduce-client-common ..................... SUCCESS [ 14.579 s]
+[INFO] hadoop-mapreduce-client-shuffle .................... SUCCESS [  2.935 s]
+[INFO] hadoop-mapreduce-client-app ........................ SUCCESS [  7.600 s]
+[INFO] hadoop-mapreduce-client-hs ......................... SUCCESS [  4.345 s]
+[INFO] hadoop-mapreduce-client-jobclient .................. SUCCESS [ 10.275 s]
+[INFO] hadoop-mapreduce-client-hs-plugins ................. SUCCESS [  1.389 s]
+[INFO] Apache Hadoop MapReduce Examples ................... SUCCESS [  4.446 s]
+[INFO] hadoop-mapreduce ................................... SUCCESS [  2.699 s]
+[INFO] Apache Hadoop MapReduce Streaming .................. SUCCESS [  5.043 s]
+[INFO] Apache Hadoop Distributed Copy ..................... SUCCESS [ 52.824 s]
+[INFO] Apache Hadoop Archives ............................. SUCCESS [  1.873 s]
+[INFO] Apache Hadoop Rumen ................................ SUCCESS [  4.578 s]
+[INFO] Apache Hadoop Gridmix .............................. SUCCESS [  3.679 s]
+[INFO] Apache Hadoop Data Join ............................ SUCCESS [  2.092 s]
+[INFO] Apache Hadoop Ant Tasks ............................ SUCCESS [  1.682 s]
+[INFO] Apache Hadoop Extras ............................... SUCCESS [  2.486 s]
+[INFO] Apache Hadoop Pipes ................................ SUCCESS [  6.999 s]
+[INFO] Apache Hadoop OpenStack support .................... SUCCESS [  3.661 s]
+[INFO] Apache Hadoop Amazon Web Services support .......... SUCCESS [ 39.495 s]
+[INFO] Apache Hadoop Azure support ........................ SUCCESS [  8.031 s]
+[INFO] Apache Hadoop Client ............................... SUCCESS [  7.854 s]
+[INFO] Apache Hadoop Mini-Cluster ......................... SUCCESS [  0.121 s]
+[INFO] Apache Hadoop Scheduler Load Simulator ............. SUCCESS [  3.668 s]
+[INFO] Apache Hadoop Tools Dist ........................... SUCCESS [  8.597 s]
+[INFO] Apache Hadoop Tools ................................ SUCCESS [  0.027 s]
+[INFO] Apache Hadoop Distribution ......................... SUCCESS [ 35.264 s]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time: 17:06 min
+[INFO] Finished at: 2016-06-26T05:37:18-05:00
+[INFO] Final Memory: 172M/419M
+[INFO] ------------------------------------------------------------------------
+
+- Format namenode again
+
+- start-dfs.sh
+
+NOTE: Now the earlier errors of library is not seen.  
+ERROR - However, new error on address dfs.namenode.servicerpc-address or dfs-namenode.rpc-address shows up
+FIX - Ensure no spaces in the property and value in core-site.xml and other xml's (http://stackoverflow.com/questions/23719912/incorrect-configuration-namenode-address-dfs-namenode-rpc-address-is-not-config)
+
+Incorrect configuration: namenode address dfs.namenode.servicerpc-address or dfs.namenode.rpc-address is not configured.
+Starting namenodes on []
+localhost: *************************************************************************
+localhost: *************************************************************************
+localhost: starting namenode, logging to /disk1/opt/hadoop/hadoop-2.7.2/logs/hadoop-osusername-namenode-hostname.out
+localhost: *************************************************************************
+
+localhost: starting datanode, logging to /disk1/opt/hadoop/hadoop-2.7.2/logs/hadoop-osusername-datanode-hostname.out
+Starting secondary namenodes [0.0.0.0]
+
+0.0.0.0: starting secondarynamenode, logging to /disk1/opt/hadoop/hadoop-2.7.2/logs/hadoop-osusername-secondarynamenode-hostname.out
+
+- Check if all daemons are running
+http://stackoverflow.com/questions/18294207/how-to-check-if-my-hadoop-is-running-in-pseudo-distributed-mode
+Job tracker, hdfs and task tracker should be running
+$ jps
+434 Jps
+65234 NameNode
+310 SecondaryNameNode
+65373 DataNode
+
+- Connect using browser
+http://myhost:50070
+hdfs://myhost:9000
