@@ -1,0 +1,469 @@
+===========================================
+      VIRTUALBOX API JAVA PROJECT
+===========================================
+https://www.virtualbox.org/svn/vbox/trunk/src/VBox/Main/webservice/samples/java/axis/clienttest.java
+http://blog.cochard.me/2011/08/creating-and-starting-virtualbox.html (C++)
+http://stackoverflow.com/questions/19717235/create-a-virtual-machine-programatically-using-virtual-box-sdk (C++)
+https://www.virtualbox.org/manual/ch11.html
+https://blogs.oracle.com/nike/entry/python_api_to_the_virtualbox  (Python)
+https://forums.virtualbox.org/viewtopic.php?f=34&t=65880 (IMachine class Java)
+
+====================================
+MAVEN SETUP
+-----------
+Uses Eclipse and Maven project in Eclipse
+
+Archetype - quickstart
+
+GroupId - gm.vbox
+ArtifactId - gm-vbox-java
+Package - gm.vbox.java
+
+Install virtualbox SDK web-service jar - in Eclipse with Maven plugin that it has
+Virtualbox SDK download and install jar in maven/eclipse
+  In Eclipse: 
+  Run --> Run Configurations --> install:install-file -Dfile=C:\DOWNLOADS\Virtualbox-SDK\VirtualBoxSDK-5.0.20-106931\sdk\bindings\webservice\java\jax-ws\vboxjws.jar  -DgroupId=org.virtualbox -DartifactId=vboxjws -Dversion=5.0.20 -Dpackaging=jar
+  
+Then, pom.xml:
+  <dependency>
+    	<groupId>org.virtualbox</groupId>
+    	<artifactId>vboxjws</artifactId>
+    	<version>5.0.20</version>
+	</dependency>
+
+(older version -available in Maven site) POM.XML Dependencies:  
+	<!-- http://mvnrepository.com/artifact/org.virtualbox/vboxjws -->
+	<dependency>
+    	<groupId>org.virtualbox</groupId>
+    	<artifactId>vboxjws</artifactId>
+    	<version>4.2.8</version>
+	</dependency>
+	
+==================================
+Classes to use
+==================================
+IVirtualbox
+IMachine
+ISession
+IGuest
+
+(old version) https://www.virtualbox.org/sdkref/interface_i_virtual_box.html#details
+https://jax-ws-commons.java.net/nonav/virtualbox/apidocs/com/sun/xml/ws/commons/virtualbox/IVirtualBox.html
+
+	void IVirtualBox::createMachine	(	in wstring 	settingsFile,
+	in wstring 	name,
+	in wstring[] 	groups,
+	in wstring 	osTypeId,
+	in wstring 	flags,
+	[retval] out IMachine 	machine 
+	)	
+
+===============================
+CONFIGURE AND START WEB SERVICE
+===============================
+https://forums.virtualbox.org/viewtopic.php?f=2&p=69481 --> How to start Virtualbox web service
+https://sourceforge.net/p/phpvirtualbox/wiki/Home/
+Windows executable - C:\Program Files\Oracle\VirtualBox\VBoxWebSrv.exe
+
+-----------------
+Start the service
+-----------------
+Open firewall if necessary for the port 18083 which is used by Vbox web serivce.
+
+WINDOWS:
+"%ProgramFiles%\Oracle\VirtualBox\vboxwebsrv.exe" -H 127.0.0.1 >nul
+OR
+"%ProgramFiles%\Oracle\VirtualBox\vboxwebsrv.exe" -H myHostname >nul
+
+NOTE: The ">nul" is needed so that vboxwebsrv does not send its output to the command prompt window. 
+Without it, performance will be severely degraded.
+
+(To make it a service when Windows starts: https://sourceforge.net/p/phpvirtualbox/wiki/Windows%207%20-%202008%20%2B%20Service/)
+
+LINUX:
+nohup /usr/lib/virtualbox/vboxwebsrv -H myHostname &
+
+========================================
+FILE LOCATIONS
+========================================
+https://www.virtualbox.org/manual/ch10.html
+
+WINDOWS
+C:/users/username/.Virtualbox --> global settings for virtualbox, log files
+C:/users/username/VirtualBox Vms --> subfolders contain individual VM definitions and default virtual disk locations
+
+LINUX
+/root/.config/VirtualBox --> global settings, log files
+$HOME/VirtualBox Vms (ex. /root/VirtualBox VMs) --> subfolders contain individual VM definitions and default virtual disk locations
+
+========================================
+BASIC PROGRAM - TO START AN EXISTING VM
+========================================
+NOTE - this is derived from  the example in the SDK programming guide and reference
+NOTE - The code in the reference is for an older version of SDk (4.1).  
+		'startvm' method mentioned in the reference is not in version 5 sdk.
+		Latest code for the same action in the below program.
+
+------
+CODE
+------
+package gm.vbox.java;
+
+import org.virtualbox_5_0.*;
+import org.virtualbox_5_0.jaxws.*;
+
+public class Example1 {
+
+	public static void main(String[] args) {
+
+		VirtualBoxManager mgr = VirtualBoxManager.createInstance(null);
+		String url = "http://localhost:18083";
+		
+		//boolean ws = false; // or true, if we need the SOAP version
+		//if (ws)
+			url="http://localhost:18083";
+			String user = "hostOsUser";
+			String passwd = "hostOsPassword";
+			mgr.connect(url, user, passwd);
+			IVirtualBox vbox = mgr.getVBox();
+			System.out.println("VirtualBox version: " + vbox.getVersion() + "\n");
+			
+			// get first VM name
+			IMachine machine = vbox.getMachines().get(0);
+			String machineName = vbox.getMachines().get(0).getName();
+			System.out.println("\nAttempting to start VM : " + machineName );
+			
+			// start it
+    		//mgr.startVm(machineName, null, 7000);
+			ISession session = mgr.getSessionObject();
+			
+			machine.launchVMProcess(session, machineName, null);
+    		
+			//if (ws) 
+		    mgr.disconnect();
+			mgr.cleanup();
+			
+	}
+}
+
+===================================
+PROGRAM TO CREATE A VM (work in progress)
+===================================
+
+---------------------
+CredentialStore.java
+---------------------
+package gm.vbox.java;
+
+public final class CredentialStore {
+	
+	public static final String vBoxUsername="myusername";
+	public static final String vBoxPassword="mypassword";
+	public static final String vBoxURL="http://localhost:18083";
+
+}
+
+---------------------
+CreateVboxVm1.java
+---------------------
+
+package gm.vbox.java;
+
+import static gm.vbox.java.CredentialStore.vBoxURL;
+import static gm.vbox.java.CredentialStore.vBoxUsername;
+import static gm.vbox.java.CredentialStore.vBoxPassword;
+
+import org.virtualbox_5_0.*;
+import org.virtualbox_5_0.StorageBus;
+import org.virtualbox_5_0.jaxws.*;
+
+
+public class CreateVboxVm1 {
+
+	private static final String machineName = "machinejava1";
+	private static final String group = null;
+	private static final String createFlags = null;
+	private static final String baseFolder = null;
+	private static final String osTypeId = "Oracle_64";
+	private static final Long slot = 0L;
+	
+
+	public static void main(String[] args) {
+		
+		// Get the IVirtualBox - that is actually, connection to your Virtualbox software
+		// NOTE:  Just doing vbox = new IVirtualBox(null, null) does not work
+		VirtualBoxManager mgr = VirtualBoxManager.createInstance(null);
+		mgr.connect(vBoxURL, vBoxUsername, vBoxPassword);
+		IVirtualBox vbox = mgr.getVBox();
+		
+		// Create the settings file
+		String settingsFile = vbox.composeMachineFilename(machineName, group, createFlags, baseFolder);
+		System.out.println ("Settings file name = " + settingsFile);
+		
+		// Create the file (aka machine - but a machine is not created immediately - only file gets created)
+		// NOTE - vboxmanage list ostypes will give the list of os type id's
+		//System.out.println ("OS Type 0 = " + vbox.getGuestOSTypes().get(0).getId());
+		//System.out.println ("OS Type 0 = " + vbox.getGuestOSTypes().get(0).getDescription());
+
+		// Set os type
+		IMachine myMachine = vbox.createMachine(settingsFile, machineName, null, osTypeId, "");
+
+		// Network adapter
+		myMachine.getNetworkAdapter(slot).setNATNetwork("NAT1");
+		
+		// Storage bus	
+		myMachine.addStorageController("SATA", StorageBus.SATA).setPortCount(1L);
+		//myMachine.attachDevice(name, controllerPort, device, type, medium);
+		
+		// Save the file
+		System.out.println ("Saving the settings file");
+		myMachine.saveSettings();
+
+	}
+
+}
+
+-------------------------
+Output: machinejava1.vbox
+-------------------------
+
+<?xml version="1.0"?>
+<!--
+** DO NOT EDIT THIS FILE.
+** If you make changes to this file while any VirtualBox related application
+** is running, your changes will be overwritten later, without taking effect.
+** Use VBoxManage or the VirtualBox Manager GUI to make changes.
+-->
+<VirtualBox xmlns="http://www.innotek.de/VirtualBox-settings" version="1.14-windows">
+  <Machine uuid="{4c2341f3-4223-42cb-bbbd-751af510e045}" name="machinejava1" OSType="Oracle_64" snapshotFolder="Snapshots" lastStateChange="2016-06-17T09:56:04Z">
+    <MediaRegistry>
+      <HardDisks/>
+      <DVDImages/>
+      <FloppyImages/>
+    </MediaRegistry>
+    <Hardware version="2">
+      <CPU count="1" hotplug="false">
+        <HardwareVirtEx enabled="true"/>
+        <HardwareVirtExNestedPaging enabled="true"/>
+        <HardwareVirtExVPID enabled="true"/>
+        <HardwareVirtExUX enabled="true"/>
+        <PAE enabled="true"/>
+        <LongMode enabled="true"/>
+        <HardwareVirtExLargePages enabled="true"/>
+        <HardwareVirtForce enabled="false"/>
+      </CPU>
+      <Memory RAMSize="128" PageFusion="false"/>
+      <HID Pointing="PS2Mouse" Keyboard="PS2Keyboard"/>
+      <HPET enabled="false"/>
+      <Chipset type="PIIX3"/>
+      <Boot>
+        <Order position="1" device="Floppy"/>
+        <Order position="2" device="DVD"/>
+        <Order position="3" device="HardDisk"/>
+        <Order position="4" device="None"/>
+      </Boot>
+      <Display VRAMSize="8" monitorCount="1" accelerate3D="false" accelerate2DVideo="false"/>
+      <VideoCapture enabled="false" screens="18446744073709551615" horzRes="1024" vertRes="768" rate="512" fps="25"/>
+      <RemoteDisplay enabled="false" authType="Null"/>
+      <BIOS>
+        <ACPI enabled="true"/>
+        <IOAPIC enabled="true"/>
+        <Logo fadeIn="true" fadeOut="true" displayTime="0"/>
+        <BootMenu mode="MessageAndMenu"/>
+        <TimeOffset value="0"/>
+        <PXEDebug enabled="false"/>
+      </BIOS>
+      <USB>
+        <Controllers/>
+        <DeviceFilters/>
+      </USB>
+      <Network>
+        <Adapter slot="0" enabled="true" MACAddress="080027CEBEB0" cable="true" speed="0" type="82540EM">
+          <DisabledModes>
+            <NATNetwork name="NAT1"/>
+          </DisabledModes>
+          <NAT>
+            <DNS pass-domain="true" use-proxy="false" use-host-resolver="false"/>
+            <Alias logging="false" proxy-only="false" use-same-ports="false"/>
+          </NAT>
+        </Adapter>
+        <Adapter slot="1" enabled="false" MACAddress="0800276A7A0A" cable="true" speed="0" type="82540EM">
+          <DisabledModes>
+            <NAT>
+              <DNS pass-domain="true" use-proxy="false" use-host-resolver="false"/>
+              <Alias logging="false" proxy-only="false" use-same-ports="false"/>
+            </NAT>
+          </DisabledModes>
+        </Adapter>
+        <Adapter slot="2" enabled="false" MACAddress="080027750557" cable="true" speed="0" type="82540EM">
+          <DisabledModes>
+            <NAT>
+              <DNS pass-domain="true" use-proxy="false" use-host-resolver="false"/>
+              <Alias logging="false" proxy-only="false" use-same-ports="false"/>
+            </NAT>
+          </DisabledModes>
+        </Adapter>
+        <Adapter slot="3" enabled="false" MACAddress="080027D6ED46" cable="true" speed="0" type="82540EM">
+          <DisabledModes>
+            <NAT>
+              <DNS pass-domain="true" use-proxy="false" use-host-resolver="false"/>
+              <Alias logging="false" proxy-only="false" use-same-ports="false"/>
+            </NAT>
+          </DisabledModes>
+        </Adapter>
+        <Adapter slot="4" enabled="false" MACAddress="080027E1B7B2" cable="true" speed="0" type="82540EM">
+          <DisabledModes>
+            <NAT>
+              <DNS pass-domain="true" use-proxy="false" use-host-resolver="false"/>
+              <Alias logging="false" proxy-only="false" use-same-ports="false"/>
+            </NAT>
+          </DisabledModes>
+        </Adapter>
+        <Adapter slot="5" enabled="false" MACAddress="080027110B08" cable="true" speed="0" type="82540EM">
+          <DisabledModes>
+            <NAT>
+              <DNS pass-domain="true" use-proxy="false" use-host-resolver="false"/>
+              <Alias logging="false" proxy-only="false" use-same-ports="false"/>
+            </NAT>
+          </DisabledModes>
+        </Adapter>
+        <Adapter slot="6" enabled="false" MACAddress="0800270C1C56" cable="true" speed="0" type="82540EM">
+          <DisabledModes>
+            <NAT>
+              <DNS pass-domain="true" use-proxy="false" use-host-resolver="false"/>
+              <Alias logging="false" proxy-only="false" use-same-ports="false"/>
+            </NAT>
+          </DisabledModes>
+        </Adapter>
+        <Adapter slot="7" enabled="false" MACAddress="080027106AFC" cable="true" speed="0" type="82540EM">
+          <DisabledModes>
+            <NAT>
+              <DNS pass-domain="true" use-proxy="false" use-host-resolver="false"/>
+              <Alias logging="false" proxy-only="false" use-same-ports="false"/>
+            </NAT>
+          </DisabledModes>
+        </Adapter>
+      </Network>
+      <UART>
+        <Port slot="0" enabled="false" IOBase="0x3f8" IRQ="4" hostMode="Disconnected"/>
+        <Port slot="1" enabled="false" IOBase="0x2f8" IRQ="3" hostMode="Disconnected"/>
+      </UART>
+      <LPT>
+        <Port slot="0" enabled="false" IOBase="0x378" IRQ="7"/>
+        <Port slot="1" enabled="false" IOBase="0x378" IRQ="7"/>
+      </LPT>
+      <AudioAdapter controller="AC97" driver="DirectSound" enabled="false"/>
+      <RTC localOrUTC="local"/>
+      <SharedFolders/>
+      <Clipboard mode="Disabled"/>
+      <DragAndDrop mode="Disabled"/>
+      <IO>
+        <IoCache enabled="true" size="5"/>
+        <BandwidthGroups/>
+      </IO>
+      <HostPci>
+        <Devices/>
+      </HostPci>
+      <EmulatedUSB>
+        <CardReader enabled="false"/>
+      </EmulatedUSB>
+      <Guest memoryBalloonSize="0"/>
+      <GuestProperties/>
+    </Hardware>
+    <StorageControllers>
+      <StorageController name="SATA" type="AHCI" PortCount="1" useHostIOCache="false" Bootable="true" IDE0MasterEmulationPort="0" IDE0SlaveEmulationPort="1" IDE1MasterEmulationPort="2" IDE1SlaveEmulationPort="3"/>
+    </StorageControllers>
+  </Machine>
+</VirtualBox>
+
+===============================
+work in progress
+===============================
+package gm.vbox.java;
+
+import static gm.vbox.java.CredentialStore.vBoxURL;
+import static gm.vbox.java.CredentialStore.vBoxUsername;
+import static gm.vbox.java.CredentialStore.vBoxPassword;
+
+import org.virtualbox_5_0.*;
+import org.virtualbox_5_0.jaxws.*;
+
+import org.virtualbox_5_0.StorageBus;
+import org.virtualbox_5_0.DeviceType;
+import org.virtualbox_5_0.AccessMode;
+import org.virtualbox_5_0.MediumType;
+import org.virtualbox_5_0.MediumVariant;
+import org.virtualbox_5_0.LockType;;
+
+public class CreateVboxVm1 {
+
+	private static final String machineName = "machinejava1";
+	private static final String group = null;
+	private static final String createFlags = null;
+	private static final String baseFolder = null;
+	private static final String osTypeId = "Oracle_64";
+	private static final Long slot = 0L;
+
+	public static void main(String[] args) {
+		
+		String machineFolder = null;
+		
+		// Get the IVirtualBox - that is actually, connection to your Virtualbox software
+		// NOTE:  Just doing vbox = new IVirtualBox(null, null) does not work
+		VirtualBoxManager mgr = VirtualBoxManager.createInstance(null);
+		mgr.connect(vBoxURL, vBoxUsername, vBoxPassword);
+		IVirtualBox vbox = mgr.getVBox();
+		
+		// Create the settings file
+		String settingsFile = vbox.composeMachineFilename(machineName, group, createFlags, baseFolder);
+		System.out.println ("Settings file name = " + settingsFile);
+
+		if (null != settingsFile && settingsFile.length() > 0 )
+		{
+		    int endIndex = settingsFile.lastIndexOf("/");
+		    if (endIndex != -1)  
+		    {
+		       machineFolder = settingsFile.substring(0, endIndex); // not forgot to put check if(endIndex != -1)
+		    }
+		}  
+		System.out.println ("Machine folder = " + machineFolder);
+		
+		// Create the file (aka machine - but a machine is not created immediately - only file gets created)
+		// NOTE - vboxmanage list ostypes will give the list of os type id's instead of getGuesOSTypes method
+		//System.out.println ("OS Type 0 = " + vbox.getGuestOSTypes().get(0).getId());
+		//System.out.println ("OS Type 0 = " + vbox.getGuestOSTypes().get(0).getDescription());
+
+		// Set os type
+		IMachine myMachine = vbox.createMachine(settingsFile, machineName, null, osTypeId, "");
+		//vbox.registerMachine(myMachine);
+		
+		// Network adapter
+		myMachine.getNetworkAdapter(slot).setNATNetwork("NAT1");
+		
+		// Storage bus	
+		myMachine.addStorageController("SATA1", StorageBus.SATA).setPortCount(2L);
+		
+		// Save the file
+		System.out.println ("Saving the settings file");
+		myMachine.saveSettings();
+		
+		vbox.registerMachine(myMachine);
+		
+		// Get a mutable/writeable machine
+		ISession session = mgr.getSessionObject();
+		myMachine.lockMachine(session, LockType.Write);
+		IMachine myMachineMutable = session.getMachine();
+		
+		// Hard drive
+		int controllerPort = 0;
+		int deviceSlot = 0;
+		//IMedium hardDisk = vbox.openMedium("C:\\vboxapivms\\machinejava1\\mainDisk.vmdk", DeviceType.HardDisk, AccessMode.ReadWrite, true);
+		//IMedium hardDisk = vbox.createMedium("VMDK", "C:\\vboxapivms\\machinejava1\\mainDisk.vmdk", AccessMode.ReadWrite, DeviceType.HardDisk);
+		IMedium hardDisk = vbox.createMedium("VMDK", machineFolder + "/mainDisk.vmdk", AccessMode.ReadWrite, DeviceType.HardDisk);
+
+		myMachineMutable.attachDevice("SATA1", controllerPort, deviceSlot, DeviceType.HardDisk, hardDisk);
+
+		myMachineMutable.saveSettings();
+	}
+
+}
