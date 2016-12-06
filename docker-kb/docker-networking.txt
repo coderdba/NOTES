@@ -10,11 +10,14 @@ How to segment containers networks
 How to set firewall rules in containers
 
 https://docs.docker.com/engine/tutorials/networkingcontainers/
+https://docs.docker.com/engine/userguide/networking/
 
 ==========================
 BASICS
 ==========================
+--------------------
 - Running containers
+--------------------
 NOTE: One of them has port forwarded
 
 $ docker ps
@@ -22,7 +25,9 @@ CONTAINER ID        IMAGE               COMMAND                  CREATED        
 6bc771f8c3dc        eg_postgresql       "/usr/lib/postgresql/"   15 hours ago        Up 14 hours         0.0.0.0:32796->5432/tcp pg_test
 997af6789cb8        postgres            "/docker-entrypoint.s"   45 hours ago        Up 45 hours         5432/tcp                postgres1
 
+----------------------------------------
 - Netowrks being used
+----------------------------------------
 NOTE: Bridged is the default network Docker assigns to a container - unless specified otherwise
 
 $ docker network ls
@@ -31,7 +36,9 @@ NETWORK ID          NAME                DRIVER              SCOPE
 4874820c7332        host                host                local
 1913d82d6a4f        none                null                local
 
+----------------------------------------
 - Networks by containers
+----------------------------------------
 $ docker network inspect bridge
 [
     {
@@ -79,11 +86,15 @@ $ docker network inspect bridge
     }
 ]
 
+------------------------------------------------------------
 - Disconnect and connect a container to a network
+------------------------------------------------------------
 $ docker network disconnect bridge postgres1
 $ docker network connect bridge postgres1
 
+--------------------
 - Create a network
+--------------------
 $ docker network create -d bridge my-bridge-network
 
 -- No containers in this network yet
@@ -194,9 +205,10 @@ postgres1 172.17.0.2 --> bridge
 postgres1 172.18.0.2 --> my-bridge-network
 postgres2 172.18.0.3
 
-- Connect between containers
+- Connect to one container
 $ docker exec -it postgres2 bash
 
+- Try ping other container from that container
 -- Does not connect across network domains
 root@0b6feebdaacc:/# ping 172.17.0.2
 PING 172.17.0.2 (172.17.0.2): 56 data bytes
