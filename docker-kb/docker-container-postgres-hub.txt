@@ -16,6 +16,8 @@ Work in progress - not every step - including "run the container as a daemon" ma
 $ docker pull postgres
 
 - Run the container as daemon
+NOTE: Password of this image is set as 'mysecretpassword'
+
 $ docker run --name postgres1 -e POSTGRES_PASSWORD=mysecretpassword -d postgres
 997af6789cb843694c0e0293a45e5e19083dcb3e45f4737fd8a82095d5b94248
 
@@ -78,9 +80,24 @@ $ docker network inspect bridge
 ]
 
 - Connect to postgres using psql
-IP=172.17.0.2
-Port=5432/tcp? (from docker ps)
+IP=172.17.0.2, 172.17.0.3 etc
+Forwarded ports in 'docker ps' output below:
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS                     NAMES
+0830c4c8d88e        postgres            "/docker-entrypoint.s"   10 days ago         Up 4 minutes        0.0.0.0:32805->5432/tcp   postgres1
+0b6feebdaacc        postgres            "/docker-entrypoint.s"   10 days ago         Up 15 seconds       0.0.0.0:32806->5432/tcp   postgres2
 
+
+-- Run psql on the host itself (if psql is available on the host)
+$ psql -h localhost -p 32806 -U postgres --password
+Password for user postgres: << mysecretpassword is the password which was set earlier >>
+psql (9.5.3, server 9.6.1)
+WARNING: psql major version 9.5, server major version 9.6.
+         Some psql features might not work.
+Type "help" for help.
+
+postgres=#
+
+-- Invoke a temporary postgres container JUST TO USE PSQL IN THAT CONTAINER (see the postgres-build notes document)
 From the website, generic command:
 $ docker run -it --rm --link some-postgres:postgres postgres psql -h postgres -U postgres
 
@@ -90,4 +107,4 @@ Password for user postgres:  << mysecretpassword is the password which was set e
 psql (9.6.1)
 Type "help" for help.
 
-postgres=# \dt
+postgres=# 
