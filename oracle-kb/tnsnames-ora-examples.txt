@@ -4,6 +4,48 @@
 
 SERVICE_NAME = APPP01 is the service created on the database for the app
 
+---------------------------------------------------------------------------------------------
+COMMON 11G/12C WITH PRIMARY-STANDBY CONNECT TIME FAILOVER - AND, MULTIPLE SERVICES REFERENCED
+---------------------------------------------------------------------------------------------
+SETUP:
+site1 and site2 are two sites/clusters for ha-dr using standby/dataguard
+DB1 is the database name - could be 12c or 11g
+DB1_service1 and DB1_service2 are two services on the same DB 
+    (ideally for 2 different apps, but both are added here to demonstrate that 
+     embedding any number of services is fine - though Oracle support had mentioned otherwise)
+DB1PD1 is the PDB name (with same named service) - applies to 12c
+
+NOTE: Embed PDB name also blindly in 11g DB in the case DB gets upgraded to 12c with just one PDB with the same name, 
+      this tns will still apply
+
+12COR11G =
+( DESCRIPTION_LIST = (LOAD_BALANCE = off) (FAILOVER = on)
+    (DESCRIPTION = (ADDRESS_LIST = (LOAD_BALANCE = ON)
+    (ADDRESS = (PROTOCOL=TCP)(HOST = site1-scan1)(PORT=1522)))
+    (CONNECT_DATA = (SERVER = DEDICATED) (SERVICE_NAME = DB1_service1) (FAILOVER_MODE =(METHOD = BASIC)(TYPE = SELECT)(RETRIES = 180)(DELAY = 5)))
+   )
+    (DESCRIPTION = (ADDRESS_LIST = (LOAD_BALANCE = ON)
+    (ADDRESS = (PROTOCOL=TCP)(HOST = site1-scan1)(PORT=1522)))
+    (CONNECT_DATA = (SERVER = DEDICATED) (SERVICE_NAME = DB1_service2) (FAILOVER_MODE =(METHOD = BASIC)(TYPE = SELECT)(RETRIES = 180)(DELAY = 5)))
+   )
+    (DESCRIPTION = (ADDRESS_LIST = (LOAD_BALANCE = ON)
+    (ADDRESS = (PROTOCOL=TCP)(HOST = site2-scan1)(PORT=1522)))
+    (CONNECT_DATA = (SERVER = DEDICATED) (SERVICE_NAME = DB1_service1) (FAILOVER_MODE =(METHOD = BASIC)(TYPE = SELECT)(RETRIES = 180)(DELAY = 5)))
+   )
+    (DESCRIPTION = (ADDRESS_LIST = (LOAD_BALANCE = ON)
+    (ADDRESS = (PROTOCOL=TCP)(HOST = site2-scan1)(PORT=1522)))
+    (CONNECT_DATA = (SERVER = DEDICATED) (SERVICE_NAME = DB1_service2) (FAILOVER_MODE =(METHOD = BASIC)(TYPE = SELECT)(RETRIES = 180)(DELAY = 5)))
+   )
+    (DESCRIPTION = (ADDRESS_LIST = (LOAD_BALANCE = ON)
+    (ADDRESS = (PROTOCOL=TCP)(HOST = site1-scan1)(PORT=1522)))
+    (CONNECT_DATA = (SERVER = DEDICATED) (SERVICE_NAME = DB1PD1) (FAILOVER_MODE =(METHOD = BASIC)(TYPE = SELECT)(RETRIES = 180)(DELAY = 5)))
+   )
+   (DESCRIPTION = (ADDRESS_LIST = (LOAD_BALANCE = ON)
+    (ADDRESS = (PROTOCOL=TCP)(HOST = site2-scan1)(PORT=1522)))
+    (CONNECT_DATA = (SERVER = DEDICATED) (SERVICE_NAME = DB1PD1) (FAILOVER_MODE = (METHOD = BASIC)(TYPE = SELECT)(RETRIES = 180)(DELAY = 5)))
+     )
+  )
+
 ------------------------------------------------------------
 WITH DESCRIPTION_LIST, scan, and more elaborate FAILOVER_MODE
 ------------------------------------------------------------
