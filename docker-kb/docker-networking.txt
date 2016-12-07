@@ -18,23 +18,19 @@ https://docs.docker.com/engine/tutorials/networkingcontainers/
 https://docs.docker.com/engine/userguide/networking/
 https://docs.docker.com/engine/userguide/networking/default_network/binding/
 
-==========================
-BASICS
-==========================
--------------------------------------------------------
-- Starting container with and without port forwarding
--------------------------------------------------------
+================================
+NETWORKS - VERY BASIC
+================================
+----------------------
+- Netowrks being used
+----------------------
+NOTE: Bridged is the default network Docker assigns to a container - unless specified otherwise
 
--- Without port forwarding:
-$ docker run --name <container name> -d <image name>
-$ docker run --name pg_test -d eg_postgresql
-
--- With port forwarding: (-P for port forwarding)
-$ docker run --name <container name> -P -d <image name>
-$ docker run --name pg_test -P -d eg_postgresql
-
--- With specific ports: (-p (lowercase) for specific forwarding port mapping)
-$ docker run --name pg_test2 -p 30001:5432 -d eg_postgresql
+$ docker network ls
+NETWORK ID          NAME                DRIVER              SCOPE
+683c712e106b        bridge              bridge              local
+4874820c7332        host                host                local
+1913d82d6a4f        none                null                local
 
 --------------------------------------
 - List ports of running containers
@@ -45,22 +41,11 @@ $ docker ps
 CONTAINER ID    IMAGE             COMMAND                  CREATED             STATUS              PORTS                   NAMES
 6bc771f8c3dc    eg_postgresql     "/usr/lib/postgresql/"   15 hours ago        Up 14 hours         0.0.0.0:32779->5432/tcp pg_test
 997af6789cb8    postgres          "/docker-entrypoint.s"   45 hours ago        Up 45 hours         5432/tcp                postgres1
-5576bf410878    eg_postgresql     "/usr/lib/postgresql/"   4 seconds ago       Up 3 seconds        0.0.0.0:30001->5432/tcp   pg_test2
+5576bf410878    eg_postgresql     "/usr/lib/postgresql/"   4 seconds ago       Up 3 seconds        0.0.0.0:30001->5432/tcp pg_test2
 
-----------------------------------------
-- Netowrks being used
-----------------------------------------
-NOTE: Bridged is the default network Docker assigns to a container - unless specified otherwise
-
-$ docker network ls
-NETWORK ID          NAME                DRIVER              SCOPE
-683c712e106b        bridge              bridge              local
-4874820c7332        host                host                local
-1913d82d6a4f        none                null                local
-
-----------------------------------------
+----------------------
 - Networks by containers
-----------------------------------------
+----------------------
 $ docker network inspect bridge
 [
     {
@@ -108,9 +93,9 @@ $ docker network inspect bridge
     }
 ]
 
-------------------------------------------------------------
+================================
 - Disconnect and connect a container to a network
-------------------------------------------------------------
+================================
 $ docker network disconnect bridge postgres1
 $ docker network connect bridge postgres1
 
@@ -377,6 +362,42 @@ docker=#
 $  psql -h 172.25.3.10 -p 5432 -d docker -U docker --password
 Password for user docker:
 docker=# 
+
+==========================
+PORT FORWARDING
+==========================
+-------------------------------------------------------
+- Starting container with and without port forwarding
+-------------------------------------------------------
+
+-- Without port forwarding:
+$ docker run --name <container name> -d <image name>
+$ docker run --name pg_test -d eg_postgresql
+
+-- With port forwarding: (-P for port forwarding)
+$ docker run --name <container name> -P -d <image name>
+$ docker run --name pg_test -P -d eg_postgresql
+
+-- With specific ports: (-p (lowercase) for specific forwarding port mapping)
+$ docker run --name pg_test2 -p 30001:5432 -d eg_postgresql
+
+-- With specific ports and binding to specific host-IP (not container IP)
+NOTE:  The command below also assigns a specific IP to the container (more on that further below in the document)
+$ docker run --network=mybridge2 --ip=172.25.3.10 -p 127.0.0.1:30001:5432 --name pg_test2 -d eg_postgresql
+
+        With this, you can connect to postgres in this container only with -h 127.0.0.1 and not with <host IP>
+        
+        This works:
+        $ psql -h 127.0.0.1 -p 30001 -d docker -U docker --password
+        - OR - 
+        $ psql -h 127.0.0.1 -p 30001 -d docker -U docker --password
+        
+        This fails:
+        $  psql -h 10.163.166.133 -p 30001 -d docker -U docker --password
+        Password for user docker:
+        psql: could not connect to server: Connection refused
+                Is the server running on host "10.63.166.33" and accepting
+                TCP/IP connections on port 30001?
 
 =================================
 EXPOSING A PORT
