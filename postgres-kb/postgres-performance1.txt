@@ -8,21 +8,75 @@ SETUP
 Tablespace TS1 on /disk1/postgres/data
 Database db1
 
-Tables:
+---------------
+TABLES
+---------------
+CREATE TABLE DEPT
+(
+DEPTID      INT primary key using index tablespace ts1,
+NAME        VARCHAR(30)  NOT NULL,
+CREATEDATE  DATE         NOT NULL,
+MANAGER     INT          
+) TABLESPACE TS1;
+
 CREATE TABLE EMP 
 (
 EMPID    INT primary key using index tablespace ts1,
 NAME     VARCHAR(30) NOT NULL,
 JOINDATE DATE        NOT NULL,
 SALARY   INT         NOT NULL,
-DEPTID   INT         NOT NULL
+DEPTID   INT         NOT NULL,
+FOREIGN KEY (DEPTID) REFERENCES DEPT (DEPTID)
 ) TABLESPACE TS1;
 
-CREATE TABLE DEPT
-(
-DEPTID      INT primary key using index tablespace ts1,
-NAME        VARCHAR(30)  NOT NULL,
-CREATEDATE  DATE         NOT NULL,
-MANAGERID   INT          NOT NULL
-) TABLESPACE TS1;
+ALTER TABLE DEPT ADD CONSTRAINT MANAGERID_FK FOREIGN KEY (MANAGER) REFERENCES EMP (EMPID);
 
+----------------------------------
+SCHEMA DESCRIPTION AFTER CREATION
+----------------------------------
+postgres=# \c db1
+You are now connected to database "db1" as user "postgres".
+
+db1=# \d
+        List of relations
+ Schema | Name | Type  |  Owner
+--------+------+-------+----------
+ public | dept | table | postgres
+ public | emp  | table | postgres
+(2 rows)
+
+db1=# \d dept
+              Table "public.dept"
+   Column   |         Type          | Modifiers
+------------+-----------------------+-----------
+ deptid     | integer               | not null
+ name       | character varying(30) | not null
+ createdate | date                  | not null
+ managerid  | integer               | not null
+Indexes:
+    "dept_pkey" PRIMARY KEY, btree (deptid), tablespace "ts1"
+Tablespace: "ts1"
+
+db1=# \d emp
+              Table "public.emp"
+  Column  |         Type          | Modifiers
+----------+-----------------------+-----------
+ empid    | integer               | not null
+ name     | character varying(30) | not null
+ joindate | date                  | not null
+ salary   | integer               | not null
+ deptid   | integer               | not null
+Indexes:
+    "emp_pkey" PRIMARY KEY, btree (empid), tablespace "ts1"
+Tablespace: "ts1"
+
+--------------------------------   
+INSERT INITIAL DATA - TAKING CARE TO UPDATE MANAGER IN DEPT TABLE AFTER AN EMPLOYEE IS IN EMP TABLE
+--------------------------------
+insert into dept values (1,'DB','01-JAN-2001',null);
+insert into emp values (1,'ME','01-JAN-2016',1000,1);
+update dept set manager=1;
+
+==========================================
+INSERT MORE DATA
+==========================================
