@@ -37,11 +37,16 @@ NETWORK ID          NAME                DRIVER              SCOPE
 --------------------------------------
 NOTE: Some of them has port forwarded
 
+$ docker port pg_test2
+5432/tcp -> 127.0.0.1:30001
+
+$ docker port pg_test
+5432/tcp -> 0.0.0.0:32796
+
 $ docker ps
-CONTAINER ID    IMAGE             COMMAND                  CREATED             STATUS              PORTS                   NAMES
-6bc771f8c3dc    eg_postgresql     "/usr/lib/postgresql/"   15 hours ago        Up 14 hours         0.0.0.0:32779->5432/tcp pg_test
-997af6789cb8    postgres          "/docker-entrypoint.s"   45 hours ago        Up 45 hours         5432/tcp                postgres1
-5576bf410878    eg_postgresql     "/usr/lib/postgresql/"   4 seconds ago       Up 3 seconds        0.0.0.0:30001->5432/tcp pg_test2
+CONTAINER ID  IMAGE               COMMAND                  CREATED             STATUS              PORTS                       NAMES
+777e110fcd76  eg_postgresql       "/usr/lib/postgresql/"   20 minutes ago      Up 20 minutes       127.0.0.1:30001->5432/tcp   pg_test2
+6bc771f8c3dc  eg_postgresql       "/usr/lib/postgresql/"   11 days ago         Up 11 days          0.0.0.0:32796->5432/tcp     pg_test
 
 ------------------------
 - Networks by containers
@@ -289,7 +294,6 @@ docker=#
 ================================
 CONNECTING BETWEEN CONTAINERS
 ================================
-
 - Setup
 postgres1 and pg_test are in bridge network (172.17.x.x)
 postgres1 and postgres2 are in my-bridge-network (172.18.x.x) (postgres1 in both networks)
@@ -366,6 +370,12 @@ docker=#
 ==========================
 PORT FORWARDING
 ==========================
+https://docs.docker.com/engine/userguide/networking/default_network/binding/
+https://runnable.com/docker/binding-docker-ports
+
+NOTE: This is possible only with 'run' command - that is, while creating a container
+        If port or IP has to change, save the container as a new image and re-create the container with changes
+        
 -------------------------------------------------------
 - Starting container with and without port forwarding
 -------------------------------------------------------
@@ -398,6 +408,39 @@ $ docker run --network=mybridge2 --ip=172.25.3.10 -p 127.0.0.1:30001:5432 --name
         psql: could not connect to server: Connection refused
                 Is the server running on host "10.63.166.33" and accepting
                 TCP/IP connections on port 30001?
+
+-------------------------------------
+LISTING THE PORTS USED BY CONTAINERS
+-------------------------------------
+$ docker port pg_test2
+5432/tcp -> 127.0.0.1:30001
+
+$ docker port pg_test
+5432/tcp -> 0.0.0.0:32796
+
+$ docker ps
+CONTAINER ID  IMAGE               COMMAND                  CREATED             STATUS              PORTS                       NAMES
+777e110fcd76  eg_postgresql       "/usr/lib/postgresql/"   20 minutes ago      Up 20 minutes       127.0.0.1:30001->5432/tcp   pg_test2
+6bc771f8c3dc  eg_postgresql       "/usr/lib/postgresql/"   11 days ago         Up 11 days          0.0.0.0:32796->5432/tcp     pg_test
+
+
+-------------------------------------
+IPTABLES ENTRIES
+-------------------------------------
+# iptables -t nat -L -n
+
+....
+....
+Chain DOCKER (2 references)
+target     prot opt source               destination
+RETURN     all  --  0.0.0.0/0            0.0.0.0/0
+RETURN     all  --  0.0.0.0/0            0.0.0.0/0
+RETURN     all  --  0.0.0.0/0            0.0.0.0/0
+RETURN     all  --  0.0.0.0/0            0.0.0.0/0
+DNAT       tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:32796 to:172.17.0.3:5432
+DNAT       tcp  --  0.0.0.0/0            127.0.0.1            tcp dpt:30001 to:172.25.3.10:5432
+....
+....
 
 =================================
 EXPOSING A PORT
