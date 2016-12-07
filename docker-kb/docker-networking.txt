@@ -223,9 +223,9 @@ ASSIGN SPECIFIC NETWORK AND IP TO A CONTAINER
 ==============================================
 NOTE: Better define a custom network and assign custom IPs of that network to containers so that container IP is same always
 
------------------------------------
-ASSIGN WHILE CREATING A CONTAINER
------------------------------------
+---------------------------------------------------
+ASSIGN SPECIFIC NETWORK WHILE CREATING A CONTAINER
+---------------------------------------------------
 - Create the container connecting it to custom network and custom IP
 $ docker run --network=mybridge2 --ip=172.25.3.10 -itd --name=pg_test2 eg_postgresql
 
@@ -250,13 +250,13 @@ $ docker inspect pg_test2|grep IPAdd
 -- First disconnect from bridge network (if connected already)
 $ docker network disconnect bridge pg_test2
 
--- Connect with a custom IP of the default bridge network
+-- Connect the container with a custom IP of the default bridge network
 $ docker network connect bridge --ip=172.17.10.10  pg_test2
 Error response from daemon: User specified IP address is supported on user defined networks only
 
------------------------------------
-ASSIGN TO A RUNNING CONTAINER
------------------------------------
+------------------------------------------
+ASSIGN SPECIFIC TO A RUNNING CONTAINER
+------------------------------------------
 - Connect a container to it (it can be already running container)
 $ docker network connect mybridge2 pg_test
 
@@ -286,8 +286,20 @@ $ docker inspect pg_test|grep IPAddress
                     "IPAddress": "172.17.0.3",
                     "IPAddress": "172.25.3.3",
 
+-----------------------------------------------------------------------------------------------
+CONNECTING TO THE LISTENING PROCESS IN THE CONTAINER - USING EACH IP ASSIGNED TO THE CONTAINER
+-----------------------------------------------------------------------------------------------
+NOTE: The listening process could be a database like postgres, or web server like Nginx etc.
 
+----- Connect using one of the IPs 
+$  psql -h 172.25.3.10 -p 5432 -d docker -U docker --password
+Password for user docker:
+docker=# 
 
+----- Connect using the other IP
+$  psql -h 172.25.3.10 -p 5432 -d docker -U docker --password
+Password for user docker:
+docker=# 
 
 ================================
 CONNECTING BETWEEN CONTAINERS
@@ -353,7 +365,18 @@ postgres - bridge - 172.17.0.2
 postgres - my-network-bridge - 172.18.0.2
 
 $ psql -h localhost -p 32799 -U postgres
+NOTE: This uses either one of the IP if more than one network is assigned to the container
 postgres#
+
+----- Connect using one of the IPs 
+$  psql -h 172.25.3.10 -p 5432 -d docker -U docker --password
+Password for user docker:
+docker=# 
+
+----- Connect using the other IP
+$  psql -h 172.25.3.10 -p 5432 -d docker -U docker --password
+Password for user docker:
+docker=# 
 
 =================================
 EXPOSING A PORT
