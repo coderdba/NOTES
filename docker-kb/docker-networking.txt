@@ -114,9 +114,9 @@ $ docker network inspect bridge
 $ docker network disconnect bridge postgres1
 $ docker network connect bridge postgres1
 
---------------------
-- Create a network
---------------------
+=========================
+CREATE A BRIDGED NETWORK (without specific subnet - Docker assigns a subnet by itself)
+=========================
 $ docker network create -d bridge my-bridge-network
 
 -- No containers in this network yet
@@ -146,7 +146,7 @@ $ docker network inspect my-bridge-network
 ]
 
 - Add containers to this new network
-$ docker network connect  my-bridge-network postgres1
+$ docker network connect my-bridge-network postgres1
 
 -- Assigning specific network during create time
 $ docker run -d --network=my-bridge-network --name db postgres2
@@ -212,6 +212,43 @@ NOTE: The container postgres1 is assinged to both the original bridge and the ne
                 "IPv6Address": ""
             }
         },
+
+=========================
+CREATE A BRIDGED NETWORK (with specific subnet)
+=========================
+$ docker network create -d bridge --subnet 172.25.0.0/16 mybridge2
+
+- Connect a container to it (it can be already running container)
+$ docker network connect mybridge2 pg_test
+
+-- Verify
+$ docker inspect pg_test |grep IPAddress
+            "SecondaryIPAddresses": null,
+            "IPAddress": "172.17.0.3",
+                    "IPAddress": "172.17.0.3", --> default bridged network
+                    "IPAddress": "172.25.0.2", --> custom mybridge2 network, with auto-increment-generated IP
+
+- Disconnect the container from a network
+$ docker network disconnect mybridge2 pg_test
+
+-- Verify
+$ docker inspect pg_test|grep IPAddress
+            "SecondaryIPAddresses": null,
+            "IPAddress": "172.17.0.3",
+                    "IPAddress": "172.17.0.3",
+
+- Connect a container giving a specific IP to assign
+$ docker network connect mybridge2 --ip=172.25.3.3  pg_test
+
+-- Verify
+$ docker inspect pg_test|grep IPAddress
+            "SecondaryIPAddresses": null,
+            "IPAddress": "172.17.0.3",
+                    "IPAddress": "172.17.0.3",
+                    "IPAddress": "172.25.3.3",
+
+
+
 
 ================================
 CONNECTING BETWEEN CONTAINERS
@@ -285,7 +322,7 @@ EXPOSING A PORT
 Ports of containers can be exposed only during creation time.
 
 -----------------------
-With -expose directive
+With -expose directive  (TBD)
 -----------------------
 $  docker run --name postgres3 -expose=22 -P -d postgres
 50bd843a56769279f391f8358115183641e2c04a7e5d2b1aee1568465fc06d6c
@@ -313,6 +350,20 @@ $ docker inspect postgres3
                         "HostPort": "32803"
                     }
                 ]
+
+
+===============================================
+LIST NETWORKS
+===============================================
+$ docker network ls
+NETWORK ID          NAME                DRIVER              SCOPE
+683c712e106b        bridge              bridge              local --> default created
+9940dbc542a6        docker_gwbridge     bridge              local --> default created (TBD about this)
+4874820c7332        host                host                local --> default created
+1ss4axvskple        ingress             overlay             swarm --> default created
+0469b6f22a60        my-bridge-network   bridge              local --> custom 
+1913d82d6a4f        none                null                local --> default created
+
 
 
 
