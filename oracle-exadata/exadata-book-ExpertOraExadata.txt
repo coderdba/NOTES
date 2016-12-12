@@ -99,7 +99,7 @@ Their value upon query/access has to be 'calculated' on the fly - and this can b
 ---> TBD
 
 ==============================================
-HYBRID COLUMNAR COMPRESSION
+Chapter 3 - HYBRID COLUMNAR COMPRESSION
 ==============================================
 - Basic compression 
 Basic compression works only with direct-path operations like 'insert-append'. 
@@ -190,3 +190,99 @@ select decode (dbms_compression.get_compression_type(user,'T1_QH',rowid),
 
 Blog that has some tracing and such: 
 http://kerryosborne.oracle-guy.com/2011/01/ehcc-mechanics-proof-that-whole-cus-are-not-decompressed/
+
+==============================================
+Chapter 4  -  Storage Indexes
+==============================================
+They store minimum and maximum values and the existence of null values for a column for disk storage units, 
+which are 1 megabyte (MB) by default
+Smart Scan picks such 1MB areas that can possibly have the column value and skips the rest
+Storage indexes are stored in memory only and never written to disk
+
+Optimizer cannot find whether a query will use storage index or nto
+ASH and AWR do not capture it
+
+The statistic, cell physical IO bytes saved by storage index, keeps track of the accumulated I/O that has been avoided 
+by the use of storage indexes. This statistic is exposed in v$sesstat and v$sysstat and related views.
+
+select name, value
+from v$syssstat s, v$statname n
+where s.statistic# = n.statistic#
+and name like '%storage index%';
+
+- Tracing
+CellCLI> alter cell events="immediate cellsrv.cellsrv_setparam('_cell_storage_index_diag_mode',2)"
+CELLSRV parameter changed: _cell_storage_index_diag_mode=2.
+Modification is in-memory only.
+Add parameter setting to 'cellinit.ora' if the change needs to be persistent across cellsrv reboots.
+Cell enkx4cel02 successfully altered"
+
+During normal use, it is obvious this parameter should be set to 0 to prevent the storage cell from the overhead 
+of writing trace files. To make sure this parameter is set to the correct value, it can be queried from 
+storage cell using the following:
+
+CellCLI> alter cell events="immediate cellsrv.cellsrv_getparam('_cell_storage_index_diag_mode')
+Parameter _cell_storage_index_diag_mode has value 0
+Cell enkx4cel01 successfully altered
+
+- Controlling Storage Indexes
+
+There is not much you can do to control storage index behavior. However, the developers have built in a few hidden parameters that provide some flexibility.
+
+There are four database parameters that deal with storage indexes (that we’re aware of):
+•_kcfis_storageidx_disabled (default is FALSE)
+•_kcfis_storageidx_diag_mode (default is 0)
+•_cell_storidx_mode (default is EVA)
+•_cell_storidx_minmax_enabled (default is TRUE)
+
+None of these parameters are documented, so you need to be careful with them.
+
+- Behavior
+In order for a storage index to be used, a query must include or make use of all the following:
+•Smart Scan: Storage indexes can only be used with statements that do Smart Scans. This comes with a whole set of requirements, 
+as detailed in Chapter 2. The main requirements are that the optimizer must choose a full scan and that the I/O must be done 
+via the direct path read mechanism.
+
+•At Least One Predicate: In order for a statement to use a storage index, there must be a WHERE clause with at least one predicate.
+•Simple Comparison Operators (does not inlcude != operator): Storage indexes can be used with the following set of operators: =, 
+<, >, BETWEEN, >=, <=, IN, IS NULL, IS NOT NULL  
+
+- Works for 
+•Multi-Column Predicates: Storage indexes can be used with multiple predicates on the same table.
+•Joins: Storage indexes can be used on statements accessing multiple tables to minimize disk I/O before the join operations are carried out.
+•Parallel Query: Storage indexes can be used by parallel query workers. In fact, since direct path reads are required to enable storage indexes, parallel queries are very useful for ensuring that storage indexes can be used.
+•HCC: Storage indexes work with HCC compressed tables.
+•Bind Variables: Storage indexes work with bind variables. The values of the bind variables appear to be passed to the storage cells with each execution.
+•Partitions: Storage indexes work with partitioned objects. Individual statements can benefit from partition eliminate and storage indexes during the same execution.
+•Subqueries: Storage indexes work with predicates that compare a column to a value returned by a subquery.
+•Encryption: Storage indexes work on encrypted tables.
+
+- Does not work for
+•CLOBs: Storage indexes are not created on CLOBs.
+•!=: Storage indexes do not work with predicates that use the != comparison operator.
+•Wildcards: Storage indexes do not work on predicates that use the % wildcard.
+
+- Performance
+Performs better with sorted data
+Can give incorrect results - particularly with concurrent DML where storage index map may change as Smart Scan is going on
+
+- Cell software parameters
+Storage Software Parameters
+
+•_cell_enable_storage_index_for_loads=TRUE
+•_cell_enable_storage_index_for_writes=TRUE
+•_cell_si_max_num_diag_mode_dumps=20
+•_cell_storage_index_columns=0
+•_cell_storage_index_diag_mode=0
+•_cell_storage_index_partial_rd_sectors=512
+•_cell_storage_index_partial_reads_threshold_percent=85
+•_cell_storage_index_sizing_factor=2
+•_cell_si_expensive_debug_tracing=FALSE
+•_cell_si_lock_pool_num_locks=1024
+•_si_write_diag_disable=FALSE
+
+
+
+
+
+
