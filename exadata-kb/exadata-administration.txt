@@ -1,0 +1,49 @@
+==================================================
+          EXADATA ADMINISTRATION
+==================================================
+
+======================================
+STORAGE CELL
+======================================
+
+---------------------
+PROCESSES
+---------------------
+RS process - 'restart server' - to start up and shutdown Cell Server (CELLSRV) and MS processes
+MS - 'management server' process
+RS process spawns and re-spawns MS
+CELLSRV - main Exadata software component, multithreaded, communicates with database, serves requests like buffer cache reads,
+          smart scan requests.  It also implements i/o resource management, and collects statistics.
+
+$ ps -ef |grep cellrs
+root     15387     1  0 Nov23 ?        00:02:02 /opt/oracle/cell/cellsrv/bin/cellrssrm -ms 1 -cellsrv 1
+root     15394 15387  0 Nov23 ?        00:01:08 /opt/oracle/cell/cellsrv/bin/cellrsbmt -rs_conf /opt/oracle/cell/cellsrv/deploy/config/cellinit.ora -ms_conf /opt/oracle/cell/cellsrv/deploy/config/cellrsms.state -cellsrv_conf /opt/oracle/cell/cellsrv/deploy/config/cellrsos.state -debug 0
+root     15395 15387  0 Nov23 ?        00:03:07 /opt/oracle/cell/cellsrv/bin/cellrsmmt -rs_conf /opt/oracle/cell/cellsrv/deploy/config/cellinit.ora -ms_conf /opt/oracle/cell/cellsrv/deploy/config/cellrsms.state -cellsrv_conf /opt/oracle/cell/cellsrv/deploy/config/cellrsos.state -debug 0
+root     15396 15387  0 Nov23 ?        00:05:05 /opt/oracle/cell/cellsrv/bin/cellrsomt -rs_conf /opt/oracle/cell/cellsrv/deploy/config/cellinit.ora -ms_conf /opt/oracle/cell/cellsrv/deploy/config/cellrsms.state -cellsrv_conf /opt/oracle/cell/cellsrv/deploy/config/cellrsos.state -debug 0
+root     15397 15394  0 Nov23 ?        00:00:14 /opt/oracle/cell/cellsrv/bin/cellrsbkm -rs_conf /opt/oracle/cell/cellsrv/deploy/config/cellinit.ora -ms_conf /opt/oracle/cell/cellsrv/deploy/config/cellrsms.state -cellsrv_conf /opt/oracle/cell/cellsrv/deploy/config/cellrsos.state -debug 0
+root     15427 15397  0 Nov23 ?        00:01:09 /opt/oracle/cell/cellsrv/bin/cellrssmt -rs_conf /opt/oracle/cell/cellsrv/deploy/config/cellinit.ora -ms_conf /opt/oracle/cell/cellsrv/deploy/config/cellrsms.state -cellsrv_conf /opt/oracle/cell/cellsrv/deploy/config/cellrsos.state -debug 0
+1000     15969 12781  0 02:07 pts/0    00:00:00 grep cellr
+
+$ ps -ef | grep cellsrv
+root     15407 15396 21 Nov23 ?        4-01:49:31 /opt/oracle/cell/cellsrv/bin/cellsrv 100 5000 9 5042
+
+--> the parent of cellsrv process: see the spawned rs process (cellrsomt)
+$ ps -ef|grep 15396
+root     15396 15387  0 Nov23 ?        00:05:05 /opt/oracle/cell/cellsrv/bin/cellrsomt -rs_conf /opt/oracle/cell/cellsrv/deploy/config/cellinit.ora -ms_conf /opt/oracle/cell/cellsrv/deploy/config/cellrsms.state -cellsrv_conf /opt/oracle/cell/cellsrv/deploy/config/cellrsos.state -debug 0
+root     15407 15396 21 Nov23 ?        4-01:49:50 /opt/oracle/cell/cellsrv/bin/cellsrv 100 5000 9 5042
+
+$ ps -ef |grep ms (or ms.err)
+
+--------------------------
+CONFIG FILES
+--------------------------
+/opt/oracle/cell/cellsrv/deploy/config/cellinit.ora
+
+--------------------------
+LOG FILES
+--------------------------
+/opt/oracle/cell/cellsrv/deploy/log directory
+
+
+
+
