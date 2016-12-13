@@ -1,3 +1,40 @@
+============================================
+How to Get The Name Of Enterprise User in V$SESSION? (Doc ID 1447631.1)	To BottomTo Bottom	
+
+In this Document
+Goal
+Solution
+References
+
+APPLIES TO:
+
+Oracle Database - Enterprise Edition - Version 10.1.0.2 to 11.2.0.3 [Release 10.1 to 11.2]
+Information in this document applies to any platform.
+GOAL
+
+The sessions created by Enterprise Users do not have the name of the external user in v$session. This note presents a method to populate one of v$session's columns with this information.
+
+SOLUTION
+
+
+Create the following logon trigger to populates enterprise user session information in V$SESSION.
+
+create or replace trigger sys.on_logon after logon on database 
+declare 
+v_externalname varchar2(64) := ''; 
+begin 
+SELECT substr(sys_context('userenv','enterprise_identity'),1,63) into v_externalname FROM dual; 
+if v_externalname is not null 
+then 
+DBMS_APPLICATION_INFO.SET_CLIENT_INFO (v_externalname ); 
+end if; 
+end; 
+/
+
+After creating the LOGON Trigger you can get the enterprise user session information from client_info of V$SESSION.
+
+
+============================================
 How to Identify users using a shared global schema in Enterprise User Security
 
 So we are setting up Oracle Enterprise User Security using a global schema. One question that arises if I have ten users that  are using the global schema to sign on and run queries in a database.  If lets say ten users are running ten queries and one is bad. How do I tell which user it is? If the global schema is READONLY. When looking at the v$session table they will show the user as READONLY. How can I find out it is testuser1 or testuser2? 
