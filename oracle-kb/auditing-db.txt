@@ -1,5 +1,42 @@
+================================================
+        AUDITING DATABASE ACTIVITIES
+================================================
 https://oracle-base.com/articles/10g/auditing-10gr2
-
 https://docs.oracle.com/cd/B28359_01/network.111/b28528/concepts.htm#DBIMI222
-
 https://docs.oracle.com/cd/B28359_01/network.111/b28531/auditing.htm#DBSEG006
+
+
+=============================
+AUDITING DB ACTIVITIES
+=============================
+
+---------------------
+SETUP
+---------------------
+audit_sys_operations                 boolean   TRUE
+audit_trail                          string    DB
+
+---------------------
+---------------------
+
+
+
+
+-----------------------------------------
+QUERY AUDIT INFORMATION FROM DB VIEWS
+-----------------------------------------set pages 1000
+set lines 120
+
+column username format a30
+column comment_text format a90
+
+-- To list actions of the LDAP global user
+-- Note: GLOBAL_UID shows the actual user that did the action - actual user using this UID should be looked up in LDAP like OID
+select username, GLOBAL_UID, PROXY_SESSIONID, to_char(timestamp, 'DD-MON-YYYY HH24:MI:SS'), 
+    to_char (logoff_time, 'DD-MON-YYYY HH24:MI:SS'), owner, obj_name, action_name, ses_actions, 
+    comment_text, sql_text from dba_audit_trail where username=upper('oud_global_user') order by timestamp;
+    
+select username, GLOBAL_UID, PROXY_SESSIONID, to_char(timestamp, 'DD-MON-YYYY HH24:MI:SS'), 
+    to_char (logoff_time, 'DD-MON-YYYY HH24:MI:SS'), owner, obj_name, action_name, ses_actions, 
+    comment_text, sql_text from dba_audit_trail where username in ('USER1','USER2','USER3') order by timestamp;
+
