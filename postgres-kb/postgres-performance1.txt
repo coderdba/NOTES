@@ -210,5 +210,14 @@ Elapsed: 00:00:32.75
 ------------------------------
 TUNE POSTGRES A BIT
 ------------------------------
-shared_buffers - 2GB
-work_mem - not set yet as this applies to every query requiring sort
+
+Edit /var/lib/pgsql/9.5/data/postgresql.conf with enhanced settings:
+       shared_buffers - 2GB
+       work_mem - not set yet as this applies to every query requiring sort
+
+Performance of the complex query below did not become any better.
+       count(*) from emp a,
+       (select name from emp where name like '%c8') b
+        where a.name like '%d8%' and a.name > b.name;
+
+       Both before and after were about 100sec.
