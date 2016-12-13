@@ -1,0 +1,44 @@
+How to Identify users using a shared global schema in Enterprise User Security
+
+So we are setting up Oracle Enterprise User Security using a global schema. One question that arises if I have ten users that  are using the global schema to sign on and run queries in a database.  If lets say ten users are running ten queries and one is bad. How do I tell which user it is? If the global schema is READONLY. When looking at the v$session table they will show the user as READONLY. How can I find out it is testuser1 or testuser2? 
+I have the same question Show 2 Likes(2)
+130 Views Tags: REPLY
+Average User Rating: No ratings (0 ratings)Average User RatingNo ratings(0 ratings)
+Your Rating: Rate Poor(1 of 5)Rate Below Average(2 of 5)Rate Average(3 of 5)Rate Above Average(4 of 5)Rate Exceptional(5 of 5)
+1. Re: How to Identify users using a shared global schema in Enterprise User Security
+ 
+--->
+
+Hi,
+I think the only way to get this information is to audit on connect ("audit connect") and then joining v$session and and dba_audit_trail to find the information. I haven't heard of any other way.
+
+--->
+
+Like Show 0 Likes(0)  Reply Actions 
+2. Re: How to Identify users using a shared global schema in Enterprise User Security
+ pons - oracle
+Explorer
+pons - oracle Aug 6, 2012 10:04 PM (in response to Marcel L.)
+ Hello,
+ 
+you have the below options to identify enterprise user account.
+
+1.Enable auditing for the enterprise user.If the auditing is enabled for the enterprise user then the comment_text column of AUD$ table shows the DN of the user connected to database. 
+
+
+2.Create the below logon trigger to populates enterprise user session information in V$SESSION. 
+create or replace trigger sys.on_logon after logon on database 
+declare 
+v_externalname varchar2(64) := ''; 
+begin 
+SELECT substr(sys_context('userenv','external_name'),1,63) into v_externalname FROM dual; 
+if v_externalname is not null 
+then 
+DBMS_APPLICATION_INFO.SET_CLIENT_INFO (v_externalname ); 
+end if; 
+end; 
+/ 
+After creating the LOGON Trigger you can get the enterprise user session information from client_info of V$SESSION. 
+
+
+ 
