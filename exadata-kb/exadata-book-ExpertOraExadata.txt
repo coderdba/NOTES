@@ -1,0 +1,289 @@
+=============================
+NOTES - EXPERT ORACLE EXADATA
+=============================
+
+=====================================================================
+Chapter 1 - What is exadata
+=====================================================================
+More suited to DW
+Not too suited to high-concurrency, high-write workload
+--> Recent flash-cache has made this situation better
+
+ASM is required even if DB's are not RAC.
+Storage servers contain 12 disk drives or 8 flash drives.
+Flash is used as cache 'extra smart flash cache' to minimize single-block-reads.
+Each storage server has 3.2TB of flash - in half-rack this comes to 44.8TB.
+
+Infiniband between servers and storage uses iDB protocol.
+iDB sends requests for data and also metadata about the requests - the predicates to storage layer.
+
+Intel Sun servers with Oracle Linux.
+
+===================================
+Chapter 2 - OFFLOADING - SMART SCAN
+===================================
+- Offloading
+Offload query execution to storage layer.
+Storage server part-processes the query and sends already partly-filtered data to DB server.
+
+alter session set cell_offload_processing=false|true;
+
+What is offloadable:
+select count(*), name, offloadable from v$sqlfn_metadata
+    where name like '%JSON%' group by name, offloadable
+    order by offloadable, name;
+  
+- Smart Scan
+Direct-path-reads is a pre-requisite for Smart Scans - set the session parameter _SERIAL_DIRECT_READ=ALWAYS.
+To disable smart-scan set  CELL_OFFLOAD_PROCESSING=FALSE.
+
+Following type of filtering is done by smart scan in storage itself:
+  Column projection, predicate filtering, storage indexes
+  Simple joins, functions offloading, virtual column evaluation, decryption
+Smart-flash later stores that pre-filtered data before sending to memory blocks
+
+Plan shows this as "TABLE ACCESS STORAGE FULL".
+V$SQL has some new offload related columns:
+   select SQL_ID, IO_CELL_OFFLOAD_ELIGIBLE_BYTES eligible,
+     IO_INTERCONNECT_BYTES actual,
+     100*(IO_CELL_OFFLOAD_ELIGIBLE_BYTES-IO_INTERCONNECT_BYTES)
+     /IO_CELL_OFFLOAD_ELIGIBLE_BYTES "IO_SAVED_%", sql_text
+    from v$sql where SQL_ID in ('8m5zmxka24vyk', '0563r8vdy9t2y');
+
+-- Column projection 
+Return only the columns of interest (the columns in the SELECT and WHERE) - not the whole row
+
+-- Predicate Filtering
+Return only rows of interest
+
+-- Storage Indexes
+In-memory structures in storage cells.
+Store minimum and maximum value for each 1MB storage unit - for upto 8 columns of a table.
+DBAs do not have much conrol on them.
+This helps smart scan find the group of blocks required quickly.
+alter session set "_kcfis_storageidx_disabled"=true|false;
+
+-- Zone maps
+Area of a table about 1024 blocks.
+Help in eliminating rows not of interest.
+NOT in storage cell - DBA maintains it in the DB.
+Zone map info is available in data dictionary.
+In explain-plan:  WITH ZONEMAP                | T1_ORDER_BY_ID 
+
+-- Simple joins
+Known also as 'bloom predicate'
+_BLOOM_PREDICATE_OFFLOAD=TRUE|FALSE
+
+-- Function offloading
+Functions to be processed at storage layer.
+Helps more by reducing number of rows to be sent to and processed in DB server - than function execution in storage itself.
+V$SQLFN_METADATA contains the functions that can be offloaded.
+
+-- HCC decompression
+HCC data decompression to be sent to DB server is done at storage tier in smart scans - unless storage cells are too busy
+NOTE: HCC compression itself is done at DB server and not in storage cell
+
+-- Decryption
+Decryption of data can be done at storage tier (while encryption is always done at DB server)
+Parameters - CELL_OFFLOAD_DECRYPTION, _CELL_OFFLOAD_HYBRIDCOLUMNAR
+
+-- Virtual Columns
+Virtual columns are 'calculated' columns without storing that value in the table.
+They can be indexed, made part of partition key and stats can be gathered for them.
+Their value upon query/access has to be 'calculated' on the fly - and this can be offloaded to storage tier.
+
+-- LOB offloading
+-- JSON offloading
+
+- Non Smart-Scan offloading
+---> TBD
+
+==============================================
+Chapter 3 - HYBRID COLUMNAR COMPRESSION
+==============================================
+- Basic compression 
+Basic compression works only with direct-path operations like 'insert-append'. 
+Direct bypasses buffer-cache and stores rows above HWM.
+Updates render rows to uncompress and stay so (DML unfriendly).
+Makes pctfree 0 upon compression, wasting space.
+
+- OLTP compression
+Does not compress immediately - does so upon reaching a threshold.
+No need for 'direct' operations.
+DML permitted and benefit from compression.
+
+- HCC Hybrid Columnar Compression
+Supported on Exadata, ZFS Storage Appliance,Pillar Axiom or Oracle FS1 storage
+If stored on other types of storage - smart scans cannot be used, first it has to decompress before reading
+
+Limitations/Cautions:
+Insert direct path triggers HCC - else it is columnar format (TBD - what is this 'columnar format')
+Updates make rows to use row-format
+Updates cause CU-level locking up to 32000 rows
+
+Importing HCC to non-HCC table:
+$ impdp ... transform=table_compression_clause:nocompress
+
+-- What is HCC
+Traditionally, rows are stored in blocks 
+  - efficient for OLT where specific rows are queried and updated.
+  - not efficient for column-lookups as query has to then scan through multiple blocks - wider row the worse
+In 'columnar' db's blocks store column values than whole rows 
+  - efficient for DSS where specific columns of many rows or aggregations are required
+  - not efficient for full-row lookups as query has to scan through multiple blocks
+Blocks can be usually greater than usual 8k.
+Provides still 'table access by index rowid'.
+CU - compression unit - contiguous multiple blocks to store columnar data - and the row information to which column data belongs.
+Access - block oriented, smart scan
+
+-- Limitations:
+Requires direct path - so, use more as part of ILM or static data than as oltp compression alternative
+Updates move rows to OLTP compression, out of CU
+Non direct operations store rows outside of CU and not as HCC
+
+-- Levels
+Query Low 4x, Query High 6x, Archite Low 7x, Archive High 12x
+
+-- Package
+DBMS_COMPRESSION
+
+-- Tracing sessions (Universal Tracing Facility - UTS)
+SQL> oradebug doc component ADVCMP
+SQL> alter session set events 'trace[ADVCMP_MAIN.*] disk=high';
+SQL> create table t2_ql
+      column store compress for query low
+      as select * from t2;
+SQL> alter session set events 'trace[ADVCMP_MAIN.*] off';
+
+-- Useful sqls
+
+select table_name,compression,compress_for
+  from user_tables;
+
+select s.segment_name, s.bytes/power(1024,2) mb, s.blocks,
+  t.compression, t.compress_for, num_rows
+  from user_segments s, user_tables t
+  where s.segment_name = t.table_name
+  and s.segment_name like 'T1%'
+  order by mb;
+  
+select id, rowid,
+  dbms_compression.get_compression_type(user, 'T1_QL', rowid) compType
+  from t1_ql where rownum < 3;
+  
+create table t_ql ... column store compress for query low;
+
+alter table t1 modify partition p_jun_2013 column store compress for query high;
+
+To find the type of compression for various rows:  
+select decode (dbms_compression.get_compression_type(user,'T1_QH',rowid),
+       1,  'COMP_NOCOMPRESS',
+       2,  'COMP_FOR_OLTP',  --> in 12c it is COMP_ADVANCED
+       4,  'COMP_FOR_QUERY_HIGH',
+       8,  'COMP_FOR_QUERY_LOW',
+       16, 'COMP_FOR_ARCHIVE_HIGH',
+       32, 'COMP_FOR_ARCHIVE_LOW',
+       64, 'COMP_BLOCK',  --> COMP_BLOCK is OLTP-64
+       'OTHER') type
+   from T1
+  where rownum < 100;
+
+Blog that has some tracing and such: 
+http://kerryosborne.oracle-guy.com/2011/01/ehcc-mechanics-proof-that-whole-cus-are-not-decompressed/
+
+==============================================
+Chapter 4  -  Storage Indexes
+==============================================
+They store minimum and maximum values and the existence of null values for a column for disk storage units, 
+which are 1 megabyte (MB) by default
+Smart Scan picks such 1MB areas that can possibly have the column value and skips the rest
+Storage indexes are stored in memory only and never written to disk
+
+Optimizer cannot find whether a query will use storage index or nto
+ASH and AWR do not capture it
+
+The statistic, cell physical IO bytes saved by storage index, keeps track of the accumulated I/O that has been avoided 
+by the use of storage indexes. This statistic is exposed in v$sesstat and v$sysstat and related views.
+
+select name, value
+from v$syssstat s, v$statname n
+where s.statistic# = n.statistic#
+and name like '%storage index%';
+
+- Tracing
+CellCLI> alter cell events="immediate cellsrv.cellsrv_setparam('_cell_storage_index_diag_mode',2)"
+CELLSRV parameter changed: _cell_storage_index_diag_mode=2.
+Modification is in-memory only.
+Add parameter setting to 'cellinit.ora' if the change needs to be persistent across cellsrv reboots.
+Cell enkx4cel02 successfully altered"
+
+During normal use, it is obvious this parameter should be set to 0 to prevent the storage cell from the overhead 
+of writing trace files. To make sure this parameter is set to the correct value, it can be queried from 
+storage cell using the following:
+
+CellCLI> alter cell events="immediate cellsrv.cellsrv_getparam('_cell_storage_index_diag_mode')
+Parameter _cell_storage_index_diag_mode has value 0
+Cell enkx4cel01 successfully altered
+
+- Controlling Storage Indexes
+
+There is not much you can do to control storage index behavior. However, the developers have built in a few hidden parameters that provide some flexibility.
+
+There are four database parameters that deal with storage indexes (that we’re aware of):
+•_kcfis_storageidx_disabled (default is FALSE)
+•_kcfis_storageidx_diag_mode (default is 0)
+•_cell_storidx_mode (default is EVA)
+•_cell_storidx_minmax_enabled (default is TRUE)
+
+None of these parameters are documented, so you need to be careful with them.
+
+- Behavior
+In order for a storage index to be used, a query must include or make use of all the following:
+•Smart Scan: Storage indexes can only be used with statements that do Smart Scans. This comes with a whole set of requirements, 
+as detailed in Chapter 2. The main requirements are that the optimizer must choose a full scan and that the I/O must be done 
+via the direct path read mechanism.
+
+•At Least One Predicate: In order for a statement to use a storage index, there must be a WHERE clause with at least one predicate.
+•Simple Comparison Operators (does not inlcude != operator): Storage indexes can be used with the following set of operators: =, 
+<, >, BETWEEN, >=, <=, IN, IS NULL, IS NOT NULL  
+
+- Works for 
+•Multi-Column Predicates: Storage indexes can be used with multiple predicates on the same table.
+•Joins: Storage indexes can be used on statements accessing multiple tables to minimize disk I/O before the join operations are carried out.
+•Parallel Query: Storage indexes can be used by parallel query workers. In fact, since direct path reads are required to enable storage indexes, parallel queries are very useful for ensuring that storage indexes can be used.
+•HCC: Storage indexes work with HCC compressed tables.
+•Bind Variables: Storage indexes work with bind variables. The values of the bind variables appear to be passed to the storage cells with each execution.
+•Partitions: Storage indexes work with partitioned objects. Individual statements can benefit from partition eliminate and storage indexes during the same execution.
+•Subqueries: Storage indexes work with predicates that compare a column to a value returned by a subquery.
+•Encryption: Storage indexes work on encrypted tables.
+
+- Does not work for
+•CLOBs: Storage indexes are not created on CLOBs.
+•!=: Storage indexes do not work with predicates that use the != comparison operator.
+•Wildcards: Storage indexes do not work on predicates that use the % wildcard.
+
+- Performance
+Performs better with sorted data
+Can give incorrect results - particularly with concurrent DML where storage index map may change as Smart Scan is going on
+
+- Cell software parameters
+Storage Software Parameters
+
+•_cell_enable_storage_index_for_loads=TRUE
+•_cell_enable_storage_index_for_writes=TRUE
+•_cell_si_max_num_diag_mode_dumps=20
+•_cell_storage_index_columns=0
+•_cell_storage_index_diag_mode=0
+•_cell_storage_index_partial_rd_sectors=512
+•_cell_storage_index_partial_reads_threshold_percent=85
+•_cell_storage_index_sizing_factor=2
+•_cell_si_expensive_debug_tracing=FALSE
+•_cell_si_lock_pool_num_locks=1024
+•_si_write_diag_disable=FALSE
+
+=========================================================
+Chapter 5 - Exadata Smart Flash Cache
+=========================================================
+This is different from database flash cache - which is instance level, and keeps timed out blocks from buffers.
+
+Exadata Smart Flash Cache (ESFC) is at the storage level - and across instances.
