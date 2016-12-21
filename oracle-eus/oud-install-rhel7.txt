@@ -783,6 +783,170 @@ $
 $ ps -ef | grep oud
 oud       71086      1 30 03:41 pts/1    00:00:18 /bin/java -Dorg.opends.server.scriptName=start-ds org.opends.server.core.DirectoryServer --configClass org.opends.server.extensions.ConfigFileHandler --configFile /u01/app/oracle/Middleware/oudinst1/OUD/config/config.ldif --timeout 0
 
+NOTE:
+When you enable a server instance for EUS, the following naming contexts are created on the instance:
+cn=oraclecontext
+cn=oracleschemaversion
+cn=subschemasubentry
+cn=oraclecontext,<baseDN>
+
+----------------------
+VERIFY
+----------------------
+NOTE: hostname.mycompany.com or IP or localhost,  -w oracle is the password for the directory root user dn "directory manager"
+$ ./ldapsearch -h hostname.mycompany.com -p 1389 -D "cn=directory manager" -w oracle -b "dc=example,dc=com" "(objectclass=*)"
+
+dn: dc=example,dc=com
+dc: example
+orclversion: 90400
+orclsubscriberfullname: example
+objectclass: top
+objectclass: orclSubscriber
+objectclass: domain
+
+dn: cn=OracleContext,dc=example,dc=com
+orclVersion: 90600
+objectClass: orclContextAux82
+objectClass: top
+objectClass: orclContext
+cn: OracleContext
+
+dn: cn=Products,cn=OracleContext,dc=example,dc=com
+objectClass: top
+objectClass: orclContainer
+cn: Products
+
+dn: cn=OracleDBSecurityAdmins,cn=OracleContext,dc=example,dc=com
+uniquemember: cn=Directory Manager
+objectClass: groupofUniqueNames
+objectClass: orclPrivilegeGroup
+objectClass: top
+cn: OracleDBSecurityAdmins
+
+dn: cn=OracleDBCreators,cn=OracleContext,dc=example,dc=com
+uniquemember: cn=Directory Manager
+objectClass: groupofUniqueNames
+objectClass: orclPrivilegeGroup
+objectClass: top
+cn: OracleDBCreators
+
+dn: cn=OracleNetAdmins,cn=OracleContext,dc=example,dc=com
+uniquemember: cn=Directory Manager
+objectClass: groupofUniqueNames
+objectClass: orclPrivilegeGroup
+objectClass: top
+cn: OracleNetAdmins
+
+dn: cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=example,dc=com
+orclVersion: 102000
+cn: OracleDBSecurity
+orclDBVersionCompatibility: 90000
+objectClass: top
+objectClass: orclContainer
+objectClass: orclDBSecConfig
+objectClass: orclDBSecConfig10i
+orclDBOIDAuthentication: PASSWORD
+
+dn: cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=e
+ xample,dc=com
+orclDBAuthTypes: ALL
+objectClass: groupofuniquenames
+objectClass: orclDBEnterpriseDomain_82
+objectClass: orclprivilegegroup
+objectClass: top
+objectClass: orclDBEnterpriseDomain
+cn: OracleDefaultDomain
+
+dn: cn=Groups,cn=OracleContext,dc=example,dc=com
+objectClass: top
+objectClass: orclContainer
+cn: Groups
+
+dn: cn=Common,cn=Products,cn=OracleContext,dc=example,dc=com
+orclCommonGroupSearchBase: dc=example,dc=com
+orclVersion: 90000
+orclCommonKrbPrincipalAttribute: krbPrincipalName
+orclCommonApplicationGuidAttribute: orclGlobalID
+orclCommonNicknameAttribute: uid
+orclCommonWindowsPrincipalAttribute: orclSAMAccountName
+orclCommonUserCreateBase: dc=example,dc=com
+orclCommonNamingAttribute: uid
+orclUserObjectClasses: top
+orclUserObjectClasses: person
+orclUserObjectClasses: inetorgperson
+orclUserObjectClasses: organizationalperson
+orclUserObjectClasses: orcluser
+orclUserObjectClasses: orcluserv2
+cn: Common
+orclSubscriberSearchBase: dc=example,dc=com
+orclSubscriberNickNameAttribute:: ZGMg
+objectClass: top
+objectClass: orclContainer
+objectClass: orclCommonAttributesV2
+objectClass: orclCommonAttributes
+orclCommonDefaultUserCreateBase: ou=People,dc=example,dc=com
+orclCommonDefaultGroupCreateBase: cn=Groups,dc=example,dc=com
+orclCommonGroupCreateBase: cn=Groups,dc=example,dc=com
+orclCommonUserSearchBase: dc=example,dc=com
+
+dn: cn=OracleContextAdmins,cn=Groups,cn=OracleContext,dc=example,dc=com
+uniquemember: cn=Directory Manager
+description: Users who can administer all entities in this Oracle Context
+cn: OracleContextAdmins
+objectClass: groupofUniqueNames
+objectClass: orclPrivilegeGroup
+objectClass: orclGroup
+objectClass: top
+displayName: Oracle Context Administrators
+
+dn: cn=OracleUserSecurityAdmins,cn=Groups,cn=OracleContext,dc=example,dc=com
+uniquemember: cn=Directory Manager
+objectClass: groupofUniqueNames
+objectClass: orclPrivilegeGroup
+objectClass: top
+cn: OracleUserSecurityAdmins
+
+dn: cn=OraclePasswordAccessibleDomains,cn=Groups,cn=OracleContext,dc=example,dc=
+ com
+uniquemember: cn=OracleDBSecurityAdmins,cn=OracleContext,dc=example,dc=com
+objectClass: groupofUniqueNames
+objectClass: orclPrivilegeGroup
+objectClass: top
+cn: OraclePasswordAccessibleDomains
+
+dn: cn=OracleDomainAdmins,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products
+ ,cn=OracleContext,dc=example,dc=com
+uniquemember: cn=Directory Manager
+objectClass: groupofUniqueNames
+objectClass: orclPrivilegeGroup
+objectClass: top
+cn: OracleDomainAdmins
+
+dn: cn=LabelSecurity,cn=Products,cn=OracleContext,dc=example,dc=com
+orclVersion: 100000
+objectClass: top
+objectClass: orclContainer
+cn: LabelSecurity
+
+dn: cn=Policies,cn=LabelSecurity,cn=Products,cn=OracleContext,dc=example,dc=com
+objectClass: top
+objectClass: orclContainer
+cn: Policies
+
+dn: cn=PolicyCreators,cn=Policies,cn=LabelSecurity,cn=Products,cn=OracleContext,
+ dc=example,dc=com
+owner: cn=OracleContextAdmins,cn=Groups,cn=OracleContext,dc=example,dc=com
+objectClass: groupOfUniqueNames
+objectClass: orclACPgroup
+objectClass: top
+cn: PolicyCreators
+
+dn: cn=ProxyPermissions,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,c
+ n=OracleContext,dc=example,dc=com
+objectClass: top
+objectClass: orclContainer
+cn: ProxyPermissions
+
 
 
 
