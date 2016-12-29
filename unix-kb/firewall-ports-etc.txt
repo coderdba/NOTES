@@ -14,9 +14,9 @@ https://www.digitalocean.com/community/tutorials/how-to-list-and-delete-iptables
 
 http://stackoverflow.com/questions/10729247/apache-not-accepting-incoming-connections-from-outside-of-localhost
 
-================================
+==========================================
 CHECK IF SOMETHING IS LISTENING ON A PORT
-================================
+==========================================
 http://askubuntu.com/questions/166068/port-seems-to-be-open-but-connection-refused
 
 NOTE: The following command only shows if something is listening on a port - but not if the port is open/closed to world
@@ -30,9 +30,9 @@ No idea what this is:
 CHECK IF FIREWALL IS UP OR DOWN - RHEL
 ======================================
 
------------------------
+-----------------------------
 METHOD 1 - FIREWALLD SERVICE
------------------------
+-----------------------------
 # systemctl status firewalld
 firewalld.service - firewalld - dynamic firewall daemon
    Loaded: loaded (/usr/lib/systemd/system/firewalld.service; enabled)
@@ -73,6 +73,53 @@ FORWARD_OUT_ZONES  all  --  0.0.0.0/0            0.0.0.0/0
 ...
 ...
 
+=======================================
+START/STOP FIREWALL
+=======================================
+Service is 'firewalld' - not 'iptables'.
+
+https://linuxconfig.org/how-to-stop-start-and-disable-enable-firewall-on-redhat-7-linux-system
+--> Below stuff is extract from this site above
+
+-------------------------------------
+Check firewall status
+-------------------------------------
+[root@rhel7 ~]# systemctl status firewalld
+firewalld.service - firewalld - dynamic firewall daemon
+   Loaded: loaded (/usr/lib/systemd/system/firewalld.service; enabled)
+   Active: active (running) since Thu 2014-09-04 19:18:47 EST; 3 months 28 days ago
+ Main PID: 539 (firewalld)
+   CGroup: /system.slice/firewalld.service
+           └─539 /usr/bin/python -Es /usr/sbin/firewalld --nofork --nopid
+
+Sep 04 19:18:45 rhel7 systemd[1]: Starting firewalld - dynamic firewall daemon...
+Sep 04 19:18:47 rhel7 systemd[1]: Started firewalld - dynamic firewall daemon.
+
+-------------------------------------
+Stop and Start RHEL7 firewall
+-------------------------------------
+
+The firewall on Redhat 7 Linux system can be stopped by a following command:
+[root@rhel7 ~]# service firewalld stop
+Redirecting to /bin/systemctl stop  firewalld.service
+Stopped firewall will start again after system's reboot. To start firewall on Redhat 7 Linux system use:
+[root@rhel7 ~]# service firewalld start
+Redirecting to /bin/systemctl start  firewalld.service
+
+-------------------------------------
+Disable and Enable RHEL7 firewall
+-------------------------------------
+
+In order to completely disable RHEL7 firewall so it would no load after reboot run:
+
+[root@rhel7 ~]# systemctl disable firewalld
+rm '/etc/systemd/system/dbus-org.fedoraproject.FirewallD1.service'
+rm '/etc/systemd/system/basic.target.wants/firewalld.service'
+Now the firewall would not start after system's reboot. To enable the firewall again run:
+[root@rhel7 ~]# systemctl enable firewalld
+ln -s '/usr/lib/systemd/system/firewalld.service' '/etc/systemd/system/dbus-org.fedoraproject.FirewallD1.service'
+ln -s '/usr/lib/systemd/system/firewalld.service' '/etc/systemd/system/basic.target.wants/firewalld.service'
+
 ======================================
 OPEN A PORT IN FIREWALL - REDHAT
 ======================================
@@ -100,9 +147,9 @@ ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:8443 ctsta
 ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:18083 ctstate NEW
 ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:8080 ctstate NEW
 
-==========================
+=============================
 VERIFY FIREWALL BETWEEN HOSTS
-==========================
+=============================
 cat < /dev/tcp/to_hostname/port
 
 Example:
