@@ -136,12 +136,25 @@ Click on the user
 On the RHS panel, choose attributes --> Optional Attributes --> userpassword
 --> provide password and click 'apply'
 
+- VERIFY
+NOTE: Make sure 1389 port is open for tcp - use firewall commands for that
+Go to a oracle db server which has 'ldapbind' 
+$ ldapbind -h <your oud host> -p 1389 -D cn=eusadmin,ou=eusadmins,dc=example,dc=com -w oracle
+bind successful
+
+-- Try with a wrong password
+$  ldapbind -h 10.63.160.170 -p 1389 -D cn=eusadmin,ou=eusadmins,dc=example,dc=com -w oracle1
+ldap_bind: Invalid credentials
 
 ===============================
 THE ROOT USER
 ===============================
 The primary root user is the 'Directory Manager' that got created during oud-setup.
 You can add additional root users
+
+- Verify bind
+$ ldapbind -h <oud hostname> -p 1389 -D cn="Directory Manager" -w oracle
+bind successful
 
 -------------------------------
 Directory Manager user
@@ -159,15 +172,19 @@ Create additional root user
 --------------------------------
 Click on 'Create' button drop down
 Choose root user
-In the ensuing RHS panel, give username 'Name' as 'eusadmin0'
-Add an alternative Bind DN as "cn=eusadmin0,ou=eusadmins,dc=example,dc=com"
+In the ensuing RHS panel, give username 'Name' as 'eusroot'
+Add an alternative Bind DN as "cn=eusroot,ou=eusadmins,dc=example,dc=com"
 Provide a password (gave 'oracle#1' to conform with root password policy)
 Let the privileges to be default for now
 
 Click 'create' on rhs top
 Now, you will see a new user eusadmin0 under Root Users
+NOTE: This user does not appear under ou=eusadmins under dc=example,dc=com in the 'Data Browser' tab (TBD - why?)
 
-NOTE: This user does not appear under ou=eusamins under dc=example,dc=com in the 'Data Browser' tab (TBD - why?)
+- VERIFY
+$ + ldapbind -h 10.63.160.170 -p 1389 -D cn='eusroot,ou=eusadmins,dc=example,dc=com' -w 'oracle#1'
+bind successful
+
 
 
 
