@@ -66,6 +66,9 @@ EUSM commands:
 EUSM, Command Line Tool For EUS Administration and Some EUS Good to Knows (Doc ID 1085065.1)
 https://blogs.oracle.com/sduloutr/entry/using_eusm_to_manage_eus
 
+Role create/map/eusm:
+https://wiki.loopback.org/confluence/display/KB/Configure+EUS+with+OUD%2C+AD+and+DB12c#ConfigureEUSwithOUD,ADandDB12c-Registerdatabasewithdirectory
+
 =====================================
 LOGON TO OUD
 =====================================
@@ -419,6 +422,7 @@ To see the global user of the DB that got mapped:
 ======================================
 CREATE ENTERPRISE ROLES
 ======================================
+https://wiki.loopback.org/confluence/display/KB/Configure+EUS+with+OUD%2C+AD+and+DB12c#ConfigureEUSwithOUD,ADandDB12c-Registerdatabasewithdirectory
 
 ----------------------------------
 CREATE AN ENTERPRISE ROLE (DBA)
@@ -440,7 +444,19 @@ $ eusm deleteRole enterprise_role=DBA domain_name=OracleDefaultDomain realm_dn=d
 ------------------------------------------------------------------------------------------------------
 ASSOCIATE GLOBAL ROLE (OUD_DBA_ROLE_GLOBAL) IN DB TO THE ENTERPRISE ROLE (DBA)
 ------------------------------------------------------------------------------------------------------
+# QUESTION - here, should it be database_name=DB_NAME or DB_UNIQUE_NAME?
 $ eusm addGlobalRole enterprise_role=DBA domain_name=OracleDefaultDomain realm_dn=dc=example,dc=com database_name=DB_NAME global_role=OUD_DBA_ROLE_GLOBAL dbuser=system dbuser_password=oracle#1 dbconnect_string=rcll04-scan:1522/GLOBAL_DB_NAME ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
+
+----------------------------------------------
+GRANT ROLE
+----------------------------------------------
+# QUESTION - here, should it be DB_NAME or DB_UNIQUE_NAME?
+
+# This did not work
+#eusm grantRole enterprise_role=DBA domain_name=OracleDefaultDomain realm_dn=dc=example,dc=com group_dn=cn=DBA,ou=DB_UNIQUE_NAME,ou=Groups,dc=example,dc=com ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
+
+eusm grantRole enterprise_role=DBA domain_name=OracleDefaultDomain realm_dn=dc=example,dc=com group_dn=cn=DBA,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=example,dc=com ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
+
 
 
 
