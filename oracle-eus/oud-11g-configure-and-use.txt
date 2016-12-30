@@ -579,10 +579,37 @@ Mapping Level :DATABASE
 CONNECT AS THE NEW USER USER1
 =========================================
 
+-------------------------
+CREATE LDAP.ORA in $TNS_ADMIN
+-------------------------
+DIRECTORY_SERVERS= (10.63.160.170:1389:1636)
+DEFAULT_ADMIN_CONTEXT = "dc=example,dc=com"
+DIRECTORY_SERVER_TYPE = OID
+
+-------------------------
+CREATE SQLNET.ORA in $TNS_ADMIN
+-------------------------
+NOTE: Provide the right DB_UNIQUE_NAME of the DB below
+
+NAMES.DIRECTORY_PATH= (TNSNAMES, EZCONNECT)
+WALLET_LOCATION=
+    (SOURCE=(METHOD=FILE)(METHOD_DATA=
+      (DIRECTORY=/u02/app/oracle/admin/DB_UNIQUE_NAME/wallet)))
+
+------------------------
+CONNECT AS USER1
+------------------------
+
 SQL> connect user1/oracle
 ERROR:
 ORA-28030: Server encountered problems accessing LDAP directory service
-Warning: You are no longer connected to ORACLE.
+--> For this error, fix LDAP.ORA and SQLNET.ORA
+
+SQL> connect user1/oracle
+ERROR:
+ORA-28030: Server encountered problems accessing LDAP directory service
+--> This could be wallet error
+
 
 
 
