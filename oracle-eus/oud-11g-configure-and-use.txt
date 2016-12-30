@@ -804,10 +804,26 @@ set-connection-handler-prop --handler-name "LDAPS Connection Handler" \
   --set trust-manager-provider:JKS --set key-manager-provider:JKS \
   --set listen-port:1636 --set enabled:true
 
+          Port 1636 is the standard LDAPS port, but you might not be able to use this port if it is already taken 
+          or if you are a regular user. If you must accept SSL-based connections on a port other than 1636, 
+          change the listen-port property in the last command to the port number being used.
 
-        
-        
+          If you have specified a different value for -keypass and -storepass when generating the private key in step 1, 
+          you must provide the key password using dsconfig:
 
+          $ dsconfig -D "cn=directory manager" -j pwd-file -X -n \
+          create-key-manager-provider-key-pin --provider-name JKS --set
+           key-pin-file:<file with key password> --type generic --pin-name
+           server-cert
+          For the name of the key pin, provide the same name of the alias of the certificate. 
+          This is needed to identify which key pin/password is associated with each certificate in the key manager provider.
+
+          If, in step 3, you created a text file with a location and name other than config/keystore.pin, 
+          for example a text file called config/mykeystore.pin, specify that information as follows:
+
+          $ dsconfig -D "cn=directory manager" -j pwd-file -X -n \
+            set-key-manager-provider-prop --provider-name JKS --set enabled:true \
+            --set keystore-pin-file:/config/mykeystore.pin
 
 
 
