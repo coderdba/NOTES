@@ -717,6 +717,7 @@ https://docs.oracle.com/cd/E52734_01/oud/OUDAG/security_clients_severs.htm#OUDAG
      26.1.2 Accepting SSL-Based Connections Using a Self-Signed Certificate
      https://docs.oracle.com/cd/E52734_01/oud/OUDAG/security_clients_severs.htm#OUDAG00513
      (old version - https://docs.oracle.com/cd/E22289_01/html/821-1273/getting-ssl-up-and-running-quickly.html)
+https://floblanc.wordpress.com/2016/02/04/how-to-use-ssl-authentication-between-the-eus-database-and-oud/
 
 - GENERATE KEYSTORE
 
@@ -855,15 +856,38 @@ dn:
 objectClass: top
 objectClass: ds-root-dse
 
+- Copy the certificate to the DB server
+Copy the config/oud-server-cert.txt to some place in the db server
 
+- Import the certificate into the DB wallet
+Syntax: orapki wallet add -wallet <PathToDBWallet> -cert oud-cert.txt -trusted_cert -pwd <WalletPassword>
 
+$ cd /u02/app/oracle/admin/DB_UNIQUE_NAME/wallet
+$ orapki wallet add -wallet . -cert ~/oud-server-cert.txt -trusted_cert -pwd "oracle#1"
 
+- VERIFY if the wallet now has the certificate
+$ orapki wallet display -wallet .
+     Oracle PKI Tool : Version 11.2.0.4.0 - Production
+     Copyright (c) 2004, 2013, Oracle and/or its affiliates. All rights reserved.
 
+     Requested Certificates:
+     User Certificates:
+     Oracle Secret Store entries:
+     ORACLE.SECURITY.DN
+     ORACLE.SECURITY.PASSWORD
+     Trusted Certificates:
+     Subject:        OU=Class 2 Public Primary Certification Authority,O=VeriSign\, Inc.,C=US
+     Subject:        CN=oudhost.company.com,O=My Company,C=US
+     Subject:        OU=Secure Server Certification Authority,O=RSA Data Security\, Inc.,C=US
+     Subject:        OU=Class 3 Public Primary Certification Authority,O=VeriSign\, Inc.,C=US
+     Subject:        OU=Class 1 Public Primary Certification Authority,O=VeriSign\, Inc.,C=US
+     Subject:        CN=GTE CyberTrust Global Root,OU=GTE CyberTrust Solutions\, Inc.,O=GTE Corporation,C=US
+     
+$ mkstore -wrl . -viewEntry ORACLE.SECURITY.DN
+Enter wallet password: oracle#1
+ORACLE.SECURITY.DN = cn=RL4DB4_TTCE,cn=OracleContext,dc=example,dc=com
 
-
-
-
-
-
-
+$ mkstore -wrl . -viewEntry ORACLE.SECURITY.PASSWORD
+Enter wallet password: oracle#1
+ORACLE.SECURITY.PASSWORD = GLYJ2+^7aEC5
 
