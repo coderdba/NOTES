@@ -713,7 +713,87 @@ TROUBLESHOOT FURTHER - setup SSL with key
 -----------------------------------
 http://www.k21technologies.com/configure-oracle-unified-directory-in-ssl-mode-with-self-signed-certificate/
 https://blogs.oracle.com/sduloutr/entry/migrating_dsee_ssl_certificates_to
-https://docs.oracle.com/cd/E22289_01/html/821-1273/getting-ssl-up-and-running-quickly.html
+https://docs.oracle.com/cd/E52734_01/oud/OUDAG/security_clients_severs.htm#OUDAG00050
+     26.1.2 Accepting SSL-Based Connections Using a Self-Signed Certificate
+     https://docs.oracle.com/cd/E52734_01/oud/OUDAG/security_clients_severs.htm#OUDAG00513
+     (old version - https://docs.oracle.com/cd/E22289_01/html/821-1273/getting-ssl-up-and-running-quickly.html)
+
+- GENERATE KEYSTORE
+
+On OUD server:
+-------------
+Logon as 'oud' user
+Go to directory /u01/app/oracle/Middleware/oudinst1/OUD
+Backup 'config' directory - as keystore will be re-created/created there
+You can notice that a file 'keystore' already exists in config directory
+
+$ keytool -genkeypair -alias oud-server-cert -keyalg rsa \
+  -dname "CN=oudhost.company.com,O=Company Name,C=US" \ 
+  -keystore config/keystore -storetype JKS
+  
+Enter keystore password: oracle#1
+Re-enter new password: oracle#1
+Enter key password for <oud-server-cert>
+        (RETURN if same as keystore password): oracle#1
+  
+This will create a new file 'keystore' in config subdirectory.
+
+- Generate a self-signed certificate for the key
+$ keytool -selfcert -alias oud-server-cert -validity 1825 -keystore config/keystore -storetype JKS
+Enter keystore password: oracle#1
+
+- Place the keystore password in config/keystore.pin
+Edit the file config/keystore.pin, remove the current entry 
+-- (backup the file before doing that)
+
+Place oracle#1 - the keystore password we chose
+
+- Export the public key for the certificate that you created
+$ keytool -exportcert -alias oud-server-cert -file config/oud-server-cert.txt -rfc -keystore config/keystore -storetype JKS
+
+This will create a certificate file config/oud-server-cert.txt
+with content like the following
+-----BEGIN CERTIFICATE-----
+MIIDNzCCAh+gAwIBAgIEXOcr9DANBgkqhkiG9w0BAQsFADBMMQswCQYDVQQGEwJV
+...
+yo7unqQfg5OxZ0eUK7LrT5hZigq1hfoBUvNU3WH8Rsa3HespFjW0a7V0lK7nIJFf
+LUUH2uEVdozGiZeWTmN1Qa0ElJxgI9+zuDhrPl9bsrLveR1BvrzI53xIBS9Yu1GD
+HvijYBI9J/04bmQ=
+
+- Create a new trust store and import the server certificate into that trust store.
+Backup the current config/truststore file
+$ keytool -importcert -alias server-cert -file config/oud-server-cert.txt -keystore config/truststore -storetype JKS
+Enter keystore password: oracle#1
+Re-enter new password: oracle#1
+Owner: CN=oudhost.company.com, O=Company Name, C=US
+Issuer: CN=oudhost.company.com, O=Company Name, C=US
+Serial number: 5ce72bf4
+Valid from: Fri Dec 30 10:23:54 CST 2016 until: Wed Dec 29 10:23:54 CST 2021
+Certificate fingerprints:
+         MD5:  D4:F2:44:7A:02:81:7E:67:28:D4:F2:77:73:16:AA:CA
+         SHA1: E4:E5:FE:E6:21:41:6E:57:C0:2B:29:E5:6D:37:01:DF:4B:65:E8:EF
+         SHA256: 07:E2:FF:08:DC:8C:88:39:88:6A:6E:0F:E4:A7:15:71:6D:48:CB:F6:98:59:39:0C:80:9D:CC:43:26:CA:93:36
+         Signature algorithm name: SHA256withRSA
+         Version: 3
+
+Extensions:
+
+#1: ObjectId: 2.5.29.14 Criticality=false
+SubjectKeyIdentifier [
+KeyIdentifier [
+0000: 45 02 C1 7E E1 72 24 43   79 CF F0 97 4C 47 54 02  E....r$Cy...LGT.
+0010: D6 43 96 18                                        .C..
+]
+]
+
+
+
+
+
+        
+        
+
+
 
 
 
