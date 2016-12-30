@@ -55,6 +55,7 @@ http://ziontech.com/blog/category/directory-services/
      
 https://wiki.loopback.org/confluence/display/KB/Configure+EUS+with+OUD%2C+AD+and+DB12 --> with AD integration
 
+DBCA,NETCA - http://ziontech.com/blog/preparing_database/
 DBCA only - http://ptotech.blogspot.in/2016/05/oudeus-running-dbca-from-command-line.html
 
 Examples:
@@ -199,6 +200,9 @@ bind successful
 --------------------------------------
 ======================================
 Pre-requisites - a root user - either default 'Directory Admin' or 'eusroot' or other be available in OUD.
+In this case:
+eusroot password oracle#1
+'Directory Manager' password oracle
 
 ************
 NOTE: See various NOTE and QUESTION to know and answer.
@@ -207,6 +211,10 @@ NOTE: See various NOTE and QUESTION to know and answer.
 ======================
 REGISTER DB IN OUD
 ======================
+
+------------------------
+REGISTER DB
+------------------------
 dbca -silent -configureDatabase -sourceDB DB_UNIQUE_NAME -sysDBAUserName sys -sysDBAPassword "oracle#1" -registerWithDirService true -dirServiceUserName cn='eusroot,ou=eusadmins,dc=example,dc=com' -dirServicePassword oracle#1 -walletPassword 'oracle#1' -listeners listener
      Preparing to Configure Database
      6% complete
@@ -216,7 +224,9 @@ dbca -silent -configureDatabase -sourceDB DB_UNIQUE_NAME -sysDBAUserName sys -sy
      100% complete
      Look at the log file "/u02/app/oracle/cfgtoollogs/dbca/DB_UNIQUE_NAME/DBNAME0.log" for further details.
 
-- VERIFY
+---------------------------------
+VERIFY with ldapsearch
+---------------------------------
 NOTE: oud-host-or-ip --> give the oud server hostname or ip
 
 NOTE: The output shows the orclSystemName as the hostname from where it registered
@@ -241,6 +251,22 @@ $ ldapsearch -h oud-host-or-ip -p 1389 -D  cn='eusroot,ou=eusadmins,dc=example,d
      orclcommonrpwdattribute={SASL-MD5}sD8XoUI3JT35W+NZDZz9nQ==
      userPassword={SSHA}Q7V3Xe9RU5iClI5QRKGhPnBEpksjLUzQ8yPHSw==
      orclNetDescName=000:cn=DESCRIPTION_0
+
+------------------------------------------
+VERIFY IN OUD WHERE THIS DB IS REGISTGERED
+------------------------------------------
+NOTE: It is created as a cn directly under OracleContext of dc=example,dc=com
+
+Go to 'Data Browser' --> 'Data Tree' 
+     --> dc=example,dc=com --> cn=OracleContext 
+     
+          --> cn=DB_UNIQUE_NAME  
+          
+               --> under that there will be the following 'cn' items:
+                    DESCRIPTION_0
+                    OracleDBAdmins
+                    OracleDBAgents ... etc
+
 
 
 
