@@ -47,7 +47,7 @@ DB with OUD :
 USE THIS 11.1.2.3 VERSION - https://docs.oracle.com/cd/E52734_01/oud/OUDAG/eus.htm#OUDAG11381 --> DB access configuration with OUD (OUD-DB EUS integration)
      http://docs.oracle.com/cd/E49437_01/admin.111220/e22648/toc.htm --> ??? chapter 28 similar to the above one??
      
-- Seems good:
+- Seems good: SYSDBA users
 http://blog.yannickjaquier.com/oracle/enterprise-user-security-eus-password-authentication.html
 
 http://ziontech.com/blog/category/directory-services/
@@ -321,6 +321,44 @@ NOTE: Certificate is created with keytool - self-signed
 
 orapki wallet add -wallet . -cert /tmp/oud-cert.txt -trusted_cert -pwd Oracle123 
 orapki wallet display -wallet . 
+
+====================================
+CREATE SCHEMA, ROLES, GLOBAL USERS
+====================================
+spool 11gsetup
+
+set echo on
+
+create role oud_appwrite_role_local;
+create role oud_appread_role_local;
+
+create role oud_appwrite_role_global identified globally;
+create role oud_appread_role_global identified globally;
+create role oud_dba_role_global identified globally;
+
+grant oud_appwrite_role_local to oud_appwrite_role_global;
+grant oud_appread_role_local to oud_appread_role_global;
+grant dba to oud_dba_role_global;
+
+grant connect to oud_appwrite_role_global;
+grant connect to oud_appread_role_global;
+grant connect to oud_dba_role_global;
+
+create user oudappmgr identified by oudappmgr123;
+
+create table oudappmgr.emp (id int, name varchar2(10));
+create table oudappmgr.dept (id int, name varchar2(10));
+
+create user oud_global_ident_schema_user  identified globally;
+
+grant select, insert, update, delete on oudappmgr.emp to oud_appwrite_role_local;
+grant select, insert, update, delete on oudappmgr.emp to oud_appwrite_role_local;
+
+grant select, insert, update, delete on oudappmgr.emp to oud_appread_role_local;
+grant select on oudappmgr.emp to oud_appread_role_local;
+
+spool off
+
 
 
 
