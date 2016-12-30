@@ -624,16 +624,16 @@ TROUBLESHOOT
 Try re-registering DB using dbca - so that wallet gets created newly
 
 # Unregister
-$ dbca -silent -configureDatabase -sourceDB RL4DB4_TTCE -unregisterWithDirService true -dirServiceUserName cn='eusroot,ou=eusadmins,dc=example,dc=com' -dirServicePassword oracle#1 -walletPassword 'oracle#1' -listeners listener
+$ dbca -silent -configureDatabase -sourceDB DB_UNIQUE_NAME -unregisterWithDirService true -dirServiceUserName cn='eusroot,ou=eusadmins,dc=example,dc=com' -dirServicePassword oracle#1 -walletPassword 'oracle#1' -listeners listener
 
 # Register again
-dbca -silent -configureDatabase -sourceDB RL4DB4_TTCE -sysDBAUserName sys -sysDBAPassword "oracle#1" -registerWithDirService true -dirServiceUserName cn='eusroot,ou=eusadmins,dc=example,dc=com' -dirServicePassword oracle#1 -walletPassword 'oracle#1' -listeners listener
+dbca -silent -configureDatabase -sourceDB DB_UNIQUE_NAME -sysDBAUserName sys -sysDBAPassword "oracle#1" -registerWithDirService true -dirServiceUserName cn='eusroot,ou=eusadmins,dc=example,dc=com' -dirServicePassword oracle#1 -walletPassword 'oracle#1' -listeners listener
 
 # Create DB mapping again
-eusm createMapping database_name=RL4DB4_TTCE realm_dn=dc=example,dc=com map_type=SUBTREE map_dn=dc=example,dc=com schema=oud_global_ident_schema_user ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn='eusroot,ou=eusadmins,dc=example,dc=com' ldap_user_password=oracle#1
+eusm createMapping database_name=DB_UNIQUE_NAME realm_dn=dc=example,dc=com map_type=SUBTREE map_dn=dc=example,dc=com schema=oud_global_ident_schema_user ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn='eusroot,ou=eusadmins,dc=example,dc=com' ldap_user_password=oracle#1
 
 # Map the user again
-eusm createMapping realm_dn=dc=example,dc=com  ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn='eusroot,ou=eusadmins,dc=example,dc=com' ldap_user_password=oracle#1 database_name="RL4DB4_TTCE" map_type="ENTRY" map_dn='cn=user1,ou=people,dc=example,dc=com' schema=oud_global_ident_schema_user
+eusm createMapping realm_dn=dc=example,dc=com  ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn='eusroot,ou=eusadmins,dc=example,dc=com' ldap_user_password=oracle#1 database_name="DB_UNIQUE_NAME" map_type="ENTRY" map_dn='cn=user1,ou=people,dc=example,dc=com' schema=oud_global_ident_schema_user
 
 
 --> Recoonect did not help - same error again
@@ -665,7 +665,26 @@ KZLD_ERR: failed to open connection to 10.63.160.170:1636
 KZLD_ERR: 28030
 KZLD_ERR: found err from kzldini.
 
+--> Open 1636 port in oud host's firewall
+# iptables -L -n |grep -i tcp
+ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:22 ctstate NEW
+ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:1389 ctstate NEW
+ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:7001 ctstate NEW
 
+# firewall-cmd --zone=public --add-port=1636/tcp --permanent
+success
+
+# firewall-cmd --reload
+success
+
+# iptables -L -n |grep -i tcp
+ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:22 ctstate NEW
+ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:1389 ctstate NEW
+ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:7001 ctstate NEW
+ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:1636 ctstate NEW
+
+
+--> still same error ora-28030
 
 
 
