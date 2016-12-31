@@ -1,0 +1,52 @@
+
+
+-- LDAPBIND COMMANDS TRIED
+ldapbind -h 10.63.160.170 -p 1389 -D cn=eusadmin,ou=eusadmins,dc=example,dc=com -w oracle
+ldapbind -h 10.63.160.170 -p 1389 -D cn="Directory Manager" -w oracle
+ldapbind -h 10.63.160.170 -p 1389 -D cn=eusroot,ou=eusadmins,dc=example,dc=com -w oracle#1
+ldapbind -h 10.63.160.170 -p 1389 -D cn=eusroot oracle#1
+ldapbind -h 10.63.160.170 -p 1389 -D eusroot oracle#1
+ldapbind -h 10.63.160.170 -p 1389 -D cn=user1,ou=people,dc=example,dc=com -w oracle
+
+ldapbind -h 10.63.160.170 -p 1389 -U 1 -W 'file:/u02/app/oracle/admin/DB_UNIQUE_NAME/wallet' -P 'oracle#1'
+ldapbind -h 10.63.160.170 -p 1389 -U 2 -W 'file:/u02/app/oracle/admin/DB_UNIQUE_NAME/wallet' -P 'oracle#1'
+ldapbind -h 10.63.160.170 -p 1389 -U 3 -W 'file:/u02/app/oracle/admin/DB_UNIQUE_NAME/wallet' -P 'oracle#1'
+(and hostname variations of the above 'file'...)
+
+-- SCREEN OUTPUT
+
++ ldapbind -h 10.63.160.170 -p 1389 -D cn='eusadmin,ou=eusadmins,dc=example,dc=com' -w oracle
+bind successful
++ ldapbind -h 10.63.160.170 -p 1389 -D cn='Directory Manager' -w oracle
+bind successful
++ ldapbind -h 10.63.160.170 -p 1389 -D cn='eusroot,ou=eusadmins,dc=example,dc=com' -w 'oracle#1'
+bind successful
++ ldapbind -h 10.63.160.170 -p 1389 -D cn=eusroot 'oracle#1'
+ldap_bind: Invalid credentials
++ ldapbind -h 10.63.160.170 -p 1389 -D eusroot 'oracle#1'
+ldap_bind: Operations error
+ldap_bind: additional info: The provided value "eusroot" could not be parsed as a valid distinguished name because it contained an RDN containing an empty attribute name
++ ldapbind -h 10.63.160.170 -p 1389 -D cn='user1,ou=people,dc=example,dc=com' -w oracle
+bind successful
+
++ ldapbind -h 10.63.160.170 -p 1389 -U 1 -W file:/u02/app/oracle/admin/RL4DB4_TTCE/wallet -P 'oracle#1'
+ SSL handshake failed
++ ldapbind -h 10.63.160.170 -p 1389 -U 2 -W file:/u02/app/oracle/admin/RL4DB4_TTCE/wallet -P 'oracle#1'
+ SSL handshake failed
++ ldapbind -h 10.63.160.170 -p 1389 -U 3 -W file:/u02/app/oracle/admin/RL4DB4_TTCE/wallet -P 'oracle#1'
+ SSL handshake failed
+ ...
+ ...
+ 
+ -- OUD logs/access logfile
+--> for all wallet ldapbinds
+[31/Dec/2016:02:53:11 -0600] DISCONNECT conn=6 reason="Protocol Error" msg="Cannot decode the provided ASN.1 sequence as an LDAP message because the second element of the sequence could not be decoded as the protocol op:  org.opends.server.types.LDAPException: Cannot decode the provided ASN.1 element as an LDAP protocol op because the element had an invalid BER type (0) for an LDAP protocol op"
+[31/Dec/2016:02:53:11 -0600] CONNECT conn=7 from=10.66.136.189:21081 to=10.63.160.170:1389 protocol=LDAP
+[31/Dec/2016:02:53:11 -0600] DISCONNECT conn=7 reason="Protocol Error" msg="Cannot decode the provided ASN.1 sequence as an LDAP message because the second element of the sequence could not be decoded as the protocol op:  org.opends.server.types.LDAPException: Cannot decode the provided ASN.1 element as an LDAP protocol op because the element had an invalid BER type (0) for an LDAP protocol op"
+[31/Dec/2016:02:53:11 -0600] CONNECT conn=8 from=10.66.136.189:21082 to=10.63.160.170:1389 protocol=LDAP
+[31/Dec/2016:02:53:11 -0600] DISCONNECT conn=8 reason="Protocol Error" msg="Cannot decode the provided ASN.1 sequence as an LDAP message because the second element of the sequence could not be decoded as the protocol op:  org.opends.server.types.LDAPException: Cannot decode the provided ASN.1 element as an LDAP protocol op because the element had an invalid BER type (0) for an LDAP protocol op"
+[31/Dec/2016:02:53:11 -0600] CONNECT conn=9 from=10.66.136.189:21083 to=10.63.160.170:1389 protocol=LDAP
+[31/Dec/2016:02:53:11 -0600] DISCONNECT conn=9 reason="Protocol Error" msg="Cannot decode the provided ASN.1 sequence as an LDAP message because the second element of the sequence could not be decoded as the protocol op:  org.opends.server.types.LDAPException: Cannot decode the provided ASN.1 element as an LDAP protocol op because the element had an invalid BER type (0) for an LDAP protocol op"
+
+-- OUD - How to Verify that SSLv3 is Disabled (Doc ID 2017561.1)
+
