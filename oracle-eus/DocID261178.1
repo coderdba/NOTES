@@ -1,0 +1,145 @@
+Enterprise User Security Configuration: Resolving ORA-28030 Errors (Doc ID 261178.1)	To BottomTo Bottom	
+
+
+***Checked for relevance on 26-Sep-2012*** 
+
+PURPOSE
+-------
+
+To assist with the debug of ORA-28030 errors
+
+ 
+SCOPE & APPLICATION
+-------------------
+
+This document is relevant to anyone setting up EUS with either 8i or later target database. It assumes a basic knowledge of SSL and
+Oracle tools such as Oracle Wallet Manager and Oracle Directory Manager.  
+
+
+Enterprise User Security Configuration: Resolving ORA-28030 Errors
+-----------------------------
+ 
+What does the error mean?
+
+ORA-28030 error indicate that the secure connection between the target database and the directory did not complete successfully. 
+The connection is secured by using SSL.  To make successful enterprise user connection the database to directory configuration
+must be configured for both client, (target database), and server (directory) authentication.  This means both need to have 
+wallets with valid user certificates and shared trust points.  
+
+
+How do you test the if the connection is configured correctly for SSL?
+
+The simplest way to simulate what the target database does is to use ldapbind.  When the target database connects to the 
+directory it need to authenticate using certificates.  When testing ldapbind we therefore need to use SSL certificates in a wallet 
+and execute the command from the ORACLE HOME of the target database.  
+
+$> ldapbind -h <oid_hostname> -p <SSL_port> -U 3 -W "file:<Wallet_path>" -P "<wallet_password>"
+
+For example:
+
+$> ldapbind -h  -p 636 -U 3 -W "file:/etc/oracle/wallets" -P "welcome1" 
+
+The type of authentication is determined by the value of the -U flag and the SSL Authentication value of the LDAP server 
+listening on the port - both have to match, i.e.
+
+ldapbind -U 1 with the directory SSL Authentication configured to No SSL Authentication
+ldapbind -U 2 with the directory SSL Authenticationconfigured to SSL Server Authentication
+ldapbind -U 3 with the directory SSL Authentication configured to SSL Client Server Authentication
+
+Run each of these inturn changing the SSL Authentication type on the directory to match the value of the the -U flag and 
+restarting the directory server each time you change the value.
+
+
+How do you change the SSL Authentication type in a directory?
+
+To use EUS Oracle recommends that you configure a separate SSL configset, i.e. do not use the Default Configuration Set.  The 
+configuration set are configured in the directory information tree, DIT, in Oracle Directory Manager, ODM. The configset are 
+under the Server Management entry.  If you only have a Default Configuration Set, create a new one using the Create Like button 
+and then changing both the Non SSL Port and SSL Port to unique values. To change the SSL Port under the SSL Setting Tab you will 
+need to tick the SSL Enable box.
+
+The value of SSL Authentication for the configuration set is set from the SSL Setting tab of you Configuration Set.  For any 
+value other than "No Authentication" a wallet will be required.  The format of the wallet universal resource locator, URL, is 
+file:<directory>.  The actual file is not specified.
+
+Each time the value of the SSL Authentication is changed the Apply button must be selected and the server restarted.  If the 
+configuration set is Set1 and already had the default configuration set running then the server would be restarted using:
+
+$> Only for pre-10g OID :odictl server=oidldapd instance=2 configset=1
+Post 10g you need to restart oid using opmnctl
+ 
+
+How do I create a wallet?
+
+The Oracle SSL certificate store is called a Wallet. A wallet is a PKCS#12 certificate store.  Oracle wallets as administrated via 
+Oracle Wallet Manager, OWM.  The details of wallet creation are outside the scope of this note but to use a wallet with EUS the 
+wallet must have a READY user certificate which has a subject which matches the RDBMS_SERVER_DN of the target database and must be 
+marked as READY under the User Certifcate store in OWM.  OWM supports certficates from most commercial certificate authorities or 
+from Oracle's own authority which is part of the 10g iAS release.  It is also possible to use self signed certificates using 
+openssl.
+
+
+Testing using ldapbind.
+
+If ldapbind with -U 1 fails then this suggests one of the following:
+
+1. There is no directory server listening on the specified host and port.
+2. The diredtory server is not configured for No Authentication
+3. The directory server has not been restarted since it was set for No Authentication
+4. The local wallet does not exit.
+
+If ldapbind with -U 2 fails then this suggests one of the following:
+
+1. The directory server is not configured for SSL Server Authentication
+2. The directory server has not been restarted since it was set for SSL Server Authentication
+3. The password provided for the local wallet is incorrect
+4. The local wallet does not contain the complete signing certifcate chain of the directories user certificate
+5. The directory wallet located in the configuration set is incorrect or does not point to an open wallet
+6. The directories certificate "valid from" or "vaild to" dates are incorrect.
+
+If ldapbind with -U 3 fails then this suggests one of the following:
+
+1. The directory server is not configured for SSL Client Server Authentication
+2. The directory server has not been restarted since it was set for SSL Client Server Authentication
+3. The certficate located in the configuration set is incorrect or does not point to an open wallet
+4. The directories wallet does not contain the complete signing certifcate chain of the database user certificate
+5. The database has not been registered with the directory an therefore there is no entry in the directory which matches the 
+RDBMS_SERVER_DN.
+6. The databases certificate "valid from" or "vaild to" dates are incorrect.
+
+What if the ldapbind's all work but actual connections still fail with the ORA-28030 error?
+
+If the ldapbind -U 3 works from the target database Oracle Home then the problem could be that the database is 
+not accessing identical information to the ldapbind.  The ldapbind gets the location of the wallet from the 
+-W flag and the password to open the wallet from the -p flag.  The location of the SSL port and host from 
+the other flags.  As this information has to be determined by the database when it attempts to connect to the 
+directory then you need to ensure that the ldap.ora states the correct host and ssl port and that the 
+sqlnet.ora correctly locates the wallet.  You also need to ensure that the wallet is set to auto login as 
+the database does not have the password.  In the case of Microsoft Windows the database service must run as 
+the use who created the wallet.
+
+e.g.
+
+ldap.ora
+
+DEFAULT_ADMIN_CONTEXT = "dc=oracle,dc=com"
+DIRECTORY_SERVERS= (iballant-pc:389:636)
+DIRECTORY_SERVER_TYPE = OID
+
+sqlnet.ora
+
+WALLET_LOCATION =
+  (SOURCE =
+    (METHOD = FILE)
+    (METHOD_DATA =
+      (DIRECTORY = c:\oracle\wallets)
+    )
+  )
+
+Terminology:
+
+Target Database: The database to which the client is connecting with a application. e.g. sqlplus
+Directory: The LDAP compliant directory.    
+
+RELATED DOCUMENTS
+-----------------
