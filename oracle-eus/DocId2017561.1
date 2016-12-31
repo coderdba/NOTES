@@ -1,0 +1,280 @@
+OUD - How to Verify that SSLv3 is Disabled (Doc ID 2017561.1)	To BottomTo Bottom	
+
+In this Document
+Goal
+Solution
+References
+
+APPLIES TO:
+
+Oracle Unified Directory - Version 11.1.2.2.1 and later
+Information in this document applies to any platform.
+GOAL
+
+How to Verify that SSLv3 is Disabled
+ 
+
+SOLUTION
+
+This command -
+
+openssl s_client -connect [host]:[port] -ssl3
+
+can be used to verify if SSLv3 is disabled.
+
+For example -
+
+- The status command was run to show Java version and ports used -
+
+  --- Server Status ---
+Server Run Status: Started
+Open Connections: 2
+
+  --- Server Details ---
+Host Name: odsee-lab7
+Administrative Users: cn=Directory Manager
+Installation Path: /home/oracle/Oracle/Middleware/Oracle_OUD1
+Instance Path: /home/oracle/Oracle/Middleware/asinst_1/OUD
+Version: Oracle Unified Directory 11.1.2.1.0
+Java Version: 1.6.0_35
+Administration Connector: Port 4444 (LDAPS)
+
+  --- Connection Handlers ---
+Address:Port : Protocol : State
+-------------:----------------------:---------
+-- : LDIF : Disabled
+8989 : Replication (secure) : Enabled
+0.0.0.0:161 : SNMP : Disabled
+0.0.0.0:1112 : LDAP : Enabled
+0.0.0.0:1113 : LDAPS : Enabled
+0.0.0.0:1689 : JMX : Disabled
+
+  --- Data Sources ---
+Base DN: dc=example,dc=com
+Backend ID: userRoot
+Entries: 50002
+Replication: Enabled
+Missing Changes: 0
+Age Of Oldest Missing Change: 
+
+
+-----------
+Following KM doc - CVE-2014-3566 Instructions to Mitigate the SSL v3.0 Vulnerability (aka "Poodle Attack") in Oracle Unified Directory (Doc ID 1950331.1) --
+
+= Disable SSLv3 by adding ssl-protocol since by default the ssl-protocol uses the SSL protocols provided by the JVM -
+
+This url lists the JDK versions with Critical Patch Updates that have SSLv3 disabled by default -
+http://www.oracle.com/technetwork/java/javase/documentation/cve-2014-3566-2342133.html
+
+- Reconfigured LDAPS connection handler -
+
+[oracle@odsee-lab7 bin]$ ./dsconfig set-connection-handler-prop \
+> --handler-name LDAPS\ Connection\ Handler \
+> --add ssl-protocol:TLSv1 \
+> --add ssl-protocol:SSLv2Hello \
+> --hostname localhost \
+> --port 4444 \
+> --trustAll \
+> --bindDN cn=directory\ manager \
+> --bindPasswordFile /tmp/pwd.txt \
+> --no-prompt
+
+- Verified reconfiguration of LDAPS connection handler -
+
+[oracle@odsee-lab7 bin]$ ./dsconfig get-connection-handler-prop \
+> --handler-name LDAPS\ Connection\ Handler \
+> --hostname localhost \
+> --port 4444 \
+> --trustAll \
+> --bindDN cn=directory\ manager \
+> --bindPasswordFile /tmp/pwd.txt \
+> --no-prompt
+Property : Value(s)
+-----------------------:------------------
+allow-ldap-v2 : true
+allow-start-tls : false
+allowed-client : -
+denied-client : -
+enabled : true
+keep-stats : true
+key-manager-provider : JKS
+listen-address : 0.0.0.0
+listen-port : 1113
+ssl-cert-nickname : -
+ssl-cipher-suite : -
+ssl-client-auth-policy : optional
+ssl-protocol : SSLv2Hello, TLSv1
+trust-manager-provider : JKS
+use-ssl : true
+[oracle@odsee-lab7 bin]$
+- Reconfigured LDAP connection handler -
+
+[oracle@odsee-lab7 bin]$ ./dsconfig set-connection-handler-prop \
+> --handler-name LDAP\ Connection\ Handler \
+> --add ssl-protocol:TLSv1 \
+> --add ssl-protocol:SSLv2Hello \
+> --hostname localhost \
+> --port 4444 \
+> --trustAll \
+> --bindDN cn=directory\ manager \
+> --bindPasswordFile /tmp/pwd.txt \
+> --no-prompt
+- Verified reconfiguration of LDAP connection handler -
+
+[oracle@odsee-lab7 bin]$ ./dsconfig get-connection-handler-prop \
+> --handler-name LDAP\ Connection\ Handler \
+> --hostname localhost \
+> --port 4444 \
+> --trustAll \
+> --bindDN cn=directory\ manager \
+> --bindPasswordFile /tmp/pwd.txt \
+> --no-prompt
+Property : Value(s)
+-----------------------:------------------
+allow-ldap-v2 : true
+allow-start-tls : false
+allowed-client : -
+denied-client : -
+enabled : true
+keep-stats : true
+key-manager-provider : -
+listen-address : 0.0.0.0
+listen-port : 1112
+ssl-cert-nickname : -
+ssl-cipher-suite : -
+ssl-client-auth-policy : optional
+ssl-protocol : SSLv2Hello, TLSv1
+trust-manager-provider : -
+use-ssl : false
+[oracle@odsee-lab7 bin]$
+
+- Reconfigured Crypto Manager Properties -
+
+[oracle@odsee-lab7 bin]$ ./dsconfig set-crypto-manager-prop \
+> --add ssl-protocol:TLSv1 \
+> --add ssl-protocol:SSLv2Hello \
+> --hostname localhost \
+> --port 4444 \
+> --trustAll \
+> --bindDN cn=directory\ manager \
+> --bindPasswordFile /tmp/pwd.txt \
+> --no-prompt
+- Verified the reconfiguration of the Crypto Manager properties -
+
+[oracle@odsee-lab7 bin]$ ./dsconfig get-crypto-manager-prop \
+> --hostname localhost \
+> --port 4444 \
+> --trustAll \
+> --bindDN cn=directory\ manager \
+> --bindPasswordFile /tmp/pwd.txt \
+> --no-prompt
+Property : Value(s)
+----------------------------:------------------------------------
+key-wrapping-transformation : RSA/ECB/OAEPWITHSHA-1ANDMGF1PADDING
+password-storage-scheme : AES
+ssl-cert-nickname : ads-certificate
+ssl-cipher-suite : -
+ssl-encryption : true
+ssl-protocol : SSLv2Hello, TLSv1
+[oracle@odsee-lab7 bin]$
+ 
+
+* The default value for ssl-encryption is false for the Crypto Manager. In the configuration above it is set to true because the replication port was configured as secure when the instance was created.
+
+= Verify SSLv3 disabled by using openssl -
+
+- Tested using openssl specifying ssl3 on LDAPS port -
+
+[oracle@odsee-lab7 bin]$ openssl s_client -connect odsee-lab7:1113 -ssl3
+CONNECTED(00000003)
+20280:error:1409E0E5:SSL routines:SSL3_WRITE_BYTES:ssl handshake failure:s3_pkt.c:536:
+
+Output in access log when running the openssl command (above) against the secure port -
+
+[04/Jun/2015:12:22:47 -0400] CONNECT conn=48 from=10.141.144.118:60745 to=10.141.144.118:1113 protocol=LDAPS
+[04/Jun/2015:12:22:48 -0400] DISCONNECT conn=48 reason="I/O Error" msg="Client requested protocol SSLv3 not enabled or not supported"
+- Tested using openssl specifying ssl3 on LDAP port -
+
+[oracle@odsee-lab7 bin]$ openssl s_client -connect odsee-lab7:1112 -ssl3
+CONNECTED(00000003)
+20287:error:1408F10B:SSL routines:SSL3_GET_RECORD:wrong version number:s3_pkt.c:281:
+Access log output when running the openssl command (above) against the non-secure port-
+
+[04/Jun/2015:12:26:24 -0400] CONNECT conn=49 from=10.141.144.118:59814 to=10.141.144.118:1112 protocol=LDAP
+[04/Jun/2015:12:26:24 -0400] DISCONNECT conn=49 reason="Protocol Error" msg="Cannot decode the provided ASN.1 sequence as an LDAP message because the first element of the sequence could not be decoded as an integer message ID: org.opends.sdk.DecodeException: Cannot decode the ASN.1 element because an unexpected end of file was reached while reading the type byte"
+
+- Tested using openssl specifying tls1 on LDAPS port -
+
+[oracle@odsee-lab7 bin]$ openssl s_client -connect odsee-lab7:1112 -tls1
+CONNECTED(00000003)
+20294:error:1408F10B:SSL routines:SSL3_GET_RECORD:wrong version number:s3_pkt.c:281:
+[oracle@odsee-lab7 bin]$ openssl s_client -connect odsee-lab7:1113 -tls1
+CONNECTED(00000003)
+depth=0 /O=Oracle Unified Directory Self-Signed Certificate/CN=odsee-lab7.us.oracle.com
+verify error:num=18:self signed certificate
+verify return:1
+depth=0 /O=Oracle Unified Directory Self-Signed Certificate/CN=odsee-lab7.us.oracle.com
+verify return:1
+---
+Certificate chain
+0 s:/O=Oracle Unified Directory Self-Signed Certificate/CN=odsee-lab7.us.oracle.com
+  i:/O=Oracle Unified Directory Self-Signed Certificate/CN=odsee-lab7.us.oracle.com
+---
+Server certificate
+<snip>
+
+= Showing same openssl commands on an OUD instance that has SSLv3 enabled (but different output) -
+
+- Tested using openssl specifying ssl3 on LDAPS port (on instance that has SSLv3 enabled) -
+
+[oracle@odsee-lab7 bin]$ openssl s_client -connect odsee-lab7:11125 -ssl3
+CONNECTED(00000003)
+depth=0 /O=Oracle Unified Directory Self-Signed Certificate/CN=odsee-lab7
+verify error:num=18:self signed certificate
+verify return:1
+depth=0 /O=Oracle Unified Directory Self-Signed Certificate/CN=odsee-lab7
+verify return:1
+---
+Certificate chain
+0 s:/O=Oracle Unified Directory Self-Signed Certificate/CN=odsee-lab7
+  i:/O=Oracle Unified Directory Self-Signed Certificate/CN=odsee-lab7
+---
+Server certificate
+<snip>
+
+- Tested using openssl specifying ssl3 on LDAP port (on instance that has SSLv3 enabled) -
+
+
+[oracle@odsee-lab7 bin]$ openssl s_client -connect odsee-lab7:11124 -ssl3
+CONNECTED(00000003)
+20431:error:1408F10B:SSL routines:SSL3_GET_RECORD:wrong version number:s3_pkt.c:281:
+[oracle@odsee-lab7 bin]$
+
+- Tested using openssl specifying tls1 on LDAPS port (on instance that has SSLv3) -
+
+[oracle@odsee-lab7 bin]$ openssl s_client -connect odsee-lab7:11125 -tls1
+CONNECTED(00000003)
+depth=0 /O=Oracle Unified Directory Self-Signed Certificate/CN=odsee-lab7
+verify error:num=18:self signed certificate
+verify return:1
+depth=0 /O=Oracle Unified Directory Self-Signed Certificate/CN=odsee-lab7
+verify return:1
+---
+Certificate chain
+0 s:/O=Oracle Unified Directory Self-Signed Certificate/CN=odsee-lab7
+  i:/O=Oracle Unified Directory Self-Signed Certificate/CN=odsee-lab7
+---
+Server certificate 
+<snip>
+
+Regardless of when ssl-encryption is set to true or false (and regardless of reconfiguring the Crypto Manager based on the KM article), an ssl handshake failure is output when using openssl specifying ssl3 --
+
+[oracle@odsee-lab7 logs]$ openssl s_client -connect odsee-lab7:8989 -ssl3
+CONNECTED(00000003)
+depth=0 /O=Oracle Unified Directory Certificate/CN=odsee-lab7.us.oracle.com
+verify error:num=18:self signed certificate
+verify return:1
+depth=0 /O=Oracle Unified Directory Certificate/CN=odsee-lab7.us.oracle.com
+verify return:1
+23164:error:140943F2:SSL routines:SSL3_READ_BYTES:sslv3 alert unexpected message:s3_pkt.c:1092:SSL alert number 10
+23164:error:1409E0E5:SSL routines:SSL3_WRITE_BYTES:ssl handshake failure:s3_pkt.c:536:
