@@ -1,0 +1,65 @@
+12c: Restoring and Recovering Files Over the Network (Doc ID 2011074.1)	To BottomTo Bottom	
+
+In this Document
+Goal
+Solution
+APPLIES TO:
+
+Oracle Database - Enterprise Edition - Version 12.1.0.1 and later
+Information in this document applies to any platform.
+GOAL
+
+ Oracle Database 12c Release :
+
+RMAN restores database files, over the network, from a physical standby database by using the FROM SERVICE clause of the RESTORE command. The FROM SERVICE clause provides the service name of the physical standby database from which the files must be restored. During the restore operation, RMAN creates backup sets, on the physical standby database, of the files that need to be restored and then transfers these backup sets to the target database over the network.
+
+Use the SECTION SIZE clause of the RESTORE command to perform a multisection restore operation. To encrypt the backup sets created on the physical standby database, use the SET ENCRYPTION command before the RESTORE command to specify the encryption algorithm used.
+
+To transfer files from the physical standby database as compressed backup sets, use the USING COMPRESSED BACKUPSET clause in the RESTORE command. By default, RMAN compresses backup sets using the algorithm that is set in the RMAN configuration. You can override the default and set a different algorithm by using the SET COMPRESSION ALGORITHM command before the RESTORE statement.
+
+ 
+
+Reference :
+
+ Restoring and Recovering Files Over the Network
+
+http://docs.oracle.com/database/121/BRADV/rcmadvre.htm#CACFAHHJ
+
+SOLUTION
+
+Steps to Restoring and Recovering Files Over the Network
+
+Primary DB = chicago , its net service name is chicago
+Standby DB = boston , its net service name is boston
+
+ 
+
+You want to restore lost data files, control files, or tablespaces on a primary database using the corresponding files on the physical standby database. You can also restore files on a physical standby database by using the primary database.
+
+The data file users01.dbf on the primary database was lost. You want to restore this data file from the physical standby database. The service name of the physical standby database is boston. The RESTORE command with the FROM SERVICE clause enables you to restore the lost data file in the primary database by using the data file in the physical standby database. The password file in the primary database and the physical standby database are the same.
+
+Use the following steps to restore the data file users01.dbf in the primary database by using the data file in the physical standby database:
+
+ 
+
+Connect to the primary database as a user with the SYSBACKUP privilege.
+
+RMAN> connect target "C##SCOTT@chicago as sysbackup";
+ Enter the password for the C##SCOTT user when prompted.
+Ensure that the tnsnames.ora file in the physical standby database contains an entry corresponding to the primary database. Also ensure that the password files on the primary and physical standby database are the same.
+
+Restore the data file on the primary database by using the data file on the physical standby database as below :
+
+      RMAN> RESTORE DATAFILE '/u01/oradata/primary/chicago/users01.dbf' FROM SERVICE boston ;
+
+      Starting restore at 25-APR-15
+      using target database control file instead of recovery catalog
+      allocated channel: ORA_DISK_1
+      channel ORA_DISK_1: SID=31 device type=DISK
+
+      channel ORA_DISK_1: starting datafile backup set restore
+      channel ORA_DISK_1: using network backup set from service boston
+      channel ORA_DISK_1: specifying datafile(s) to restore from backup set
+      channel ORA_DISK_1: restoring datafile 00006 to /u01/oradata/primary/chicago/users01.dbf
+      channel ORA_DISK_1: restore complete, elapsed time: 00:00:01
+      Finished restore at 25-APR-15
