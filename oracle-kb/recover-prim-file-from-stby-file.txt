@@ -1,0 +1,141 @@
+NOTE: 453153.1
+
+Recovering the primary database's datafile using the physical standby, and vice versa (Doc ID 453153.1)	To BottomTo Bottom	
+
+In this Document
+Goal
+ 	Important
+Solution
+ 	Recovering the Primary's Datafile
+ 	Recovering the Standby's Datafile
+ 	9i Restriction
+References
+APPLIES TO:
+
+Oracle Database - Enterprise Edition - Version 9.2.0.5 and later
+Information in this document applies to any platform.
+***Checked for relevance on 16-July-2015***
+GOAL
+
+How to recover the primary database's datafile using a copy of a standby database's datafile.
+
+and
+
+How to recover the standby database's datafile using a copy of a primary database's datafile.
+
+Important
+
+Before replacing a datafile with a copy from either production or standby, please confirm that all archivelogs are available for full recovery of this datafile. It is also important to ensure that the source is corruption-free. Run DBV or RMAN validate to check for corruption.
+
+a) dbv must return with zero corrupted pages
+
+$ dbv file=<full path filename> blocksize=<tablespace blocksize> logfile=<output log>
+ If using ASM, you need to also supply the userid for dbv:
+
+$ dbv userid=system/<password> file=<full path filename> blocksize=<tablespace blocksize> logfile=<output log>
+b) rman validate:
+
+RMAN> backup validate check logical datafile n;
+ 
+
+Once RMAN is completed, this view must return zero rows:
+
+SQL> select * from v$database_block_corruption;
+ 
+
+If trying to resolve an ORA-600 [3020], please refer instead to the following content:
+  
+Note 1265884.1 'Resolving ORA-752 or ORA-600 [3020] During Standby Recovery'
+
+Datafiles should not be copied to a physical standby until the primary has been cleared of any corruption.
+ 
+
+SOLUTION
+
+These procedure will work for all file systems - cooked, raw or ASM.
+
+Throughout this example we will be using datafile 5.
+
+Recovering the Primary's Datafile
+
+1) in the standby database, backup the datafile to a cooked file system:
+
+RMAN> backup datafile 5 format '/tmp/df5_st.bk';
+
+ 
+
+2) transfer the backuppiece from the standby to the primary host using scp, ftp, nfs etc
+
+
+3) in the primary database, do the following:
+
+a) catalog this backuppiece and confirm that it is available for use:
+
+RMAN> catalog backuppiece '/tmp/df5_st.bk';
+RMAN> list backuppiece '/tmp/df5_st.bk'
+RMAN> list backup of datafile 5;
+
+
+b) restore the datafile:
+
+SQL> alter database datafile 5 offline;
+
+Now make an operating system copy of the primary datafile before overlaying with the restored copy as a precaution
+
+RMAN> restore datafile 5;
+
+
+c) recover the datafile:
+
+RMAN> recover datafile 5;
+
+
+d) place the datafile online:
+
+SQL> alter database datafile 5 online;
+ 
+
+Recovering the Standby's Datafile
+
+When recovering the standby, reverse the steps.
+
+1) at the primary site, take a backup of the datafile:
+
+RMAN> backup datafile 5 format '/tmp/df5_pr.bk' tag 'PRIMARY_5';
+ 
+
+2) transfer the file to the standby site using an operating system utility such as scp, NFS, ftp etc
+
+3) at the standby site, catalog the backuppiece and confirm it's available for use:
+
+RMAN> catalog backuppiece'/tmp/df5_pr.bk';
+RMAN> list backuppiece'/tmp/df5_pr.bk';
+RMAN> list backup of datafile 5;
+ 
+
+4) stop redo apply on the physical standby database. For an active dataguard you will need to restart the standby database in MOUNT mode first before stopping managed recovery.
+
+SQL> ALTER DATABASE RECOVER MANAGED STANDBY DATABASE CANCEL;
+ 
+
+5) on the standby site restore the datafile:
+
+RMAN> restore datafile 5;
+ 
+
+6) restart redo apply on the physical standby database. For an active dataguard you can go ahead and restart the active dataguard process.
+
+SQL> ALTER DATABASE RECOVER MANAGED STANDBY DATABASE DISCONNECT;
+NOTE:  prior to 12.1, for real time apply, you must use:
+ 
+
+SQL> ALTER DATABASE RECOVER MANAGED STANDBY DATABASE USING CURRENT LOGFILE DISCONNECT; 
+ 
+
+9i Restriction
+
+In 9i the datafile must be backed up as a datafile copy as we can only catalog datafile copies in this release.
+
+RMAN> copy datafile 5 to '/tmp/datafile5.cpy';
+
+RMAN> catalog datafilecopy '/tmp/df5.cpy';
