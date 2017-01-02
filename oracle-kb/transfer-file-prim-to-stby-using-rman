@@ -1,0 +1,890 @@
+1909235.1
+
+	Copy database file directly across network using RMAN in 11g including Primary and Standby (Doc ID 1909235.1)	To BottomTo Bottom	
+
+In this Document
+Goal
+ 	Legacy Method
+ 	Prerequisites
+ 	Limitations
+ 	Use Cases
+Solution
+ 	a) Copy datafile from Primary to Standby
+ 	b) Copy datafile from Standby to Primary
+ 	c) Copy datafile from any source to any destination, e.g. failed DUPLICATE auxiliary clone destination
+ 	d) Copy controlfile from any source to any destination, e.g. from Primary to Physical Standby
+ 	e) Copy archivelog from any source to any destination
+ 	f) Copy spfile from any source to any destination
+References
+APPLIES TO:
+
+Oracle Database - Enterprise Edition - Version 11.1.0.6 and later
+Information in this document applies to any platform.
+**** Checked for relevance on 27-NOV-2015 ****
+GOAL
+
+By copying files directly across network, we can not just eliminate several steps, but also, reduce time by several factors due to reduced I/O calls:
+
+Legacy Method
+
+Take backup at Source (I/O call)
+Copy backup files across network to destination using OS commands, e.g. scp, ftp, etc. (I/O call and Network call)
+Catalog the backup files at destination
+Restore files at destination (I/O call)
+Above method requires 3 I/O calls.
+
+Copying files directly across network reduces to Single I/O & Network call to achieve same goal.
+
+ 
+
+In 12c, this is a new native feature and much easier and efficient. Refer 12c Documentation :
+
+http://docs.oracle.com/cd/E16655_01/backup.121/e17630/rcmadvre.htm#BRADV680 
+
+ 
+
+For versions prior to 11g (e..g 10gR2), refer below Article:
+
+Recovering the primary database's datafile using the physical standby, and vice versa (Doc ID 453153.1)
+
+Prerequisites
+
+TNS Entry for source (target) and destination (auxiliary)
+RMAN executable which is compatible with Source and Destination Oracle Home version. It can be from any 3rd Oracle Home remotely from source and destination.
+Limitations
+
+Only Image Backup format can be used.
+RMAN compression can not be used to utilize network efficiently.
+MULTI-SECTION can not be used as this is not applicable to Image Backup in 11g.
+Level 1 backup FROM SCN can not be taken from Primary directly over to Standby for rollforward, as this is a Backupset not a Image Backup.
+Above restrictions are lifted in 12c.
+Use Cases
+
+Copy datafile from Primary to Standby
+Copy datafile from Standby to Primary
+Copy datafile from any source to any destination, e.g. failed DUPLICATE auxiliary destination
+Copy controlfile from any source to any destination, e.g. from Primary to Physical Standby
+Copy archivelog from any source to any destination
+Copy spfile from any source to any destination
+ 
+
+SOLUTION
+
+a) Copy datafile from Primary to Standby
+
+Let's take an example of copying 2 datafiles here with File# 4 & 5.
+
+1) On Standby, Cancel Managed Recovery Process (MRP):
+
+If using Broker:
+
+$ dgmgrl sys/password@prmy_tns
+DGMGRL> edit database stby set state='APPLY-OFF' ;
+
+ 
+
+Example:
+
+$ dgmgrl sys/password@prmy_tns
+
+Welcome to DGMGRL, type "help" for information.
+Connected.
+
+DGMGRL> edit database stby set state='APPLY-OFF' ;
+
+Succeeded.
+DGMGRL>
+
+ 
+
+If not using Broker:
+
+$ sqlplus sys/password@stby_tns
+SQL> recover managed standby database cancel ;
+
+ 
+
+Example:
+
+$ sqlplus sys/password@stby_tns as sysdba
+
+Connected to:
+Oracle Database 11g Enterprise Edition Release 11.2.0.4.0 - 64bit Production
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+
+SQL> recover managed standby database cancel ;
+
+Media recovery complete.
+SQL>
+
+ 
+
+2) If standby is Active Data Guard (ADG) standby opened in read only mode, restart it in MOUNT mode:
+
+$ sqlplus sys/password@stby_tns as sysdba
+SQL> select open_mode from v$database ;
+SQL> shutdown immediate
+SQL> startup mount
+
+ 
+
+Example:
+
+$ sqlplus sys/password@stby_tns as sysdba
+
+Connected to:
+Oracle Database 11g Enterprise Edition Release 11.2.0.4.0 - 64bit Production
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+
+SQL> select open_mode from v$database ;
+
+OPEN_MODE
+--------------------
+READ ONLY
+
+SQL> shutdown immediate
+
+Database closed.
+Database dismounted.
+ORACLE instance shut down.
+
+SQL> startup mount
+
+ORACLE instance started.
+
+Total System Global Area       471830528 bytes
+Fixed Size                       2254344 bytes
+Variable Size                  197134840 bytes
+Database Buffers               268435456 bytes
+Redo Buffers                     4005888 bytes
+Database mounted.
+SQL>
+
+ 
+
+3) Retrieve datafile name(s) on Standby:
+
+$ sqlplus sys/password@stby_tns as sysdba
+SQL> select file#, name from v$datafile where file# in (4, 5) ;
+
+ 
+
+Example:
+
+$ sqlplus sys/password@stby_tns as sysdba
+
+Connected to:
+Oracle Database 11g Enterprise Edition Release 11.2.0.4.0 - 64bit Production
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+
+SQL> select file#, name from v$datafile where file# in (4, 5) ;
+
+ FILE# NAME
+------ ---------------------------------------------
+     4 /u01/app/oracle/oradata/stby/users01.dbf
+     5 /u01/app/oracle/oradata/stby/example01.dbf
+
+SQL>
+
+ 
+
+4) Connect RMAN to Primary (source) as target and Standby (destination) as auxiliary using TNS, and then, using RMAN, copy datafile(s) from Primary to Standby across network.
+
+To achieve parallelism, you can allocate multiple channels. Please note that one channel can copy one datafile at a time.
+
+Since we have 2 datafiles, we can allocate 2 channels to copy both files in parallel.
+
+$ rman target sys/password@prmy_tns auxiliary sys/password@stby_tns
+
+At RMAN prompt:
+
+run {
+allocate channel d1 type disk ;
+allocate channel d2 type disk ;
+backup as copy reuse
+  datafile 4 auxiliary format '<standby_full_path_and_file_name_from_step_3>'
+  datafile 5 auxiliary format '<standby_full_path_and_file_name_from_step_3>'
+ ;
+}
+
+ 
+
+Example:
+
+$ rman target sys/password@prmy_tns auxiliary sys/password@stby_tns
+
+connected to target database: PRMY (DBID=798210736)
+connected to auxiliary database: PRMY (DBID=798210736, not open)
+
+RMAN> run {
+2> allocate channel d1 type disk ;
+3> allocate channel d2 type disk ;
+4> backup as copy reuse
+5>   datafile 4 auxiliary format '/u01/app/oracle/oradata/stby/users01.dbf'
+6>   datafile 5 auxiliary format '/u01/app/oracle/oradata/stby/example01.dbf'
+7>  ;
+8> }
+
+using target database control file instead of recovery catalog
+allocated channel: d1
+channel d1: SID=52 device type=DISK
+
+allocated channel: d2
+channel d2: SID=59 device type=DISK
+
+Starting backup at 20-JUL-2014:06:04:06
+channel d1: starting datafile copy
+input datafile file number=00005 name=/u01/app/oracle/oradata/prmy/example01.dbf
+channel d2: starting datafile copy
+input datafile file number=00004 name=/u01/app/oracle/oradata/prmy/users01.dbf
+output file name=/u01/app/oracle/oradata/stby/users01.dbf tag=TAG20140720T060406
+channel d2: datafile copy complete, elapsed time: 00:00:08
+output file name=/u01/app/oracle/oradata/stby/example01.dbf tag=TAG20140720T060406
+channel d1: datafile copy complete, elapsed time: 00:00:26
+Finished backup at 20-JUL-2014:06:04:32
+released channel: d1
+released channel: d2
+
+RMAN>
+
+ 
+
+5) On Standby, Start Managed Recovery Process (MRP):
+
+If using Broker:
+
+$ dgmgrl sys/password@stby_tns
+DGMGRL> edit database stby set state='APPLY-ON' ;
+
+ 
+
+Example:
+
+$ dgmgrl sys/password@prmy_tns
+
+Welcome to DGMGRL, type "help" for information.
+Connected.
+
+DGMGRL> edit database stby set state='APPLY-ON' ;
+
+Succeeded.
+DGMGRL>
+
+ 
+
+If not using Broker:
+
+$ sqlplus sys/password@stby_tns as sysdba
+SQL> recover managed standby database using current logfile disconnect ;
+
+ 
+
+Example:
+
+$ sqlplus sys/password@stby_tns as sysdba
+
+Connected to:
+Oracle Database 11g Enterprise Edition Release 11.2.0.4.0 - 64bit Production
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+
+SQL> recover managed standby database using current logfile disconnect ;
+
+Media recovery complete.
+SQL>
+
+ 
+
+6) If this standby is an Active Data Guard (ADG) standby, open it in READ ONLY and restart Managed Recovery Process (MRP):
+
+Wait for execution of step 5) to apply adequate redo to bring standby datafiles to a consistent point, then cancel MRP, open read only and restart MRP:
+
+Cancel Managed Recovery Process (MRP):
+
+If using Broker:
+
+$ dgmgrl sys/password@prmy_tns
+DGMGRL> edit database stby set state='APPLY-OFF' ;
+
+ 
+
+Example:
+
+$ dgmgrl sys/password@prmy_tns
+
+Welcome to DGMGRL, type "help" for information.
+Connected.
+
+DGMGRL> edit database stby set state='APPLY-OFF'
+
+Succeeded.
+DGMGRL>
+
+ 
+
+If not using Broker :
+
+$ sqlplus sys/password@stby_tns as sysdba
+SQL> recover managed standby database cancel ;
+
+ 
+
+Example:
+
+$ sqlplus sys/password@stby_tns as sysdba
+
+Connected to:
+Oracle Database 11g Enterprise Edition Release 11.2.0.4.0 - 64bit Production
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+
+SQL> recover managed standby database cancel ;
+
+Media recovery complete.
+SQL>
+
+  
+
+Open Standby in READ ONLY:
+
+$ sqlplus sys/password@stby_tns as sysdba
+SQL> alter database open ;
+
+ 
+
+Example:
+
+$ sqlplus sys/password@stby_tns as sysdba
+
+Connected to:
+Oracle Database 11g Enterprise Edition Release 11.2.0.4.0 - 64bit Production
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+
+SQL> alter database open ;
+
+Database altered.
+
+SQL>
+
+ 
+
+Restart Managed Recovery Process (MRP):
+
+ 
+
+If using Broker:
+
+$ dgmgrl sys/password@prmy_tns
+DGMGRL> edit database stby set state='APPLY-ON' ;
+
+ 
+
+Example:
+
+$ dgmgrl sys/password@prmy_tns
+
+Welcome to DGMGRL, type "help" for information.
+Connected.
+
+DGMGRL> edit database stby set state='APPLY-ON' ;
+
+Succeeded.
+DGMGRL>
+
+ 
+
+If using SQL :
+
+$ sqlplus sys/password@stby_tns as sysdba
+SQL> recover managed standby database using current logfile disconnect ;
+ 
+
+Example:
+
+$ sqlplus sys/password@stby_tns as sysdba
+
+Connected to:
+Oracle Database 11g Enterprise Edition Release 11.2.0.4.0 - 64bit Production
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+
+SQL> recover managed standby database using current logfile disconnect ;
+
+Media recovery complete.
+SQL>
+
+ 
+
+b) Copy datafile from Standby to Primary
+
+Let's take an example of copying 2 datafiles here with File# 4 & 5.
+
+1) Retrieve datafile name(s) on Primary
+
+$ sqlplus sys/password@prmy_tns as sysdba
+SQL> select file#, name from v$datafile where file# in (4, 5) ;
+
+ 
+
+Example:
+
+$ sqlplus sys/password@prmy_tns as sysdba
+
+Connected to:
+Oracle Database 11g Enterprise Edition Release 11.2.0.4.0 - 64bit Production
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+
+SQL> select file#, name from v$datafile where file# in (4, 5) ;
+
+ FILE# NAME
+------ ---------------------------------------------
+     4 /u01/app/oracle/oradata/prmy/users01.dbf
+     5 /u01/app/oracle/oradata/prmy/example01.dbf
+
+SQL>
+
+ 
+
+2) If Primary is in OPEN state, then we need to take Datafile(s) offline, else if Primary is in MOUNT state, skip this step:
+
+SQL> alter database datafile 4, 5 OFFLINE ;
+
+ 
+
+Example:
+
+SQL> alter database datafile 4, 5 offline ;
+
+Database altered.
+
+ 
+
+3) Connect RMAN to Standby (source) as target and Primary (destination) as auxiliary using TNS, and then, using RMAN, copy datafile(s) from Standby to Primary across network.
+
+To achieve parallelism, you can allocate multiple channels. Please note that one channel can copy one datafile at a time.
+
+Since we have 2 datafiles, we can allocate 2 channels to copy both files in parallel.
+
+ 
+
+$ rman target sys/password@stby_tns auxiliary sys/password@prmy_tns
+
+At RMAN prompt:
+
+run {
+allocate channel d1 type disk ;
+allocate channel d2 type disk ;
+backup as copy reuse
+  datafile 4 auxiliary format '<primary_full_path_and_file_name_from_step_1>'
+  datafile 5 auxiliary format '<primary_full_path_and_file_name_from_step_1>'
+}
+
+ 
+
+Example:
+
+$ rman target sys/password@stby_tns auxiliary sys/password@prmy_tns
+
+connected to target database: PRMY (DBID=798210736)
+connected to auxiliary database: PRMY (DBID=798210736)
+
+RMAN> run {
+2> allocate channel d1 type disk ;
+3> allocate channel d2 type disk ;
+4> backup as copy reuse
+5>   datafile 4 auxiliary format '/u01/app/oracle/oradata/prmy/users01.dbf'
+6>   datafile 5 auxiliary format '/u01/app/oracle/oradata/prmy/example01.dbf'
+7>  ;
+8> }
+
+using target database control file instead of recovery catalog
+allocated channel: d1
+channel d1: SID=52 device type=DISK
+
+allocated channel: d2
+channel d2: SID=59 device type=DISK
+
+Starting backup at 20-JUL-2014:06:04:06
+channel d1: starting datafile copy
+input datafile file number=00005 name=/u01/app/oracle/oradata/stby/example01.dbf
+channel d2: starting datafile copy
+input datafile file number=00004 name=/u01/app/oracle/oradata/stby/users01.dbf
+output file name=/u01/app/oracle/oradata/prmy/users01.dbf tag=TAG20140720T060406
+channel d2: datafile copy complete, elapsed time: 00:00:08
+output file name=/u01/app/oracle/oradata/prmy/example01.dbf tag=TAG20140720T060406
+channel d1: datafile copy complete, elapsed time: 00:00:26
+Finished backup at 20-JUL-2014:06:04:32
+released channel: d1
+released channel: d2
+
+RMAN>
+
+  
+
+  
+4) On Primary, recover the datafiles and bring them back ONLINE :
+
+$ sqlplus sys/password@prmy_tns as sysdba
+SQL> recover datafile 4, 5 ;
+SQL> alter database datafile 4, 5 online ;
+
+ 
+
+Example:
+
+$ sqlplus sys/password@prmy_tns as sysdba
+
+Connected to:
+Oracle Database 11g Enterprise Edition Release 11.2.0.4.0 - 64bit Production
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+
+SQL> recover datafile 4, 5 ;
+
+Media recovery complete.
+
+SQL> alter database datafile 4, 5 online ;
+
+Database altered.
+
+SQL>
+
+ 
+
+c) Copy datafile from any source to any destination, e.g. failed DUPLICATE auxiliary clone destination
+
+Let's take an example of copying 2 datafiles here with File# 4 & 5.
+
+1) Retrieve datafile name(s) on Source database as reference:
+
+$ sqlplus /nolog
+
+SQL*Plus: Release 11.2.0.4.0 Production on Sun Jul 20 12:51:34 2014
+
+Copyright (c) 1982, 2013, Oracle.  All rights reserved.
+
+SQL> conn sys/oracle@source_tns as sysdba
+Connected.
+
+SQL> select file#, name from v$datafile where file# in (4, 5) ;
+
+ FILE# NAME
+------ ---------------------------------------------
+     4 /u01/app/oracle/oradata/source/users01.dbf
+     5 /u01/app/oracle/oradata/source/example01.dbf
+
+SQL>
+
+2) Make sure that destination is not in OPEN state, i.e. it should be either of NOMOUNT or MOUNT only or bring the datafiles OFFLINE on destination.
+
+3) Connect RMAN to Source as target and Destination as Auxiliary using TNS, and then, copy datafile(s) from Source to Destination across network.
+
+To achieve parallelism, we can allocate multiple channels. Please note that one channel can copy one datafile at a time.
+
+Since we have 2 datafiles, we can allocate 2 channels to copy both files in parallel.
+
+ 
+
+$ rman target sys/password@source_tns auxiliary sys/password@dest_tns
+
+connected to target database: SOURCE (DBID=798210736)
+connected to auxiliary database: DEST (DBID=798210736, not open)
+
+RMAN> run {
+2> allocate channel d1 type disk ;
+3> allocate channel d2 type disk ;
+4> backup as copy reuse
+5>   datafile 4 auxiliary format '/u01/app/oracle/oradata/dest/users01.dbf'
+6>   datafile 5 auxiliary format '/u01/app/oracle/oradata/dest/example01.dbf'
+7>  ;
+8> }
+
+using target database control file instead of recovery catalog
+allocated channel: d1
+channel d1: SID=52 device type=DISK
+
+allocated channel: d2
+channel d2: SID=59 device type=DISK
+
+Starting backup at 20-JUL-2014:06:04:06
+channel d1: starting datafile copy
+input datafile file number=00005 name=/u01/app/oracle/oradata/source/example01.dbf
+channel d2: starting datafile copy
+input datafile file number=00004 name=/u01/app/oracle/oradata/source/users01.dbf
+output file name=/u01/app/oracle/oradata/dest/users01.dbf tag=TAG20140720T060406
+channel d2: datafile copy complete, elapsed time: 00:00:08
+output file name=/u01/app/oracle/oradata/dest/example01.dbf tag=TAG20140720T060406
+channel d1: datafile copy complete, elapsed time: 00:00:26
+Finished backup at 20-JUL-2014:06:04:32
+released channel: d1
+released channel: d2
+
+RMAN>
+
+On Destination, further steps depend on the situation at auxiliary destination.
+
+ 
+
+d) Copy controlfile from any source to any destination, e.g. from Primary to Physical Standby
+
+You can choose to overwrite existing controlfiles on destination (auxiliary must be in NOMOUNT mode for this) or can specify different location / name.
+
+Example of copying Standby Controlfile from Primary to Physical Standby by overwriting existing standby controlfile in NOMOUNT mode of standby:
+
+Retrieve the controlfile names at Standby in NOMOUNT mode :
+
+$ sqlplus /nolog
+
+SQL*Plus: Release 11.2.0.4.0 Production on Sun Jul 20 12:51:34 2014
+
+Copyright (c) 1982, 2013, Oracle.  All rights reserved.
+
+SQL> conn sys/oracle@stby_tns as sysdba
+Connected.
+
+SQL> shutdown immediate
+
+Database closed.
+Database dismounted.
+ORACLE instance shut down.
+
+SQL> startup nomount
+
+ORACLE instance started.
+
+Total System Global Area       471830528 bytes
+Fixed Size                       2254344 bytes
+Variable Size                  197134840 bytes
+Database Buffers               268435456 bytes
+Redo Buffers                     4005888 bytes
+
+SQL> show parameter control_files
+
+NAME           TYPE        VALUE
+-------------- ----------- ------------------------------
+control_files  string      /u01/app/oracle/oradata/stby/control01.ctl,
+                           /u01/app/oracle/fast_recovery_area/stby/control02.ctl
+SQL>
+
+ 
+
+Now, copy controlfile from Primary to above Physical Standby:
+
+$ rman target sys/password@prmy_tns auxiliary sys/password@stby_tns
+
+At RMAN prompt:
+
+run {
+allocate channel d1 type disk ;
+backup as copy current controlfile for standby auxiliary format 'choose_one_of_standby_control_file_path_name_from_above>' ;
+}
+
+ 
+
+Example:
+
+$ rman target sys/oracle@prmy_tns auxiliary sys/oracle@stby_tns
+
+connected to target database: PRMY (DBID=798210736)
+connected to auxiliary database: PRMY (not mounted)
+
+RMAN> run {
+2> allocate channel d1 type disk ;
+3> backup as copy current controlfile for standby auxiliary format '/u01/app/oracle/oradata/stby/control01.ctl' ;
+4> }
+
+using target database control file instead of recovery catalog
+allocated channel: d1
+channel d1: SID=55 device type=DISK
+
+Starting backup at 20-JUL-2014:13:17:06
+channel d1: starting datafile copy
+copying standby control file
+output file name=/u01/app/oracle/oradata/stby/control01.ctl tag=TAG20140720T131706 RECID=6 STAMP=853420626
+channel d1: datafile copy complete, elapsed time: 00:00:01
+Finished backup at 20-JUL-2014:13:17:07
+released channel: d1
+
+RMAN>
+
+  
+
+Once finished, just create copy of above restored controlfile to another controlfile location/name using Operating System command, e.g. "cp" in Unix:
+
+$ ll /u01/app/oracle/oradata/stby/control01.ctl
+
+-rw-rw---- 1 oracle oracle 10240000 Jul 20 13:17 /u01/app/oracle/oradata/stby/control01.ctl
+
+$ cp /u01/app/oracle/oradata/stby/control01.ctl /u01/app/oracle/oradata/stby/control02.ctl
+$
+
+ 
+
+In case of physical standby as destination, please also make sure to follow additional applicable steps. Some references below:
+
+Steps to recreate a Physical Standby Controlfile (Doc ID 459411.1)
+
+Step By Step Guide On How To Recreate Standby Control File When Datafiles Are On ASM And Using Oracle Managed Files (Doc ID 734862.1)
+
+  
+
+e) Copy archivelog from any source to any destination
+
+In this use case, we will copy some archivelogs from thread 1 and 2 to /tmp/arch directory on destination and (optionally) catalog these archivelogs on destination.
+
+Please note that if destination (e.g. Standby) is RAC, archivelogs should be copied to a shared location accessible to all nodes of destination, e.g., ASM diskgroup, NFS, etc.
+
+Please note that one channel can copy one archivelog at a time, so, you may prefer to allocate multiple RMAN channels relevant to Source Target Database Server configuration.
+
+ 
+
+$ rman target sys/password@source_tns auxiliary sys/password@destination_tns
+
+At RMAN prompt:
+
+run {
+allocate channel d1 type disk ;
+allocate channel d2 type disk ;
+allocate channel d3 type disk ;
+allocate channel d4 type disk ;
+backup as copy reuse archivelog from sequence 196 until sequence 199 thread 1 auxiliary format '/nfs_share/arch/%U' ;
+backup as copy reuse archivelog from sequence 201 until sequence 205 thread 2 auxiliary format '/nfs_share/arch/%U' ;
+catalog clone start with '/tmp/arch/' ;
+}
+
+  
+
+Example:
+
+This example will copy archived logs from Primary to Standby:
+
+$ rman target sys/oracle@prmy_tns auxiliary sys/oracle@stby_tns
+
+connected to target database: PRMY (DBID=798210736)
+connected to auxiliary database: PRMY (DBID=798210736)
+
+RMAN> run {
+2> allocate channel d1 type disk ;
+3> allocate channel d2 type disk ;
+4> allocate channel d3 type disk ;
+5> allocate channel d4 type disk ;
+6> backup as copy reuse archivelog from sequence 196 until sequence 199 thread 1 auxiliary format '/nfs_share/arch/%U' ;
+7> backup as copy reuse archivelog from sequence 201 until sequence 205 thread 2 auxiliary format '/nfs_share/arch/%U' ;
+8> catalog clone start with '/nfs_share/arch/' ;
+9> }
+
+allocated channel: d1
+channel d1: SID=53 device type=DISK
+
+allocated channel: d2
+channel d2: SID=47 device type=DISK
+
+allocated channel: d3
+channel d3: SID=49 device type=DISK
+
+allocated channel: d4
+channel d4: SID=54 device type=DISK
+
+Starting backup at 20-JUL-2014:13:42:27
+channel d1: starting archived log copy
+input archived log thread=1 sequence=196 RECID=524 STAMP=853294201
+channel d2: starting archived log copy
+input archived log thread=1 sequence=197 RECID=526 STAMP=853308102
+channel d3: starting archived log copy
+input archived log thread=1 sequence=198 RECID=528 STAMP=853329951
+channel d4: starting archived log copy
+input archived log thread=1 sequence=199 RECID=530 STAMP=853351675
+output file name=/nfs_share/arch/arch_D-PRMY_id-798210736_S-197_T-1_A-850303603_15pdsc24 RECID=0 STAMP=0
+channel d2: archived log copy complete, elapsed time: 00:00:26
+output file name=/nfs_share/arch/arch_D-PRMY_id-798210736_S-196_T-1_A-850303603_14pdsc24 RECID=0 STAMP=0
+channel d1: archived log copy complete, elapsed time: 00:00:47
+output file name=/nfs_share/arch/arch_D-PRMY_id-798210736_S-198_T-1_A-850303603_16pdsc24 RECID=0 STAMP=0
+channel d3: archived log copy complete, elapsed time: 00:00:47
+output file name=/nfs_share/arch/arch_D-PRMY_id-798210736_S-199_T-1_A-850303603_17pdsc24 RECID=0 STAMP=0
+channel d4: archived log copy complete, elapsed time: 00:00:56
+Finished backup at 20-JUL-2014:13:43:25
+
+Starting backup at 20-JUL-2014:13:43:25
+channel d1: starting archived log copy
+input archived log thread=2 sequence=201 RECID=534 STAMP=853375837
+channel d2: starting archived log copy
+input archived log thread=2 sequence=202 RECID=535 STAMP=853391434
+channel d3: starting archived log copy
+input archived log thread=2 sequence=203 RECID=537 STAMP=853392493
+channel d4: starting archived log copy
+input archived log thread=2 sequence=204 RECID=540 STAMP=853404012
+output file name=/nfs_share/arch/arch_D-PRMY_id-798210736_S-203_T-2_A-850303603_1apdsc3u RECID=0 STAMP=0
+channel d3: archived log copy complete, elapsed time: 00:00:01
+channel d3: starting archived log copy
+input archived log thread=1 sequence=205 RECID=541 STAMP=853420526
+output file name=/nfs_share/arch/arch_D-PRMY_id-798210736_S-202_T-2_A-850303603_19pdsc3u RECID=0 STAMP=0
+channel d2: archived log copy complete, elapsed time: 00:00:28
+output file name=/nfs_share/arch/arch_D-PRMY_id-798210736_S-205_T-2_A-850303603_1cpdsc40 RECID=0 STAMP=0
+channel d3: archived log copy complete, elapsed time: 00:00:36
+output file name=/nfs_share/arch/arch_D-PRMY_id-798210736_S-201_T-2_A-850303603_18pdsc3u RECID=0 STAMP=0
+channel d1: archived log copy complete, elapsed time: 00:00:48
+output file name=/nfs_share/arch/arch_D-PRMY_id-798210736_S-204_T-2_A-850303603_1bpdsc3u RECID=0 STAMP=0
+channel d4: archived log copy complete, elapsed time: 00:00:48
+Finished backup at 20-JUL-2014:13:44:14
+
+searching for all files that match the pattern /nfs_share/arch/
+
+List of Files Unknown to the Database
+=====================================
+File Name: /nfs_share/arch/arch_D-PRMY_id-798210736_S-204_T-2_A-850303603_1bpdsc3u
+File Name: /nfs_share/arch/arch_D-PRMY_id-798210736_S-199_T-1_A-850303603_17pdsc24
+File Name: /nfs_share/arch/arch_D-PRMY_id-798210736_S-197_T-1_A-850303603_15pdsc24
+File Name: /nfs_share/arch/arch_D-PRMY_id-798210736_S-202_T-2_A-850303603_19pdsc3u
+File Name: /nfs_share/arch/arch_D-PRMY_id-798210736_S-198_T-1_A-850303603_16pdsc24
+File Name: /nfs_share/arch/arch_D-PRMY_id-798210736_S-201_T-2_A-850303603_18pdsc3u
+File Name: /nfs_share/arch/arch_D-PRMY_id-798210736_S-203_T-2_A-850303603_1apdsc3u
+File Name: /nfs_share/arch/arch_D-PRMY_id-798210736_S-205_T-2_A-850303603_1cpdsc40
+File Name: /nfs_share/arch/arch_D-PRMY_id-798210736_S-196_T-1_A-850303603_14pdsc24
+
+Do you really want to catalog the above files (enter YES or NO)? YES
+cataloging files...
+cataloging done
+
+List of Cataloged Files
+=======================
+File Name: /nfs_share/arch/arch_D-PRMY_id-798210736_S-204_T-2_A-850303603_1bpdsc3u
+File Name: /nfs_share/arch/arch_D-PRMY_id-798210736_S-199_T-1_A-850303603_17pdsc24
+File Name: /nfs_share/arch/arch_D-PRMY_id-798210736_S-197_T-1_A-850303603_15pdsc24
+File Name: /nfs_share/arch/arch_D-PRMY_id-798210736_S-202_T-2_A-850303603_19pdsc3u
+File Name: /nfs_share/arch/arch_D-PRMY_id-798210736_S-198_T-1_A-850303603_16pdsc24
+File Name: /nfs_share/arch/arch_D-PRMY_id-798210736_S-201_T-2_A-850303603_18pdsc3u
+File Name: /nfs_share/arch/arch_D-PRMY_id-798210736_S-203_T-2_A-850303603_1apdsc3u
+File Name: /nfs_share/arch/arch_D-PRMY_id-798210736_S-205_T-2_A-850303603_1cpdsc40
+File Name: /nfs_share/arch/arch_D-PRMY_id-798210736_S-196_T-1_A-850303603_14pdsc24
+released channel: d1
+released channel: d2
+released channel: d3
+released channel: d4
+
+RMAN>
+
+ 
+
+f) Copy spfile from any source to any destination
+
+$ rman target sys/password@source_tns auxiliary sys/password@destination_tns
+
+At RMAN prompt:
+
+run {
+backup as copy reuse
+  targetfile '/u01/app/oracle/product/11.2.0/dbhome_1/dbs/spfileprod.ora' auxiliary format '/u01/app/oracle/product/11.2.0/dbhome_1/dbs/spfiledup.ora'
+}
+
+ 
+
+Example:
+
+RMAN> run {
+2> backup as copy reuse
+3>   targetfile '/u01/app/oracle/product/11.2.0/dbhome_1/dbs/spfileprod.ora' auxiliary format '/u01/app/oracle/product/11.2.0/dbhome_1/dbs/spfiledup.ora' ;
+4> }
+
+Starting backup at 20-JUL-2014:13:53:28
+using target database control file instead of recovery catalog
+allocated channel: ORA_DISK_1
+channel ORA_DISK_1: SID=56 device type=DISK
+Finished backup at 20-JUL-2014:13:53:30
+
+RMAN>
