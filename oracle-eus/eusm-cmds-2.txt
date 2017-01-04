@@ -1,0 +1,185 @@
+EUSM, Command Line Tool For EUS Administration and Some EUS Good to Knows (Doc ID 1085065.1)	To BottomTo Bottom	
+
+In this Document
+Goal
+Solution
+References
+
+APPLIES TO:
+
+Advanced Networking Option - Version 11.2.0.1 and later
+Information in this document applies to any platform.
+Checked for relevance on 13-MAR-2013
+GOAL
+
+What is EUSM and how can it be used?
+
+SOLUTION
+
+EUSM is a command line tool that can be used to manage the EUS settings starting with the 11.1 release of Oracle. In the 11.1 release the tool is not yet documented in the Oracle EUS documentation, but this is planned for a coming release. The type of the LDAP used for EUS is transparent to the tool. It is going to work similarly with OID, OVD or OUD.
+The same commands used by EUSM can be performed from the Database Console GUI or from Grid Control*.  The examples below don't include all the EUSM options, only the options that are used by EUS.
+EUSM is very user friendly and intuitive. Typing either "eusm help <option>" or "eusm <option> -help" lists all the parameters one has to use for any of the available options.
+EUSM Usage examples.
+
+Note#1:  The LDAP ( OID/OVD/OUD)  host is accessed using the following sequence:
+ldap_host="seclin3.ro.oracle.com" - domain name of the OID server.
+ldap_port=3060 - nonSSL (SASL) port used for OID connections. 
+ldap_user_dn="cn=orcladmin" - OID administrator name
+ldap_user_password="welcome1" - OID administrator password
+  
+Note#2:  When typing the value of the dbconnect_string parameter one can use either a colon (":") or a forward slash ("/") before the name of the SID / SERVICE_NAME. The character that is being used forces Oracle to interpret the string that comes afterwards either as a SRVICE_NAME or as a SID: 
+dbconnect_string="suse10-ro.ro.oracle.com:1531:test111"  ---> test111 is interpreted as a SID
+dbconnect_string="suse10-ro.ro.oracle.com:1531/test111"  ---> test111 is interpreted as a SERVICE_NAME
+This distinction is important when working with Oracle RDBMS 12c pluggable databases which can be accessed using a connect string that uses a service name.
+  
+#1. Manage Enterprise Domains. An Enterprise Domain is: "A directory construct that consists of a group of databases and enterprise roles. A database should only exist in one enterprise domain at any time."
+eusm createDomain domain_name="test_domain" realm_dn="dc=ro,dc=oracle,dc=com" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+eusm listDomains realm_dn="dc=ro,dc=oracle,dc=com" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+eusm deleteDomain domain_name="test_domain" realm_dn="dc=ro,dc=oracle,dc=com" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+eusm listDomainInfo domain_name="test_domain" realm_dn="dc=ro,dc=oracle,dc=com" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+#2. Manage Domain Administrators. An Enterprise Domain Administrator is: "User authorized to manage a specific enterprise domain, including the authority to add new enterprise domain administrators."
+eusm addDomainAdmin domain_name="test_domain" user_dn="cn=test_user,cn=Users,dc=ro,dc=oracle,dc=com" realm_dn="dc=ro,dc=oracle,dc=com" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+eusm listDomainAdmins domain_name="test_domain" realm_dn="dc=ro,dc=oracle,dc=com" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+eusm removeDomainAdmin domain_name="test_domain" user_dn="cn=test_user,cn=Users,dc=ro,dc=oracle,dc=com" realm_dn="dc=ro,dc=oracle,dc=com" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+#3. Manage Databases in an Existing Domain. This is not the same operation as registering the database to OID. Registering the database to OID is done using dbca and the database is added by default to the OracleDefaultDomain domain.
+-- Add database test111 to the test_domain. Remove the database first from the default domain, then add it to a new one. This being just a test, in the end the database returns to the default domain.
+eusm removeDatabase domain_name="OracleDefaultDomain" realm_dn="dc=ro,dc=oracle,dc=com" database_name="test111" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+eusm addDatabase domain_name="test_domain" realm_dn="dc=ro,dc=oracle,dc=com" database_name="test111" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+eusm removeDatabase domain_name="test_domain" realm_dn="dc=ro,dc=oracle,dc=com" database_name="test111" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+eusm addDatabase domain_name="OracleDefaultDomain" realm_dn="dc=ro,dc=oracle,dc=com" database_name="test111" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+-- List the information available for the default domain.
+eusm listDomainInfo domain_name="OracleDefaultDomain" realm_dn="dc=ro,dc=oracle,dc=com" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+#4. Manage Database Administrators. The meaning of these database administrators is: "Members of the OracleDBAdmins directory administrative group, who manage the database user-schema mappings for a specific database entry in the directory. Database Configuration Assistant automatically adds the person who registers a database in the directory into the OracleDBAdmins group as the first member of this group for the database being registered."
+eusm addDBAdmin realm_dn="dc=ro,dc=oracle,dc=com" database_name="test111" user_dn="cn=test_user,cn=Users,dc=ro,dc=oracle,dc=com" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+eusm removeDBAdmin realm_dn="dc=ro,dc=oracle,dc=com" database_name="test111" user_dn="cn=test_user,cn=Users,dc=ro,dc=oracle,dc=com" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+eusm listDBAdmins realm_dn="dc=ro,dc=oracle,dc=com" database_name="test111" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+eusm listDBInfo realm_dn="dc=ro,dc=oracle,dc=com" database_name="test111" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+#5. Create Schema Mappings
+Create with sqlplus database users to be used for OID/DB mappings. The first is to be used for user schema mappings, the second for shared schema mappings:
+User schema mapping is: "An LDAP directory entry that contains a pair of values: the base in the directory at which users exist, and the name of the database schema to which they are mapped. The users referenced in the mapping are connected to the specified schema when they connect to the database. User-schema mapping entries can apply only to one database or they can apply to all databases in a domain."
+Shared schema mapping is: "A database or application schema that can be used by multiple enterprise users. Oracle Advanced Security supports the mapping of multiple enterprise users to the same shared schema on a database, which lets an administrator avoid creating an account for each user in every database. Instead, the administrator can create a user in one location, the enterprise directory, and map the user to a shared schema that other enterprise users can also map to. Sometimes called user/schema separation."
+#5.1. Create the users from sqlplus:
+For user schema mappings:
+SQL> create user test_user identified globally as 'cn=test_user,cn=Users,dc=ro,dc=oracle,dc=com';
+For shared schema mappings:
+SQL> create user test111_global identified globally;
+#5.2. Manage user-schema mappings. 
+-- user schema mapping: map test_user database schema to "cn=test_user,cn=Users,dc=ro,dc=oracle,dc=com" enterprise user:
+eusm createMapping database_name="test111" realm_dn="dc=ro,dc=oracle,dc=com" map_type="ENTRY" map_dn="cn=test_user,cn=Users,dc=ro,dc=oracle,dc=com" schema="test_user" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+-- shared schema mapping: map test111_global database schema to "cn=Users,dc=ro,dc=oracle,dc=com" set of enterprise user:
+eusm createMapping database_name="test111" realm_dn="dc=ro,dc=oracle,dc=com" map_type="SUBTREE" map_dn="cn=Users,dc=ro,dc=oracle,dc=com" schema="test111_global" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+eusm listMappings database_name="test111" realm_dn="dc=ro,dc=oracle,dc=com" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+eusm deleteMapping database_name="test111" realm_dn="dc=ro,dc=oracle,dc=com" mapping_name="MAPPING0" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+#6. Enable/Disable Current User Database Links Usage in the Domain
+  
+eusm setCulinkStatus domain_name="test_domain" realm_dn="dc=ro,dc=oracle,dc=com" status="ENABLED" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+  
+#7. Authentication Types Accepted for the Users in the Domain
+(Help is slightly incorrect, use auth_types instead of auth_type)
+  
+eusm setAuthTypes domain_name="test_domain" realm_dn="dc=ro,dc=oracle,dc=com" auth_type="SSL" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+  
+(does not work for Kerberos and Password, probably the type names are not as seen in Grid Control).
+#8. Enterprise Roles/Global Roles Mappings:
+Enterprise Roles are "Access privileges assigned to enterprise users. A set of Oracle role-based authorizations  across one or more databases in an enterprise domain. Enterprise roles are stored in the directory and contain one or more global roles."
+Global Roles are "A role managed in a directory, but its privileges are contained within a single database. A global role is created in a database by using the following syntax":
+#8.1. Create the global roles to be used from sqlplus:
+SQL> create role global_connect identified globally;
+SQL> create role global_resource identified globally;
+SQL> grant connect to global_connect;
+SQL> grant resource to global_resource;
+#8.2. Manage the Enterprise Roles:
+eusm createRole enterprise_role="ent_connect" domain_name="OracleDefaultDomain" realm_dn="dc=ro,dc=oracle,dc=com" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+eusm createRole enterprise_role="ent_resource" domain_name="OracleDefaultDomain" realm_dn="dc=ro,dc=oracle,dc=com" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+eusm deleteRole enterprise_role="ent_connect" domain_name="OracleDefaultDomain" realm_dn="dc=ro,dc=oracle,dc=com" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+--When performing the actual mapping, the database user should be a user with dba role and dbconnect_string should have the "server:port:net_service_name" format
+eusm addGlobalRole enterprise_role="ent_connect" domain_name="OracleDefaultDomain" realm_dn="dc=ro,dc=oracle,dc=com" database_name="test111" global_role="global_connect" dbuser="system" dbuser_password="test" dbconnect_string="suse10-ro.ro.oracle.com:1531:test111" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+eusm addGlobalRole enterprise_role="ent_resource" domain_name="OracleDefaultDomain" realm_dn="dc=ro,dc=oracle,dc=com" database_name="test111" global_role="global_resource" dbuser="system" dbuser_password="test" dbconnect_string="suse10-ro.ro.oracle.com:1531:test111" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+eusm removeGlobalRole enterprise_role="ent_connect" domain_name="OracleDefaultDomain" realm_dn="dc=ro,dc=oracle,dc=com" database_name="test111" global_role="global_connect" dbuser="system" dbuser_password="test" dbconnect_string="suse10-ro.ro.oracle.com:1531:test111" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+eusm grantRole enterprise_role="ent_connect" domain_name="OracleDefaultDomain" realm_dn="dc=ro,dc=oracle,dc=com" user_dn="cn=test_user,cn=Users,dc=ro,dc=oracle,dc=com" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+eusm revokeRole enterprise_role="ent_connect" domain_name="OracleDefaultDomain" realm_dn="dc=ro,dc=oracle,dc=com" user_dn="cn=test_user,cn=Users,dc=ro,dc=oracle,dc=com" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+eusm grantRole enterprise_role="ent_resource" domain_name="OracleDefaultDomain" realm_dn="dc=ro,dc=oracle,dc=com" user_dn="cn=test_user,cn=Users,dc=ro,dc=oracle,dc=com"  ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+eusm listEnterpriseRoles domain_name="OracleDefaultDomain" realm_dn="dc=ro,dc=oracle,dc=com" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+eusm listEnterpriseRolesOfUser user_dn="cn=test_user,cn=Users,dc=ro,dc=oracle,dc=com" realm_dn="dc=ro,dc=oracle,dc=com" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1" 
+eusm listEnterpriseRoleInfo enterprise_role="ent_connect" domain_name="OracleDefaultDomain" realm_dn="dc=ro,dc=oracle,dc=com" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1" 
+eusm listGlobalRolesInDB dbuser="system" dbuser_password="test" dbconnect_string="suse10-ro.ro.oracle.com:1531:test111"
+eusm listSharedSchemasInDB dbuser="system" dbuser_password="test" dbconnect_string="suse10-ro.ro.oracle.com:1531:test111"
+#9. Manage Proxy Authentication 
+Proxy Authentication is "A process typically employed in an environment with a middle tier such as a firewall, wherein the end user authenticates to the middle tier, which then authenticates to the directory on the user's behalf—as its proxy. The middle tier logs into the directory as a proxy user. A proxy user can switch identities and, once logged into the directory, switch to the end user's identity. It can perform operations on the end user's behalf, using the authorization appropriate to that particular end user."
+#9.1. Create the proxy user in the database first:
+SQL> create user proxy_test identified by proxy_test;
+SQL> alter user proxy_test grant connect through enterprise users;
+#9.2. Create the proxy objects:
+-- create the proxy permission object (PROXY0)
+eusm createProxyPerm proxy_permission="PROXY0" domain_name="OracleDefaultDomain" realm_dn="dc=ro,dc=oracle,dc=com" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1" 
+eusm deleteProxyPerm proxy_permission="PROXY0" domain_name="OracleDefaultDomain" realm_dn="dc=ro,dc=oracle,dc=com" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1" 
+-- add the target database user to the PROXY permission object;
+eusm addTargetUser proxy_permission="PROXY0" domain_name="OracleDefaultDomain" realm_dn="dc=ro,dc=oracle,dc=com" database_name="test111" target_user="PROXY_TEST" dbuser="system" dbuser_password="test" dbconnect_string="suse10-ro.ro.oracle.com:1531:test111" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+eusm removeTargetUser proxy_permission="PROXY0" domain_name="OracleDefaultDomain" realm_dn="dc=ro,dc=oracle,dc=com" database_name="test111" target_user="PROXY_TEST" dbuser="system" dbuser_password="test" dbconnect_string="suse10-ro.ro.oracle.com:1531:test111" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+-- map the enterprise user to the database user through the PROXY permission object:
+eusm grantProxyPerm proxy_permission="PROXY0" domain_name="OracleDefaultDomain" realm_dn="dc=ro,dc=oracle,dc=com" user_dn="cn=test_user,cn=Users,dc=ro,dc=oracle,dc=com" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+eusm revokeProxyPerm proxy_permission="PROXY0" domain_name="OracleDefaultDomain" realm_dn="dc=ro,dc=oracle,dc=com" user_dn="cn=test_user,cn=Users,dc=ro,dc=oracle,dc=com" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+eusm listProxyPermissions domain_name="OracleDefaultDomain" realm_dn="dc=ro,dc=oracle,dc=com" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+eusm listProxyPermissionsOfUser user_dn="cn=test_user,cn=Users,dc=ro,dc=oracle,dc=com" realm_dn="dc=ro,dc=oracle,dc=com" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+eusm listProxyPermissionInfo proxy_permission="PROXY0" domain_name="OracleDefaultDomain" realm_dn="dc=ro,dc=oracle,dc=com" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+--help for below is incorrect - database_name is not a parameter:
+eusm listTargetUsersInDB dbuser="system" dbuser_password="test" dbconnect_string="suse10-ro.ro.oracle.com:1531:test111" 
+ 
+#10. Set Database to OID Authentication Method. 
+The OID authentication method can be either  SSL or PASSWORD:
+  
+eusm setDBOIDAuth realm_dn="dc=ro,dc=oracle,dc=com" dboid_auth='SSL' ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+  
+  
+eusm listDBOIDAuth realm_dn="dc=ro,dc=oracle,dc=com" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+  
+#11. Manage the list of the Password Accessible Domains.
+eusm addToPwdAccessibleDomains domain_name="test_domain" realm_dn="dc=ro,dc=oracle,dc=com" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+eusm removeFromPwdAccessibleDomains domain_name="test_domain" realm_dn="dc=ro,dc=oracle,dc=com" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+eusm listPwdAccessibleDomains realm_dn="dc=ro,dc=oracle,dc=com" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+#12. Display Realm Properties.
+  
+eusm listRealmCommonAttr realm_dn="dc=ro,dc=oracle,dc=com" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1"
+  
+#13.  Known Issues
+ 
+ 
+ 
+* A good thing to know about Grid Control is that, in order to be able to use it to manage EUS, a ldap.ora pointing to the domain to be used should be included in the $OMS_HOME/network/admin directory. A file can be copied from a similar directory from a database that is registered with OID.
+This limits the usage of GC in managing EUS on multiple realms, issue investigated in: Bug 9081500 GC IS LIMITED BY LDAP.ORA FILE IN MANAGING EUS REALMS. To overcome this limit, the patch for the bug can be installed if available. This limitation will be lifted in the next 11g GC release.
+ 
+** The entries in OID which are EUS specific can be created using ldif files. However, this is not supported because:
+1. the entries are too large and very errorprone if created manually
+2. the OID structure may change without notice between releases and this can lead to corruptions in the OID data.
+3. for testing purposes only, one can reverse engineer the ldif files using the ldapsearch command, eg:
+$ORACLE_HOME/bin/ldapsearch -h seclin3.ro.oracle.com -p 3060 -D "cn=orcladmin" -w welcome1 -b "cn=test_domain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=ro,dc=oracle,dc=com" -s sub "(objectclass=*)"
+This assumes the entry is already created. From the output, both the ldapadd and ldapdelete commands can be created.
+
+*** It is currently not possible to use EUSM to map enterprise roles to SYSDBA, this being investigated in Bug 12380321
+
+The procedure, on short, to perform this operation, is:
+Configuring Directory Authentication for Administrative Users
+
+1. create an enterprise user. Map the enterprise user to a database user.
+2. create an enterprise role
+3. create a global role
+4. map the enterprise role to the global role
+5. grant the enterprise role to the enterprise user.
+6. In OID console, modify the enterprise role and add manually the SYSDBA role to it. 
+To do this:
+6.1. find the enterprise role in OID
+6.2. look for the: orclDBServerRole attribute
+6.3. add a new value for the above attribute in the format: 
+cn=<db name>,cn=<full context>,GlobalRole=SYSDBA
+Example:
+cn=black,cn=OracleContext,dc=ro,dc=oracle,dc=com,GlobalRole=SYSDBA
+7. Set the LDAP_DIRECTORY_SYSAUTH initialization parameter to YES:
+alter system set ldap_directory_sysauth = yes scope=spfile;
+8. Set the LDAP_DIRECTORY_ACCESS parameter to either PASSWORD or SSL. 
+alter system set ldap_directory_access = password scope=spfile;
+9. List the enterprise role properties to make sure that SYSDBA is among the global roles:
+eusm listEnterpriseRoleInfo enterprise_role="enterprise_role_black" domain_name="OracleDefaultDomain" realm_dn="dc=ro,dc=oracle,dc=com" ldap_host="seclin3.ro.oracle.com" ldap_port=3060 ldap_user_dn="cn=orcladmin" ldap_user_password="welcome1" 
+It is worth mentioning that, when the database instance is not started, the sysdba authentication for enterprise users would fail with ORA-01031. This is expected, because at that time, the processes have not read the init.ora file and are using default parameter values, which mean: LDAP_DIRECTORY_SYSAUTH=NO and REMOTE_LOGIN_PASSWORDFILE=YES. Only passwordfile and OS authentication would succeed at this stage. An interesting situation is, because of this, when REMOTE_LOGIN_PASSWORDFILE=NO in init.ora but a passwordfile exists in $ORACLE_HOME/dbs. A sysdba connection using the passwordfile would succeed under these circumstances but would fail to start the database instance, also with ORA-01031.
+REFERENCES
+
+BUG:9383847 - DOCUMENTATION FOR EUSM
