@@ -630,6 +630,16 @@ WALLET_LOCATION=
 ------------------------
 CONNECT AS USER1
 ------------------------
+NOTE- VARIOUS TROUBLESHOOTING DONE FOR THIS DUE TO THE INITIAL ERROR BELOW
+-->-->-->--> FINALLY, THE ROOT CAUSE SEEMS TO BE THIS:
+When DB is started with srvctl it would not know the location of wallet, EVEN THOUGH setenv is done setting ORACLE_BASE.
+--> DB then actually should pick up wallet from location mentioned in the sqlnet.ora file - but it was not picking it up
+--> THIS IS THE PROBLEM
+
+SOLUTION (WORKAROUND actually):
+Therefore, set ORACLE_BASE in the o/s environment and start the DB using sqlplus 
+- which will make DB know ORACLE_BASE and default wallet location (each instance needs separate startup) 
+--> Then DB seems to pick up the wallet even if wallet location is not mentioned in sqlnet.ora
 
 SQL> connect user1/oracle
 ERROR:
@@ -641,8 +651,84 @@ ERROR:
 ORA-28030: Server encountered problems accessing LDAP directory service
 --> This could be wallet error
 
+----- ONCE ISSUE IS RESOLVED, HERE IS THE OUTPUT -----
+
+SQL> connect user1/oracle@DB_UNIQUE_NAME
+Connected.
+SQL> show user
+USER is "OUD_GLOBAL_IDENT_SCHEMA_USER"
+SQL> select * from session_roles;
+
+ROLE
+------------------------------
+OUD_DBA_ROLE_GLOBAL
+CONNECT
+DBA
+SELECT_CATALOG_ROLE
+HS_ADMIN_SELECT_ROLE
+EXECUTE_CATALOG_ROLE
+HS_ADMIN_EXECUTE_ROLE
+DELETE_CATALOG_ROLE
+EXP_FULL_DATABASE
+IMP_FULL_DATABASE
+DATAPUMP_EXP_FULL_DATABASE
+
+ROLE
+------------------------------
+DATAPUMP_IMP_FULL_DATABASE
+GATHER_SYSTEM_STATISTICS
+SCHEDULER_ADMIN
+WM_ADMIN_ROLE
+JAVA_ADMIN
+JAVA_DEPLOY
+XDBADMIN
+XDB_SET_INVOKER
+OLAP_XS_ADMIN
+OLAP_DBA
+
+21 rows selected.
+
+SQL>
+SQL> connect user1/oracle
+Connected.
+SQL> show user
+USER is "OUD_GLOBAL_IDENT_SCHEMA_USER"
+SQL> select * from session_roles;
+
+ROLE
+------------------------------
+OUD_DBA_ROLE_GLOBAL
+CONNECT
+DBA
+SELECT_CATALOG_ROLE
+HS_ADMIN_SELECT_ROLE
+EXECUTE_CATALOG_ROLE
+HS_ADMIN_EXECUTE_ROLE
+DELETE_CATALOG_ROLE
+EXP_FULL_DATABASE
+IMP_FULL_DATABASE
+DATAPUMP_EXP_FULL_DATABASE
+
+ROLE
+------------------------------
+DATAPUMP_IMP_FULL_DATABASE
+GATHER_SYSTEM_STATISTICS
+SCHEDULER_ADMIN
+WM_ADMIN_ROLE
+JAVA_ADMIN
+JAVA_DEPLOY
+XDBADMIN
+XDB_SET_INVOKER
+OLAP_XS_ADMIN
+OLAP_DBA
+
+21 rows selected.
+
+
+
+
 -------------------------
-TROUBLESHOOT
+TROUBLESHOOTING
 -------------------------
 Try re-registering DB using dbca - so that wallet gets created newly
 
