@@ -555,8 +555,6 @@ $ ldapsearch -v -h  10.63.160.170 -p 1389 -D  cn='eusroot,ou=eusadmins,dc=exampl
      cn=user1
      sn=user1
 
-
-
 ------------------------------------
 ADD THIS USER USER1 INTO GROUP DBAS
 ------------------------------------
@@ -575,7 +573,7 @@ Traverse to the 'DBA' CN as we did before:
 Data Tree --> Root --> dc=example,dc=com --> cn=OracleContext --> cn=Products --> cn=OracleDBSecurity --> cn=DBA
 
 To that, on the RHS --> Group Page --> Member Information --> Unique Member 
-                                        --> Add (try the 'dbas' group first to see if that works for all users in that group)
+                                        --> Add (worked - try the 'dbas' group first to see if that works for all users in that group)
                                              --> cn=dbas,dc=example,dc=com
 
 ================================================
@@ -724,8 +722,66 @@ OLAP_DBA
 
 21 rows selected.
 
+==================================================================
+CREATE A SYSDBA ROLE AND ASSIGN USER TO IT AND TEST
+==================================================================
+http://blog.yannickjaquier.com/oracle/enterprise-user-security-eus-password-authentication.html#LDAP_SYSDBA_authentication
+How To Configure Directory Authentication for Database Administrative Users (SYSDBA and SYSOPER) (Doc ID 457083.1)
 
+-----------------------------------
+Create a new enterprise role SYSDBA
+-----------------------------------
+$ eusm createRole enterprise_role=SYSDBA domain_name=OracleDefaultDomain realm_dn=dc=example,dc=com ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
 
+-------------------------------------------------
+Assign SYSDBA DB role to enterprise role SYSDBA
+-------------------------------------------------
+NOTE: We cannot assign SYSDBA DB role to a db global-role as we did for DBA role.
+NOTE: Also, "eusm addGlobalRole" does not have the capability of assigning out-of-the-box SYSDBA non-global DB role to enterprise role
+
+Therefore, we create a ldif and use ldapmodify for that.
+
+- step 1
+The LDIF file: sysdba.ldif (Note: The first SYSDBA is the enterprise role in OUD, the second SYSDBA is the DB role)
+dn: cn=SYSDBA,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=example,dc=com
+changetype: modify
+add: orcldbserverrole
+orcldbserverrole: cn=GLOBAL_DB_NAME,cn=OracleContext,dc=example,dc=com,GlobalRole=SYSDBA
+
+- step 2
+ldapmodify -h oud-host-name-or-ip -p 1389 -D cn=eusroot,ou=eusadmins,dc=example,dc=com -w "oracle#1" -v -f sysdba.ldif
+
+- verify in OUD clicking role in ODSM
+--> The attributes should show the db-server-role DN which is cn=GLOBAL_DB_NAME,cn=OracleContext,dc=example,dc=com,GlobalRole=SYSDBA
+
+- step 3
+eusm grantRole enterprise_role=SYSDBA domain_name=OracleDefaultDomain realm_dn=dc=example,dc=com group_dn=cn=SYSDBA,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=example,dc=com ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
+
+- step 4
+eusm listEnterpriseRoleInfo enterprise_role=SYSDBA domain_name=OracleDefaultDomain realm_dn=dc=example,dc=com ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
+
+----------------------------------------------------------------------
+ASSIGN THE USER/GROUP IN OUD TO THE ENTERPRISE ROLE IN OUD
+----------------------------------------------------------------------
+NOTE: Added previously created 'dbas' group itself to this new enterprise role - ideally, should be a different group of users
+
+Traverse to the 'SYSDBA' CN as we did before for 'DBA'
+Data Tree --> Root --> dc=example,dc=com --> cn=OracleContext --> cn=Products --> cn=OracleDBSecurity --> cn=SYSDBA
+
+To that, on the RHS --> Group Page --> Member Information --> Unique Member 
+                                        --> Add (worked - try the 'dbas' group first to see if that works for all users in that group)
+                                             --> cn=dbas,dc=example,dc=com
+
+-----------------------------------
+TEST CONNECTION
+-----------------------------------
+NOTE: Logon from a different cluster/laptop or different non-DBA unix user on the same machine
+$ sqlplus user1/oracle as sysdba --> if from local machine, but a non-DBA unix user
+$ sqlplus user1/oracle@DB_TNS_ENTRY as sysdba --> if from a different machine
+
+TBD TBD TBD --> errors again!
+
+------------------------------------------------------------------------------------------------------------------------------
 
 -------------------------
 TROUBLESHOOTING
