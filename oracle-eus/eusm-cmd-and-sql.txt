@@ -1,0 +1,97 @@
+http://onlineiam.blogspot.in/
+
+Enterprise User Security quick reference - EUSM Commands
+
+EUSM is the utility which comes Out-Of-Box with OID. This utility can be used for mapping enterprise users/roles to database objects for Enterprise User Security setup. Below are some of the commands most commonly used for EUS:
+
+To List Enterprise roles in OID
+eusm listEnterpriseRoles domain_name=<OID Domain> realm_dn=<oid realm> ldap_host=<hostname> ldap_port=<port> ldap_user_dn=<oid administrator> ldap_user_password=<oid admin password>
+
+To List Mappings
+eusm listMappings domain_name=<OID domain> realm_dn=<realm> ldap_host=<hostname> ldap_port=<port> ldap_user_dn=<oid admin> ldap_user_password=<oid admin password>
+
+To List Enterprise Role Info
+eusm listEnterpriseRoleInfo enterprise_role=<rdn of enterprise role> domain_name=<oid domain> realm_dn=<oid realm> ldap_host=<hostname> ldap_port=<port> ldap_user_dn="<oid admin>" ldap_user_password=<oid admin password>
+
+To Create Enterprise Role
+eusm createRole enterprise_role=<rdn of the enterprise role> domain_name=<oid domain> realm_dn=<oid realm> ldap_host=<hostname> ldap_port=<port> ldap_user_dn="<oid admin>" ldap_user_password=<oid admin password>
+
+To Create User-Schema Mapping
+eusm createMapping database_name=<SID of target database> realm_dn="<oid realm>" map_type=<ENTRY/SUBTREE> map_dn="<dn of enterprise user>" schema="<name of the shared schema>" ldap_host=<oid hostname> ldap_port=<port> ldap_user_dn="<oid admin>" ldap_user_password="<oid admin password>"
+
+To Create Proxy Permission
+eusm createProxyPerm proxy_permission=<Name of the proxypermission> domain_name=<oid domain> realm_dn="<oid realm>" ldap_host=<hostname> ldap_port=<port> ldap_user_dn="<oid admin>" ldap_user_password=<oid admin password>
+
+To Grant Proxy permission to Proxy group
+eusm grantProxyPerm proxy_permission=<Name of the proxy permission> domain_name=<oid domain> realm_dn="<oid realm>" ldap_host=<hostname> ldap_port=<port> ldap_user_dn="<oid admin>" ldap_user_password=<password> group_dn="<dn of the enterprise group>"
+
+To Map proxy permission to proxy user in DB
+eusm addTargetUser proxy_permission=<Name of the proxy permission> domain_name=<oid domain> realm_dn="<oid realm>" ldap_host=<hostname> ldap_port=<port> ldap_user_dn="<oid admin>" ldap_user_password=<oid admin password> database_name=<SID of the target database> target_user=<target database user> dbuser=<Database user with DBA privileges> dbuser_password=<database user password> dbconnect_string=<database_host>:<port>:<DBSID>
+
+Enterprise role to Global role mapping in OID
+eusm addGlobalRole enterprise_role=<rdn of the enterprise role> domain_name=<oid domain> realm_dn="<oid realm>" database_name=<SID of the target database> global_role=<name of the global role defined in the target database> dbuser=<database user> dbuser_password=<database user password> dbconnect_string=<database_host>:<port>:<DBSID> ldap_host=<oid_hostname> ldap_port=<port> ldap_user_dn="<oid admin>" ldap_user_password=<oid admin password>
+Posted by Hrushi at 03:32 No comments: 
+Email This
+BlogThis!
+Share to Twitter
+Share to Facebook
+Share to Pinterest
+
+Monday, 29 August 2011
+EUS-SQL queries
+-- Get the database version
+select * from v$version;
+select * from role_role_privs;
+select * from role_tab_privs;
+
+-- Read all global roles present in DB
+select role from dba_roles where password_required='GLOBAL';
+-- Global roles to local roles mapping
+select * from dba_role_privs where grantee in (select role from dba_roles where password_required='GLOBAL');
+select * from dba_role_privs where grantee in ('SS_D2DB0156_INTERNAL');
+
+-- Object privileges assigned to the user
+desc DBA_TAB_PRIVS;
+select * from dba_tab_privs;
+select * from dba_tab_privs where grantee='GUSER_SYSDBA_D2DB0156';
+select distinct grantee,table_name, privilege from DBA_TAB_PRIVS where grantee in (select granted_role from dba_role_privs where grantee in (select role from dba_roles where password_required='GLOBAL'));
+select distinct grantee,table_name, privilege from DBA_TAB_PRIVS where grantee in ('LROLE_EASI_ETL');
+
+-- System Privileges assigned to a user/Role
+desc dba_sys_privs;
+select * from dba_sys_privs where grantee='NAGS_CONSOLIDATION_SHARED_SCH';
+select * from dba_sys_privs where grantee='GROLE_EASI_ETL';
+
+--Grant local role to global role
+grant LROLE_EASI_ETL to GROLE_EASI_ETL;
+
+--Grant connect to GUSER_SYSDBA_D2DB0156
+grant CONNECT to PROXY_USER_EUSTEST;
+grant CREATE TABLE to GLOBAL_EXC_SCHEMA_TEST;
+
+-- Global users/Shared schemas created in DB
+select * from dba_users where password='GLOBAL';
+select * from dba_users where username='SS_D3DB0156_INTERNAL';
+select distinct password from dba_users;
+
+-- Read the roles of the user session
+select * from session_roles;
+-- Read privileges of the user session
+select * from session_privs;
+
+-- Read the schmea user logged into
+select sys_context('userenv','db_name'), sys_context('userenv','session_user') from dual;
+SELECT sys_context('USERENV', 'CURRENT_SCHEMA') FROM DUAL;
+
+-- Creating exclusive schema
+CREATE USER global_exc_schema_test1 IDENTIFIED GLOBALLY;
+drop user global_exc_schema_test1;
+
+-- Create proxy user for EUS
+CREATE USER proxy_user_eustest identified by abcd1234;
+commit;
+drop user proxy_user_eustest;
+
+-- Grant connect through enterprise users to proxy user
+ALTER USER global_exc_schema_test1 GRANT CONNECT THROUGH ENTERPRISE USERS;
+Posted by Hrushi at 00:08 
