@@ -1,0 +1,64 @@
+===================================================
+    CONFIGURE EUS FOR 12C RAC DB IN OUD 11G 
+===================================================
+Go through oud-11g-eus-11gDB-configure-and-use.txt for creating a root user, organization and enterprise user etc.
+
+In this, we will use the root user, OU, realm and enterprise user created in oud-11g-eus-11gDB-configure-and-use.txt itself.
+
+=======================================
+---------------------------------------
+            EUS FOR 12C CDB
+---------------------------------------
+=======================================
+DB=L4D2
+
+======================
+REGISTER DB IN OUD
+======================
+$ dbca -silent -configureDatabase -sourceDB DB_UNIQUE_NAME -sysDBAUserName sys -sysDBAPassword "oracle#1" -registerWithDirService true -dirServiceUserName cn='eusroot,ou=eusadmins,dc=example,dc=com' -dirServicePassword oracle#1 -walletPassword 'oracle#1' -listeners listener
+
+-- To unregister
+$ dbca -silent -configureDatabase -sourceDB DB_UNIQUE_NAME -unregisterWithDirService true -dirServiceUserName cn='eusroot,ou=eusadmins,dc=example,dc=com' -dirServicePassword oracle#1 -walletPassword 'oracle#1' -listeners listener
+
+- VERIFY with ldapsearch
+$ ldapsearch -h 10.63.160.170 -p 1389 -D  cn='eusroot,ou=eusadmins,dc=example,dc=com' -w oracle#1 -b cn=oraclecontext,dc=example,dc=com "(cn=DB_UNIQUE_NAME)"
+cn=DB_UNIQUE_NAME,cn=OracleContext,dc=example,dc=com
+orclVersion=121000
+orclcommonrpwdattribute={SASL-MD5}DnRGGBHXXflcD37D1w1n4Q==
+objectClass=orclApplicationEntity
+objectClass=orclService
+objectClass=orclDBServer_92
+objectClass=orclDBServer
+objectClass=top
+orclServiceType=DB
+cn=RL4DB2_TTCE
+orclOracleHome=/u02/app/oracle/product/12.1.0.2.RAC
+orclSystemName=host-name-of-db-cluster-from-where-dbca-was-run
+userPassword={AES}AZaBCiO8M0aMmrRbAnBEOV+IHy3h9njm1JnLJjq9KPVZrz5RHPkHyJgFi9Qf
+userPassword={SSHA}fAYa+9kUa4M99PEtXurYGckhAMUrLOUkyLnc9A==
+orclNetDescString=(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=clustername-scan)(PORT=1522)))(CONNECT_DATA=(SERVICE_NAME=DB_UNIQUE_NAME)))
+orclDBGlobalName=DB_UNIQUE_NAME
+orclNetDescName=000:cn=DESCRIPTION_0
+
+- VERIFY with eusm
+$ eusm listDBInfo realm_dn='dc=example,dc=com' database_name=DB_UNIQUE_NAME ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn='cn=eusroot,ou=eusadmins,dc=example,dc=com' ldap_user_password=oracle#1
+
+INFOMATION FOR DATABASE: DB_UNIQUE_NAME
+-------------------------------------------------
+Database Distinguished name: cn=DB_UNIQUE_NAME,cn=OracleContext,dc=example,dc=com
+Database version:       121000
+ORACLE_SID:             null
+Database Host:          host-name-of-db-cluster-from-where-dbca-was-run
+ORACLE_HOME:            /u02/app/oracle/product/12.1.0.2.RAC
+Database Service:       DB
+Global Database Name:   RL4DB2_TTCE
+Oracle Net Description: (DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=clustername-scan)(PORT=1522)))(CONNECT_DATA=(SERVICE_NAME=DB_UNIQUE_NAME)))
+
+- VERIFY with ldapbind
+$ ldapbind -h 10.63.160.170 -p 1389 -D cn=RL4DB2_TTCE,cn=OracleContext,dc=example,dc=com -q
+password: < give the password found as value of ORACLE.SECURITY.PASSWORD >
+
+
+
+
+
