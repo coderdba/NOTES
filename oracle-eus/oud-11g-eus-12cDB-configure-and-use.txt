@@ -54,11 +54,59 @@ Database Service:       DB
 Global Database Name:   RL4DB2_TTCE
 Oracle Net Description: (DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=clustername-scan)(PORT=1522)))(CONNECT_DATA=(SERVICE_NAME=DB_UNIQUE_NAME)))
 
-- VERIFY with ldapbind
-$ ldapbind -h 10.63.160.170 -p 1389 -D cn=RL4DB2_TTCE,cn=OracleContext,dc=example,dc=com -q
+- VERIFY IN OUD WHERE THIS DB IS REGISTGERED
+NOTE: It is created as a cn directly under OracleContext of dc=example,dc=com
+
+Go to 'Data Browser' --> 'Data Tree' 
+     --> dc=example,dc=com --> cn=OracleContext 
+     
+          --> cn=DB_UNIQUE_NAME  
+          
+               --> under that there will be the following 'cn' items:
+                    DESCRIPTION_0
+                    OracleDBAdmins
+                    OracleDBAgents ... etc
+                    
+ --> In the optional attributes on the RHS side, find the password for DB to authenticate to OUD < needs IE to copy pw probably)
+
+- VERIFY IF WALLET HAS BEEN CREATED
+$ cd /u02/app/oracle/admin/DB_UNIQUE_NAME/wallet
+$ ls -l
+-rw------- 1 oracle oradba 485 Jan  5 06:38 cwallet.sso
+-rw-rw-rw- 1 oracle oradba   0 Jan  5 06:38 cwallet.sso.lck
+-rw------- 1 oracle oradba 440 Jan  5 06:38 ewallet.p12
+-rw-rw-rw- 1 oracle oradba   0 Jan  5 06:38 ewallet.p12.lck
+
+- VERIFY IF DB IS IN THE WALLET
+$  orapki wallet display -wallet .
+Oracle PKI Tool : Version 12.1.0.2
+Copyright (c) 2004, 2014, Oracle and/or its affiliates. All rights reserved.
+
+Requested Certificates:
+User Certificates:
+Oracle Secret Store entries:
+ORACLE.SECURITY.DN
+ORACLE.SECURITY.PASSWORD
+Trusted Certificates:
+
+$ mkstore -wrl . -viewEntry ORACLE.SECURITY.DN
+Oracle Secret Store Tool : Version 12.1.0.2
+Copyright (c) 2004, 2014, Oracle and/or its affiliates. All rights reserved.
+
+Enter wallet password: <oracle#1>
+ORACLE.SECURITY.DN = cn=DB_UNIQUE_NAME,cn=OracleContext,dc=example,dc=com
+
+$ mkstore -wrl . -viewEntry ORACLE.SECURITY.PASSWORD
+Oracle Secret Store Tool : Version 12.1.0.2
+Copyright (c) 2004, 2014, Oracle and/or its affiliates. All rights reserved.
+
+Enter wallet password:
+ORACLE.SECURITY.PASSWORD = 2Mnp14j=Wz88
+--> This is the password for the DB DN in OUD
+
+- VERIFY USING LDAPBIND
+$ ldapbind -h 10.63.160.170 -p 1389 -D cn=DB_UNIQUE_NAME,cn=OracleContext,dc=example,dc=com -q
 password: < give the password found as value of ORACLE.SECURITY.PASSWORD >
-
-
-
+bind successful
 
 
