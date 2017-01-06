@@ -408,3 +408,81 @@ Mapping Type:  ENTRY
 Mapping DN:    cn=user1,ou=people,dc=example,dc=com
 Mapping schema:c##oud_global_ident_user
 Mapping Level :DATABASE
+
+============================================================
+CONNECT AS ENTERPRISE USER USER1 TO THE DATABASE
+============================================================
+NOTE: The sqlnet.ora file had a wallet for a different 11g DB.  
+        --> But, sqlplus cribbed that it does not like a wallet entry in sqlnet.ora
+        --> No idea why a 12c DB should be bothered about a 11g DB wallet in sqlnet.ora
+NOTE: Wallet location in sqlnet.ora is not mandatory.
+        --> Do setenv ORACLE_BASE and TNS_ADMIN=<location of sqlnet.ora> to the database
+            --> Startup database using srvctl
+        --> Alternatively, set TNS_ADMIN, ORACLE_BASE in unix environment and start DB using sqlplus
+        --> Then, 11g DB also takes wallet from default location $ORACLE_BASE/admin/wallet 
+            --> if authentication by password or kerberos is used 
+            --> does not work if client-to-db is via ssl
+            https://docs.oracle.com/cd/E11882_01/network.112/e10744/configur.htm#DBIMI254
+            --> Look for sharing wallets
+$  sqlplus user1/oracle
+
+SQL*Plus: Release 12.1.0.2.0 Production on Fri Jan 6 05:31:49 2017
+
+Copyright (c) 1982, 2014, Oracle.  All rights reserved.
+
+ERROR:
+ORA-28305: WALLET_LOCATION in sqlnet.ora file for container database is not
+supported.
+
+$ sqlplus user1/oracle
+
+SQL*Plus: Release 12.1.0.2.0 Production on Fri Jan 6 05:32:26 2017
+
+Copyright (c) 1982, 2014, Oracle.  All rights reserved.
+
+Connected to:
+Oracle Database 12c Enterprise Edition Release 12.1.0.2.0 - 64bit Production
+With the Partitioning, Real Application Clusters, Automatic Storage Management, OLAP,
+Advanced Analytics and Real Application Testing options
+
+SQL> show user
+USER is "C##OUD_GLOBAL_IDENT_USER"
+SQL> select * from session_roles;
+
+ROLE
+--------------------------------------------------------------------------------
+CONNECT
+DBA
+SELECT_CATALOG_ROLE
+EXECUTE_CATALOG_ROLE
+DELETE_CATALOG_ROLE
+CAPTURE_ADMIN
+EXP_FULL_DATABASE
+IMP_FULL_DATABASE
+DATAPUMP_EXP_FULL_DATABASE
+DATAPUMP_IMP_FULL_DATABASE
+XS_RESOURCE
+
+ROLE
+--------------------------------------------------------------------------------
+GATHER_SYSTEM_STATISTICS
+OPTIMIZER_PROCESSING_RATE
+EM_EXPRESS_BASIC
+EM_EXPRESS_ALL
+SCHEDULER_ADMIN
+HS_ADMIN_SELECT_ROLE
+HS_ADMIN_EXECUTE_ROLE
+XDBADMIN
+XDB_SET_INVOKER
+WM_ADMIN_ROLE
+JAVA_ADMIN
+
+ROLE
+--------------------------------------------------------------------------------
+JAVA_DEPLOY
+OLAP_XS_ADMIN
+OLAP_DBA
+C##OUD_DBA_ROLE_GLOBAL
+
+26 rows selected.
+
