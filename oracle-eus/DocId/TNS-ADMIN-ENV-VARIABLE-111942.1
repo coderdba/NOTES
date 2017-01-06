@@ -1,0 +1,187 @@
+Setting TNS_ADMIN Environment Variable (Doc ID 111942.1)	To BottomTo Bottom	
+
+
+Checked for relevance on 24-JAN-2008.
+
+
+Setting the TNS_ADMIN environment variable
+
+From Oracle9i (9.x) onwards, Oracle Net Services is the current name for the
+Oracle Networking product, formerly known as; SQL*Net in Oracle7 (7.x), Net8
+in Oracle8 (8.0.x) and Net8i in Oracle8 (8.1.x). For consistency, the term
+Oracle Net is used thoughout and refers to all Oracle Net product versions.
+
+The TNS_ADMIN parameter/environment variable is used to explicity define the
+directory location for Oracle Net to resolve where to find its configuration
+files. TNS_ADMIN over-rides the default Oracle Net location.
+
+For example, if TNS_ADMIN is set to ORACLE_HOME\test\admin, Oracle Net looks
+for its configuration files in ORACLE_HOME\test\admin to make a database
+connection or start other Oracle Networking products such as; the Listener,
+Connection Manager, Names Server, etc.
+
+TNS_ADMIN can be defined in the following ways:
+
+=====================================================================
+Platform  Description
+---------------------------------------------------------------------
+
+WINDOWS
+
+  Registry:
+
+          Access the Windows registry i.e. click: Start > Run, then enter
+          'Regedit.exe' (or 'Regedt32.exe'). Add the TNS_ADMIN environment
+          variable to the HKEY_LOCAL_MACHINE\Software\Oracle[\Home[X]] key
+          by right mouse clicking, then selecting: New > Key > String Value.
+          Note: [X] is the Home Id for the ORACLE_HOME being modified.
+
+          If you are unsure where to set TNS_ADMIN in the registry, refer to
+          the ORACLE_HOME\bin\oracle.key file which provides the location of
+          the registry key used by executables within that home.
+
+          Setting TNS_ADMIN in HKEY_LOCAL_MACHINE\Software\Oracle[\Home[X]]
+          key over-rides the default Oracle Net location for products only
+          installed into that ORACLE_HOME.
+
+          By default, each time you install different Oracle versions, the
+          default location to which Oracle Net files are generated is the
+          ORACLE_HOME\network|net80\admin directory. Over time, these two (or
+          more) sets of configuration files may start to contain differing
+          information and entries.
+
+          In this case, you may wish to set TNS_ADMIN in the environment rather
+          than as a Home-specific registry entry (see below). This consolidates,
+          centralises and aids administration of Oracle Net configuration
+          files. However, be aware of syntactical differences and parameter
+          behavioural changes between different SQL*Net/Net8/Net8i/Oracle Net
+          versions.
+
+          Be aware that some Oracle product combinations may require, or be 
+          better suited to, maintaining Home-specific versions of Oracle Net
+          configuration files. Examples include; Oracle Applications, Oracle
+          9iAS, Oracle Enterprise Manager (OEM), etc. If using combinations 
+          of these products, exercise care so not to accidentally modify
+          the other ORACLE_HOMEs TNS_ADMIN location e.g. making a global change
+          that adversely affects Oracle Net connectivity of other Oracle
+          versions.
+
+  Environment:
+
+          TNS_ADMIN may also be defined as a system-wide or global variable
+          within the operating system. To do so:
+
+          1. Logon as Administrator.
+          2. Click Start > Settings > Control Panel
+          3. Double click the SYSTEM icon
+          4. From System Properties, select Environment tab.
+
+          The Environment tab lists System environment variables defined by
+          Windows NT - these are the same no matter which user is logged on
+          to the computer. When logged as as a member of the Administrator
+          group, you can modify, add or delete values.
+
+          5. Highlight OS in the list of Systems Variables
+
+          In the Variable field you should see: OS and in the Value field,
+          the value: Windows_NT
+     
+          6. Change the Variable from OS to TNS_ADMIN.
+          7. Change the Value from Windows_NT to the complete path were the
+             configuration files will reside.
+
+             For example:  c:\orant\net80\admin
+
+          8. Click Set, then apply.
+
+          In the System Variable table you should now see the TNS_ADMIN
+          variable with the path to the location of Oracle Net configuration
+          files.
+
+          9. Click OK to close window.
+
+          This setting will force all installed Oracle applications run or
+          launched from this server to use the same set of configuration files.
+
+          Note: Again, care should be taken when setting global variables,
+                particularly for multiple ORACLE_HOME environments. This action
+                will modify other ORACLE_HOME's TNS_ADMIN locations and may
+                adversely affect their ability to connect.
+
+  Session:
+
+          TNS_ADMIN may also be defined for a given Command Prompt session.
+          For example:
+
+          C:\> set tns_admin=c:\temp
+
+          In this case, the value of TNS_ADMIN is only valid for the life of
+          the Command Prompt session. Once terminated, the value is lost.
+
+
+  TNS_ADMIN Resolution Order:
+
+          On Windows NT/2000, the precedence in which Oracle Net
+          Configuration files are resolved is:
+
+          1. Oracle Net files in present working directory (PWD/CWD)
+          2. TNS_ADMIN defined sessionally or by user-defined script
+          3. TNS_ADMIN defined as a global environment variable
+          4. TNS_ADMIN defined in the registry
+          5. Oracle Net files in %ORACLE_HOME/network|net80\admin
+             (Oracle default location)
+           
+
+---------------------------------------------------------------------
+
+Unix      Define the TNS_ADMIN environment variable using either 'setenv' or
+          'export' commands i.e.
+
+          For C/T/Z shells (csh, tcsh, zsh) use 'setenv' i.e.
+          $ setenv TNS_ADMIN <directory>
+
+            For example: 
+            $ setenv TNS_ADMIN /opt/oracle
+
+          For Korn/Bourne/Bash shells (ksh, sh, bash) use 'export' i.e.
+          $ TNS_ADMIN=<path/directory>
+          $ export TNS_ADMIN
+
+            For example: 
+            $ export TNS_ADMIN=/opt/oracle
+
+          TNS_ADMIN may be made permanent in:
+          - user's login scripts e.g. $HOME/.profile
+          - environment setting scripts e.g. /usr/local/bin/oraenv | coraenv
+          - system-wide e.g. /etc/profile or bash_profile
+
+          Note: Again, care should be taken when setting global variables,
+                particularly for multiple ORACLE_HOME environments. This action
+                will modify other ORACLE_HOME's or users' TNS_ADMIN locations
+                and may adversely affect their ability to connect.
+
+  TNS_ADMIN Resolution Order:
+
+          On Unix, the precedence in which Oracle Net Configuration files are
+          resolved is:
+
+          1. TNS_ADMIN defined as a global environment variable
+          2. TNS_ADMIN defined sessionally or by user-defined script
+          3. Oracle Net files in /var/opt/oracle (BSD derivitives)
+             or
+             /etc (SVR4 derivitives)
+          4. Oracle Net files in $ORACLE_HOME/network/admin (Oracle default)
+
+
+References:
+Note:74700.1 Setting TNS_ADMIN variable for OEM in multiple Oracle Home
+               NT Environment
+
+
+
+
+
+
+
+
+
