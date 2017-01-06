@@ -1,0 +1,291 @@
+The Impact of the Sqlnet Settings on Database Security (sqlnet.ora Security Parameters and Wallet Location) (Doc ID 1240824.1)	To BottomTo Bottom	
+
+In this Document
+Goal
+Solution
+ 	1. Static registration/non-default sqlnet.ora file location/non-default wallet location/multiple instances.
+ 	2. Dynamic registration/non-default sqlnet.ora file location/non-default wallet location/multiple instances.
+ 	3. The RAC exception (applies to Grid Infrastructure as well)
+References
+
+APPLIES TO:
+
+Oracle Security Service - Version 10.2.0.1 to 11.2
+Information in this document applies to any platform.
+GOAL
+
+How to set up the sqlnet files (sqlnet.ora and listener.ora) to point to the needed sqlnet.ora file and/or to the desired wallet ?
+
+SOLUTION
+
+The sqlnet settings must be properly understood in order to create a correct setup and point to the desired sqlnet.ora and/or wallet in all the circumstances.
+In most situations, the defaults are enough, however, in more complex environments, when the listener is started from another home than the database (grid infrastructure starting with 11gR2 is a notorious example) and when multiple databases share the same environment and they need to have separate wallets, understanding how to set the sqlnet files is crucial.
+
+What are the areas that would be impacted by these settings? Mostly the areas that are using wallets:
+1. Transparent Data Encryption.
+2. SSL authentication.
+3. EUS authentication.
+As well, there may be situations when databases would share the same home but not the same security settings, consequently requiring different sqlnet.ora files.
+
+#1. Premises:
+1. When a process is started, it inherits the properties from the process it started it, ie the permissions and the environment variables.
+2. How are the shadow processes started?
+There are 3 main scenarios:
+2.1. bequeath: the client application (eg sqlplus) tries to connect to the database instance using the bequeath protocol. The listener is not used. The client application (sqlplus) starts a new process (the shadow or dedicated server process) and this, based on a hash value calculated from the ORACLE_HOME and ORACLE_SID, identifies the shared memory segment to which it attaches itself. As indicated in #1, this process would inherit the environment and the permissions from the starting process from its parent, ie client application (sqlplus). This is extremely important to understand, because most of the time a single instance database is started with a sequence like:
+
+sqlplus "/ as sysdba"
+startup
+and, consequently, this database would inherit the environment from the client application.
+2.2 redirected: when an Oracle client process requests a connection with a service name specified, access to a remote database is assumed (this is irrespective whether the database is located on the same server as the client application). The listener would be used in this scenario. After contacting the listener and negociating the authentication, the listener process starts a new dedicated server on behalf of the client application (sqlplus). As a result, the shadow process inherits the permissions of the listener and part of the listener environment. At least 2 environment variables, ORACLE_HOME and ORACLE_SID, are not inherited from the listener, because they must correspond to the database since, just as for the bequeath connection, the shadow process uses them to identify the shared memory segment to which it attaches itself. This is equally a very important thing, because the listener can be made aware of these 2 values and other values as well, for both static and dynamic registration, so that the proper environment is set for a shadow process.
+2.3 shared servers: the shared servers and dispatchers are already started when the connection attempts are made, the listener just redirects the connection attempt to the least used shared server. Both shared servers and dispatchers inherit the database environment (never the listener), consequently this is just a particular case, the environment being set depending on how the instance is started, ie using a bequeath connection or a redirected session created for a statically registered instance.
+
+#2. How to indicate the database environment to the listener?
+
+1. dynamic instance registration - pmon registers the database to the listener and provides its whole environment to the listener. All the processes started by the listener would be endowed with the pmon environment variables. pmon automatically registers the instance with the listener that uses port 1521. Additional listeners can be specified using the local_listener parameter.
+2. static instance registration. The listener knows the database environment because it is specified in its listener.ora configuration file, using the SID_LIST_listener_name parameter. In the example below given for listener LISTENER_TEST, it can be seen that ORACLE_SID and ORACLE_HOME are mandatory settings. Additional environment variables, among which TNS_ADMIN and ORACLE_BASE are of highest importance for the sqlnet.ora and wallet location, can be specified via the ENVS parameter.
+
+SID_LIST_LISTENER_TEST =
+  (SID_LIST =
+    (SID_DESC =
+      (GLOBAL_DBNAME = black.us.oracle.com)
+      (ORACLE_HOME = /refresh/u02/app/oracle/product/10.2.0/db_3)
+      (SID_NAME = black)
+      (ENVS="TNS_ADMIN=/home/oracle/network/admin,ORACLE_BASE=/refresh/u02/app")
+    )
+  )
+
+#3. How to specify the sqlnet.ora location?
+By default, the sqlnet.ora file is placed in $ORACLE_HOME/network/admin of the database. This can be changed by setting the TNS_ADMIN environment variable. Other default locations do exist, varying from operating system to operating system, but they are not considered in this document, because they are almost unused.
+It is worth mentioning that the client sqlnet.ora has absolutely no relevance, except when it coincides when the database sqlnet.ora (most common case is when using a bequeath connection).
+
+#4. What are the parameters that determine the wallet location?
+The wallet is placed, by default, in $ORACLE_BASE/admin/<global_db_name>/wallet. If this directory does not exist or ORACLE_BASE is not set, the default location is: $ORACLE_HOME/admin/<global_db_name>/wallet. The wallet location can be set to another directory by using the WALLET_LOCATION in sqlnet.ora. For TDE the ENCRYPTION_WALLET_LOCATION has been introduced which overrides the WALLET_LOCATION value for TDE use, if both are set. TDE would use the directory specified by either parameter, if only one of them is set. This can be a problem if you are using TDE and rely on the default wallet location $ORACLE_BASE/admin/<global_db_name>/wallet and then introduce parameter WALLET_LOCATION (for example to implement COST) referencing a separate directory, which is recommended, but then TDE will also attempt to use WALLET_LOCATION, in that case you are forced to explicitly set the ENCRYPTION_WALLET_LOCATION also and use a dynamic DIRECTORY reference $ORACLE_SID (non-RAC) or $ORACLE_UNQNAME (RAC) to point to the same default wallet directory where the TDE wallet already resides.
+
+#5. To determine the environment of an Oracle process, use note:
+Note 373303.1 How to Check the Environment Variables for an Oracle Process 
+
+#6. Once a process environment is set, it is not possible to change it without restarting the process. So, if a database is using dynamic registration and the database has been started with the wrong environment, the database must be restarted with the proper environment. If a database is using static registration and the listener.ora file has incorrect settings (especially for the ENVS parameter), after resetting the values correctly, the listener must be restarted.
+
+#7. How to put all this together? Below are the recommended settings for some of the possible scenarios. Only the two most complex and relevant ones are presented, the rest being just derived from these examples.
+The things to take into consideration are:
++ Is the instance using dynamic or static registration? If using dynamic registration, it is important to set the proper environment when starting the database instance
++ Is the sqlnet.ora file in the default location (ie is TNS_ADMIN set?)
++ Is the wallet in the default location? (ie $ORACLE_BASE/admin/<global_db_name>/wallet?
++ Are there multiple databases using the same home and are they sharing the wallet?
+The assumption is that the listener home location is not relevant. The only listener configuration file that should have an impact is listener.ora, for the reasons above. The database specific sqlnet.ora file should determine the wallet settings (and not only) for the database instance.
++ The examples in this document are built upon a scenario with the listener started from a different ORACLE_BASE and ORACLE_HOME than the database:
+
+Listener:
+ORACLE_BASE: /refresh/u01/app
+ORACLE_HOME: /refresh/u01/app/oracle/product/10.2.0/listener_1/bin
+Database:
+ORACLE_BASE=/refresh/u02/app
+ORACLE_HOME=/refresh/u02/app/oracle/product/10.2.0/db_3
+ 
+
+1. Static registration/non-default sqlnet.ora file location/non-default wallet location/multiple instances.
+
+listener.ora should have a setting similar to the one below:
+
+SID_LIST_LISTENER_TEST =
+  (SID_LIST =
+    (SID_DESC =
+      (GLOBAL_DBNAME = black.us.oracle.com)
+      (ORACLE_HOME = /refresh/u02/app/oracle/product/10.2.0/db_3)
+      (SID_NAME = black)
+      (ENVS="TNS_ADMIN=/home/oracle/network/admin,ORACLE_BASE=/refresh/u02/app")
+    )
+  )
+
+note the TNS_ADMIN value being set for this particular instance. This allows the usage of the sqlnet.ora file in /home/oracle/network/admin.
+ORACLE_BASE can be used for other purposes in this scenario (for instance, in 11g, it determines the default diag home directory).
+
+sqlnet.ora should have a setting similar to the one below:
+
+WALLET_LOCATION =
+  (SOURCE =
+    (METHOD = FILE)
+    (METHOD_DATA =
+      (DIRECTORY = /home/oracle/wallet/$ORACLE_SID)
+    )
+  )
+ 
+
+Each instance should have its own /home/oracle/wallet/$ORACLE_SID directory precreated before attempting to register the database to OID or to create the TDE wallet.
+
+After creating a session to the database using a redirected connection, the wallet location of this new session can be checked:
+1. from inside the session:
+
+select * from v$encryption_wallet
+
+WRL_TYPE WRL_PARAMETER STATUS
+-------------------- ------------------------------ ---------
+file /home/oracle/wallet/$ORACLE_SID CLOSED
+
+or, by checking the process environment:
+
+LD_LIBRARY_PATH=/refresh/u01/app/oracle/product/10.2.0/listener_1/lib:/usr/dt/lib:/usr/lib:/opt/cobol/cobdir/coblib
+ORACLE_SID=black
+ORACLE_BASE=/refresh/u02/app
+TNS_ADMIN=/home/oracle/network/admin
+PATH=/opt/java/bin:/opt/bin:/bin:/usr/bin:/usr/lbin:/usr/local/bin:/etc:/opt/fortran/bin:/usr/ccs/bin:/usr/openwin/bin:/usr/dt/bin:/opt/cobol/bin:.:/refresh/u01/app/oracle/product/10.2.0/listener_1/bin
+ORACLE_HOME=/refresh/u02/app/oracle/product/10.2.0/db_3
+
+As seen, the set environment values were the one specified by the listener.ora file. However, the non-specified one, eg: PATH or LD_LIBRARY_PATH, were inherited from the listener process (which is started from home: /refresh/u01/app/oracle/product/10.2.0/listener_1).
+
+2. Dynamic registration/non-default sqlnet.ora file location/non-default wallet location/multiple instances.
+
+The instance is started using bequeath connection, the environment being set to the database environment (ie TNS_ADMIN and ORACLE_BASE, if needed).
+
+sqlnet.ora should have a setting similar to the one below:
+
+WALLET_LOCATION =
+  (SOURCE =
+    (METHOD = FILE)
+    (METHOD_DATA =
+     (DIRECTORY = /home/oracle/wallet/$ORACLE_SID)
+    )
+  )
+
+
+Each instance should have its own /home/oracle/wallet/$ORACLE_SID directory precreated before attempting to register the database to OID or to create the TDE wallet.
+
+After creating a session to the database using a redirected connection, the wallet location of this new session can be checked:
+1. from inside the session:
+
+select * from v$encryption_wallet
+
+WRL_TYPE WRL_PARAMETER STATUS
+-------------------- ------------------------------ ---------
+file /home/oracle/wallet/$ORACLE_SID CLOSED
+
+or, by checking the process environment:
+
+LD_LIBRARY_PATH=/refresh/u02/app/oracle/product/10.2.0/db_3/lib:/usr/dt/lib:/usr/lib:/opt/cobol/cobdir/coblib
+ORACLE_SID=black
+ORACLE_BASE=/refresh/u02/app
+TNS_ADMIN=/home/oracle/network/admin
+PATH=/opt/java/bin:/opt/bin:/bin:/usr/bin:/usr/lbin:/usr/local/bin:/etc:/opt/fortran/bin:/usr/ccs/bin:/usr/openwin/bin:/usr/dt/bin:/opt/cobol/bin:.:/refresh/u02/app/oracle/product/10.2.0/db_3/bin
+ORACLE_HOME=/refresh/u02/app/oracle/product/10.2.0/db_3
+
+
+There are multiple other possible scenarios, depending on whether the database is using the default sqlnet.ora location or if the wallet location should be left as default. However, these can be derived from the above, by setting the appropriate environment variables when starting up the database instance if using dynamic registration or by setting the ENVS parameter if using static registration.
+
+Bug 10208899 - PLEASE EXPAND ENVIRONMENT VARIABLES INCLUDED IN THE SQLNET SETTINGS.
+should address the environment variable expansion in v$encryption_wallet.
+
+3. The RAC exception (applies to Grid Infrastructure as well)
+
+It is worth mentioning that when using the Grid Infrastructure or RAC, ie when having the possibility to store the environment in the OCR, one can specify as well the environment variables in the OCR. This applies from the perspective of this note, ie the ORACLE_BASE and TNS_ADMIN can be specified in OCR using:
+
+srvctl setenv database -d <DB> -t ORACLE_BASE=<PATH>
+srvctl setenv database -d <DB> -t TNS_ADMIN=<PATH>
+
+(this can be set at instance level as well).
+
+#8. Client settings.
+
+OCI Clients are using the same sqlnet.ora and wallet settings as the database server.
+However, a very good hint to use, when multiple wallets should be used by the same client and using multiple TNS_ADMIN environment variables can become a real pain (one example would be when using ODP.NET applications requiring multiple SSL certificates to logon to multiple services, especially on application servers), then this could be easily solved using a tnsnames.ora syntax similar to the one below:
+
+<tns_alias> = (DESCRIPTION = (ADDRESS = (PROTOCOL = TCPS)(HOST = <machine_name>)(PORT = <port_number>)) (CONNECT_DATA = (SERVICE_NAME = <service_name>) ) (SECURITY = (MY_WALLET_DIRECTORY = <some_wallet_directory>)))"
+
+
+#9. Avoid common sqlnet.ora errors.
+Remember when setting the sqlnet.ora parameters that this file is parsed as follows:
++ whatever is aligned to the left is considered as a new parameter entry.
++ whatever has at least a space to the left is considered as previous line continuation.
+As a result, 2 main problems would appear
+1. the parameters are ignored if leaving at least a space at the left.
+2. the multiple lines parameters are misinterpreted if second line or higher are left aligned.
+Problems with such settings appear mostly with the WALLET_LOCATION parameter. In the example below:
+
+WALLET_LOCATION = (SOURCE = (METHOD = FILE)
+(METHOD_DATA =
+(DIRECTORY = <some directory>)))
+
+Because the second and third line are left aligned, the wallet location is ignored.
+When in doubt, set everything on one line:
+
+WALLET_LOCATION = (SOURCE = (METHOD = FILE)(METHOD_DATA =(DIRECTORY = <some directory>)))
+
+The recommended method is to set the sqlnet parameters only using the netmgr, whenever possible.
+
+Errors resulting from improper sqlnet file settings:
+
+ORA-12534: TNS:operation not supported
+ORA-12578: TNS:wallet open failed 
+both would occur when WALLET_LOCATION is set on multiple lines and these are left aligned.
+
+#10. Possible errors that are encountered when the wallet is not properly set:
+1. ORA-28374: typed master key not found in wallet
+There are several known issues that are known to cause these issues in 11.1.0.7, 11.2.0.1 and 11.2.0.2. Check:  Known TDE Wallet Issues (Doc ID 1301365.1) for details. If those are not the cause, it means the database is using the improper wallet. Check (g)v$encryption_wallet to see what wallet has been opened and correct the problem 
+2. ORA-28353: failed to open wallet
+This is clearly a wallet location misconfiguration. Occurs mostly after startup. In mount or open mode, look into: (g)v$encryption_wallet to see where the database expects to find the wallet. Correct the wallet setup and restart the database. File/directory permissions can also be a problem. If the session is created through the listener, make sure the listener starting user has permissions on the appropriate directory.
+Other known errors, caused by wallet location settings are:
+3. ORA-28368: cannot auto-create wallet
+4. ORA-28367: wallet does not exist
+5. ORA-28362: master key not found
+6. ORA-28361: master key not yet set
+
+#11. Troubleshooting data needed in case of errors: ORA-28368 and ORA-28367 or wallet incorrect location (TDE)
+1. the results of the following 2 queries:
+
+select * from v$encryption_wallet;
+select * from gv$encryption_wallet;
+
+2. sqlnet.ora from the database home
+3. environment of the database pmon process, using 
+Note 373303.1 How to Check the Environment Variables for an Oracle Process
+4. if using Oracle Restart or Grid Infrastructure, the environment set for the database within the OCR:
+srvctl getenv database -d <database name>
+5. if the failure occurs for a bequeath connection (sqlplus / as sysdba), generate the following trace file:
+
+AIX, Solaris:
+truss -o sqlplus.trc -afe sqlplus / as sysdba
+Linux:
+strace -o sqlplus.trc -f sqlplus / as sysdba
+HP-UX:
+tusc -o sqlplus.trc -afe sqlplus / as sysdba
+
+then run the command to generate/open the wallet:
+
+alter system set encryption key identified by <wallet password>;
+open:
+alter system set wallet open identified by <wallet password>;
+
+6. if the failure occurs for a session created through the listener, then:
+6.1. initiate the session
+6.2. get the process id for the session:
+
+select spid from v$process where addr=(select paddr from v$session where sid=(select distinct sid from v$mystat));
+6.3. enable tracing on this:
+
+AIX, Solaris:
+truss -o sqlplus.trc -afe -p <spid from above query>
+Linux:
+strace -o sqlplus.trc -f -p <spid from above query>
+HP-UX:
+tusc -o sqlplus.trc -afe -p <spid from above query>
+
+6.4. then run the command to generate/open the wallet:
+
+alter system set encryption key identified by <wallet password>;
+open:
+alter system set wallet open identified by <wallet password>;
+
+7. Upload the results of the statements and the generated file into a Service Request.
+
+#12. dbca ignores the WALLET_LOCATION value from sqlnet.ora when registering the database with OID. 
+The same occurs for all related dbca actions (deregister, change database password in OID etc).
+As seen in the documentation, the dbca creates the wallet in the default location and expects the wallet to be in the default location:
+
+"After creating the wallet, Database Configuration Assistant stores it at $ORACLE_BASE/admin/Oracle_SID/wallet (in UNIX environments), if the ORACLE_BASE environment variable is present. If the ORACLE_BASE environment variable is not present, then the $ORACLE_HOME/admin/Oracle_SID/wallet directory is used.
+In Windows environments, replace the slashes (/) with backslashes (\).
+If a database wallet already exists, then Database Configuration Assistant uses it and updates the password in the wallet."
+BUG 14700453 - ENCRYPTION_WALLET_LOCATION DOES NOT USE ENVIRONMENT VARIABLES SET BY SRVCTL
+
+REFERENCES
+
+BUG:10208899 - PLEASE EXPAND ENVIRONMENT VARIABLES INCLUDED IN THE SQLNET SETTINGS.
+NOTE:373303.1 - How to Check the Environment Variables for an Oracle Process
