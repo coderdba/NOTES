@@ -380,5 +380,31 @@ Traverse to the group cn=CDB_DBA,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=P
 Look up the 'member information' in the RHS - 
 --> Now you can see 'dbas' group also added to this role/group CDB_DBA
 
-                                             
-                                      
+================================================
+MAP THIS USER TO THE GLOBAL-IDENT-USER IN THE DB
+================================================
+--------
+MAP
+--------
+$ eusm createMapping realm_dn='dc=example,dc=com' ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn='cn=eusroot,ou=eusadmins,dc=example,dc=com' ldap_user_password=oracle#1 database_name=DB_UNIQUE_NAME map_type=ENTRY map_dn='cn=user1,ou=people,dc=example,dc=com' schema=c##oud_global_ident_user
+
+--------
+VERIFY
+--------
+NOTE: MAPPING0 is for the DB to its own global user
+      MAPPING1 is for the db global user schema to user1 enterprise user
+$ /u02/app/oracle/product/11.2.0.4.RAC/bin/eusm listMappings database_name=DB_UNIQUE_NAME realm_dn='dc=example,dc=com' ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn='cn=eusroot,ou=eusadmins,dc=example,dc=com' ldap_user_password=oracle#1
+
+LIST OF DATABASE SCHEMA MAPPINGS::
+------------------------------------
+Mapping Name:  MAPPING0
+Mapping Type:  SUBTREE
+Mapping DN:    dc=example,dc=com
+Mapping schema:c##oud_global_ident_user
+Mapping Level :DATABASE
+
+Mapping Name:  MAPPING1
+Mapping Type:  ENTRY
+Mapping DN:    cn=user1,ou=people,dc=example,dc=com
+Mapping schema:c##oud_global_ident_user
+Mapping Level :DATABASE
