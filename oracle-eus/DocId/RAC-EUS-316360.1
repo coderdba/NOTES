@@ -1,0 +1,124 @@
+How To Configure Enterprise User Security In Oracle RAC Environment (Doc ID 316360.1)	To BottomTo Bottom	
+
+In this Document
+Goal
+Solution
+ 	[Registering the RAC database with OID]
+ 	[Configure the remaining node(s)]
+This document is being delivered to you via Oracle Support's Rapid Visibility (RaV) process and therefore has not been subject to an independent technical review.
+APPLIES TO:
+
+Advanced Networking Option - Version 10.1.0.2 to 11.2.0.4 [Release 10.1 to 11.2]
+Information in this document applies to any platform.
+Information in this document applies to any platform.
+GOAL
+
+This document will cover the additional steps necessary to configure Enterprise User Security in a RAC environment, including registration of the database with OID using DBCA and a methodology to configure additional EUS enabled RAC cluster nodes.
+
+SOLUTION
+
+Many of the steps below reference items in Chapter 12 of the Oracle 10g Advanced Security Administrators Guide. Please have this reference available before you begin configuring your environment.
+
+ 
+
+[Registering the RAC database with OID]
+
+Select a single node and instance within the cluster from which to work. Use the Oracle Home of this instance for the purpose of registering the database with OID and creating a wallet for secure communications between the instance and OID.
+
+Step 1  - Using the instructions found in the Oracle Database Net Services Administrators Guide configure the Oracle home for directory usage. The goal here is to create an ldap.ora that DBCA will use to locate OID and your context realm. When the ldap.ora is created it will be placed in $ORACLE_HOME/network/admin.
+
+Step 2  - DBCA uses information extracted from the oratab file to connect to the local instance but since we are on a RAC node the information is not what is expected. Before starting DBCA modify the oratab to include the instance name for your node (backup your original oratab file before modification). When finished registering the database with DBCA set the oratab back to its original state. The oratab file is normally located in the /var/opt/oracle directory (for the Solaris platform) or the /etc  directory (for most of the other platforms).
+
+For example: 
+
+Database = V10SN
+Instance = V10SN1
+
+Original oratab entry:
+-------------------------------
+V10SN:/t02/app/oracle/product/10.1.0:N
+
+Change to:
+-------------------------------
+V10SN1:/t02/app/oracle/product/10.1.0:N
+
+If this change is not made prior, DBCA will error with ORA-1078 when you try to register the database with OID.
+
+With the oratab modified, start DBCA and select "Oracle single instance database" as the database type that you would like to administer. Continue the process of registering the database as documented in the ASO Admin Guide, chapter 12, ppg. 8-10
+
+Step 3  - Before configuring other nodes in the cluster it is best to stop here and test for EUS functionality. Follow the remaining instructions in chapter 12 of the ASO Admin Guide to complete the configuration of  Enterprise User Security. To test functionality you must make sure that you are connecting to the proper instance and node. Do this by using a connect descriptor with specific instance information. 
+
+For example:
+
+EUS has been configured for instance V10SN1 so we must specify the instance in the connect descriptor.
+
+TNSNAMES.ORA 
+---------------------------
+V10SN1 =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = rachost1.us.oracle.com)(PORT = 1521))
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = V10SN)
+      (INSTANCE_NAME = V10SN1)
+    )
+  )
+---------------------------
+
+>sqlplus mseibt/welcome1@V10SN1
+
+SQL*Plus: Release 10.1.0.2.0 - Production on Thu Jul 7 14:14:59 2005
+
+Copyright (c) 1982, 2004, Oracle.  All rights reserved.
+
+
+Connected to:
+Oracle Database 10g Enterprise Edition Release 10.1.0.2.0 - 64bit Production
+With the Partitioning, Real Application Clusters, OLAP and Data Mining options
+
+SQL> show user
+USER is "ENTERPRISE_USER"
+
+SQL> select sys_context('USERENV','EXTERNAL_NAME') from dual;
+
+SYS_CONTEXT('USERENV','EXTERNAL_NAME')
+--------------------------------------------------------------------------------
+cn=mseibt,cn=users,dc=us,dc=oracle,dc=com
+
+[Configure the remaining node(s)]
+
+With EUS functionality confirmed on our first node, configure the remaining node(s). There are three items that will need to be added manually to the additional nodes:
+
+ - The ldap.ora
+ - The wallet, ewallet.p12 
+ - The spfile/init parameter "LDAP_DIRECTORY_ACCESS= [value]". 
+
+Step 1  - Copy the $ORACLE_HOME/network/admin/ldap.ora from the configured node and place in the same location on the remaining RAC node(s)
+ 
+Step 2  - Copy the $ORACLE_BASE/admin/[database]/wallet/ewallet.p12 from the configured node and place in the same location on the remaining RAC node(s). You will need to create the wallet directory as it will not exist on the other nodes. If the file is transferred via ftp you must do this in binary mode.
+
+Step 3  - With the wallet (ewallet.p12) in place on the additional node(s), use Oracle Wallet Manager to enable "auto login". Use the password that you provided for the wallet when you registered the database with OID to open the wallet. Instructions for using Oracle Wallet Manager and enabling auto login are in Chapter 8, pg. 19 of the ASO Admin Guide. You can tell that auto login is enabled if you see the file cwallet.sso in the $ORACLE_BASE/admin/[database]/wallet directory. Once the file exists you can exit Oracle Wallet Manager. You must do this individually on each node as the cwallet.sso will only work on the node it was created on. 
+
+Step 4  - Add:  LDAP_DIRECTORY_ACCESS = [value] to the spfile.ora or init.ora of your instance. The value should be either PASSWORD, SSL, or NONE. In most cases it will be:
+
+LDAP_DIRECTORY_ACCESS = PASSWORD
+
+Spfile example:
+
+sqlplus "/ as sysdba"
+
+SQL> show parameter ldap
+NAME                                 TYPE        VALUE
+------------------------------------ ----------- ------------------------------
+ldap_directory_access                string      NONE
+
+SQL> alter system set ldap_directory_access='PASSWORD' scope=both;
+System altered.
+
+SQL> show parameter ldap
+NAME                                 TYPE        VALUE
+------------------------------------ ----------- ------------------------------
+ldap_directory_access                string      PASSWORD
+
+
+Step 5  - Test EUS functionality on the newly configured node/instance. Use an instance specific connect descriptor to test functionality, for example, if the new node has the instance V10SN2, use a connect descriptor with the value (INSTANCE_NAME = V10SN2) in the connect_data section.
