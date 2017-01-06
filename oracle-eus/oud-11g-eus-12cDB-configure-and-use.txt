@@ -160,7 +160,31 @@ NOTE: 12c eusm is erroring out. Therefore, use 11g eusm.
 -------------------------
 DO THE MAPPING
 -------------------------
-$ eusm createMapping database_name=DB_UNIQUE_NAME realm_dn='dc=example,dc=com' map_type=SUBTREE map_dn='dc=example,dc=com' schema=c##oud_global_ident_user ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn='cn=eusroot,ou=eusadmins,dc=example,dc=com' ldap_user_password=oracle#1
+$ /u02/app/oracle/product/11.2.0.4.RAC/bin/eusm createMapping database_name=DB_UNIQUE_NAME realm_dn='dc=example,dc=com' map_type=SUBTREE map_dn='dc=example,dc=com' schema=c##oud_global_ident_user ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn='cn=eusroot,ou=eusadmins,dc=example,dc=com' ldap_user_password=oracle#1
 
 NOTE: This command does not produce any screen output
           Therefore, verify using listmappings:
+
+---------------------------------------------------
+VERIFY USING LISTMAPPINGS 
+---------------------------------------------------
+$ /u02/app/oracle/product/11.2.0.4.RAC/bin/eusm listMappings database_name=DB_UNIQUE_NAME realm_dn='dc=example,dc=com' ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn='cn=eusroot,ou=eusadmins,dc=example,dc=com' ldap_user_password=oracle#1
+
+LIST OF DATABASE SCHEMA MAPPINGS::
+------------------------------------
+Mapping Name:  MAPPING0
+Mapping Type:  SUBTREE
+Mapping DN:    dc=example,dc=com
+Mapping schema:c##oud_global_ident_user
+Mapping Level :DATABASE
+
+-------------------------
+VERIFY IN ODSM GUI
+-------------------------
+Data Browser --> Data Tree --> dc=example,dc=com --> cn=OracleContext --> cn=DB_UNIQUE_NAME --> cn=mapping0
+- That will show on the RHS: Distinguished Name cn=mapping0,cn=RL4DB4_TTCE,cn=OracleContext,dc=example,dc=com 
+
+To see the global user of the DB that got mapped:
+ CLICK 'OPTIONAL ATTRIBUTES' on the RHS
+     You will see:
+          orcldbnativeuser oud_global_ident_schema_user
