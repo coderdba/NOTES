@@ -1,0 +1,186 @@
+How To Configure Directory Authentication for Database Administrative Users (SYSDBA and SYSOPER) (Doc ID 457083.1)	To BottomTo Bottom	
+
+In this Document
+Goal
+Solution
+ 	Prerequisite
+ 	
+Step 1: Create an Enterprise Role
+ 	
+
+
+
+
+ 	Step 2: Grant Administrative privileges to the Enterprise Role
+ 	
+
+
+
+
+Step 3: Assigning the Enterprise Role to the Enterprise Users
+ 	Step 4: Configure Database Parameter
+ 	
+
+
+Step 5: Connect to the database
+References
+APPLIES TO:
+
+Advanced Networking Option - Version 11.1.0.6 and later
+Information in this document applies to any platform.
+GOAL
+
+You want to implement the 11g new feature of configuring strong authentication for centralized management of your database administrators (SYSDBA and SYSOPER) login, in your existing EUS (Enterprise User Security) setup.
+
+SOLUTION
+
+Prerequisite
+
+This article assumes that you have a successful EUS (Enterprise User Security) setup already present wherein your 11g database successfully registered with the OID (Oracle Internet Directory) server.
+
+ 
+
+ 
+
+Note:
+
+When using OVD  make sure that Patch 13866372 is installed on the RDBMS Server Oracle Home.
+
+ 
+
+ 
+
+
+Step 1: Create an Enterprise Role
+
+Launch ESM (Enterprise Security Manager) and connect to OID server. Navigate to Operations --> Create Enterprise Role in the menu options. 
+
+esm_menu_options
+
+ 
+
+
+
+
+
+Select the Realm and the Enterprise Domain. Give a name for Enterprise role. This enterprise role name can be any name of your choice.
+create role in esm
+
+
+
+
+
+
+Step 2: Grant Administrative privileges to the Enterprise Role
+
+You can grant administrative privileges SYSDBA or SYSOPER to the Enterprise Role manually using ODM (Oracle Directory Manager) or through ldapmodify command line utility.
+
+
+Using ODM,
+
+Navigate to the below entry using ODM, 
+cn=<Enterprise Role Name>,cn=<Enterprise Domain Name>,cn=OracleDBSecurity,cn=Products,cn=OracleContext,<Realm ID> 
+
+For the 'orclDBServerRole' attribute set the GlobalRole to be SYSDBA or SYSOPER according to what privilege you want to grant, in the below format. 
+cn=<DB SID>,cn=oraclecontext,<Realm ID>,GlobalRole=SYSDBA 
+
+assign global role
+
+
+
+
+Using ldapmodify,
+
+(i)  Create a ldif file using the below syntax.
+
+dn: cn=<Enterprise Role Name>,cn=<Enterprise Domain Name>,cn=OracleDBSecurity,cn=Products,cn=OracleContext,<Realm ID>
+changetype: modify
+add: orcldbserverrole
+orcldbserverrole: cn=<DB SID>,cn=oraclecontext,<Realm ID>,GlobalRole=SYSDBA 
+
+(ii) Use ldapmodify command to add it into OID. 
+
+ldapmodify -h <oid_hostname> -p <oid_port> -D <oid_superuser> -w <password> -v -f <ldiff_file_name>
+
+
+Example,
+
+[oracle@oid wallet]$ more add_sysdba_to_Erole.ldif 
+dn: cn=ERSYSDBA,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,o=oracle,c=in 
+changetype: modify 
+add: orcldbserverrole 
+orcldbserverrole:cn=db11g,cn=oraclecontext,o=oracle,c=in,GlobalRole=SYSDBA
+
+
+[oracle@oid wallet]$ ldapmodify -h oid -p 389 -D cn=orcladmin -w oracle123 -v -f add_sysdba_to_Erole.ldif
+add orcldbserverrole: 
+        cn=db11g,cn=oraclecontext,o=oracle,c=in,GlobalRole=SYSDBA 
+modifying entry cn=ERSYSDBA,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,o=oracle,c=in 
+modify complete
+ 
+
+In the examples shown in this article,
+
+Enterprise Role Name is 'ERSYSDBA' 
+Enterprise Domain Name is 'OracleDefaultDomain' 
+Realm ID is 'o=oracle,c=in' 
+DB SID is 'db11g' 
+and the database privilege SYSDBA has been granted.
+
+
+
+Verify Enterprise Role
+
+Once granting the database administrative privileges is successful either via ODM or via ldapmodify , then you can see the privilege SYSDBA listed under Database Global Roles tab for the corresponding Enterprise Role in ESM.
+
+display sysdba in esm
+
+
+
+
+
+
+Step 3: Assigning the Enterprise Role to the Enterprise Users
+
+Using ESM, assign the Enterprise Role for which you have granted SYSDBA or SYSOPER privilege, to the Enterprise Users who require administrative privileges on the database. 
+
+Launch ESM, Select the Enterprise Role(that you configured in step1) on the left pane, on the right pane highlight Users tab. Click Add button and add the users.
+
+displays how to add users in esm
+
+
+
+Once successfully added, the users will be listed under the Users tab.
+
+displays the user added successfully
+
+ 
+
+Step 4: Configure Database Parameter
+
+Set the database initialization parameter LDAP_DIRECTORY_SYSAUTH to YES to enable directory authentication for administrative users.
+
+Make sure that that parameter 'LDAP_DIRECTORY_ACCESS' is not set to 'NONE'. However, if you have a successful EUS setup this parameter would either be 'PASSWORD' or 'SSL' depending on your EUS configuration.
+
+
+
+Step 5: Connect to the database
+
+Connect to the database with EUS username and its password who has been granted admin privilege.
+
+sqlplus <eususer>/<password>@<tns service name> as SYSDBA
+
+[oracle@oid wallet]$ sqlplus mramasam/mramasam123@db11g as sysdba 
+
+SQL*Plus: Release 11.1.0.6.0 - Production on Sun Sep 2 21:07:06 2007 
+
+Copyright (c) 1982, 2007, Oracle.  All rights reserved. 
+
+
+Connected to: 
+Oracle Database 11g Enterprise Edition Release 11.1.0.6.0 - Production 
+With the Partitioning, OLAP, Data Mining and Real Application Testing options 
+
+SQL> show user; 
+USER is "SYS"
+ 
