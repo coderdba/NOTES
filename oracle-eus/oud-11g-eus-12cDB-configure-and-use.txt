@@ -345,11 +345,40 @@ Go to the user --> on RHS Additional User Information --> Group Membership --> s
 ========================================
 ADD DBAS TO THE ENTERPRISE ROLE 'CDB_DBA'
 ========================================
+NOTE: In 11g trial, did it in ODSM GUI.  Here, let us try eusm grantrole.
+
+- EUSM METHOD
+$ /u02/app/oracle/product/11.2.0.4.RAC/bin/eusm grantRole enterprise_role=CDB_DBA domain_name=OracleDefaultDomain realm_dn=dc=example,dc=com group_dn=cn=dbas,dc=example,dc=com
+ ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
+
+- ODSM GUI METHOD
 Traverse to the 'CDB_DBA' CN as we did before:
-Data Tree --> Root --> dc=example,dc=com --> cn=OracleContext --> cn=Products --> cn=OracleDBSecurity --> cn=DBA
+Data Tree --> Root --> dc=example,dc=com --> cn=OracleContext --> cn=Products --> cn=OracleDBSecurity --> cn=CDB_DBA
 
 To that, on the RHS --> Group Page --> Member Information --> Unique Member 
                                         --> Add (worked - try the 'dbas' group first to see if that works for all users in that group)
                                              --> cn=dbas,dc=example,dc=com
+
+- VERIFY USING EUSM
+NOTE- Now you see 'dbas' also listed
+$ /u02/app/oracle/product/11.2.0.4.RAC/bin/eusm listEnterpriseRoleInfo enterprise_role=CDB_DBA domain_name=OracleDefaultDomain realm_dn=dc=example,dc=com ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
+
+INFOMATION FOR ENTERPRISE ROLE: CDB_DBA
+-------------------------------------------------
+LIST OF USERS
+-----------------
+LIST OF GROUPS
+-----------------
+cn=CDB_DBA,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=example,dc=com
+cn=dbas,dc=example,dc=com
+LIST OF GLOBAL ROLES
+--------------------
+DBNAME: RL4DB2_TTCE GLOBALROLE :C##OUD_DBA_ROLE_GLOBAL
+
+- VERIFY USING ODSM GUI
+Traverse to the group cn=CDB_DBA,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=example,dc=com
+Look up the 'member information' in the RHS - 
+--> Now you can see 'dbas' group also added to this role/group CDB_DBA
+
                                              
                                       
