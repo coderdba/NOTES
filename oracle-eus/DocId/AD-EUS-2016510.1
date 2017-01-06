@@ -1,0 +1,986 @@
+	
+Give Feedback...
+
+	
+
+
+Click to add to Favorites		Enterprise User Security (EUS) with Oracle DB 12c and OUD Proxy to Active Directory (AD) 
+using Enterprise Manager Cloud Control (EMCC) 12c (Doc ID 2016510.1)	To BottomTo Bottom	
+
+In this Document
+Purpose
+Details
+ 	Prerequisite
+ 	 
+ 	 
+ 	 
+ 	 
+ 	 
+References
+
+APPLIES TO:
+
+Oracle Unified Directory - Version 11.1.2.2.0 and later
+Information in this document applies to any platform.
+PURPOSE
+
+ The goal of this article is to describe the integration of OUD Proxy with EUS, DB12c and EMCC12
+
+DETAILS
+
+ 
+
+ 
+
+Prerequisite
+
+Assumptions:
+
+ORACLE Database 12c Enterprise Edition* is installed and configured  (used 12.1.0.2)
+Enterprise Manager Cloud Control 12c (EMCC 12c) (used 12.1.0.4 +Database 12.1.0.7 plugin)
+Oracle Unified Directory 11.1.2.2.1 + OOB for bug 20529805
+Active Directory Installed and configured on Windows 2008 R2 machine
+* Oracle Database Enterprise Edition is required for Enterprise User Security (EUS) rather than Oracle Database Standard Edition.
+
+ 
+
+The deployment consists of 3 different machines:
+
+<ad-hostname>:    Windows 2008 R2 machine, running active directory on port 389
+<oud-hostname>:  OUD Proxy machine (LDAP: 6389, LDAPS: 6636, ADMIN port: 6444)
+<db-hostname>:    DB Machine, running Oracle DB, EUS,  Sqplus with listener on port 1521. and EMC12c
+ 
+
+The following environment variables need to be defined to manipulate the Oracle Database:
+
+ORACLE_SID
+ORACLE_BASE
+ORACLE_HOME
+and the following environment variable refers to the ORACLE_HOME of OUD -
+
+OUD_HOME
+ 
+
+Also in this document -
+
+<realm-dn> represents the AD base suffix when proxied through OUD
+
+ 
+
+Note:
+
+Throughout this document ORACLE_SID is orcleus1
+
+ 
+
+Steps to connect using sqlplus through EUS as an AD user -
+
+ 1. Installation of AD OIDPWDCN.DLL plugin (AD Windows 2008 R2)
+
+1.1) Documentation Reference
+
+ 
+
+Before starting check out the following KM articles
+
+Document 870593.1:           OVD 10g/11g: OID Password Notification Plugin (OIDPWDCN.DLL) on Windows 64-bit Does Not Update orclCommonAttribute Attribute After AD Password Change
+Document 1312675.1:         Is There a 64-bit Version of oidpwdcn.dll: EUS Password Change Notification Plugin
+Document 973700.1:           OIDPWDCN.DLL in OVD 11G
+Document 1449132.1:          How To Configure EUS with OVD 11.1.1.6 and Active Directory - AD
+
+ 
+
+1.2) Update AD Schema 
+
+Example of extending AD (only one object will be created within AD)  This will create the orclCommonAttribute attribute which is used by the password notification plugin.
+
+Go to $OUD_HOME/config/EUS/ActiveDirectory/ directory (Unix) or OUD_HOME\config\EU and run the command:
+
+ORACLE_HOME/jdk/bin/java ExtendAD -h Active_Directory_Host_Name -p Active_Directory_Port
+-D Active_Directory_Admin_DN -w Active_Directory_Admin_Password
+-AD Active_Directory_Domain_DN -commonattr
+
+Where -h is the Active Directory hostname
+             -p is the Active Directory listening port
+             -D is the Active Directory Admin user
+             -w is the Active Directory Admin password
+             -AD  is the Active Directory Domain DN value
+
+Example:
+
+java ExtendAD -h myhost -p 389 -D cn=administrator,cn=users,dc=example,dc=com -w <pwd> -AD dc=example,dc=com -commonattr
+
+ 
+
+ 
+
+
+1.2) Downloading and copying OIDPWDCN.DLL
+
+
+For Windows Active Directory 2008 R2, the 64 bit version of OIDPWDCN.DLL should be downloaded, as described in KM 64-bit OIDPWDCN.DLL in OVD 11G Document  973700.1.
+
+The way to install OIDPWDCN.dll  is described at:
+Configuring an Active Directory Plug-in for Password Change Notification
+http://docs.oracle.com/cd/E28280_01/admin.1111/e10029/serverchain.htm#OIDAG2748
+
+ 
+
+1.3) Updating the Key registry
+
+Install the password change notification plug-in, as follows:
+Copy %ORACLE_HOME%\ldap\admin\oidpwdcn.dll to the Active Directory WINDOWS\system32 folder.
+
+Use regedt32 to modify the registry. 
+
+In the line:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa\Notification Packages, add oidpwdcn to the end. It should look like the following:
+    scecli
+    oidpwdcn
+
+Restart Active Directory.
+
+
+Note: It might be necessary as well to restart the AD machine.
+ 
+
+1.4) Allowing Anonymous Bind on Active Directory
+
+Run ldapmodify to allow anonymous logins on Active Directory:
+
+ldapmodify -h <ADhost> -p <AD port> -D <AD dirmgr> -w <pwd>
+dn: cn=directory service,cn=windows nt,cn=services,cn=configuration,dc=example,dc=com
+changetype: modify
+replace: dsHeuristics
+dsHeuristics: 0000002
+ 
+
+
+1.5) Verification
+
+Ensure that you replace dc=example,dc=com with the base DN of your Active Directory server.
+Reset the password for all the Active Directory users, allowing the plug-in to acquire the password changes and generate and store password verifiers.
+
+
+Verify the Active Directory setup by performing the following steps:
+
+Change the password of an Active Directory user.
+Search Active Directory for the user you changed the password for. Verify the orclCommonAttribute attribute contains the generated hash password value.
+This value adds the orclCommonAttribute attribute definition in Active Directory.
+ 
+
+Example
+Reset the password of cn=user11 (using Active Directory user and computer console)
+Verification that the attribute orclCommonAttribute is now present
+
+ldapsearch -h <AD-hostname> -D cn=administrator,cn=users,<realm-dn> -w <password> -b cn=users,<realm-dn> cn=user11 orclCommonAttribute
+version: 1
+dn: CN=user11,CN=Users,<realm-dn>
+orclCommonAttribute: {MD5}BZUK0ZLIY5389WdN1W5JkA==
+ 
+
+ 
+
+2) Creating OUD Proxy Instance
+
+This section is describes how to configure OUD proxy instance for AD with EUS enabled.
+
+ 
+
+
+2.1) Run oud-proxy-setup
+
+1. Run oud-proxy-setup script which is at $OUD_HOME/Oracle_OUD1
+$OUD_HOME/Oracle_OUD1/oud-proxy-setup
+ 
+
+In the server settings do not forget to enable SSL
+
+eus12_1.jpg
+
+ 
+
+ 
+
+ 
+
+ 
+
+2. Select Configure EUS
+
+eus12_6.jpg
+
+ 
+
+3. Select Microsoft
+
+eus12_7.jpg
+
+ 
+
+4. Add the AD server instance (AD server), and click next
+
+ 
+
+eus12_4.jpg
+
+ 
+
+eus12_5.jpg
+
+ 
+
+5. Click completed. 
+
+ 
+
+ 2.3) Post-Configuration Steps
+
+You should also perform post configuration steps as described in Oracle Documentation
+
+ 
+
+Important NOTE:
+
+
+ In the following example, remote-bind-dn is specified as being cn=administrator,cn=users,<realm-dn>, but this can be a DN of any user
+
+It means that that using cn=administrator is NOT a MANDATORY REQUIREMENT, but the user must have full read access to all the user and group entries
+
+ 
+
+After completing the required configuration, you must perform the following:
+
+    Configure the proxy workflow elements, remote root DN and remote root user accounts for the external LDAP-compliant directories by running the dsconfig command:
+
+   
+
+dsconfig set-workflow-element-prop \
+              --element-name proxy-we1 \
+              --set remote-root-dn:cn=administrator,cn=users,<realm-dn> \
+              --set remote-root-password:******** \
+              --hostname localhost \
+              --port <oud-admin-port> \
+              --trustAll \
+              --bindDN cn=directory\ manager \
+              --bindPasswordFile pwd.txt \
+              --no-prompt
+    You can configure the proxy workflow elements for the external LDAP-compliant directories with use-client-identity by defining the exclude-list, remote ldap server bind dn and remote ldap server bind password. When the EUS is enabled, the database connects with its own credentials and performs searches on the external LDAP server. As the DB entry is stored locally on OUD proxy, it uses an alternate ID to bind to the external LDAP server as the database entry does not exist on the external LDAP server.
+
+ 
+
+ 
+
+ 
+
+Important NOTE:
+
+In the following example, remote-bind-dn is specified as being cn=administrator,cn=users,<realm-dn>, but this can be the DN of any user
+
+It means that that using cn=administrator is NOT a MANDATORY REQUIREMENT, but the user must have full read access to all the user and group entries
+
+  
+
+dsconfig set-workflow-element-prop \
+              --element-name proxy-we1 \
+              --add exclude-list:cn=directory\ manager \
+              --add exclude-list:cn=oraclecontext,<realm-dn> \
+              --set remote-ldap-server-bind-dn:cn=administrator,cn=users,<realm-dn> \
+              --set remote-ldap-server-bind-password:******** \
+              --hostname localhost \
+              --port <oud-admin-port> \
+              --trustAll \
+              --bindDN cn=directory\ manager \
+              --bindPasswordFile pwd.txt \
+              --no-prompt
+ 
+
+ 
+
+2.4) Configuring OUD to add the additional password storage scheme
+
+ 
+
+You need to modify Root Password Policy using dsconfig to add a default-password-storage-scheme (either AES or Base64 or Blowfish or Clear or RC4 or TripleDES, ie one of the reversible storage schemes):
+
+ 
+
+./dsconfig -h <oud-hostname>  -p 6444 -D "cn=Directory Manager" -j ./pwd.txt --advanced
+
+
+>>>> Oracle Unified Directory configuration console main menu
+
+What do you want to configure?
+
+    1)  General Configuration             6)   Remote Data Source
+    2)  Authentication and authorization  7)   Virtualization
+    3)  Schema                            8)   Load Balancing
+    4)  Replication                       9)   Distribution
+    5)  Local Data Source                 10)  Integration
+
+    q)  quit
+
+Enter choice: 2
+
+
+>>>> Authentication and authorization management menu
+
+What would you like to do?
+
+    1)  Access Control Group    8)   Password Policy Import Plugin
+    2)  Access Control Handler  9)   Password Storage Scheme
+    3)  Crypto Manager          10)  Password Validator
+    4)  Data Encryption         11)  Root DN
+    5)  Key Manager Provider    12)  SASL Mechanism Handler
+    6)  Password Generator      13)  Trust Manager Provider
+    7)  Password Policy         14)  Trust Store Local Backend Workflow Element
+
+    b)  back
+    q)  quit
+
+Enter choice [b]: 7
+
+
+>>>> Password Policy management menu
+
+What would you like to do?
+
+    1)  List existing Password Policies
+    2)  Create a new Password Policy
+    3)  View and edit an existing Password Policy
+    4)  Delete an existing Password Policy
+
+    b)  back
+    q)  quit
+
+Enter choice [b]: 3
+
+
+>>>> Select the Password Policy from the following list:
+
+    1)  Default Password Policy
+    2)  Global Administrator Password Policy
+    3)  Root Password Policy
+
+    c)  cancel
+    q)  quit
+
+Enter choice [c]: 5
+
+Invalid response. Please enter a valid menu option
+
+Enter choice [c]: 3
+
+
+>>>> Configure the properties of the Password Policy
+
+         Property                                   Value(s)
+         ---------------------------------------------------------
+    1)   account-status-notification-handler        -
+    2)   allow-expired-password-changes             false
+    3)   allow-multiple-password-values             false
+    4)   allow-pre-encoded-passwords                false
+    5)   allow-user-password-changes                true
+    6)   default-password-storage-scheme            Salted SHA-512
+    7)   deprecated-password-storage-scheme         -
+    8)   expire-passwords-without-warning           false
+    9)   force-change-on-add                        false
+    10)  force-change-on-reset                      false
+    11)  grace-login-count                          0
+    12)  idle-lockout-interval                      0 s
+    13)  last-login-time-attribute                  -
+    14)  last-login-time-format                     -
+    15)  lockout-duration                           0 s
+    16)  lockout-failure-count                      0
+    17)  lockout-failure-expiration-interval        0 s
+    18)  lockout-soft-duration                      0 s
+    19)  lockout-soft-failure-count                 0
+    20)  max-password-age                           0 s
+    21)  max-password-reset-age                     0 s
+    22)  min-password-age                           0 s
+    23)  password-attribute                         userpassword
+    24)  password-change-requires-current-password  true
+    25)  password-expiration-warning-interval       5 d
+    26)  password-generator                         -
+    27)  password-history-count                     0
+    28)  password-history-duration                  0 s
+    29)  password-validator                         -
+    30)  previous-last-login-time-format            -
+    31)  require-change-by-time                     -
+    32)  require-secure-authentication              false
+    33)  require-secure-password-changes            false
+    34)  skip-validation-for-administrators         false
+    35)  state-update-failure-policy                ignore
+
+    ?)   help
+    f)   finish - apply any changes to the Password Policy
+    c)   cancel
+    q)   quit
+
+Enter choice [f]: 6
+
+
+>>>> Configuring the "default-password-storage-scheme" property
+
+    Specifies the names of the password storage schemes that are used to
+    encode clear-text passwords for this password policy.
+
+Do you want to modify the "default-password-storage-scheme" property?
+
+    1)  Keep the value: Salted SHA-512
+    2)  Add one or more values
+    3)  Remove one or more values
+    4)  Remove all values
+
+    ?)  help
+    q)  quit
+
+Enter choice [1]: 2
+
+
+Select the Password Storage Schemes you wish to add:
+
+    1)  3DES        10)  Salted SHA-1
+    2)  AES         11)  Salted SHA-256
+    3)  Base64      12)  Salted SHA-384
+    4)  Blowfish    13)  SHA-1
+    5)  Clear       14)  SHA-256
+    6)  CRYPT       15)  SHA-512
+    7)  MD5         16)  Create a new Password Storage Scheme
+    8)  RC4         17)  Add all Password Storage Schemes
+    9)  Salted MD5
+
+    ?)  help
+    c)  cancel
+    q)  quit
+
+Enter one or more choices separated by commas [c]: 2
+
+Press RETURN to continue
+
+
+>>>> Configuring the "default-password-storage-scheme" property (Continued)
+
+The "default-password-storage-scheme" property references the following
+Password Storage Schemes:
+
+    *)  AES
+    *)  Salted SHA-512
+
+Do you want to modify the "default-password-storage-scheme" property?
+
+    1)  Use these values
+    2)  Add one or more values
+    3)  Remove one or more values
+    4)  Remove all values
+    5)  Revert changes
+
+    ?)  help
+    q)  quit
+
+Enter choice [1]:
+
+Press RETURN to continue
+
+
+>>>> Configure the properties of the Password Policy
+
+         Property                                   Value(s)
+         --------------------------------------------------------------
+    1)   account-status-notification-handler        -
+    2)   allow-expired-password-changes             false
+    3)   allow-multiple-password-values             false
+    4)   allow-pre-encoded-passwords                false
+    5)   allow-user-password-changes                true
+    6)   default-password-storage-scheme            AES, Salted SHA-512
+    7)   deprecated-password-storage-scheme         -
+    8)   expire-passwords-without-warning           false
+    9)   force-change-on-add                        false
+    10)  force-change-on-reset                      false
+    11)  grace-login-count                          0
+    12)  idle-lockout-interval                      0 s
+    13)  last-login-time-attribute                  -
+    14)  last-login-time-format                     -
+    15)  lockout-duration                           0 s
+    16)  lockout-failure-count                      0
+    17)  lockout-failure-expiration-interval        0 s
+    18)  lockout-soft-duration                      0 s
+    19)  lockout-soft-failure-count                 0
+    20)  max-password-age                           0 s
+    21)  max-password-reset-age                     0 s
+    22)  min-password-age                           0 s
+    23)  password-attribute                         userpassword
+    24)  password-change-requires-current-password  true
+    25)  password-expiration-warning-interval       5 d
+    26)  password-generator                         -
+    27)  password-history-count                     0
+    28)  password-history-duration                  0 s
+    29)  password-validator                         -
+    30)  previous-last-login-time-format            -
+    31)  require-change-by-time                     -
+    32)  require-secure-authentication              false
+    33)  require-secure-password-changes            false
+    34)  skip-validation-for-administrators         false
+    35)  state-update-failure-policy                ignore
+
+    ?)   help
+    f)   finish - apply any changes to the Password Policy
+    c)   cancel
+    q)   quit
+
+Enter choice [f]:
+
+The Password Policy was modified successfully
+
+Press RETURN to continue
+
+
+>>>> Password Policy management menu
+
+What would you like to do?
+
+    1)  List existing Password Policies
+    2)  Create a new Password Policy
+    3)  View and edit an existing Password Policy
+    4)  Delete an existing Password Policy
+
+    b)  back
+    q)  quit
+
+Enter choice [b]:
+
+
+>>>> Authentication and authorization management menu
+
+What would you like to do?
+
+    1)  Access Control Group    8)   Password Policy Import Plugin
+    2)  Access Control Handler  9)   Password Storage Scheme
+    3)  Crypto Manager          10)  Password Validator
+    4)  Data Encryption         11)  Root DN
+    5)  Key Manager Provider    12)  SASL Mechanism Handler
+    6)  Password Generator      13)  Trust Manager Provider
+    7)  Password Policy         14)  Trust Store Local Backend Workflow Element
+
+    b)  back
+    q)  quit
+
+Enter choice [b]:
+
+
+>>>> Oracle Unified Directory configuration console main menu
+
+What do you want to configure?
+
+    1)  General Configuration             6)   Remote Data Source
+    2)  Authentication and authorization  7)   Virtualization
+    3)  Schema                            8)   Load Balancing
+    4)  Replication                       9)   Distribution
+    5)  Local Data Source                 10)  Integration
+
+    q)  quit
+
+
+Enter choice: q
+ 
+
+ 
+
+2.6) Modify "cn=Directory Manager" password
+
+/ldappasswordmodify -h <oudhostname> -p 6444 -D "cn=Directory Manager" -j ./pwd.txt --useSSL -c secret12  -n secret12
+The server is using the following certificate:
+    Subject DN:  CN=<oudhostname>, O=Administration Connector Self-Signed Certificate
+    Issuer DN:  CN=<oudhostname>, O=Administration Connector Self-Signed Certificate
+    Validity:  Wed Jun 03 13:57:58 UTC 2015 through Fri Jun 02 13:57:58 UTC 2017
+Do you wish to trust this certificate and continue connecting to the server?
+Please enter "yes" or "no":yes
+The LDAP password modify operation was successful
+ 
+
+ 2.7) Verification that now cn=Directory Manager contains AES password storage scheme
+
+ldapsearch -h <oudhostname> -p 6444 -D "cn=Directory Manager" --useSSL -j ./pwd.txt -b "cn=Directory Manager,cn=Root DNs,cn=config" -s base objectclass=* userpassword
+The server is using the following certificate:
+    Subject DN:  CN=<oudhostname>, O=Administration Connector Self-Signed Certificate
+    Issuer DN:  CN=<oudhostname>, O=Administration Connector Self-Signed Certificate
+    Validity:  Wed Jun 03 13:57:58 UTC 2015 through Fri Jun 02 13:57:58 UTC 2017
+Do you wish to trust this certificate and continue connecting to the server?
+Please enter "yes" or "no":yes
+dn: cn=Directory Manager,cn=Root DNs,cn=config
+userpassword: {AES}AVz7Uf4EVEjBjJErCEHi9+bfLHExI1bpfDnuCcJjaibCpeEa72EKnbc=
+userpassword: {SSHA512}2MhAr2sFFhaw1mS/lW9cl0Pt1yyU9LW1muwwog9oWYaQptC0ciubH72F9
+ KvFn5NWjJGcsyymEEMH5ZZJEUQV1c+H+zzTl3aP
+ 
+
+ 
+
+ 3) Using netca
+
+netca will generate a file ldap.ora placed in $ORACLE_HOME/network/admin
+
+Example ldap.ora
+# ldap.ora Network Configuration File: $ORACLE_HOME/network/admin/ldap.ora
+# Generated by Oracle configuration tools.
+
+DIRECTORY_SERVERS= (<oud-hostname>:6389:6636)
+
+DEFAULT_ADMIN_CONTEXT = "<realm-dn>"
+
+DIRECTORY_SERVER_TYPE = OID
+ 
+
+The way to invoke netca is as follows
+
+ 
+
+eus12_8.jpg
+
+ 
+
+eus12_9.jpg
+
+ 
+
+eus12_10.jpg
+
+ 
+
+eus12_11.jpg
+
+ 
+
+3.2) Troubleshooting netca
+
+Relevant information to troubleshoot netca can be found at:
+
+netca traces output are below ORACLE_BASE/cfgtools/netca
+OUD access log (using tail -f)
+
+ 
+
+
+4) Running dbca
+
+ 
+
+4.1) Running dbca
+
+ 
+
+eus12_15.jpg
+
+ 
+
+eus12_15.jpg
+
+ 
+
+eus12_16.jpg
+
+ 
+
+eus12_17.jpg
+
+ 
+
+eus12_18.jpg
+
+ 
+
+eus12_19.jpg
+
+ 
+
+eus12_20.jpg
+
+ 
+
+eus12_21.jpg
+
+ 
+
+eus12_22.jpg
+
+ 
+
+eus12_23.jpg
+
+ 
+
+dbca creates a structure below cn=orcl,cn=OracleContext,<realm-dn>
+
+ 
+
+4.2) Troubleshooting dbca
+
+1. Has the subtree structure cn=orcl,cn=OracleContext,<realm-dn> been created ?
+2. Have a look at OUD logs
+3. Have a look $ORACLE_HOME/cfgtools/dbca
+ 
+
+Also check out this KM article:
+OUD-EUS Integration: Wallet not Created When Running DBCA Document 1573358.1
+
+ 
+
+ 
+
+ 
+
+5) EM and DB preparation for LDAP connection
+
+5.1) Connection between DB and LDAP server need to be set to PASSWORD
+Check  connection between the DB and the LDAP server must be set to use PASSWORD and not SSL
+SQL> show parameter ldap_directory_access;
+SQL> alter system set ldap_directory_access = PASSWORD;
+
+
+5.2) Creating a Shared Schema in the Database
+
+Enterprise users are defined in the database as global users. Global users can have their own schemas, or they can share a global schema in the databases they access.
+
+SQL> CREATE USER  global_ident_schema_user IDENTIFIED GLOBALLY;
+User created.
+SQL> GRANT CONNECT TO global_ident_schema_user;
+Grant succeeded.
+
+ 
+
+If output is -
+
+ORA-00439: feature not enabled: Enterprise User Security
+
+when running CREATE USER..
+
+Check if you are running Oracle Enterprise Edition, rather than Oracle Standard Edition.
+
+For more info -
+
+ORA - 00439 The specified feature is not enabled : Enterprise User Security (Doc ID 456423.1)
+
+ 
+
+ 
+
+ 
+
+6) EMCC12 installation
+
+ 
+
+eus12_24.jpg
+
+ 
+
+ 
+
+At the end  of the installation EMCC can be accessed at the following URL:
+
+https://<dbhostname>:7802/em
+
+https://<dbhostname>:7102/console
+
+ 
+
+7) Enterprise Manager CLoud Control  12c 
+
+ 
+
+7.1) Login to EMCC
+
+ 
+
+ 
+
+User has to log into EMCC 12c as SYSMAN
+
+eus12_25_0.jpg
+
+ 
+
+7.2) Connecting EMCC to the DataBase
+
+Select Target Tab, und undeneath select Databases from the drop down menu
+ 
+
+eus12_25.jpg
+
+ 
+
+Select Add Tab, and the corresponding Oracle  OracleDatabase in order to perform the discovery selection
+ 
+
+eus12_26.jpg
+
+ 
+
+eus12_27.jpg
+
+ 
+
+eus12_28.jpg
+
+ 
+
+ 
+
+8)  EMCC 12c Enterprise User Security
+
+8.1) Login to EUS
+
+ 
+
+Select Enterprise User Security
+
+ 
+
+eus12_29.jpg
+
+ 
+
+eus12_30.jpg
+
+ 
+
+8.2) Managing EUS
+
+ 
+
+Select Manage Enterprise Domains
+eus12_32.jpg
+
+ 
+
+ Select "OracleDefaultDomain", and click Configure
+
+eus12_33.jpg
+
+ 
+
+Click on User Schema Mappings Tab, click on Create
+
+ 
+
+eus12_34.jpg
+
+ 
+
+ 
+
+Select subtree and the zoom for the users. Also specify the schema created earlier (i.e  global_ident_schema_user)
+
+eus12_35.jpg
+
+ 
+
+eus12_36.jpg
+
+ 
+
+ 
+
+ 
+
+User schema mapping is now complete
+
+eus12_37.jpg
+
+ 
+
+ 
+
+Message output - "Configure Domain: OracleDefaultDomain Susscessful"
+
+This means that the EMCC12c with EUS configuration is done
+
+eus12_38.jpg
+
+ 
+
+ 
+
+ 
+
+8.3 EMCC12c  Contribution verification
+
+
+The contribution of EM is to create an entry:
+
+8.3.1 cn=mapping0
+
+cn=mapping0,cn=OracleDefaultDomain,cn=DBSecurity,cn=Products,cn=OracleContext, <realm-dn>
+
+with attributes orclDBDistinguishedName, orclDBNativeUser
+
+orclDBDistinguishedName:  cn=users,<realm-dn>
+orclDBNativeUser: global_ident_schema_user 
+
+
+
+
+eus12_39.jpg
+
+ 
+
+8.3.2 cn=Common
+
+cn=Common,cn=Products,cn=OracleContext, <realm-dn>
+
+with attributes orclCommonDefaultGroupCreateBase, orclCommonGroupCreateBase, orclCommonGroupSearchBase, orclCommonUserSearchBase
+
+
+orclCommonDefaultGroupCreateBase: cn=Groups,<realm-dn>
+orclCommonGroupCreateBase: cn=Groups,<realm-dn>
+orclCommonGroupSearchBase: cn=users, <realm-dn>
+orclCommonUserSearchBase:cn=users, <realm-dn>
+
+ 
+
+ 
+
+8.3.3 Troubleshooting EM contribution
+
+Make sure that value below cn=mapping0 (8.3.1) and cn=Common (8.3.2) are positioned as expected.
+
+ 
+
+ 
+
+9) Update of orclCommonAttributeNickName
+
+This attribute has to be updated to make EUS work with windows. Its current default value is uid.
+
+In this example AD users entries are below are cn=user<xx>,cn=<users>, <ad-domain>
+
+orclCommonAttributeNickName has to be set to samAccountName
+
+cf Document 1570893.1  - OUD: Active Directory As External Directory Not Working For EUS
+
+ 
+
+ 
+
+10) Run sqlplus connection as normal user1
+
+All users from Active Directory below cn=users who had their password updated should be usable via sqlplus
+
+ 
+
+10.1) Run sqlplus connection as user1
+
+sqlplus sys as sysdba
+
+SQL*Plus: Release 12.1.0.2.0 Production on Fri Jun 5 08:21:31 2015
+
+Copyright (c) 1982, 2014, Oracle.  All rights reserved.
+
+Enter password:
+
+Connected to:
+Oracle Database 12c Enterprise Edition Release 12.1.0.2.0 - 64bit Production
+With the Partitioning, OLAP, Advanced Analytics and Real Application Testing options
+
+SQL> connect user1
+Enter password:
+Connected.
+SQL>
