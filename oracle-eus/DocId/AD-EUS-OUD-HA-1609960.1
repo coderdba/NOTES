@@ -1,0 +1,308 @@
+Enabling Enterprise User Security (EUS) with OUD-PROXY in High Availability (HA) mode for Active Directory (AD) (Doc ID 1609960.1)	To BottomTo Bottom	
+
+In this Document
+Purpose
+Details
+References
+APPLIES TO:
+
+Oracle Unified Directory - Version 11.1.2.1.0 and later
+Information in this document applies to any platform.
+PURPOSE
+
+
+This article describes how to configure OUD Proxy in High Availability (HA) failover mode mode with Enterprise User Security (EUS) for Active Directory (AD).
+With two or more OUD proxy instances configured, if the first OUD proxy instance fails, EUS will failover to the second OUD proxy instance, etc.
+
+To achieve this, replication has be configured between OUD Proxy instances.   Most of the below KM Article is working with 2 proxies.
+
+DETAILS
+
+1. Prerequisites
+
+EUS is configured with OUD proxy and AD, as described in Document 1571196.1 EUS AD Integration Using OUD Proxy.
+
+A second OUD proxy instance is created using oud-proxy-setup and is called oud-proxy-dest.
+In the following, the original (first) oud-proxy instance is called oud-proxy-source. 
+
+2. Configure replication  --
+
+2.1 Description
+
+When oud-proxy-source has been configured with EUS and AD, 2 specific workflows have been created:
+cn=OracleContext
+cn=OracleContext,<realm-dn>
+
+Both of those workflow suffixes will be configured for replication.
+
+2.2 Enable replication on both OUD Proxy instances -
+
+echo <oud-password-source> > /tmp/pwd1.txt
+echo <oud-passwd-dest> > /tmp/pwd2.txt
+echo <oud-admin-pwd> >   /tmp/pwd3.txt
+
+dsreplication enable \
+  --host1 <oud-proxy-source> --port1 6444 --bindDN1 "cn=Directory Manager"  --bindPasswordFile1 /tmp/pwd1.txt --replicationPort1 6989 \
+  --host2 <oud-proxy-dest> --port2 7444 --bindDN2 "cn=Directory Manager"  --bindPasswordFile2 /tmp/pwd2.txt --replicationPort2 7989 \
+  --adminUID admin --adminPasswordFile /tmp/pwd3.txt --baseDN "cn=OracleContext,<realm-dn>" --baseDN "cn=OracleContext" -X -n
+
+
+
+
+Updating registration information ..... Done.
+Updating replication configuration for baseDN cn=OracleContext,<realm-dn> ....... Done.
+Updating replication configuration for baseDN cn=OracleContext ....... Done.
+Updating replication configuration for the registration information ..... Done.
+Updating replication configuration for the schema ..... Done.
+
+Initializing registration information on server aussois-vm1:7444 with the contents of server aussois-vm1:6444 ..... Done.
+
+Initializing schema on server aussois-vm1:7444 with the schema of server aussois-vm1:6444 ..... Done.
+
+Replication has been successfully enabled.  Note that for replication to work you must initialize the contents of the base DN's that are being replicated (use dsreplication initialize to do so).
+
+See /tmp/oud-replication-760497230637225594.log for a detailed log of this operation.
+
+
+2.3 Initialize replication by running dsreplication initialize -
+
+dsreplication initialize  --baseDN "cn=OracleContext,<realm-dn>" \
+  --adminUID admin --adminPasswordFile /tmp/pwd3.txt \
+  --hostSource <oud-proxy-source> --portSource 6444 \
+  --hostDestination <oud-proxy-dest>  --portDestination 7444 -X -n
+Establishing connections ..... Done.
+
+
+Initializing base DN cn=OracleContext,<realm-dn> with the contents from aussois-vm1:6444:
+0 entries processed (0 % complete).
+32 entries processed (118 % complete).
+Base DN initialized successfully.
+
+Executing post-external initialization on base DN cn=OracleContext,<realm-dn> ..... Done.
+
+See /tmp/oud-replication-8292166361768144396.log for a detailed log of this operation.
+
+./dsreplication initialize  --baseDN "cn=OracleContext" \
+  --adminUID admin --adminPasswordFile /tmp/pwd3.txt \
+  --hostSource aussois-vm1 --portSource 6444 \
+  --hostDestination  aussois-vm1 --portDestination 7444 -X -n
+Establishing connections ..... Done.
+
+Initializing base DN cn=OracleContext with the contents from aussois-vm1:6444:
+0 entries processed (0 % complete).
+14 entries processed (100 % complete).
+Base DN initialized successfully.
+
+Executing post-external initialization on base DN cn=OracleContext ..... Done.
+
+See /tmp/oud-replication-627508336806889103.log for a detailed log of this operation.
+
+2.4 Run dsreplication status -
+
+dsreplication status
+
+
+>>>> Specify Oracle Unified Directory LDAP connection parameters
+
+Directory server hostname or IP address [aussois-vm1.fr.oracle.com]:
+
+Directory server administration port number [4444]: 6444
+
+How do you want to trust the server certificate?
+
+    1)  Automatically trust
+    2)  Use a truststore
+    3)  Manually validate
+
+Enter choice [3]: 1
+
+Global Administrator User ID, or bind DN if no Global Administrator is defined
+[admin]:
+
+Password for user 'admin':
+
+cn=OracleContext - Replication Enabled
+======================================
+Server           : Entries : M.C. [1] : A.O.M.C. [2] : Port [3] : Encryption [4]  : Trust [5] : U.C. [6] : Status [7] : ChangeLog [8] : Group ID [9] : Connected To [10]
+-----------------:---------:----------:--------------:----------:--------------- -:-----------:----------:------------:---------------:--------------:----------- -------
+aussois-vm1:6444 : 14      : 0        : N/A          : 6989     : Disabled  : Trusted   : N/A      : Normal     : Enabled       : 1            : aussois-vm 1:6989
+aussois-vm1:7444 : 14      : 0        : N/A          : 7989     : Disabled  : Trusted   : N/A      : Normal     : Enabled       : 1            : aussois-vm 1:7989
+
+cn=OracleContext,cn=configuration,<realm-dn> - Replication Disabled
+================================================================================ ====================
+Server           : Entries : ChangeLog [8]
+-----------------:---------:--------------
+aussois-vm1:6444 : N/A     : Disabled
+aussois-vm1:7444 : N/A     : Disabled
+
+cn=OracleContext,cn=schema,cn=configuration,dc=oradev,dc=oraclecorp ,dc=com - Replication Disabled
+================================================================================ ==============================
+Server           : Entries : ChangeLog [8]
+-----------------:---------:--------------
+aussois-vm1:6444 : N/A     : Disabled
+aussois-vm1:7444 : N/A     : Disabled
+
+cn=OracleContext,<realm-dn> - Replication Enabl ed
+================================================================================ ==
+Server           : Entries : M.C. [1] : A.O.M.C. [2] : Port [3] : Encryption [4]  : Trust [5] : U.C. [6] : Status [7] : ChangeLog [8] : Group ID [9] : Connected To [10]
+-----------------:---------:----------:--------------:----------:--------------- -:-----------:----------:------------:---------------:--------------:----------- -------
+aussois-vm1:6444 : 27      : 0        : N/A          : 6989     : Disabled  : Trusted   : N/A      : Normal     : Enabled       : 1            : aussois-vm 1:6989
+aussois-vm1:7444 : 27      : 0        : N/A          : 7989     : Disabled  : Trusted   : N/A      : Normal     : Enabled       : 1            : aussois-vm 1:7989
+
+[1] The number of changes that are still missing on this server (and that have b een applied to at least one other server).
+[2] Age of oldest missing change: the age (in seconds) of the oldest change that  has not yet arrived on this server.
+[3] The port used to communicate between the servers whose contents are being re plicated.
+[4] Whether the replication communication through the replication port is encryp ted or not.
+[5] Whether this directory server is trusted or not. Updates coming from an untr usted server are discarded and not propagated.
+[6] The number of untrusted changes. These are changes generated on this server while it is untrusted.
+    Those changes are not propagated to the rest of the topology but are effecti ve on the untrusted server.
+[7] The status of the replication domain on this directory server.
+[8] Whether the external change log is enabled or not for the base DN on this se rver.
+[9] The ID of the replication group to which the server belongs.
+[10] The replication server this directory server is connected to
+
+3) Configure EUS for failover between the two OUD proxy instances -
+
+3.1) Configure ldap.ora -
+
+EUS configuration for OUD proxy is done using netca, and creating a file $ORACLE_HOME/network/admin/ldap.ora
+It is documented at:
+http://docs.oracle.com/cd/E11882_01/network.112/e10835/ldap.htm#NETRF011
+
+The ldap.ora file is created when running netca when the OUD proxy-instance has been configured with EUS and AD.
+For an EUS failover configuration to a second OUD proxy instance, the second OUD proxy instance is added manually to the file ldap.ora
+
+Example:
+
+ldap.ora
+# ldap.ora Network Configuration File: $ORACLE_HOME/network/admin/ldap.ora
+# Generated by Oracle configuration tools.
+
+DIRECTORY_SERVERS= (<oud-proxy-source>:6389:6636,<oud-proxy-dest>:7389:7636)
+
+DEFAULT_ADMIN_CONTEXT = "<realm-dn>"
+
+DIRECTORY_SERVER_TYPE = OID
+***NOTE*** It may also be necessary to add ALL OUD sources to the /etc/hosts file, ie:
+
+/etc/hosts (Linux based)
+
+or in
+
+<windows>/system32/drivers/etc/hosts (Windows based)
+
+3.2) Configure sqlnet.ora -
+
+sqlnet.ora has to be configured to point to the wallet location
+sqlnet.ora is placed below $ORACLE_HOME/network/admin
+
+
+Example:
+sqlnet.ora
+WALLET_LOCATION =
+   (SOURCE =
+     (METHOD = FILE)
+     (METHOD_DATA =
+       (DIRECTORY = /export/home/oracle/mw_home/admin/orcl/wallet)
+     )
+    )
+
+SQLNET.WALLET_OVERRIDE = TRUE
+SSL_CLIENT_AUTHENTICATION = FALSE
+
+
+
+4) Test verification -
+
+Once EUS has been configured, it should be possible to connect to EUS and to failover to the other proxy, if one was to fail, in a totally transparent way.
+
+
+5) Troubleshooting
+
+5.1 ORA-28030: Server encountered problems accessing LDAP directory service
+
+ORA-28030 is the usual error encountered when trying to connect using EUS
+
+It is necessary to put Oracle Ddatabase/EUS in debug mode as follows:
+
+
+SQL>alter system set events '28033 trace name context forever, level 9';
+regenerate the error
+SQL>alter system set events '28033 trace name context off';
+
+a file *ora*.trc us generated which contains more info to continue the troubleshooting issue
+
+
+5.2) Check the wallet definition
+
+Get ORACLE.SECURITY.DN, (which should be of the form cn=orcl,cn=OracleContext,<realm-dn>)
+mkstore -wrl <wallet-path-base>/wallet -viewEntry ORACLE.SECURITY.DN
+Oracle Secret Store Tool : Version 11.2.0.1.0 - Production
+Copyright (c) 2004, 2009, Oracle and/or its affiliates. All rights reserved.
+Enter wallet password:
+ORACLE.SECURITY.DN = cn=orcl,cn=OracleContext,<realm-dn>
+
+
+Get ORACLE.SECURITY.PASSWORD
+mkstore -wrl ./admin/orcl/wallet -viewEntry ORACLE.SECURITY.PASSWORD Oracle Secret Store Tool : Version 11.2.0.1.0 - Production
+Copyright (c) 2004, 2009, Oracle and/or its affiliates. All rights reserved.
+Enter wallet password:
+ORACLE.SECURITY.PASSWORD = nFJD7nl0
+
+
+Now try to bind sucessfully 
+ldapbind -h <oud-proxy-source> -p 6389 -D "cn=orcl,cn=OracleContext,<realm-dn>" -w nFJD7nl0
+bind successful
+
+ldapbind -h <oud-proxy-dest> -p 7389 -D "cn=orcl,cn=OracleContext,<realm-dn>" -w nFJD7nl0
+bind successful
+
+5.3 Internal ERROR ORA-28032
+
+if trace output is:
+
+kzld_discover received ldaptype: OID
+KZLD_ERR: failed to get cred from wallet
+KZLD_ERR: Failed to bind to LDAP server. Err=28032
+KZLD_ERR: 28032
+KZLD is doing LDAP unbind
+KZLD_ERR: found err from kzldini.
+
+then check sqlnet.ora and be sure that wallet path is defined in it
+ 5.3.1 Internal ERROR ORA-28030 with "KZLD_ERR: Failed to bind to LDAP server. Err=-1"
+
+If trace output is:
+
+ERROR:
+ORA-28030: Server encountered problems accessing LDAP directory service
+with further info / errors such as:
+
+
+kzld found pwd in wallet
+KZLD_ERR: Failed to bind to LDAP server. Err=-1
+KZLD_ERR: -1
+KZLD is doing LDAP unbind
+KZLD_ERR: failed from kzldob_open_bind.
+ The solution is to add ALL OUD hosts to the /etc/hosts file, ie:
+
+/etc/hosts (Linux based)
+
+or in
+
+<windows>/system32/drivers/etc/hosts (Windows based)
+
+Example file below:
+
+Example /etc/hosts file:
+
+# cat /etc/hosts
+
+127.0.0.1 localhost localhost.localdomain
+
+ip.addr.here    OUD_Proxy1     OUD_Proxy1.domain.com
+ip.addr.here    OUD_Proxy2     OUD_Proxy2.domain.com
+ip.addr.here    OUD_Proxy3     OUD_Proxy3.domain.com
+
+*** [obviously place the actual ip address and hostnames in the file, the above is just an example]
+
+ *** Please note for the above situation described in section 5.3.1; EUS DB login with single host, does not present any issue.   However, if multiple OUD Proxy are used, EUS DB login could fail with the provided error.  Preliminary 
