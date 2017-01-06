@@ -188,3 +188,51 @@ To see the global user of the DB that got mapped:
  CLICK 'OPTIONAL ATTRIBUTES' on the RHS
      You will see:
           orcldbnativeuser c##oud_global_ident_user
+
+======================================
+CREATE ENTERPRISE ROLES
+======================================
+https://wiki.loopback.org/confluence/display/KB/Configure+EUS+with+OUD%2C+AD+and+DB12c#ConfigureEUSwithOUD,ADandDB12c-Registerdatabasewithdirectory
+
+QUESTION - We are using GLOBAL_DB_NAME as of now everywhere for database_name - should it be DB_NAME?
+               Otherwise, how will primary-standby work?
+               
+----------------------------------
+CREATE AN ENTERPRISE ROLE (DBA)
+----------------------------------
+NOTE: This may be already created
+$ eusm createRole enterprise_role=DBA domain_name=OracleDefaultDomain realm_dn=dc=example,dc=com ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
+
+---------------------
+- VERIFY IN OUD ODSM
+---------------------
+Directory Manager --> Data Browser --> Data Tree --> dc=example,dc=com --> --> cn=OracleContext 
+     --> cn=Products --> cn=OracleDBSecurity 
+          --> cn=OracleDefaultDomin
+               --> cn=DBA
+Its DN: Distinguished Name cn=DBA,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=example,dc=com 
+
+- To delete it
+$ eusm deleteRole enterprise_role=DBA domain_name=OracleDefaultDomain realm_dn=dc=example,dc=com ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
+
+------------------------------------------------------------------------------------------------------
+ASSOCIATE GLOBAL ROLE (OUD_DBA_ROLE_GLOBAL) IN DB TO THE ENTERPRISE ROLE (DBA)
+------------------------------------------------------------------------------------------------------
+# QUESTION - here, should it be database_name=DB_NAME or DB_UNIQUE_NAME?
+
+--> Used DB_UNIQUE_NAME for now
+$ eusm addGlobalRole enterprise_role=DBA domain_name=OracleDefaultDomain realm_dn='dc=example,dc=com' database_name=DB_UNIQUE_NAME global_role=OUD_DBA_ROLE_GLOBAL dbuser=system dbuser_password=oracle#1 dbconnect_string=clustername-scan:1522/DB_UNIQUE_NAME ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn='cn=eusroot,ou=eusadmins,dc=example,dc=com' ldap_user_password=oracle#1
+
+--> this is with DB_NAME
+$ eusm addGlobalRole enterprise_role=DBA domain_name=OracleDefaultDomain realm_dn=dc=example,dc=com database_name=DB_NAME global_role=OUD_DBA_ROLE_GLOBAL dbuser=system dbuser_password=oracle#1 dbconnect_string=clustername-scan:1522/DB_UNIQUE_NAME ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
+
+----------------------------------------------
+GRANT ROLE
+----------------------------------------------
+# QUESTION - here, should it be DB_NAME or DB_UNIQUE_NAME?
+
+# This did not work - QUESTION - what is that group_dn with DBA_UNIQUE_NAME the oud engineer had created?  Was it manually created?
+#eusm grantRole enterprise_role=DBA domain_name=OracleDefaultDomain realm_dn=dc=example,dc=com group_dn=cn=DBA,ou=DB_UNIQUE_NAME,ou=Groups,dc=example,dc=com ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
+
+# This worked - with the group_dn specified as the DN of the DBA role in OUD (see verification after createRole command above)
+eusm grantRole enterprise_role=DBA domain_name=OracleDefaultDomain realm_dn=dc=example,dc=com group_dn=cn=DBA,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=example,dc=com ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
