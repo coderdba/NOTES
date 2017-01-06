@@ -1,0 +1,568 @@
+Enterprise User Security (EUS) with Active Directory (AD) Integration Using OUD Proxy (Doc ID 1571196.1)	To BottomTo Bottom	
+
+In this Document
+Purpose
+Scope
+Details
+ 	Prerequisite
+ 	25.4.2.2 Performing Post Configuration Steps
+References
+APPLIES TO:
+
+Oracle Unified Directory - Version 11.1.2.1.0 and later
+Information in this document applies to any platform.
+PURPOSE
+
+ 
+
+The goal of this document is to describe all the steps necessary to configure Enterprise User Security (EUS) with user entries stored in Active Directory (AD) when a connection between EUS/Oracle Database has been made using OUD proxy using password authentication to AD.
+
+SCOPE
+
+ 
+
+DETAILS
+
+Prerequisite
+
+Assumptions -
+
+ORACLE Database 11g installed and configured
+Active Directory installed and configured on Windows 2008 R2 machine
+ 
+
+The deployment consists of 3 different machines:
+
+<ad-hostname>:    Windows 2008 R2 machine, running Active Directory on port 389
+<oud-hostname>:  OUD Proxy machine (LDAP: 51389, LDAPS: 51636, ADMIN port: 51444)
+<db-hostname>:    DB Machine, running Oracle DB, EUS,  Sqlplus with listener on port 1521
+ 
+
+The following environment variables need to be defined for the Oracle Database:
+
+ORACLE_SID
+ORACLE_BASE
+ORACLE_HOME
+and the following environmental variable is used throughout this document for OUD:
+
+OUD_HOME - the install root of the OUD installation by default - /home/oracle/Oracle/Middleware/Oracle_OUD1
+ 
+
+Also in this document -
+
+<realm-dn> represents the AD base suffix when proxied through OUD
+
+ 
+
+Hereafter is described step-by-step all the actions needed to be able to connect using sqplus to a AD user.
+
+ 
+1. Installation of AD OIDPWDCN.DLL plugin (AD Windows 2008 R2)
+
+1.1) Documentation Reference
+
+Before starting check out the following KM articles -
+
+Document 870593.1:           OVD 10g/11g: OID Password Notification Plugin (OIDPWDCN.DLL) on Windows 64-bit Does Not Update orclCommonAttribute Attribute After AD Password Change
+Document 1312675.1:         Is There a 64-bit Version of oidpwdcn.dll: EUS Password Change Notification Plugin
+Document 973700.1:           OIDPWDCN.DLL in OVD 11G
+Document 1449132.1:          How To Configure EUS with OVD 11.1.1.6 and Active Directory - AD
+
+ 
+
+1.2) Update AD Schema 
+
+Example of extending AD (only one object will be created within AD)  This will create the orclCommonAttribute attribute within the AD schema which is used by the password notification plugin.
+
+Go to $OUD_HOME/config/EUS/ActiveDirectory/ directory (Unix) or OUD_HOME\config\EU and run the command:
+
+ORACLE_HOME/jdk/bin/java ExtendAD -h Active_Directory_Host_Name -p Active_Directory_Port
+-D Active_Directory_Admin_DN -w Active_Directory_Admin_Password
+-AD Active_Directory_Domain_DN -commonattr
+
+Where -h is the Active Directory hostname
+             -p is the Active Directory listening port
+             -D is the Active Directory Admin user
+             -w is the Active Directory Admin password
+             -AD  is the Active Directory Domain DN value
+
+Example:
+
+java ExtendAD -h myhost -p 389 -D cn=administrator,cn=users,dc=example,dc=com -w <pwd> -AD dc=example,dc=com -commonattr
+
+ 
+
+ 
+1.2) Downloading and copying OIDPWDCN.DLL
+
+
+For Windows Active Directory 2008 R2, the 64 bit version of OIDPWDCN.DLL should be downloaded, as described in KM 64-bit OIDPWDCN.DLL in OVD 11G <Document  973700.1>.
+
+The way to install OIDPWDCN.dll  is described at:
+Configuring an Active Directory Plug-in for Password Change Notification
+http://docs.oracle.com/cd/E28280_01/admin.1111/e10029/serverchain.htm#OIDAG2748
+
+ 
+
+1.3) Updating the Key registry
+
+Install the password change notification plug-in, as follows:
+Copy %ORACLE_HOME%\ldap\admin\oidpwdcn.dll to the Active Directory WINDOWS\system32 folder.
+
+Use regedt32 to modify the registry. 
+
+In the line:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa\Notification Packages, add oidpwdcn to the end. It should look like the following:
+    scecli
+    oidpwdcn
+
+Restart Active Directory.
+
+
+Note: It might be necessary as well to restart the AD machine.
+ 
+
+1.4) Allowing Anonymous Bind on Active Directory
+
+Note:
+
+1.4.1) Case where Anonymous Bind is required 
+
+Case1: running netca to produce ldap.ora
+
+This step is required in order to run NETCA when you configure the database for EUS. 
+NETCA accesses OUD anonymously, and OUD accesses AD anonymously to retrieve the available Oracle Context.
+
+If your organization is concerned about anonymous access to AD:
+
+You can enable the anonymous access to AD, run NETCA, then disable the anonymous access to AD
+
+- or -
+
+You can create the ldap.ora manually, instead of using NETCA to create this configuration file.
+
+ 
+
+Case 2:
+
+Integrating with EUS using use-specific-identity
+(You can configure this Proxy workflow element to use either the use-specific-identity or the use-client-identity mode.)
+https://docs.oracle.com/cd/E52734_01/oud/OUDAG/eus.htm#OUDAG11376
+
+ 
+
+Run ldapmodify to allow anonymous logins on Active Directory:
+
+ldapmodify -h <ADhost> -p <AD port> -D <AD dirmgr> -w <pwd>
+dn: cn=directory service,cn=windows nt,cn=services,cn=configuration,dc=example,dc=com
+changetype: modify
+replace: dsHeuristics
+dsHeuristics: 0000002
+ 
+
+ 
+1.4.2) Case where anonymous bind is not required
+
+ldap.ora produced/updated manually
+use of use-client-identity mode for Proxy workflow element
+
+1.5) Verification
+
+Ensure that you replace dc=example,dc=com with the base DN of your Active Directory server.
+Reset the password for all the Active Directory users, allowing the plug-in to acquire the password changes and generate and store password verifiers.
+
+
+Verify the Active Directory setup by performing the following steps:
+
+Change the password of an Active Directory user.
+Search Active Directory for the user entry where the password was changed. Verify the orclCommonAttribute attribute contains the generated hash password value.
+This value adds the orclCommonAttribute attribute definition in Active Directory.
+ 
+
+Example
+Reset the password of cn=user11 (using Active Directory user and computer console)
+Verification that the attribute orclCommonAttribute is now present
+
+ldapsearch -h <AD-hostname> -D cn=administrator,cn=users,<realm-dn> -w <password> -b cn=users,<realm-dn> cn=user11 orclCommonAttribute
+version: 1
+dn: CN=user11,CN=Users,<realm-dn>
+orclCommonAttribute: {MD5}BZUK0ZLIY5389WdN1W5JkA==
+
+2) Creating OUD Proxy Instance
+
+This section describes how to configure OUD proxy instance for AD with EUS enabled.
+
+ 
+
+2.1) Install ARU 16424146  ARU 16424146 contains  bug 
+Bug 16529038 - SETUP OF EUS WITH OUD AS A PROXY DOESN'T INSTALL THE EUS CONTEXT
+
+* Bug fixed in OUD version 11.1.2.2.0
+
+
+2.2) Run oud-proxy-setup
+
+1. Run oud-proxy-setup script which is at location $OUD_HOME/Oracle_OUD1
+$OUD_HOME/Oracle_OUD1/oud-proxy-setup
+ 
+
+In server settings do not forget to enable SSL
+
+2. Select Configure EUS
+
+oud-eus1.jpg
+
+ 3. Select Microsoft
+
+oud-eus2.jpg
+
+3. Add the AD server instance (AD server), and click next
+
+oud-eus3_bis.jpg
+
+4. Click completed.
+
+2.3) Post-Configuration Steps
+
+You should also perform post configuration steps as described in Oracle Documentation doing section 1 and section2 
+
+25.4.2.2 Performing Post Configuration Steps
+
+It corresponds to the following:
+
+After completing the required configuration as described in Section 25.4.2.1, "Configuring Enterprise User Security for an Oracle Unified Directory Proxy Server", you must perform the following:
+
+    Configure the proxy workflow elements, remote root DN and remote root user accounts for the external LDAP-compliant directories by running the dsconfig command as follows:
+
+   
+
+dsconfig set-workflow-element-prop \
+              --element-name proxy-we1 \
+              --set remote-root-dn:cn=administrator,cn=users,<realm-dn> \
+              --set remote-root-password:******** \
+              --hostname localhost \
+              --port <oud-admin-port> \
+              --trustAll \
+              --bindDN cn=directory\ manager \
+              --bindPasswordFile pwd.txt \
+              --no-prompt
+    You can configure the proxy workflow elements for the external LDAP-compliant directories with use-client-identity by defining the exclude-list, remote ldap server bind dn and remote ldap server bind password. When the EUS is enabled, the database connects with its own credentials and performs searches on the external LDAP server. As the DB entry is stored locally on OUD proxy, it uses an alternate ID to bind to the external LDAP server as the database entry does not exist on the external LDAP server.
+
+   
+
+dsconfig set-workflow-element-prop \
+              --element-name proxy-we1 \
+              --add exclude-list:cn=directory\ manager \
+              --add exclude-list:cn=oraclecontext,<realm-dn> \
+              --set remote-ldap-server-bind-dn:cn=administrator,cn=users,<realm-dn> \
+              --set remote-ldap-server-bind-password:******** \
+              --hostname localhost \
+              --port <oud-admin-port> \
+              --trustAll \
+              --bindDN cn=directory\ manager \
+              --bindPasswordFile pwd.txt \
+              --no-prompt
+
+
+
+
+3) Using netca
+
+netca will generate a file ldap.ora placed in $ORACLE_HOME/network/admin
+
+Example ldap.ora
+# ldap.ora Network Configuration File: /export/home/oracle/mw_home/db_home/network/admin/ldap.ora
+# Generated by Oracle configuration tools.
+
+DIRECTORY_SERVERS= (<oud-hostname>:51389:51636)
+
+DEFAULT_ADMIN_CONTEXT = "<realm-dn>"
+
+DIRECTORY_SERVER_TYPE = OID
+ 
+
+The way to invoke netca is as follows
+
+ oud-eus4.jpg
+
+ 
+
+oud-eus5.jpg
+
+ 
+
+oud-eus6_bis.jpg
+
+ 
+
+oud-eus7.jpg
+
+ 
+
+
+3.2) Troubleshooting netca
+
+Relevant information to troubleshoot netca can be found at:
+
+netca traces output are below ORACLE_BASE/cfgtools/netca
+OUD access log (using tail -f)
+
+ 
+
+
+4) Running dbca
+
+ 
+
+4.1) Running dbca
+
+ 
+
+ oud-eus8.jpg
+
+ 
+
+oud-eus9.jpg
+
+ 
+
+oud-eus10.jpg
+
+ 
+
+oud-eus11.jpg
+
+ 
+
+ oud-eus12.jpg
+
+ 
+
+dbca creates a structure below cn=orcl,cn=OracleContext,<realm-dn>
+
+ oud-eus12_bis.jpg
+
+ 
+
+ 
+
+4.2) Troubleshooting dbca
+
+1. Has the subtree structure cn=orcl,cn=OracleContext,<realm-dn> been created ?
+2. Have a look at OUD logs
+3. Have a look $ORACLE_HOME/cfgtools/dbca
+ 
+
+Also check out KM article:
+OUD-EUS Integration: Wallet not Created When Running DBCA Document 1573358.1
+
+ 
+5) EM and DB preparation for LDAP connection
+
+5.1) Connection between DB and LDAP server need to be set to PASSWORD
+Check that the connection between the DB and the LDAP server must be set to use PASSWORD and not SSL
+SQL> show parameter ldap_directory_access;
+SQL> alter system set ldap_directory_access = PASSWORD;
+
+
+5.2) Creating a Shared Schema in the Database
+
+Enterprise users are defined in the database as global users. Global users can have their own schemas, or they can share a global schema in the databases they access.
+
+SQL> CREATE USER  global_ident_schema_user IDENTIFIED GLOBALLY;
+User created.
+SQL> GRANT CONNECT TO global_ident_schema_user;
+Grant succeeded.
+
+
+5.3) Using EM to configure EUS
+
+1. Logon as sys (sydba) on to Oracle Enterprise Manager at https://<dbhost-hostname>:1158/em 
+Select Enterprise User Security
+
+ oud-eus13.jpg 
+
+2. Enter OUD credentials (cn=directory manager)
+
+ oud-eus14_ter.jpg
+
+ Click on "Manage Enterprise Domain", select "OracleDefaultDomain", and click Configure
+
+3. Configure OracleDefaultDomain
+
+oud-eus15.jpg
+
+ 
+
+Click on User Schema Mappings Tab, click on Create
+
+ 
+
+4. Select subtree for cn=users,<realm-dn> and specifying the schema created earlier (i.e   global_ident_schema_user)
+
+oud-eus16_bis.jpg
+
+ 5. Click continue and finish off the configuration
+
+ 
+
+ 
+
+5.4) EM Contribution verification
+
+The contribution of EM is to create an entry:
+
+5.4.1 cn=mapping0
+
+cn=mapping0,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext, <realm-dn>
+
+with attributes orclDBDistinguishedName, orclDBNativeUser
+
+orclDBDistinguishedName:  cn=users,<realm-dn>
+orclDBNativeUser: global_ident_schema_user 
+
+ 
+
+Example:
+
+oud-eus17.jpg
+
+ 
+
+5.4.2 cn=Common
+
+cn=Common,cn=Products,cn=OracleContext, <realm-dn>
+
+with attributes orclCommonDefaultGroupCreateBase, orclCommonGroupCreateBase, orclCommonGroupSearchBase, orclCommonUserSearchBase
+
+
+orclCommonDefaultGroupCreateBase: cn=Groups,<realm-dn>
+orclCommonGroupCreateBase: cn=Groups,<realm-dn>
+orclCommonGroupSearchBase: cn=users, <realm-dn>
+orclCommonUserSearchBase:cn=users, <realm-dn>
+
+ 
+
+ oud_eus_31_1.jpg
+
+ 
+
+5.4.3 Troubleshooting EM contribution
+
+Make sure that the value below cn=mapping0 (5.4.1) and cn=Common (5.4.2) are correct.
+
+ 
+
+6) Update of orclCommonNicknameAttribute
+
+This attribute has to be updated for EUS to work successfully with windows. Its current default value is uid.
+
+In this example AD users entries are below are cn=user<xx>,cn=<users>, <ad-domain>
+
+orclCommonNicknameAttribute has to be set to cn
+
+Document 1570893.1  - OUD: Active Directory As External Directory Not Working For EUS
+
+ 
+
+Users use the value of cn when they connect to the DB.
+
+For instance, cn=user1,cn=users,<realm-dn> when using sqlplus connect as user1
+
+sqlplus
+
+>connect user1
+
+ 
+
+ 
+
+7) Run sqlplus connection as normal user1
+
+All users from Active Directory below cn=users and which have had their password updated should be usable via sqlplus
+
+ 
+
+7.1) Run sqlplus connection as user1
+
+sqlplus sys as sysdba
+
+SQL*Plus: Release 11.2.0.1.0 Production on Wed Jul 24 15:14:52 2013
+
+Copyright (c) 1982, 2009, Oracle.  All rights reserved.
+
+Enter password:
+
+Connected to:
+Oracle Database 11g Enterprise Edition Release 11.2.0.1.0 - 64bit Production
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+
+SQL> connect user1/Welcome1
+Connected.
+SQL>
+ 
+
+ 7.2) OUD access log trace
+
+[[28/Nov/2013:12:42:15 +0000] CONNECT conn=14 from=x.y.z.w:26353 to=x1.y1.z1.w1:28636 protocol=LDAPS
+[28/Nov/2013:12:42:15 +0000] BIND REQ conn=14 op=0 msgID=1 type=SASL mechanism=DIGEST-MD5 dn="cn=orcl11,cn=oraclecontext,<realm-dn>"
+[28/Nov/2013:12:42:15 +0000] BIND RES conn=14 op=0 msgID=1 result=14 etime=0
+[28/Nov/2013:12:42:15 +0000] BIND REQ conn=14 op=1 msgID=2 type=SASL mechanism=DIGEST-MD5 dn="cn=orcl11,cn=oraclecontext,<realm-dn>"
+[28/Nov/2013:12:42:15 +0000] BIND RES conn=14 op=1 msgID=2 result=0 authDN="cn=orcl11,cn=OracleContext,<realm-dn>" etime=2
+[28/Nov/2013:12:42:15 +0000] SEARCH REQ conn=14 op=2 msgID=3 base="cn=OracleDBSecurity,cn=Products,cn=OracleContext,<realm-dn>" scope=one filter="(&(objectclass=orcldbenterprisedomain_82)(uniqueMember=cn=orcl11,cn=OracleContext,<realm-dn>))" attrs="orclDBAuthTypes,dn"
+[28/Nov/2013:12:42:15 +0000] SEARCH RES conn=14 op=2 msgID=3 result=0 nentries=1 etime=2
+[28/Nov/2013:12:42:15 +0000] SEARCH REQ conn=14 op=3 msgID=4 base="cn=Common,cn=Products,cn=OracleContext,<realm-dn>" scope=base filter="(objectclass=*)" attrs="ALL"
+[28/Nov/2013:12:42:15 +0000] SEARCH RES conn=14 op=3 msgID=4 result=0 nentries=1 etime=3
+[28/Nov/2013:12:42:15 +0000] SEARCH REQ conn=14 op=4 msgID=5 base="cn=users,<realm-dn>" scope=sub filter="(cn=USER98)" attrs="dn,authPassword,orclPassword,orclguid"
+[28/Nov/2013:12:42:15 +0000] SEARCH PROXY_REQ conn=14 op=4 msgID=5 s_conn=9 scope="sub" s_msgid=1011 base="cn=users,<realm-dn>" s_credmode=use-client-identity filter="(cn=USER98)"
+[28/Nov/2013:12:42:15 +0000] SEARCH PROXY_RES conn=14 op=4 msgID=5 result=0 s_conn=9 s_msgid=1011 etime=1 authzDN=cn=orcl11,cn=OracleContext,<realm-dn> nentries=1
+[28/Nov/2013:12:42:15 +0000] SEARCH RES conn=14 op=4 msgID=5 result=0 nentries=1 etime=1
+[28/Nov/2013:12:42:15 +0000] SEARCH REQ conn=14 op=5 msgID=6 base="cn=orcl11,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbEntrylevelMapping)(orclDBDistinguishedName=cn=user98,cn=Users,<realm-dn>))" attrs="orclDBNativeUser"
+[28/Nov/2013:12:42:15 +0000] SEARCH RES conn=14 op=5 msgID=6 result=0 nentries=0 etime=0
+[28/Nov/2013:12:42:15 +0000] SEARCH REQ conn=14 op=6 msgID=7 base="cn=orcl11,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbSubtreelevelMapping)(orclDBDistinguishedName=cn=Users,<realm-dn>))" attrs="orclDBNativeUser"
+[28/Nov/2013:12:42:15 +0000] SEARCH RES conn=14 op=6 msgID=7 result=0 nentries=0 etime=1
+[28/Nov/2013:12:42:15 +0000] SEARCH REQ conn=14 op=7 msgID=8 base="cn=orcl11,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbSubtreelevelMapping)(orclDBDistinguishedName=<realm-dn>))" attrs="orclDBNativeUser"
+[28/Nov/2013:12:42:15 +0000] SEARCH RES conn=14 op=7 msgID=8 result=0 nentries=0 etime=1
+[28/Nov/2013:12:42:15 +0000] SEARCH REQ conn=14 op=8 msgID=9 base="cn=orcl11,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbSubtreelevelMapping)(orclDBDistinguishedName=dc=oradev,dc=oraclecorp,dc=com))" attrs="orclDBNativeUser"
+[28/Nov/2013:12:42:15 +0000] SEARCH RES conn=14 op=8 msgID=9 result=0 nentries=0 etime=1
+[28/Nov/2013:12:42:15 +0000] SEARCH REQ conn=14 op=9 msgID=10 base="cn=orcl11,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbSubtreelevelMapping)(orclDBDistinguishedName=dc=oraclecorp,dc=com))" attrs="orclDBNativeUser"
+[28/Nov/2013:12:42:15 +0000] SEARCH RES conn=14 op=9 msgID=10 result=0 nentries=0 etime=1
+[28/Nov/2013:12:42:15 +0000] SEARCH REQ conn=14 op=10 msgID=11 base="cn=orcl11,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbSubtreelevelMapping)(orclDBDistinguishedName=dc=com))" attrs="orclDBNativeUser"
+[28/Nov/2013:12:42:15 +0000] SEARCH RES conn=14 op=10 msgID=11 result=0 nentries=0 etime=1
+[28/Nov/2013:12:42:15 +0000] SEARCH REQ conn=14 op=11 msgID=12 base="cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbEntrylevelMapping)(orclDBDistinguishedName=cn=user98,cn=Users,<realm-dn>))" attrs="orclDBNativeUser"
+[28/Nov/2013:12:42:15 +0000] SEARCH RES conn=14 op=11 msgID=12 result=0 nentries=0 etime=0
+[28/Nov/2013:12:42:15 +0000] SEARCH REQ conn=14 op=12 msgID=13 base="cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbSubtreelevelMapping)(orclDBDistinguishedName=cn=Users,<realm-dn>))" attrs="orclDBNativeUser"
+[28/Nov/2013:12:42:15 +0000] SEARCH RES conn=14 op=12 msgID=13 result=0 nentries=1 etime=1
+[28/Nov/2013:12:42:15 +0000] SEARCH REQ conn=14 op=13 msgID=14 base="cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbapplicationcontextvalue)(uniquemember=cn=user98,cn=Users,<realm-dn>))" attrs="cn"
+[28/Nov/2013:12:42:15 +0000] SEARCH RES conn=14 op=13 msgID=14 result=0 nentries=0 etime=0
+[28/Nov/2013:12:42:15 +0000] SEARCH REQ conn=14 op=14 msgID=15 base="cn=user98,cn=Users,<realm-dn>" scope=base filter="(objectclass=inetOrgPerson)" attrs="ALL"
+[28/Nov/2013:12:42:15 +0000] SEARCH PROXY_REQ conn=14 op=14 msgID=15 s_conn=9 scope="base" s_msgid=1012 base="cn=user98,cn=Users,<realm-dn>" s_credmode=use-client-identity filter="(objectClass=inetOrgPerson)"
+[28/Nov/2013:12:42:15 +0000] SEARCH PROXY_RES conn=14 op=14 msgID=15 result=0 s_conn=9 s_msgid=1012 etime=1 authzDN=cn=orcl11,cn=OracleContext,<realm-dn> nentries=0
+[28/Nov/2013:12:42:15 +0000] SEARCH RES conn=14 op=14 msgID=15 result=0 nentries=0 etime=1
+[28/Nov/2013:12:42:15 +0000] SEARCH REQ conn=14 op=15 msgID=16 base="cn=Common,cn=Products,cn=OracleContext,<realm-dn>" scope=base filter="(objectclass=*)" attrs="orclCommonGroupSearchBase"
+[28/Nov/2013:12:42:15 +0000] SEARCH RES conn=14 op=15 msgID=16 result=0 nentries=1 etime=1
+[28/Nov/2013:12:42:15 +0000] SEARCH REQ conn=14 op=16 msgID=17 base="cn=users,<realm-dn>" scope=sub filter="(|(&(uniquemember=cn=user98,cn=Users,<realm-dn>)(objectclass=groupofuniquenames)(!(objectclass=orcldbenterpriserole)))(&(member=cn=user98,cn=Users,<realm-dn>)(objectclass=groupofnames)(!(objectclass=orcldbenterpriserole))))" attrs="dn"
+[28/Nov/2013:12:42:15 +0000] SEARCH PROXY_REQ conn=14 op=16 msgID=17 s_conn=9 scope="sub" s_msgid=1013 base="cn=users,<realm-dn>" s_credmode=use-client-identity filter="(|(&(uniqueMember=cn=user98,cn=Users,<realm-dn>)(objectClass=groupofuniquenames)(!(objectClass=orcldbenterpriserole)))(&(member=cn=user98,cn=Users,<realm-dn>)(objectClass=group)(!(objectClass=orcldbenterpriserole))))"
+[28/Nov/2013:12:42:15 +0000] SEARCH PROXY_RES conn=14 op=16 msgID=17 result=0 s_conn=9 s_msgid=1013 etime=9 authzDN=cn=orcl11,cn=OracleContext,<realm-dn> nentries=0
+[28/Nov/2013:12:42:15 +0000] SEARCH RES conn=14 op=16 msgID=17 result=0 nentries=0 etime=10
+[28/Nov/2013:12:42:15 +0000] SEARCH REQ conn=14 op=17 msgID=18 base="cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbenterpriserole)(uniquemember=cn=user98,cn=Users,<realm-dn>)(orcldbserverrole=cn=orcl11,cn=OracleContext,<realm-dn>*))" attrs="orcldbserverrole"
+[28/Nov/2013:12:42:15 +0000] SEARCH RES conn=14 op=17 msgID=18 result=0 nentries=0 etime=1
+
+ 
+
+8) Debugging
+
+ 
+In order to trace the communications between the DB and the LDAP server, you can toggle additional traces in the DB
+
+$ sqlplus SYS/<password> AS SYSDBA
+
+SQL> alter system set events '28033 trace name context forever, level 9';
+
+The traces will be in $ORACLE_BASE/diag/rdbms/<sid><sid>/trace, in a file named <sid>_ora_xxx.trc. Event 28033 logs the LDAP communication.
+ex : $ORACLE_BASE/diag/rdbms/orcl11g/orcl11g/trace/orcl11g_ora_5893.trc
+
+To stop the extra logging:
+
+$ sqlplus SYS/<password> AS SYSDBA
+
+> alter system set events '28033 trace name context off';
