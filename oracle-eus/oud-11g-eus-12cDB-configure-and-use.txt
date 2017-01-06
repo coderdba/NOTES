@@ -128,3 +128,39 @@ ORACLE.SECURITY.PASSWORD
 Trusted Certificates:
 Subject:        CN=CN=oudhost.company.com,O=CompanyName,C=US
 
+====================================
+CREATE SCHEMA, ROLES, GLOBAL USERS
+====================================
+NOTE: In CDB, let us not create any application schema.
+      Let us try only a DBA user (and later, a sysdba user - which may be same enterprise user)
+NOTE: Created a shorter named c##oud_global_ident_user instead of too-long-erroring c##oud_global_ident_schema_user
+spool 12ccdbsetup
+
+set echo on
+
+create role c##oud_appwrite_role_local;
+create role c##oud_appread_role_local;
+
+create role c##oud_appwrite_role_global identified globally;
+create role c##oud_appread_role_global identified globally;
+create role c##oud_dba_role_global identified globally;
+
+grant dba     to c##oud_dba_role_global;
+grant connect to c##oud_dba_role_global;
+
+create user c##oud_global_ident_user  identified globally;
+
+spool off
+
+====================================================
+MAP IN OUD THE GLOBAL IDENT USER FOR THIS DB 
+====================================================
+NOTE: 12c eusm is erroring out. Therefore, use 11g eusm.
+
+-------------------------
+DO THE MAPPING
+-------------------------
+$ eusm createMapping database_name=DB_UNIQUE_NAME realm_dn='dc=example,dc=com' map_type=SUBTREE map_dn='dc=example,dc=com' schema=c##oud_global_ident_user ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn='cn=eusroot,ou=eusadmins,dc=example,dc=com' ldap_user_password=oracle#1
+
+NOTE: This command does not produce any screen output
+          Therefore, verify using listmappings:
