@@ -1,0 +1,660 @@
+Performing EUS Configuration Using AD Administrative Users 
+- Leveraging on Demand Password Synchronization With DIP 11.1.1.9 And OUD 11.1.2.3 (Doc ID 2020046.1)	To BottomTo Bottom	
+
+In this Document
+Purpose
+Details
+References
+
+APPLIES TO:
+
+Oracle Unified Directory - Version 11.1.2.3.0 and later
+Information in this document applies to any platform.
+PURPOSE
+
+The goal of this document is to illustrate how it is possible to perform EUS configuration, logging as AD administrative users to EUS.
+ 
+
+The only way supported by Oracle is to perform EUS configuration/administration tasks logging as  cn=Directory Manager to EUS.
+Here we describe how it is possible to perform this requirement, leveraging DIP on demand password synchronization available since OUD 11.1.2.3 and DIP 11.1.1.9
+
+DETAILS
+
+ 
+
+1. Platform Requirements
+
+DIP 11.1.1.9 to provide sync between AD and OUD.
+DB/EMCCDB is 12c. EMCC 12 is leveraging DB plugin 12.1.0.7
+Windows AD 2008 R2
+EUS-ODB 12-EMCC configured as described in KM article: EUS AD Oracle DB 12c to OUD integration using EMCC 12c Document 2016510.1
+(OUD is used and configured as a proxy at first, as described in KM Document 2016510.1)
+ 
+
+ Setup
+
+OUD instance is configured as a proxy instance with port 6389, 6636, 6444 with password <oud-password>
+Admin server is running on port 7001, with user/password weblogic/welcome1
+wls_ods1 is running on port 7005 with user/password weblogic/welcome1
+AD is running on port 389/636 with user/password cn=Administrator,cn=users,dc=eus12c, dc=uk, dc=oracle,dc=com/Welcome1
+ 
+
+ 
+
+ 
+
+2. Architecture
+
+DIP is used to synchronize AD administrative users and their password within  OUD within suffix o=eusAdmins
+
+The mapping used is from AD to OUD
+(AD)  cn=users,dc=eus12c,dc=uk,dc=oracle,dc=com   ----> (OUD) o=eusAdmins
+ 
+
+Requirements:
+
+
+Administrative users should belong to the group "Administrators"
+The filter used is searchfilter=(&(objectclass=user)(memberof=CN=Administrators,CN=Builtin,DC=eus12c,DC=uk,DC=oracle,DC=com))
+
+Note:
+It is possible to accommodate the filter according to your needs (i.e You could have used any kind of filter, which does have the membership)
+
+
+
+When creating a new AD user, that will have administrative rights (i.e to be added new group membership), you need to update an AD attribute for synchronization to occur, as a work around.
+Bug 21253972 - SYNCHRONIZATION NOT UPDATED AFTER GROUP MEMBERSHIP CHANGE IN AD
+A bind is needed the first time on OUD side so that the password is mirrored on the AD side
+ 
+
+ 
+
+3) IDM 11.1.1.9 Installation 
+
+
+3.1)  Installing Weblogic 10.3.6
+
+1. Download Weblogic 10.3.6 bits
+
+2. Start Weblogic installer
+java –jar weblogic1036_generic.jar
+
+3. Panel: Welcome
+Follow the wizard, click next
+
+4. Panel: Choose Middleware Home Directory
+-Select radio Button "Create a New Middleware Home"
+-Specify the MW HOME Directory 
+
+5. Panel: Register for Security Updates
+Select your preferred Security update mode and click next
+
+6. Panel: Choose Product Installation Directories
+-Set Weblogic Server Path
+-Click next
+
+7. Panel: Installation complete
+-Uncheck quick start
+-Click next
+
+Set Weblogic server path to <MW_HOME>/wlserver_10.3 and click Next
+<MW_HOME>/wlserver_10.3.6
+
+
+
+3.2) Installing IDM 11Rg1PS7 (i.e 11.1.1.9)
+
+1. Download idm PS7 zip files
+
+2. Unzip all zip files 
+unzip idm1.zip 
+unzip idm2.zip 
+unzip idm3.zip 
+unzip idm4.zip 
+unzip idm5.zip
+
+
+3. Start installer 
+./idm/Disk1/runInstaller
+
+
+4. Panel: Welcome
+Click Next
+
+5. Panel: Install Software Updates
+Select the Software updates method you prefer and click Next
+
+
+6. Panel: Selection type
+Select “Install software – Do Not Configure” and Click Next
+
+Note:
+It is required when installing DIP for OUD and ODSEE.
+
+
+7. Panel: Prerequisite Checks
+Click Next
+
+
+8 .Panel: Specify Installation Location
+Set Oracle Middleware Home to $LAB/Oracle/Middleware
+
+9. Panel: Specify Security Update
+Select the Security Update mode you prefer and click Next
+
+10. Panel: Installation Summary
+Click Install
+
+11. Panel: OracleRoot.sh confirmation dialog
+Execute as root the following script $> $LAB/Oracle/Middleware/Oracle_IDM1/oracleRoot.sh
+
+12. Panel: Installation Complete
+Click Finish
+
+3.3) DIP configuration
+
+ 
+
+${MW_HOME}/oracle_common/common/bin/config.sh
+Follow the wizard steps
+
+
+Panel: Welcome
+Select “Create a new Weblogic Domain” and click Next  
+
+Note:
+The domain created is called <domain-name>
+
+
+Panel: Select Source Domain
+Select EM and DIP (OIM and JRF will be automatically selected) and click Next
+
+Panel: Specify Domain Name and Location
+-Specify Domain  name
+-Click Next
+
+Panel: Configure Administrator User Name and Password
+-Enter Name
+-Enter twice the weblogic admin password
+-Click Next
+
+
+Panel: Configure Server Start Mode and JDK
+-Click Next
+
+Panel: Select Optional Configuration
+-Select "Managed Servers,Cluster and Machines"
+-Click Next
+
+Panel: Configuration Summary
+-Click Create
+ 
+
+3.4) Update boot.properties
+
+You need to update the file boot.properties in order not having to type the password when you start the admin server, or wls_ods1.
+
+${MW_HOME}/user_projects/domains/<domain-name>/servers/wls_ods1/security/boot.properties
+${MW_HOME}/user_projects/domains/<domain-name>/servers/AdminServer/security/boot.properties
+ 
+
+ 
+
+
+4) Starting IDM
+
+4.1) Starting Weblogic admin server
+
+nohup ${MW_HOME}/user_projects/domains/<domain-name>/bin/startWebLogic.sh 
+tail –f  ${MW_HOME}/user_projects/domains/<domain-name>/servers/AdminServer/logs/AdminServer-diagnostic.log
+
+Note:
+The admin server is ready once you see the following sentence:
+Server started in RUNNING mode
+
+Progression can be observed by running command:
+tail –f ${MW_HOME}/user_projects/domains/<domain-name>/servers/AdminServer/logs/AdminServer-diagnostic.log
+
+
+
+4.2) Start Node Manager
+
+${MW_HOME}/wls_server_10.3/server/bin/startNodeManager.sh
+
+
+4.3) Start Weblogic Managed server
+
+nohup ${MW_HOME}/user_projects/domains/<domain-name>/bin/startManagedserver.sh wls_ods1 http:<admin-url>:7001 &
+
+Note:
+In the same way, progression can be monitored using the command tail -f
+Weblogic is fully started when "RUNNING" message is seen within the logs.
+
+
+
+
+5) OUD Instance
+
+
+5.1) Requirements:
+
+OUD needs to be configured as a proxy at first. It is described in document EUS AD Oracle DB 12c to OUD integration using EMCC 12c Document 2016510.1
+
+Need to install OUD 11.1.2.3 + OOB for (20529805)
+Need to create a OUD Proxy instance configured with EUS selection (and Active Directory) with LDAP/LDAPS enabled.
+
+Note:
+The 2 steps correspond to a OUD instance usually configured with EUS.
+
+ 
+
+
+
+5.2) Enable OUD change log for DIP
+
+Enable ChangeLog to be replicated for cn=OracleContext
+echo <oud-password> /tmp/pwd.txt
+./dsreplication enable-changelog -h localhost -p 6444 -D "cn=directory manager" -j /tmp/pwd.txt -r 6989 -b cn=OracleContext -X -n
+Establishing connections ..... Done.
+
+Enabling Changelog on base DN cn=OracleContext ..... Done.
+ 
+
+ 
+
+5.3) Verifying change log has been enabled for cn=OracleContext on OUD
+
+ldapsearch -h  <oud-hostname> -p 6389 -D "cn=Directory Manager" -w <oud-passwod> -b "" -s base "objectclass=*" changelog lastChangeNumber firstChangenumber namingcontexts 
+
+dn:
+changelog: cn=changelog
+namingcontexts: cn=changelog
+namingcontexts: cn=OracleContext
+namingcontexts: cn=OracleSchemaVersion
+namingcontexts: dc=eus12c,dc=uk,dc=oracle,dc=com
+lastChangeNumber: 403514
+firstChangenumber: 82511
+
+6) Setting up Environment Variables
+
+You need to configure the following environment variables
+MW_HOME, ORACLE_HOME (IDM1), WL_HOME and OUD_HOME
+
+export MW_HOME=
+export ORACLE_HOME=${MW_HOME}/Oracle_IDM1
+export WL_HOME=${MW_HOME}/wlserver_10.3 
+export OUD_HOME=
+
+ 
+
+ 
+
+7) AD configuration in SSL mode
+
+
+7.1) Configure AD in SSL mode and generate the  AD SSL certificate
+
+You need to configure AD in SSL mode.
+
+
+The way to describe AD in SSL mode is described at:
+Active Directory SSL configuration Document 1585963.1
+
+You need to generate AD SSL certificate (ad-win.cer for example)
+
+ 
+
+
+7.2) Testing AD Certificate /AD SSL Connection
+
+You need to test your AD SSL connection with the certificate that has been created.
+
+
+The best way is to use a browser such as Jexplorer/ODSM or ldapsearch and to import AD certificate in corresponding keystore.
+Once the AD certificate has been imported, you can test that you can connect to AD in SSL mode.
+
+ 
+
+8) Exporting OUD certificate
+
+cd $OUD_INSTANCE/OUD/config
+keytool –list –keystore keystore –storetype JKS –storepass `cat keystore.pin`
+
+Note:
+The password for the keystore that contains public certificates is located in keystore.pin file.
+The output of the keytool –list command gives the alias of the certificate.
+The alias should be server-cert.
+
+keytool –exportcert –keystore keystore –storetype JKS –
+storepass `cat keystore.pin` -alias server-cert –file oud.cert
+
+
+9) Creating DIP KEY STORE
+
+ 
+
+9.1) Create a keystore for DIP with the oud certificate into it
+
+keytool –importcert –alias oud –file oud.cert –keystore /u/dip.jks
+
+9.2)  Inform DIP of the keystore location (beware that we are now using port 7005 from DIP)
+
+cd $ORACLE_HOME 
+bin/manageDIPServerConfig set -h localhost -p 7005 -D weblogic -attr keystorelocation -val <path-to-dip.jks>/dip.jks
+Then enter the weblogic password <wls_password>
+
+
+9.3) Save the keystore’s password into Weblogic’s Credential Store Framework, where DIP will be able to access it securely.
+
+${ORACLE_HOME}/common/bin/wlst.sh 
+wls:/offline> connect('weblogic', 'secret12', 't3://localhost:7001’) 
+wls://serverConfig> createCred(map="dip",key="jksKey", user="jksuser",password="<dip-keystore-pwd>") 
+wls://serverConfig> disconnect() 
+wls:/offline> exit()
+
+
+9.4 Set OUD as the DIP backend
+cd $ORACLE_HOME
+bin/dipConfigurator setup –wlshost localhost –wlsport 7001 –wlsuser weblogic –ldaphost localhost –ldapport 1636 –ldapadminport 4444 –ldapuser “cn=directory manager” –isldapssl true
+
+When prompted for Weblogic password, enter <wls-password>
+When prompted for OUD password, enter <oud-password>
+
+
+9.5 Verify that DIP is correctly configured by visiting URL
+http://localhost:7001/em user: weblogic password: secret12 
+Click on DIP 11.1.1.2.0, you should see 2 green arrows. If the arrows are red, then it means that something went wrong.
+
+9.6 Verify that DIP can contact the OUD backend by - Going to Administration, 
+then Server Properties, then Click on “Test Connection” button.
+
+
+11) Update the ACI for the DIP user
+
+Update the ACI for the DIP user
+Apply ACIs into OUD to allow dip admin user to have access to the user data stored in OUD
+
+bin/ldapmodify –X –Z -h localhost -p 6636 -D "cn=directory manager" -w oudsecret <<EOF 
+dn: ou=eusAdmins
+changetype: modify 
+add: aci 
+aci: (target="ldap:///ou=eusAdmins")(version 3.0; acl "Entry-level DIP permissions"; allow (all,proxy) groupdn="ldap:///cn=dipadmingrp,cn=DIP admins,cn=Directory Integration Platform,cn=Products,cn=oraclecontext"; allow (all,proxy) 
+groupdn="ldap:///cn=odipigroup,cn=DIPadmins,cn=Directory Integration Platform,cn=Products,cn=oraclecontext"; allow (all,proxy) 
+groupdn="ldap:///cn=odisgroup,cn=DIPadmins,cn=Directory Integration Platform,cn=Products,cn=oraclecontext";)
+- add: aci 
+aci: (targetattr="*")(version 3.0; acl "Attribute-level DIP permissions"; allow (all,proxy) 
+groupdn="ldap:///cn=dipadmingrp,cn=DIPadmins,cn=Directory Integration Platform,cn=Products,cn=oraclecontext"; allow (all,proxy) 
+groupdn="ldap:///cn=odipigroup,cn=DIPadmins,cn=Directory Integration Platform,cn=Products,cn=oraclecontext";allow (all,proxy) 
+groupdn="ldap:///cn=odisgroup,cn=DIPadmins,cn=Directory Integration Platform,cn=Products,cn=oraclecontext";) 
+EOF
+ 
+
+ 
+
+12)  Verify That DIP is UP
+
+Verify that DIP is correctly configured by visiting URL http://localhost:7001/em user: weblogic password: <admin-console-pwd>
+
+Click on DIP 11.1.1.2.0, you should see 2 green arrows. 
+If the arrows are red, then it means that something went wrong. You need to fix it before going further.
+
+dip_1.jpg
+
+
+13) On Demand Password Setup
+
+dipConfigurator setup
+
+
+
+
+$ORACLE_HOME/bin/dipConfigurator setup -wlshost localhost
+   -wlsport 7001 -wlsuser weblogic -ldaphost localhost
+   -ldapport 6389 -ldapuser cn=directory\ manager
+   -isldapssl false -ldapadminport 6444
+
+
+
+
+
+ dipConfigurator setupPlugin
+
+$ORACLE_HOME/bin/dipConfigurator setupPlugin -wlshost localhost
+    -wlsport 7001 -wlsuser weblogic -ldaphost localhost
+    -ldapport 6389 -ldapuser cn=directory\ manager
+    -isldapssl false -ldapadminport 6444
+ 
+
+ 
+
+14) OUD o=eusAdmin suffix backend creation
+
+So far, OUD has been configured and used as OUD proxy.
+Here OUD is also used as a OUD backend by creating a suffix ou=eusAdmins
+
+This will allow the configuration OUD to work with EUS, as OUD in this deployment will be used both as a proxy, and also a backend (ou=eusAdmins)
+
+ 
+
+14.1) Create eusAdmin backend
+
+$OUD_INSTANCE/OUD/bin/manage-suffix create -h localhost -p 6444 -D cn=directory\ manager -b ou=eusAdmins
+ --integration no-integration --entries base-entry
+
+ 
+14.2) Create required ACIs for eusAdmin backend
+
+
+ ACI
+ ldapmodify -h gnb10209 -p 6389 -D "cn=Directory Manager" -w secret12
+ <<EOF
+ dn: ou=eusAdmins
+ changetype: modify
+ add: aci
+ aci: (targetattr="*")(version 3.0; acl "Attribute-level DIP
+ permissions"; allow (all,proxy)
+ groupdn="ldap:///cn=odipigroup,cn=DIPadmins,cn=Directory Integration
+ Platform,cn=Products,cn=oraclecontext";)
+ EOF
+
+ 
+ 
+15) Import Synchronization Profile into AD
+
+ 
+ 
+15.1) Profile registration command
+
+$ORACLE_HOME/bin/manageSyncProfiles register -h localhost -p 7005 -D weblogic -f <ad-hostname>.properties -pf importFromAD02
+
+ 
+ 
+15.2 Example of <ad-hostname>.properties
+
+odip.profile.name = enterprise_ad2dip
+odip.profile.status = DISABLE
+odip.profile.syncmode = IMPORT
+odip.profile.retry = 5
+odip.profile.schedinterval = 10
+odip.profile.condirurl = <ad-hostname>:636:2
+odip.profile.condiraccount = cn=administrator,cn=users,dc=eus12c,dc=uk,dc=oracle,dc=com
+odip.profile.interface = LDAP
+odip.profile.directorytype = ACTIVEDIRECTORY
+odip.profile.configfile = enterprise-ad2dip.cfg
+odip.profile.mapfile = <ad-hostname>.map
+odip.profile.lastchgnum = 0
+odip.profile.version = 4.0
+odip.profile.debuglevel = 0
+odip.profile.updateChangeNumberatCreate = TRUE
+odip.profile.oidfilter = orclObjectGUID
+odip.profile.condirfilter = searchfilter=(&(objectclass=user)(memberof=CN=Administrators,CN=Builtin,DC=eus12c,DC=uk,DC=oracle,DC=com))
+ 
+
+15.3) Example of enterprise-ad2dip.cfg
+
+
+INTERFACEDETAILS]
+Reader: oracle.ldap.odip.gsi.ActiveChgReader
+SkipErrorToSyncNextChange: false
+SearchDeltaSize: 500
+UpdateSearchCount: 100
+
+15.4) Example of <ad-hostname>.map
+
+DomainRules
+cn=users,dc=eus12c,dc=uk,dc=oracle,dc=com:ou=eusAdmins:
+
+###########################################################################3
+# The following mappings work for ADAM type
+###########################################################################3
+AttributeRules
+cn:::container:cn::container:
+dc:::domain:dc::domain:
+description:::group:description::groupofuniquenames:
+member:::group:uniquemember::groupofuniquenames:
+managedby:::group:owner::groupofuniquenames:
+departmentnumber:::inetorgperson:departmentnumber::inetorgperson:
+telephonenumber:::organizationalperson:telephonenumber::inetorgperson:
+facsimiletelephonenumber:::organizationalperson:facsimiletelephonenumber::inetorgperson:
+mobile:::organizationalperson:mobile::inetorgperson:
+ou:::organizationalunit:ou::organizationalunit:
+cn:::person:sn::person:
+cn:::person:cn::person:
+title:::user:title::organizationalperson:
+employeeid:::user:employeenumber::inetorgperson:
+physicaldeliveryofficename:::user:physicaldeliveryofficename::organizationalperson:
+givenname:::user:displayname::inetorgperson:
+userprincipalname:::user:mail::inetorgperson:
+SAMAccountName:::user:uid::inetorgperson:
+pwdlastset:::user:orclodippwdlastset::top:onDemandPassword(pwdLastSet)
+distinguishedName:::top:orclSourceObjectDN::orclADObject:
+
+
+
+16) Last configuration steps
+
+
+16.1) Configure OUD default password Policy to a reversible password Storage scheme
+
+ 
+
+dsconfig set-password-policy-prop \
+           --policy-name Default\ Password\ Policy \
+           --set default-password-storage-scheme:AES \
+           --hostname localhost \
+           --port 6444 \
+           --trustAll \
+           --bindDN cn=directory\ manager \
+           --bindPasswordFile ****** \
+           --no-prompt
+
+16.2) Import AD certificate into JKS
+
+ 
+
+1. Import AD certificate using Java Keystore (JKS) keytool  
+keytool -importcert -noprompt -trustcacerts -alias $AD_HOST -file $AD_CER -keystore  <path-to-dip.jks>/dip.jks -storepass <dip-keystore-pwd>
+
+
+2.Use keytool –list to check the certificates 
+keytool -list -keystore <path-to-dip.jks>/dip.jks -storepass <dip-keystore-pwd>
+
+3. Set dip.jks path within DIP
+ ${ORACLE_HOME}/bin/manageDIPServerConfig set -h localhost -p 7005 -D weblogic -attr keystorelocation -val <path-to-dip.jks>/dip.jks
+
+16.3) Configure exclude from eusAdmin backend
+
+dsconfig set-workflow-element-prop \
+          --element-name proxy-we1 \
+          --add exclude-list:ou=eusAdmins \
+          --hostname <oud-hostname> \
+          --port 6444 \
+          --trustAll \
+          --bindDN cn=Directory\ Manager \
+          --bindPasswordFile ****** \
+          --no-prompt
+
+
+
+17) Testing
+
+17.1) The scenario testing will show that:
+
+1. An administrative user is created within AD
+2. This administrative user is mirrored within OUD (ou=eusAdmin)
+3. It is possible to connect to EUS using this administrative user
+4. It is also possible to connect to sqlplus using this administrative user
+ 
+
+17.2) Requirements (Reminder)
+
+1. Administrative users need to be made part of the group cn=administrators
+2. Administrative users need to have description field enabled (or any dummy attribute update)
+---> This is to ensure synchronisation of AD user -> ou=eusAdmin
+3. A bind is needed the first time on OUD side.
+----> This is to have password mirrored on AD side
+
+
+17.3)  Demo example
+
+ 
+ 17.3.1 Create a user below cn=users
+--> cn=user28 (password=Welcome1)
+
+ 
+
+17.3.2 Add cn=user28 to Administrators group
+
+dip_3_bis.jpg
+
+17.3.3. Show cn=user28 below eusAdmins users
+
+dip_4.jpg
+
+17.3.4. Add cn=user28 group membership
+
+Add cn=user28,ou=eusAdmins to the group cn=oracleContextadmins,cn=groups, cn=oraclecontext.<realmdn>
+(This is required to get the rights to administer EUS)
+
+dip_7.jpg
+
+17.3.4 Need to perform a bind to get username password
+
+ 
+
+(no bind done: userpasswaord is empty)
+
+./ldapsearch -h <oud-hostname> -p 6389 -D "cn=directory Manager" -w secret12 -b ou=eusadmins cn=user28 userpassword
+dn: cn=user28,ou=eusAdmins
+
+ 
+
+ 
+
+(bind done, through a ldapsearch request)
+./ldapsearch -h <oud-hostname> -p 6389 -D "cn=user28,ou=eusadmins" -w Welcome1 -s base -b "" objectclass=*
+dn:
+objectClass: ds-root-dse
+objectClass: top
+ 
+
+(now userpassword for cn=user28 is no longer empty)
+./ldapsearch -h gnb10209.fr.oracle.com -p 6389 -D "cn=directory Manager" -w secret12 -b ou=eusadmins cn=user28 userpassword
+dn: cn=user28,ou=eusAdmins
+userpassword: {AES}AZG63p/wB0K2pTkc7zoXJWqrFSD4Y5EEHxnC11P7CCDXmQiV6gVWIII=
+ 
+
+17.3.5 Able now to log into the EUS configuration panel using an administrative AD user which is below ou=eusAdmins (cn=user28)
+
+dip_5.jpg
+
+ 
+
+17.3.6 Verify using sqlplus
+
+SQL> connect user28
+Enter password:
+Connected.
+SQL>
+
+ 
