@@ -1,0 +1,349 @@
+Step by Step Guide To Troubleshooting Enterprise User Security (EUS) - Password Authentication (Doc ID 453853.1)	To BottomTo Bottom	
+
+In this Document
+Purpose
+Troubleshooting Steps
+ 	
+Section I: Verify the Enterprise User Security (EUS) configuration
+ 	Step 1: Verify OID instance configuration
+ 	
+Step 2: Verify Enterprise User Security (EUS) configuration on the OID
+ 	
+
+Step 3: Verify the password policy for the realm
+ 	
+Step 4: Verify Enterprise User Security (EUS) configuration on the DB
+ 	
+Section II: Common Errors and Known issues
+ 	ORA-1017: Invalid username/password; login denied
+ 	
+ORA-28043: Invalid bind credentials for DB/OID connection
+ 	
+ORA-28030: Server encountered problems accessing LDAP directory service
+ 	ORA-28273: No mapping for user nickname to LDAP distinguished name exists
+ 	ORA-28274: No ORACLE password attribute corresponding to user nickname exists
+ 	
+
+Section III: Collect Event tracing for further analysis
+References
+APPLIES TO:
+
+Advanced Networking Option - Version 10.1.0.2 to 12.1.0.2 [Release 10.1 to 12.1]
+Information in this document applies to any platform.
+***Checked for relevance on 05-Oct-2012*** 
+PURPOSE
+
+This guide provide detailed steps on verifying/troubleshooting password authenticated Enterprise User Security (EUS).
+
+TROUBLESHOOTING STEPS
+
+
+Section I: Verify the Enterprise User Security (EUS) configuration
+
+ 
+
+Step 1: Verify OID instance configuration
+
+1. You must have a  successfully installed Oracle Internet Directory and OracleAS Single Sign-On. OracleAS Single Sign-On authenticates administrators when log in to the administrative GUI (Enterprise Security Manager Console). Oracle Internet Directory and OracleAS Single Sign-On are part of the Oracle Identity Management infrastructure. Oracle Internet Directory must include an identity management realm.
+
+Verify that if OID process is running by the command opmnctl status.
+
+[oracle@oid ~]$ opmnctl status 
+
+Processes in Instance: oid10g.oid.mohan.com 
+-------------------+--------------------+---------+--------- 
+ias-component      | process-type       |     pid | status 
+-------------------+--------------------+---------+--------- 
+DSA                | DSA                |     N/A | Down 
+LogLoader          | logloaderd         |     N/A | Down 
+dcm-daemon         | dcm-daemon         |     N/A | Down 
+OC4J               | OC4J_SECURITY      |    5963 | Alive 
+HTTP_Server        | HTTP_Server        |    5603 | Alive 
+OID                | OID                |    5619 | Alive
+
+
+2. Login to Oracle Directory Manager (ODM) as a user who has admin privilege in OID, normally it is cn=orcladmin user. 
+
+Select your OID server. Expand to Server Management --> Directory Server. Select your configset on the left pane. Then on the right pane select SSL settings tab. Verify that SSL Authentication is set to 'No SSL Authentication' 
+
+
+3. On the OID server, you can verify if 'oidldapd' server process is running.
+
+[oracle@oid ~]$ ps -ef | grep oidldapd 
+oracle 5799 1 0 00:38 ? 00:00:00 /oracle/base_oid10g/home_oid10g/bin/oidldapd connect=oid10g -p 389 -i 1 -conf 0 -sport 636 -sslenable 2 key=1498027945 
+
+oracle 5804 1 0 00:38 ? 00:00:01 oidldapd 
+connect=oid10g control=5799 dispatcher=1 worker=2 debug=33554432 configset=0 instance=1 key=1498027945 host=oid.mohan.com trcdimension=511 logchange=TRUE port=389 sport=636
+You can see that OID instance 1 is running on non-ssl port 389, ssl port 636 and is using the configset 0. 
+
+
+4. Verify if ldapbind to both non-ssl port and to ssl-with no authentication port is successful. This shows that OID is ready to accept connections.
+
+ldapbind -h <oid_hostname> -p <non_ssl port> 
+ldapbind -h <oid_hostname> -p <ssl with no auth port> -U 1
+
+[oracle@oid ~]$ ldapbind -h oid -p 389 
+bind successful 
+[oracle@oid ~]$ ldapbind -h oid -p 636 -U 1 
+bind successful
+ 
+
+__________________________________________________________________________________________________________________________
+
+
+Step 2: Verify Enterprise User Security (EUS) configuration on the OID
+
+1. Login to Enterprise Security Manager (ESM). 
+On the left pane expand and select your realm . On the right pane, select General tab. 
+i. Make sure that the Database to Directory Authentication is set to 'PASSWORD' 
+ii.Check Common User Search Bases lists the DIT where you actualy have created EUS users. If you 
+want to change this you need to login to ESM Console and change it under Realm Configuration tab. In 11g the same operation is performed via EM. 
+iii. Select Accessible Domains tab. Check that your enterprise domain is listed. 
+
+2. Make sure that Database is being part of only one Enterprise Domains. 
+
+3. Check if schema mapping to EUS user has been configured, if you are using shared schema.
+
+_________________________________________________________________________________________________________________________
+
+
+
+Step 3: Verify the password policy for the realm
+
+1. Login to ODM. 
+Expand your OID server --> expand 'Password Policy Management' 
+select the password policy for your realm. Make sure that 'Reset password upon next login' is disabled. 
+
+If this is enabled, then it can cause database bind to OID to fail. 
+
+
+_________________________________________________________________________________________________________________________
+
+
+Step 4: Verify Enterprise User Security (EUS) configuration on the DB
+
+1. Verify if ldapbind to both non-ssl port and to ssl-with no authentication port is successful. This verifies that the database can successfully bind to the OID instance.
+
+ldapbind -h <oid_hostname> -p <non_ssl port> 
+ldapbind -h <oid_hostname> -p <ssl with no auth port> -U 1 
+
+
+2. Extract DN and its OID password from wallet using mkstore and check the ldapbind. mkstore will prompt you for the wallet password.
+
+D:\>mkstore -wrl D:\oracle\admin\db10gr2\wallet -list 
+Enter password: 
+Oracle Secret Store entries: 
+ORACLE.SECURITY.DN 
+ORACLE.SECURITY.PASSWORD 
+
+D:\>mkstore -wrl D:\oracle\admin\db10gr2\wallet -viewEntry ORACLE.SECURITY.DN 
+Enter password: 
+ORACLE.SECURITY.DN = cn=db10gr2,cn=OracleContext,o=oracle,c=in 
+
+D:\>mkstore -wrl D:\oracle\admin\db10gr2\wallet -viewEntry ORACLE.SECURITY.PASSWORD 
+Enter password: 
+ORACLE.SECURITY.PASSWORD = sN+qFQY3 
+
+D:\>ldapbind -h oid -p 389 -D "cn=db10gr2,cn=OracleContext,o=oracle,c=in" -w "sN+qFQY3" 
+bind successful
+
+Above ldapbind to non-ssl port must return successful. 
+If ldapbind fails, 
+i.verify the OID configuration in step1 
+ii. try re-generating DB password using DBCA and re-registering DB with OID using DBCA. 
+iii. Verify Realm Password Policy as described in Step3 above.
+
+DBCA always places wallet in its default location while registering database. If you are re-registering/re-generating password from DBCA, it expects the wallet already be present in its default location.
+The default location is ORACLE_BASE/admin/Oracle_SID/wallet if the ORACLE_BASE environment variable is present.
+If the ORACLE_BASE environment variable is not present, then the ORACLE_HOME/admin/Oracle_SID/wallet directory is used.
+
+
+
+3. Check if ldap_directory_access parameter is set to PASSWORD
+
+SQL> show parameter ldap_directory_access 
+
+NAME TYPE VALUE 
+------------------------------------ ----------- ------------------------------ 
+ldap_directory_access string PASSWORD
+If this parameter is not set to password, you can use the below query to set the same:
+
+SQL> alter system set ldap_directory_access='PASSWORD';
+
+
+4. Check if sqlnet.ora has correct path to the wallet. 
+DIRECTORY parameter should point to the directory where you have placed your wallet. 
+
+Example sqlnet.ora: 
+--------------------
+
+WALLET_LOCATION = 
+ (SOURCE = 
+  (METHOD = FILE) 
+  (METHOD_DATA = 
+    (DIRECTORY = D:\oracle\admin\db10gr2\wallet) 
+  ) 
+ )
+
+
+5. Make sure that wallet is autologin enabled. 
+Open wallet in Oracle Wallet Manager (OWM), From 'wallet' menu option select 'Auto Login' option. Once done you should see a file 'cwallet.sso' in the wallet directory. 
+
+
+
+6. Verify if ldap.ora has correct entries. 
+
+DIRECTORY_SERVERS= (<oid hostname/IP addres>:<non-ssl port>:<ssl port with no authentication>) 
+DEFAULT_ADMIN_CONTEXT = "<your realm without cn=oraclecontext>" 
+
+
+Exmaple ldap.ora: 
+-------------------
+
+DIRECTORY_SERVERS= (oid:389:636) 
+DEFAULT_ADMIN_CONTEXT = "o=oracle,c=in" 
+DIRECTORY_SERVER_TYPE = OID
+ 
+
+Make sure that you do not have any inconsistent or duplicate ldap.ora file under the following locations as ldap.ora is searched in the below order.  
+1. LDAP_ADMIN if set, 
+2. ORACLE_HOME/ldap/admin, 
+3. TNS_ADMIN if set and then 
+4. ORACLE_HOME/network/admin 
+ 
+
+________________________________________________________________________________________________________________________
+===========================================================================================================
+
+
+Section II: Common Errors and Known issues
+
+ 
+
+ORA-1017: Invalid username/password; login denied
+
+Cause:  Either the username or password is invalid or not readable by the database. 
+
+Action: 
+1. If you are using AD user syncronized with OID as EUS user, refer Note 437185.1 
+
+2. Check if EUS user created in DB 'SQL> SELECT USERNAME,EXTERNAL_NAME FROM DBA_USERS;' 
+
+3. Check if there is any duplicate user entry in the database. There are chances that when you are migrating to EUS, you would have left the username left in the database without dropping it. 
+If you have same user present both in the database as well as in the OID, then the database user authentication takes precedence over LDAP authentication. 
+
+4. If you are using dedicated schema mapping verify the DBA_USERS view that the EXTERNAL_NAME value is same as the users entry DN in OID. 
+
+5. If you are using shared schema, then Use Enterprise Security Manager to ensure that you have created a user-schema mapping either for the entire enterprise domain or for the database. 
+       
+5.1. If the user-schema mapping is done to the database (not to the entire enterprise domain), then, check that the database can read its own entry and subtree  in the directory. 
+ldapsearch -h <directory_host> -p <directory_port> -D <database_DN> -w <database_directory_password> -b "<database_DN>" "objectclass=*" 
+
+5.2. If the user-schema mapping is done to the Enterprise Domain Level, Use Enterprise Security Manager to check that the database is a member of exactly one enterprise domain. Check that the database can see its domain, by entering one of the following at the command line: 
+
+ldapsearch -h <directory_host> -p <directory_port> -D <database_DN> -w <database_directory_password> -b "cn=OracleContext, <realm_DN>" "objectclass=orclDBEnterpriseDomain" 
+
+6. Try restarting the database. Database restart updates the cached value for the enterprise domain. 
+
+7. If you have applied patch 6493830, then the error ORA-28273 has actualy been replaced with more generic error ORA-1017 for security reasons. You will have to verify the ORA-28273 error section below too. 
+
+
+__________________________________________________________________________________________________________________________
+
+
+ORA-28043: Invalid bind credentials for DB/OID connection
+
+Cause: The password present in secret store area of the database wallet is invalid. 
+Action: 
+1. Try regenerating directory password for database using DBCA. It could be due to the fact that password got expired. refer Note 403079.1.
+
+ 
+
+__________________________________________________________________________________________________________________________
+
+
+ORA-28030: Server encountered problems accessing LDAP directory service
+
+Cause: This is a generic error which indicates a problem with the connection between the database and the directory. 
+Action: 
+1. Following the Step1 through Step4  above under the Section I, verify the EUS configuration between OID and DB. 
+
+2. Please refer the below notes for know issues on this error. 
+Note 428270.1 EUS Connections Fail With ORA-28030 After Upgrade OID To 10.1.4.0.1 
+Note 436054.1ORA-28030 For EUS User During DB Login With OID Search Report LDAP Error 50. 
+Note 403079.1ORA-28030 After Database's OID Password Expired
+
+3. ORA-28030 occurs if a non-oracle OS user starts database service and listener service in windows environment . __________________________________________________________________________________________________________________________
+ORA-28273: No mapping for user nickname to LDAP distinguished name exists
+
+Cause: The username supplied is not present in the LDAP server. 
+Action: 
+1. Check that a user entry exists in Oracle Internet Directory for your user. 
+
+
+2. Use Enterprise Security Manager to check that a user search base containing this user is listed in the identity management realm that you are using. 
+
+
+3. Check that the user entry contains the correct login name: 
+
+3.1 Use Enterprise Security Manager Console to find the login name attribute that is configured for the directory in your realm, and make sure that user logs in to database with this attribute value. 
+
+Launch ESM-> on left pane, select your realm -> on right pane, under 'General' tab check the value of 'Atribute for Login Name'. 
+
+By default this value is set to 'uid'. So, EUS user should login to the database with their respective uid value. By default uid value is same as that of the OID username.
+
+Since 'Atribute for Login Name' (default value is 'uid') is used to login to OID, make sure that this value does not contains the characters like '@' or space.
+
+
+4. If you have an exclusive schema for the global user in the database, then check that the DN in the database matches the DN of the user entry in Oracle Internet Directory.
+
+
+_____________________________________________________________________________________________________________________________
+
+ 
+
+ORA-28274: No ORACLE password attribute corresponding to user nickname exists
+
+Cause: The EUS user does not have password attribute associated with it or the password attribute is not readable by the database. 
+Action: 
+1. If you are using AD user syncronized with OID as EUS user, refer Note 437185.1 
+
+2. Check that the user entry in the directory has the orcluser object class. If it does not, then perform the following steps: 
+
+– Use Enterprise Security Manager Console or Oracle Internet Directory Self-Service Console to re-create the user, or 
+– Add the orcluser and the orcluserV2 object classes. 
+
+3. Check that there is a value for the attribute orclpassword in the user entry. If there is no value, then reset the user's directory password (userpassword attribute). This should prompt Oracle Internet Directory to regenerate the database password verifier for the user. 
+
+4. Use Enterprise Security Manager to check that the user search base containing this user is listed in the user search base attribute of the realm that you are using. 
+
+5. Use Enterprise Security Manager to check that the Enterprise Domain is in the password-accessible domains group.  Launch ESM, on the left pane select your realm, on the right pane select 'Accessible Domains' tab. Check if your Enterprise Domain is listed here, if not listed add it.
+
+6. Check that the ACL on the user search base attribute allows read and search access to the orclpassword attributes by the verifierServices group. This is set properly by default, but if you are creating new user search base, then you may have to set this permission manually. 
+
+You can set this permission from ODM,
+
+
+
+
+ 
+
+___________________________________________________________________________________________________________________________________________
+============================================================================================================================
+
+ 
+
+
+
+Section III: Collect Event tracing for further analysis
+
+
+If this article has not helped to identify or resolve your issue, then collect the below event tracing on your database server instance by reproducing the issue and contact Oracle Support for assistance. 
+
+1. Enable 28033 event tracing. Reproduce the issue. Trace file will be generated in 'Udump' direcory. 
+
+SQL> alter system set events '28033 trace name context forever, level 9'; 
+
+2. To turn off this tracing, 
+
+SQL> alter system set events '28033 trace name context off';
