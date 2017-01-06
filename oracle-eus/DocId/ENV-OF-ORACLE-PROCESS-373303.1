@@ -1,0 +1,97 @@
+How to Check the Environment Variables for an Oracle Process (Doc ID 373303.1)	To BottomTo Bottom	
+
+APPLIES TO:
+
+Oracle Database - Enterprise Edition - Version 8.1.7.4 to 12.1.0.2 [Release 8.1.7 to 12.1]
+Information in this document applies to any platform.
+GOAL
+
+There are cases when a database was started from an environment that did not have all the variables set correctly and this can cause troubles afterwards. Typical examples are :
+
+ 
+
+- starting a database from an environment where ORACLE_HOME has a path with a final forward slash ( "/u01/oracle/12.1.0.1/db_1/" rather than "/u01/oracle/12.1.0.1/db_1")
+
+- starting the database from an environment that points with the TNS_ADMIN parameter to the wrong sqlnet configuration files
+
+- starting the database with the incorrect value for LD_LIBRARY_PATH  (LIBPATH for AIX or SHLIB_PATH for HP)
+
+- starting the database from an environment that does not have the ORACLE_UQNAME variable set, although this is used to derive the path to a TDE( or SSL ) wallet.
+
+ 
+
+This note presents the methods to be used to find out the values of the environment variables used by the database processes.
+
+SOLUTION
+
+ 
+
+1. Determine the pid of the process at OS level, eg for the smon process:
+ps -ef | grep smon
+
+2. Get the environment of the process:
+
+SOLARIS:
+pargs -e <pid from above> | grep ORACLE
+
+LINUX:
+cat /proc/<pid from above>/environ
+
+AIX:
+ps eauwww <pid from above>
+
+HP-UX:
+On this Unix flavor there is no command to grasp the process environment directly. This can only be extracted using a debugger from the _environ structure. This procedure can be used on the other Unix flavors, as follows:
+gdb smon <pid from above>
+This attaches gdb to the pid mentioned above. The smon name is just an indication that the process we attach to is smon, but the only parameter that matters is the pid.
+After attaching to the process, the following command extracts the information from the _environ list:
+p ((char**)_environ)[0]@30
+which would list the first 30 environment variables. If more are defined, just increase the parameter after @.
+As well, the list can be extracted one item from the list at a time, using an iterator like:
+p ((char**)_environ)[i]
+which would extract element #i+1.
+
+ 
+
+Alternatively you can do this :
+
+1) Create the following script called print_environment.gdb:
+
+set $v = (char**)environ
+while $v[0]
+  print $v[0]
+  set $v = $v+1
+end
+detach
+quit
+2) Get the PID of one background server process :
+
+ps -ef | grep smon
+
+ 
+
+3) Call print_environment.gdb to display the variable ( SHLIB_PATH in this case ) :
+
+ 
+
+gdb -q -x print_environment.gdb  a.out <pid from above> | grep SHLIB_PATH
+ 
+
+
+Windows:
+To get the information on Windows, 2 things are needed:
+1. check the registry for the ORACLE_* keys used to start the Oracle process. These keys are in:
+HKEY_LOCAL_MACHINE/Software/Oracle/HOME<x>
+(before 10g)
+HKEY_LOCAL_MACHINE/SOFTWARE/ORACLE/KEY_<home name>
+from 10g on.
+2. check the environment variables that were used by the oracle process at startup.
+For this, one would need the process explorer utility from sysinternals, which can be found at:
+www.sysinternals.com
+(http://technet.microsoft.com/en-us/sysinternals/bb896653.aspx)
+After starting the procexp utility, find the oracle process you want to check in the process list, right click on it, then select Properties. The Environment tab should indicate all the environment variables used when the process was started (even if dynamically in command line).
+The utility also displays the key values from registry, but being so many it's difficult to look for them.
+
+ 
+
+The most used application of this document is when dealing with the "Connected to an idle instance" scenario for a bequeath sysdba connection. This error indicates that ORACLE_SID and ORACLE_HOME in the current session do not match the same environment variables that were used when the database is started (ORACLE_SID and ORACLE_HOME are the strings used to uniquely identify the shared memory segment of the instance when a connection is done). Check the ORACLE_SID and ORACLE_HOME of the background process and compare them with the ones in the current session to find the mismatch.
