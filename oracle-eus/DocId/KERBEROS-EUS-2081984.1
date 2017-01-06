@@ -1,0 +1,178 @@
+How To Configure EUS Kerberos Authentication For Database Administrative Users (SYSDBA and SYSOPER) (Doc ID 2081984.1)	To BottomTo Bottom	
+
+In this Document
+Goal
+Solution
+References
+
+APPLIES TO:
+
+Advanced Networking Option - Version 11.2.0.3 and later
+Information in this document applies to any platform.
+GOAL
+
+ The purpose of this article is to explain how to configure the SYSDBA authentication for EUS users authenticated through Kerberos.
+
+SOLUTION
+
+ This setup assumes the following topology:
+
+ 
+
+Kerberos Server (Microsoft KDC):
+
+* Host name: CELSPVM0017.CELSPVM0017AD.SAMPLE.COM
+* Microsoft Windows Server 2012 R2 Enterprise Edition 
+* Active Directory (incorporating Kerberos Key Distribution Centre (KDC))
+* Realm name: CELSPVM0017AD.SAMPLE.COM
+
+Database Server
+
+* Host name: seclindbs.ro.oracle.com
+* Database name: new11204
+* Red Hat Enterprise Linux Server release 6.3
+* Oracle 11gR2 Server Enterprise Edition with 11.2.0.4 patchset
+
+
+OUD/OID server:
+
+
+* Host name: seclindbs.ro.oracle.com
+* Non-SSL port 1389 SSL port 1636
+
+
+I Part - Kerberos Setup
+
+ 
+
+The kerberos authentication is configured using Note 1304004.1:
+
+1.Create the database principal user in Windows 2012 R2 Active Directory
+
+2. Create the user principal in Windows 2012 R2 Active Directory as krb
+
+2. Create the keytab file :
+
+C:\>ktpass.exe -princ oracle/seclindbs.ro.oracle.com@CELSPVM0017AD.SAMPLE.COM -mapuser seclindbs.ro.oracle.com -crypto all -pass password -out c:\seclin_keytabnew
+
+3. Set the parameters remote_os_authent and os_authent_prefix to the correct values(remote_os_authent=FALSE and os_authent_prefix='') :
+
+SQL> select value from v$parameter where name = 'os_authent_prefix';
+
+VALUE
+
+---------------------------------------------------------------
+
+SQL> select value from v$parameter where name = 'remote_os_authent';
+
+VALUE
+---------------------------------------------------------------
+FALSE
+
+4. Add the kerberos authentication parameters to the sqlnet.ora:
+
+SQLNET.KERBEROS5_CONF=/home/oracle/roxana/krb/krb5.conf
+SQLNET.KERBEROS5_KEYTAB=/home/oracle/roxana/krb/seclin_keytabnew
+SQLNET.AUTHENTICATION_KERBEROS5_SERVICE=oracle
+SQLNET.KERBEROS5_CONF_MIT=true
+SQLNET.AUTHENTICATION_SERVICES=(beq,kerberos5)
+
+5. Edit the krb5.conf file:
+
+[libdefaults]
+default_realm = CELSPVM0017AD.SAMPLE.COM
+
+[realms]
+CELSPVM0017AD.SAMPLE.COM = {
+kdc=10.64.167.7:88
+admin_server = seclindbs.ro.oracle.com
+}
+
+[domain_realm]
+.ro.oracle.com = CELSPVM0017AD.SAMPLE.COM
+ro.oracle.com = CELSPVM0017AD.SAMPLE.COM
+
+ 
+
+ 
+
+II Part - EUS setup
+
+ 
+
+1. Register the database in OUD/OID with dbca
+
+2. Create an Enterprise Role with eusm:
+
+[oracle@seclindbs trace]$ eusm createRole enterprise_role="dba_eus" domain_name="OracleDefaultDomain" realm_dn="dc=ro,dc=oracle,dc=com" ldap_host="seclindbs.ro.oracle.com" ldap_port=1389 ldap_user_dn="cn=orcladmin" ldap_user_password="Oracle_555"
+[oracle@seclindbs trace]$
+3. Grant Administrative privileges to the Enterprise Role
+
+You can grant administrative privileges SYSDBA or SYSOPER to the Enterprise Role manually using ODSM (Oracle Directory Manager)
+
+Navigate to the below entry using ODSM, 
+cn=<Enterprise Role Name>,cn=<Enterprise Domain Name>,cn=OracleDBSecurity,cn=Products,cn=OracleContext,<Realm ID>
+
+For the 'orclDBServerRole' attribute set the GlobalRole to be SYSDBA or SYSOPER according to what privilege you want to grant, in the below format. 
+cn=<DB SID>,cn=oraclecontext,<Realm ID>,GlobalRole=SYSDBA
+
+4. Grant role dba_eus to eus user cn=krb
+
+[oracle@seclindbs trace]$ eusm grantRole enterprise_role="dba_eus" domain_name="OracleDefaultDomain" realm_dn="dc=ro,dc=oracle,dc=com" user_dn="cn=krb,dc=ro,dc=oracle,dc=com" ldap_host="seclindbs.ro.oracle.com" ldap_port=1389 ldap_user_dn="cn=orcladmin" ldap_user_password="Oracle_555"
+[oracle@seclindbs trace]$
+5. Use ODSM to add attribute krbprincipalname as krb@CELSPVM0017AD.SAMPLE.COM for user 'cn=krb,dc=ro,dc=oracle,dc=com'
+
+ 
+
+III Part - Database Setup:
+
+ 
+
+1. Set the LDAP_DIRECTORY_SYSAUTH  parameter to YES:
+
+SQL> alter system set ldap_directory_sysauth=YES scope=spfile;
+
+System altered.
+
+2. Set the LDAP_DIRECTORY_ACCESS parameter to PASSWORD:
+
+SQL> alter system set ldap_directory_access=PASSWORD;
+
+System altered.
+
+ 3. Create the user in the database:
+
+SQL> create user krb identified globally as 'cn=krb,dc=ro,dc=oracle,dc=com';
+
+User created.
+
+SQL> grant connect to krb;
+
+Grant succeeded.
+
+SQL> exit
+
+ 
+
+4. Get a ticket and connect / as sysdba using a kerberos user:
+
+[oracle@seclindbs ~]$ okinit -e 23 krb
+
+Kerberos Utilities for Linux: Version 11.2.0.4.0 - Production on 25-NOV-2015 00: 00:32
+
+Copyright (c) 1996, 2013 Oracle. All rights reserved.
+
+Password for krbuser@CELSPVM0017AD.SAMPLE.COM:
+
+[oracle@seclindbs admin]$ sqlplus /@new11204 as sysdba
+
+SQL*Plus: Release 11.2.0.4.0 Production on Tue Nov 24 18:05:34 2015
+
+Copyright (c) 1982, 2013, Oracle. All rights reserved.
+
+Connected.
+SQL> show user
+USER is "SYS"
+SQL> 
+
+ 
