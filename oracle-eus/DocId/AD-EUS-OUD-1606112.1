@@ -1,0 +1,402 @@
+Understanding Roles and Proxy with EUS - OUD Proxy - AD Deployment (Doc ID 1606112.1)	To BottomTo Bottom	
+
+In this Document
+Purpose
+Details
+References
+APPLIES TO:
+
+Oracle Unified Directory - Version 11.1.2.1.0 and later
+Information in this document applies to any platform.
+PURPOSE
+
+ The goal of this article is to illustrate Entrerprise User Security (EUS) usage using Oracle Unified Directory (OUD) proxy with Active Directory (AD) to connect to the Oracle Database.
+
+AD users will be able to connect Oracle Database either:
+
+Directly, as usual AD user (with relevant role mapping in Oracle Database of AD users)
+or through a proxy user, as a usual user  (with relevant mapping of AD users with the proxy user)
+
+A Global role in the Oracle Database is created HR_ACCESS.
+AD users are granted HR_ACCESS privileges through this global role.
+
+ 
+
+ 
+
+ 
+
+DETAILS
+
+Prerequisites
+
+1. Being to connect as an enterprise user
+You should be able to connect as an enterprise user as described in EUS AD Integration Using OUD Proxy - Document ID 1571196.1
+
+2. Upload Oracle Samples to the DataBase
+
+The reference is Oracle Sample Schema
+
+Download and install Oracle Database examples
+Upload Human resources script from Oracle Database sample schema
+
+To run the hr_main.sql script, use the following command:
+SQL> @?/demo/schema/human_resources/hr_main.sql
+
+For more information, refer to the Oracle Sample Schema
+
+Once the script hr_main.sql has been run, the following tables are created:
+
+SQL> select table_name from user_tables;
+
+TABLE_NAME
+------------------------------
+REGIONS
+LOCATIONS
+DEPARTMENTS
+JOBS
+EMPLOYEES
+JOB_HISTORY
+COUNTRIES
+
+7 rows selected.
+
+SQL>
+
+
+ 
+
+
+3) Global Role / Enterprise Role
+
+It is described Oracle® Database Enterprise User Security Administrator's Guide 11g Release 2 (11.2), at section 2.6  Using Enterprise Roles
+
+ 
+3.1) Granting HR_ACCES role to AD user98, user99
+
+
+3.1.1) creating HR_ACCES role
+
+The SQL instructions to create a role are
+
+SQL> create ROLE hr_access IDENTIFIED globally;
+
+Role created.
+
+SQL> GRANT SELECT,INSERT on hr.employees TO hr_access;
+GRANT SELECT,INSERT on hr.employees TO hr_access
+
+ 
+
+ 3.1.2) Assigning HR_ACCESS role to AD user98/user99
+
+ Log to https://<odb-hostname>:1158/em
+
+-> Click server 
+-> Click Enterprise User Security 
+-> Oracle Internet Directory Login (User: cn=Directory Manager/Password: secret12)
+-> Manage Enterprise Domain
+-> Select Default Domain/Configure
+-> Select Enterprise Role
+-> Click  Create
+-> Enter hr_access in the Name field.
+-> Click Add to add the database global role to the enterprise role.
+   Enter User Name: system / password
+-> Select Grantees
+-> Toggle AD users cn=user98/cn=user99  checkbox
+
+eus1-bis.jpg
+
+ 
+
+ 
+
+3.2) Verification, HR_ACCESS display
+
+ 
+
+3.2.1) HR_ACCESS grantees
+
+Using Enterprise Manager, this step will display/verify AD users which are granted HR_ACCESS
+eus2-bis.jpg
+
+ 
+
+3.2.2) HR_ACCESS privileges
+
+  
+
+Using Enterprise Manager, this step will display/verify HR_ACCESS privileges on hr_employees
+eus31.jpg
+
+ 
+
+ 3.2.3) OUD LDAP information
+
+An OUD entry cn=hr_access,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Producs,cn=OracleContext,<realm-dn> is created which contains
+
+orclDBServerRole: cn=orcl11,cn=OracleContext,<realm-dn>
+uniqueNember: cn=user98,cn=users,<realm-dn>
+uniqueNember: cn=user99,cn=users,<realm-dn>
+ 
+
+eus3_bis.jpg
+
+ 
+
+ 3.4) Connecting to Oracle DataBase using cn=user98
+
+ 
+
+sqlplus user98/Welcome4@orcl11
+
+SQL*Plus: Release 11.2.0.1.0 Production on Fri Dec 6 15:55:46 2013
+
+Copyright (c) 1982, 2009, Oracle.  All rights reserved.
+
+Connected to:
+Oracle Database 11g Enterprise Edition Release 11.2.0.1.0 - 64bit Production
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+
+SQL>
+
+ 
+
+The associated OUD access log trace is -
+
+[06/Dec/2013:15:06:37 +0000] BIND REQ conn=62 op=1 msgID=2 type=SASL mechanism=DIGEST-MD5 dn="cn=orcl11,cn=oraclecontext,<realm-dn>"
+[06/Dec/2013:15:06:37 +0000] BIND RES conn=62 op=1 msgID=2 result=0 authDN="cn=orcl11,cn=OracleContext,<realm-dn>" etime=1
+[06/Dec/2013:15:06:37 +0000] SEARCH REQ conn=62 op=2 msgID=3 base="cn=OracleDBSecurity,cn=Products,cn=OracleContext,<realm-dn>" scope=one filter="(&(objectclass=orcldbenterprisedomain_82)(uniqueMember=cn=orcl11,cn=OracleContext,<realm-dn>))" attrs="orclDBAuthTypes,dn"
+[06/Dec/2013:15:06:37 +0000] SEARCH RES conn=62 op=2 msgID=3 result=0 nentries=1 etime=2
+[06/Dec/2013:15:06:37 +0000] SEARCH REQ conn=62 op=3 msgID=4 base="cn=Common,cn=Products,cn=OracleContext,<realm-dn>" scope=base filter="(objectclass=*)" attrs="ALL"
+[06/Dec/2013:15:06:37 +0000] SEARCH RES conn=62 op=3 msgID=4 result=0 nentries=1 etime=1
+[06/Dec/2013:15:06:37 +0000] SEARCH REQ conn=62 op=4 msgID=5 base="cn=users,<realm-dn>" scope=sub filter="(cn=USER98)" attrs="dn,authPassword,orclPassword,orclguid"
+[06/Dec/2013:15:06:37 +0000] SEARCH PROXY_REQ conn=62 op=4 msgID=5 s_conn=9 scope="sub" s_msgid=8949 base="cn=users,<realm-dn>" s_credmode=use-client-identity filter="(cn=USER98)"
+[06/Dec/2013:15:06:37 +0000] SEARCH PROXY_RES conn=62 op=4 msgID=5 result=0 s_conn=9 s_msgid=8949 etime=2 authzDN=cn=orcl11,cn=OracleContext,<realm-dn> nentries=1
+[06/Dec/2013:15:06:37 +0000] SEARCH RES conn=62 op=4 msgID=5 result=0 nentries=1 etime=2
+[06/Dec/2013:15:06:37 +0000] SEARCH REQ conn=62 op=5 msgID=6 base="cn=orcl11,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbEntrylevelMapping)(orclDBDistinguishedName=cn=user98,cn=Users,<realm-dn>))" attrs="orclDBNativeUser"
+[06/Dec/2013:15:06:37 +0000] SEARCH RES conn=62 op=5 msgID=6 result=0 nentries=0 etime=0
+[06/Dec/2013:15:06:37 +0000] SEARCH REQ conn=62 op=6 msgID=7 base="cn=orcl11,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbSubtreelevelMapping)(orclDBDistinguishedName=cn=Users,<realm-dn>))" attrs="orclDBNativeUser"
+[06/Dec/2013:15:06:37 +0000] SEARCH RES conn=62 op=6 msgID=7 result=0 nentries=0 etime=1
+[06/Dec/2013:15:06:37 +0000] SEARCH REQ conn=62 op=7 msgID=8 base="cn=orcl11,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbSubtreelevelMapping)(orclDBDistinguishedName=<realm-dn>))" attrs="orclDBNativeUser"
+[06/Dec/2013:15:06:37 +0000] SEARCH RES conn=62 op=7 msgID=8 result=0 nentries=0 etime=0
+[06/Dec/2013:15:06:37 +0000] SEARCH REQ conn=62 op=8 msgID=9 base="cn=orcl11,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbSubtreelevelMapping)(orclDBDistinguishedName=dc=oradev,dc=oraclecorp,dc=com))" attrs="orclDBNativeUser"
+[06/Dec/2013:15:06:37 +0000] SEARCH RES conn=62 op=8 msgID=9 result=0 nentries=0 etime=1
+[06/Dec/2013:15:06:37 +0000] SEARCH REQ conn=62 op=9 msgID=10 base="cn=orcl11,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbSubtreelevelMapping)(orclDBDistinguishedName=dc=oraclecorp,dc=com))" attrs="orclDBNativeUser"
+[06/Dec/2013:15:06:37 +0000] SEARCH RES conn=62 op=9 msgID=10 result=0 nentries=0 etime=1
+[06/Dec/2013:15:06:37 +0000] SEARCH REQ conn=62 op=10 msgID=11 base="cn=orcl11,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbSubtreelevelMapping)(orclDBDistinguishedName=dc=com))" attrs="orclDBNativeUser"
+[06/Dec/2013:15:06:37 +0000] SEARCH RES conn=62 op=10 msgID=11 result=0 nentries=0 etime=0
+[06/Dec/2013:15:06:37 +0000] SEARCH REQ conn=62 op=11 msgID=12 base="cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbEntrylevelMapping)(orclDBDistinguishedName=cn=user98,cn=Users,<realm-dn>))" attrs="orclDBNativeUser"
+[06/Dec/2013:15:06:37 +0000] SEARCH RES conn=62 op=11 msgID=12 result=0 nentries=0 etime=1
+[06/Dec/2013:15:06:37 +0000] SEARCH REQ conn=62 op=12 msgID=13 base="cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbSubtreelevelMapping)(orclDBDistinguishedName=cn=Users,<realm-dn>))" attrs="orclDBNativeUser"
+[06/Dec/2013:15:06:37 +0000] SEARCH RES conn=62 op=12 msgID=13 result=0 nentries=1 etime=2
+[06/Dec/2013:15:06:37 +0000] SEARCH REQ conn=62 op=13 msgID=14 base="cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbapplicationcontextvalue)(uniquemember=cn=user98,cn=Users,<realm-dn>))" attrs="cn"
+[06/Dec/2013:15:06:37 +0000] SEARCH RES conn=62 op=13 msgID=14 result=0 nentries=0 etime=0
+[06/Dec/2013:15:06:37 +0000] SEARCH REQ conn=62 op=14 msgID=15 base="cn=user98,cn=Users,<realm-dn>" scope=base filter="(objectclass=inetOrgPerson)" attrs="ALL"
+[06/Dec/2013:15:06:37 +0000] SEARCH PROXY_REQ conn=62 op=14 msgID=15 s_conn=9 scope="base" s_msgid=8950 base="cn=user98,cn=Users,<realm-dn>" s_credmode=use-client-identity filter="(objectClass=inetOrgPerson)"
+[06/Dec/2013:15:06:37 +0000] SEARCH PROXY_RES conn=62 op=14 msgID=15 result=0 s_conn=9 s_msgid=8950 etime=0 authzDN=cn=orcl11,cn=OracleContext,<realm-dn> nentries=0
+[06/Dec/2013:15:06:37 +0000] SEARCH RES conn=62 op=14 msgID=15 result=0 nentries=0 etime=0
+[06/Dec/2013:15:06:37 +0000] SEARCH REQ conn=62 op=15 msgID=16 base="cn=Common,cn=Products,cn=OracleContext,<realm-dn>" scope=base filter="(objectclass=*)" attrs="orclCommonGroupSearchBase"
+[06/Dec/2013:15:06:37 +0000] SEARCH RES conn=62 op=15 msgID=16 result=0 nentries=1 etime=1
+[06/Dec/2013:15:06:37 +0000] SEARCH REQ conn=62 op=16 msgID=17 base="cn=users,<realm-dn>" scope=sub filter="(|(&(uniquemember=cn=user98,cn=Users,<realm-dn>)(objectclass=groupofuniquenames)(!(objectclass=orcldbenterpriserole)))(&(member=cn=user98,cn=Users,<realm-dn>)(objectclass=groupofnames)(!(objectclass=orcldbenterpriserole))))" attrs="dn"
+[06/Dec/2013:15:06:37 +0000] SEARCH PROXY_REQ conn=62 op=16 msgID=17 s_conn=9 scope="sub" s_msgid=8951 base="cn=users,<realm-dn>" s_credmode=use-client-identity filter="(|(&(uniqueMember=cn=user98,cn=Users,<realm-dn>)(objectClass=groupofuniquenames)(!(objectClass=orcldbenterpriserole)))(&(member=cn=user98,cn=Users,<realm-dn>)(objectClass=group)(!(objectClass=orcldbenterpriserole))))"
+[06/Dec/2013:15:06:37 +0000] SEARCH PROXY_RES conn=62 op=16 msgID=17 result=0 s_conn=9 s_msgid=8951 etime=1 authzDN=cn=orcl11,cn=OracleContext,<realm-dn> nentries=0
+[06/Dec/2013:15:06:37 +0000] SEARCH RES conn=62 op=16 msgID=17 result=0 nentries=0 etime=1
+[06/Dec/2013:15:06:37 +0000] SEARCH REQ conn=62 op=17 msgID=18 base="cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbenterpriserole)(uniquemember=cn=user98,cn=Users,<realm-dn>)(orcldbserverrole=cn=orcl11,cn=OracleContext,<realm-dn>*))" attrs="orcldbserverrole"
+[06/Dec/2013:15:06:37 +0000] SEARCH RES conn=62 op=17 msgID=18 result=0 nentries=1 etime=1
+
+ 
+
+ After connecting to the Oracle Database as cn=user98, it is now possible to browse the Oracle Database -
+
+SQL> SELECT employee_id FROM hr.employees;
+
+EMPLOYEE_ID
+-----------
+        100
+        101
+        102
+        103
+        104
+        105
+......
+
+
+
+4) User Proxy
+
+4.11) Description
+
+AD users will be able to connect to the EUS database through a user proxy.
+
+The first task is to create a Oracle Database user proxy, and to grant that user CONNECT and access privileges to the Oracle Database
+The 2nd task is to grant AD users access to this user proxy
+ 
+
+4.12) Create a user proxy
+
+SQL> create user userproxy identified  by userproxy account unlock;
+User created.
+SQL> alter user userproxy grant connect Through enterprise users;
+SQL> grant CONNECT to userproxy;
+SQL> grant SELECT ON hr.employees TO userproxy;
+ 
+
+ AD Grantees (here cn=user90, cn=user99) are added for userproxy connection, in the same way as it was done in section 3) with AD user direct connection
+
+4.2) Verification
+
+4.2.1) UserProxy privileges verification
+
+userproxy has been created with GRANT and SELECT privileges
+eus6_bis.jpg
+
+ 
+
+4.2.2) AD users display associated to the userproxy
+
+Here it is possible to display the list of AD users associated to userproxy
+eus4-bis.jpg
+
+ 
+
+ 4.2.3) Storing userproxy information in OUD
+
+An OUD entry cn=userproxy_forwarding,cn=ProxyPermissions, cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Producs,cn=OracleContext,<realm-dn> is created which contains
+
+orclDBTargetUser: cn=orcl11,cn=OracleContext,<realm-dn>,TargetUser=userproxy
+uniqueMember: cn=user90,cn=users,<realm-dn>
+uniqueMember: cn=user99,cn=users,<realm-dn>
+ 
+
+ 
+
+ eus5_bis.jpg
+
+ 
+
+4.3) AD user connecting to Oracle Database through userproxy
+
+SQL> connect user90[userproxy]
+Enter password:
+Connected.
+
+ 
+SQL> SELECT employee_id FROM hr.employees;
+
+EMPLOYEE_ID
+-----------
+        100
+        101
+        102
+        103
+        104
+
+Important Note: Note the syntax to be able to connect through userproxy, which is is put between square brackets (i.e [connect user90[userproxy])
+
+ 
+
+[06/Dec/2013:15:29:52 +0000] CONNECT conn=68 from=10.166.104.61:33574 to=10.166.145.87:28636 protocol=LDAPS
+[06/Dec/2013:15:29:52 +0000] BIND REQ conn=68 op=0 msgID=1 type=SASL mechanism=DIGEST-MD5 dn="cn=orcl11,cn=oraclecontext,<realm-dn>"
+[06/Dec/2013:15:29:52 +0000] BIND RES conn=68 op=0 msgID=1 result=14 etime=1
+[06/Dec/2013:15:29:52 +0000] BIND REQ conn=68 op=1 msgID=2 type=SASL mechanism=DIGEST-MD5 dn="cn=orcl11,cn=oraclecontext,<realm-dn>"
+[06/Dec/2013:15:29:52 +0000] BIND RES conn=68 op=1 msgID=2 result=0 authDN="cn=orcl11,cn=OracleContext,<realm-dn>" etime=0
+[06/Dec/2013:15:29:52 +0000] SEARCH REQ conn=68 op=2 msgID=3 base="cn=OracleDBSecurity,cn=Products,cn=OracleContext,<realm-dn>" scope=one filter="(&(objectclass=orcldbenterprisedomain_82)(uniqueMember=cn=orcl11,cn=OracleContext,<realm-dn>))" attrs="orclDBAuthTypes,dn"
+[06/Dec/2013:15:29:52 +0000] SEARCH RES conn=68 op=2 msgID=3 result=0 nentries=1 etime=1
+[06/Dec/2013:15:29:52 +0000] SEARCH REQ conn=68 op=3 msgID=4 base="cn=Common,cn=Products,cn=OracleContext,<realm-dn>" scope=base filter="(objectclass=*)" attrs="ALL"
+[06/Dec/2013:15:29:52 +0000] SEARCH RES conn=68 op=3 msgID=4 result=0 nentries=1 etime=2
+[06/Dec/2013:15:29:52 +0000] SEARCH REQ conn=68 op=4 msgID=5 base="cn=users,<realm-dn>" scope=sub filter="(cn=USER90)" attrs="dn,authPassword,orclPassword,orclguid"
+[06/Dec/2013:15:29:52 +0000] SEARCH PROXY_REQ conn=68 op=4 msgID=5 s_conn=9 scope="sub" s_msgid=8988 base="cn=users,<realm-dn>" s_credmode=use-client-identity filter="(cn=USER90)"
+[06/Dec/2013:15:29:52 +0000] SEARCH PROXY_RES conn=68 op=4 msgID=5 result=0 s_conn=9 s_msgid=8988 etime=1 authzDN=cn=orcl11,cn=OracleContext,<realm-dn> nentries=1
+[06/Dec/2013:15:29:52 +0000] SEARCH RES conn=68 op=4 msgID=5 result=0 nentries=1 etime=2
+[06/Dec/2013:15:29:52 +0000] SEARCH REQ conn=68 op=5 msgID=6 base="cn=orcl11,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbEntrylevelMapping)(orclDBDistinguishedName=cn=user90,cn=Users,<realm-dn>))" attrs="orclDBNativeUser"
+[06/Dec/2013:15:29:52 +0000] SEARCH RES conn=68 op=5 msgID=6 result=0 nentries=0 etime=1
+[06/Dec/2013:15:29:52 +0000] SEARCH REQ conn=68 op=6 msgID=7 base="cn=orcl11,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbSubtreelevelMapping)(orclDBDistinguishedName=cn=Users,<realm-dn>))" attrs="orclDBNativeUser"
+[06/Dec/2013:15:29:52 +0000] SEARCH RES conn=68 op=6 msgID=7 result=0 nentries=0 etime=1
+[06/Dec/2013:15:29:52 +0000] SEARCH REQ conn=68 op=7 msgID=8 base="cn=orcl11,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbSubtreelevelMapping)(orclDBDistinguishedName=<realm-dn>))" attrs="orclDBNativeUser"
+[06/Dec/2013:15:29:52 +0000] SEARCH RES conn=68 op=7 msgID=8 result=0 nentries=0 etime=0
+[06/Dec/2013:15:29:52 +0000] SEARCH REQ conn=68 op=8 msgID=9 base="cn=orcl11,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbSubtreelevelMapping)(orclDBDistinguishedName=dc=oradev,dc=oraclecorp,dc=com))" attrs="orclDBNativeUser"
+[06/Dec/2013:15:29:52 +0000] SEARCH RES conn=68 op=8 msgID=9 result=0 nentries=0 etime=1
+[06/Dec/2013:15:29:52 +0000] SEARCH REQ conn=68 op=9 msgID=10 base="cn=orcl11,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbSubtreelevelMapping)(orclDBDistinguishedName=dc=oraclecorp,dc=com))" attrs="orclDBNativeUser"
+[06/Dec/2013:15:29:52 +0000] SEARCH RES conn=68 op=9 msgID=10 result=0 nentries=0 etime=0
+[06/Dec/2013:15:29:52 +0000] SEARCH REQ conn=68 op=10 msgID=11 base="cn=orcl11,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbSubtreelevelMapping)(orclDBDistinguishedName=dc=com))" attrs="orclDBNativeUser"
+[06/Dec/2013:15:29:52 +0000] SEARCH RES conn=68 op=10 msgID=11 result=0 nentries=0 etime=0
+[06/Dec/2013:15:29:52 +0000] SEARCH REQ conn=68 op=11 msgID=12 base="cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbEntrylevelMapping)(orclDBDistinguishedName=cn=user90,cn=Users,<realm-dn>))" attrs="orclDBNativeUser"
+[06/Dec/2013:15:29:52 +0000] SEARCH RES conn=68 op=11 msgID=12 result=0 nentries=0 etime=1
+[06/Dec/2013:15:29:52 +0000] SEARCH REQ conn=68 op=12 msgID=13 base="cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbSubtreelevelMapping)(orclDBDistinguishedName=cn=Users,<realm-dn>))" attrs="orclDBNativeUser"
+[06/Dec/2013:15:29:52 +0000] SEARCH RES conn=68 op=12 msgID=13 result=0 nentries=1 etime=2
+[06/Dec/2013:15:30:00 +0000] UNBIND REQ conn=68 op=13 msgID=14
+[06/Dec/2013:15:30:00 +0000] DISCONNECT conn=68 reason="Client Disconnect"
+[06/Dec/2013:15:30:08 +0000] CONNECT conn=69 from=10.166.104.61:33582 to=10.166.145.87:28636 protocol=LDAPS
+[06/Dec/2013:15:30:08 +0000] BIND REQ conn=69 op=0 msgID=1 type=SASL mechanism=DIGEST-MD5 dn="cn=orcl11,cn=oraclecontext,<realm-dn>"
+[06/Dec/2013:15:30:08 +0000] BIND RES conn=69 op=0 msgID=1 result=14 etime=0
+[06/Dec/2013:15:30:08 +0000] BIND REQ conn=69 op=1 msgID=2 type=SASL mechanism=DIGEST-MD5 dn="cn=orcl11,cn=oraclecontext,<realm-dn>"
+[06/Dec/2013:15:30:08 +0000] BIND RES conn=69 op=1 msgID=2 result=0 authDN="cn=orcl11,cn=OracleContext,<realm-dn>" etime=1
+[06/Dec/2013:15:30:08 +0000] SEARCH REQ conn=69 op=2 msgID=3 base="cn=OracleDBSecurity,cn=Products,cn=OracleContext,<realm-dn>" scope=one filter="(&(objectclass=orcldbenterprisedomain_82)(uniqueMember=cn=orcl11,cn=OracleContext,<realm-dn>))" attrs="orclDBAuthTypes,dn"
+[06/Dec/2013:15:30:08 +0000] SEARCH RES conn=69 op=2 msgID=3 result=0 nentries=1 etime=1
+[06/Dec/2013:15:30:08 +0000] SEARCH REQ conn=69 op=3 msgID=4 base="cn=Common,cn=Products,cn=OracleContext,<realm-dn>" scope=base filter="(objectclass=*)" attrs="ALL"
+[06/Dec/2013:15:30:08 +0000] SEARCH RES conn=69 op=3 msgID=4 result=0 nentries=1 etime=1
+[06/Dec/2013:15:30:08 +0000] SEARCH REQ conn=69 op=4 msgID=5 base="cn=users,<realm-dn>" scope=sub filter="(cn=USER90)" attrs="dn,authPassword,orclPassword,orclguid"
+[06/Dec/2013:15:30:08 +0000] SEARCH PROXY_REQ conn=69 op=4 msgID=5 s_conn=9 scope="sub" s_msgid=8989 base="cn=users,<realm-dn>" s_credmode=use-client-identity filter="(cn=USER90)"
+[06/Dec/2013:15:30:08 +0000] SEARCH PROXY_RES conn=69 op=4 msgID=5 result=0 s_conn=9 s_msgid=8989 etime=1 authzDN=cn=orcl11,cn=OracleContext,<realm-dn> nentries=1
+[06/Dec/2013:15:30:08 +0000] SEARCH RES conn=69 op=4 msgID=5 result=0 nentries=1 etime=1
+[06/Dec/2013:15:30:08 +0000] SEARCH REQ conn=69 op=5 msgID=6 base="cn=orcl11,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbEntrylevelMapping)(orclDBDistinguishedName=cn=user90,cn=Users,<realm-dn>))" attrs="orclDBNativeUser"
+[06/Dec/2013:15:30:08 +0000] SEARCH RES conn=69 op=5 msgID=6 result=0 nentries=0 etime=0
+[06/Dec/2013:15:30:08 +0000] SEARCH REQ conn=69 op=6 msgID=7 base="cn=orcl11,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbSubtreelevelMapping)(orclDBDistinguishedName=cn=Users,<realm-dn>))" attrs="orclDBNativeUser"
+[06/Dec/2013:15:30:08 +0000] SEARCH RES conn=69 op=6 msgID=7 result=0 nentries=0 etime=0
+[06/Dec/2013:15:30:08 +0000] SEARCH REQ conn=69 op=7 msgID=8 base="cn=orcl11,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbSubtreelevelMapping)(orclDBDistinguishedName=<realm-dn>))" attrs="orclDBNativeUser"
+[06/Dec/2013:15:30:08 +0000] SEARCH RES conn=69 op=7 msgID=8 result=0 nentries=0 etime=1
+[06/Dec/2013:15:30:08 +0000] SEARCH REQ conn=69 op=8 msgID=9 base="cn=orcl11,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbSubtreelevelMapping)(orclDBDistinguishedName=dc=oradev,dc=oraclecorp,dc=com))" attrs="orclDBNativeUser"
+[06/Dec/2013:15:30:08 +0000] SEARCH RES conn=69 op=8 msgID=9 result=0 nentries=0 etime=0
+[06/Dec/2013:15:30:08 +0000] SEARCH REQ conn=69 op=9 msgID=10 base="cn=orcl11,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbSubtreelevelMapping)(orclDBDistinguishedName=dc=oraclecorp,dc=com))" attrs="orclDBNativeUser"
+[06/Dec/2013:15:30:08 +0000] SEARCH RES conn=69 op=9 msgID=10 result=0 nentries=0 etime=0
+[06/Dec/2013:15:30:08 +0000] SEARCH REQ conn=69 op=10 msgID=11 base="cn=orcl11,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbSubtreelevelMapping)(orclDBDistinguishedName=dc=com))" attrs="orclDBNativeUser"
+[06/Dec/2013:15:30:08 +0000] SEARCH RES conn=69 op=10 msgID=11 result=0 nentries=0 etime=1
+[06/Dec/2013:15:30:08 +0000] SEARCH REQ conn=69 op=11 msgID=12 base="cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbEntrylevelMapping)(orclDBDistinguishedName=cn=user90,cn=Users,<realm-dn>))" attrs="orclDBNativeUser"
+[06/Dec/2013:15:30:08 +0000] SEARCH RES conn=69 op=11 msgID=12 result=0 nentries=0 etime=0
+[06/Dec/2013:15:30:08 +0000] SEARCH REQ conn=69 op=12 msgID=13 base="cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbSubtreelevelMapping)(orclDBDistinguishedName=cn=Users,<realm-dn>))" attrs="orclDBNativeUser"
+[06/Dec/2013:15:30:08 +0000] SEARCH RES conn=69 op=12 msgID=13 result=0 nentries=1 etime=1
+[06/Dec/2013:15:30:08 +0000] SEARCH REQ conn=69 op=13 msgID=14 base="cn=Common,cn=Products,cn=OracleContext,<realm-dn>" scope=base filter="(objectclass=*)" attrs="orclCommonGroupSearchBase"
+[06/Dec/2013:15:30:08 +0000] SEARCH RES conn=69 op=13 msgID=14 result=0 nentries=1 etime=1
+[06/Dec/2013:15:30:08 +0000] SEARCH REQ conn=69 op=14 msgID=15 base="cn=users,<realm-dn>" scope=sub filter="(|(&(uniquemember=cn=user90,cn=Users,<realm-dn>)(objectclass=groupofuniquenames)(!(objectclass=orcldbenterpriserole)))(&(member=cn=user90,cn=Users,<realm-dn>)(objectclass=groupofnames)(!(objectclass=orcldbenterpriserole))))" attrs="dn"
+[06/Dec/2013:15:30:08 +0000] SEARCH PROXY_REQ conn=69 op=14 msgID=15 s_conn=9 scope="sub" s_msgid=8990 base="cn=users,<realm-dn>" s_credmode=use-client-identity filter="(|(&(uniqueMember=cn=user90,cn=Users,<realm-dn>)(objectClass=groupofuniquenames)(!(objectClass=orcldbenterpriserole)))(&(member=cn=user90,cn=Users,<realm-dn>)(objectClass=group)(!(objectClass=orcldbenterpriserole))))"
+[06/Dec/2013:15:30:08 +0000] SEARCH PROXY_RES conn=69 op=14 msgID=15 result=0 s_conn=9 s_msgid=8990 etime=0 authzDN=cn=orcl11,cn=OracleContext,<realm-dn> nentries=0
+[06/Dec/2013:15:30:08 +0000] SEARCH RES conn=69 op=14 msgID=15 result=0 nentries=0 etime=0
+[06/Dec/2013:15:30:08 +0000] SEARCH REQ conn=69 op=15 msgID=16 base="cn=ProxyPermissions,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,<realm-dn>" scope=sub filter="(&(objectclass=orcldbproxypermission)(uniquemember=cn=user90,cn=Users,<realm-dn>)(|(orcldbtargetuser=cn=orcl11,cn=OracleContext,<realm-dn>,TargetUser=USERPROXY)(orcldbtargetuser=ALL,TargetUser=USERPROXY)))" attrs="dn"
+[06/Dec/2013:15:30:08 +0000] SEARCH RES conn=69 op=15 msgID=16 result=0 nentries=1 etime=2
+ 
+
+5) Enabling/Disabling a AD user account
+
+cn=user98 is disabled within AD. It is no longer be possible to connect to the database
+
+ 
+
+eus7.jpg
+
+SQL> connect user98 
+Enter password: 
+ERROR: 
+ORA-28052: the account is disabled
+
+Warning: You are no longer connected to ORACLE. 
+SQL>
+ 
+
+The OUD trace is:
+
+[09/Dec/2013:14:46:32 +0000] CONNECT conn=75 from=10.166.104.61:31598 to=10.166.145.87:28636 protocol=LDAPS
+[09/Dec/2013:14:46:32 +0000] BIND REQ conn=75 op=0 msgID=1 type=SASL mechanism=DIGEST-MD5 dn="cn=orcl11,cn=oraclecontext,<realm-dn>"
+[09/Dec/2013:14:46:32 +0000] BIND RES conn=75 op=0 msgID=1 result=14 etime=1
+[09/Dec/2013:14:46:32 +0000] BIND REQ conn=75 op=1 msgID=2 type=SASL mechanism=DIGEST-MD5 dn="cn=orcl11,cn=oraclecontext,<realm-dn>"
+[09/Dec/2013:14:46:32 +0000] BIND RES conn=75 op=1 msgID=2 result=0 authDN="cn=orcl11,cn=OracleContext,<realm-dn>" etime=1
+[09/Dec/2013:14:46:32 +0000] SEARCH REQ conn=75 op=2 msgID=3 base="cn=OracleDBSecurity,cn=Products,cn=OracleContext,<realm-dn>" scope=one filter="(&(objectclass=orcldbenterprisedomain_82)(uniqueMember=cn=orcl11,cn=OracleContext,<realm-dn>))" attrs="orclDBAuthTypes,dn"
+[09/Dec/2013:14:46:32 +0000] SEARCH RES conn=75 op=2 msgID=3 result=0 nentries=1 etime=1
+[09/Dec/2013:14:46:32 +0000] SEARCH REQ conn=75 op=3 msgID=4 base="cn=Common,cn=Products,cn=OracleContext,<realm-dn>" scope=base filter="(objectclass=*)" attrs="ALL"
+[09/Dec/2013:14:46:32 +0000] SEARCH RES conn=75 op=3 msgID=4 result=0 nentries=1 etime=1
+[09/Dec/2013:14:46:32 +0000] SEARCH REQ conn=75 op=4 msgID=5 base="cn=users,<realm-dn>" scope=sub filter="(cn=USER98)" attrs="dn,authPassword,orclPassword,orclguid"
+[09/Dec/2013:14:46:32 +0000] SEARCH PROXY_REQ conn=75 op=4 msgID=5 s_conn=9 scope="sub" s_msgid=11162 base="cn=users,<realm-dn>" s_credmode=use-client-identity filter="(cn=USER98)"
+[09/Dec/2013:14:46:32 +0000] SEARCH PROXY_RES conn=75 op=4 msgID=5 result=53 s_conn=9 s_msgid=11162 etime=1 authzDN=cn=orcl11,cn=OracleContext,<realm-dn> nentries=0
+[09/Dec/2013:14:46:32 +0000] SEARCH RES conn=75 op=4 msgID=5 result=53 nentries=0 etime=2
+[09/Dec/2013:14:46:38 +0000] UNBIND REQ conn=73 op=99 msgID=100
+[09/Dec/2013:14:46:38 +0000] DISCONNECT conn=73 reason="Client Disconnect"
