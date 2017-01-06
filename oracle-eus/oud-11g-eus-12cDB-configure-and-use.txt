@@ -205,3 +205,145 @@ NOTE: Create a new role CDB_DBA just to distinguish for POC purpose.
       
 $ /u02/app/oracle/product/11.2.0.4.RAC/bin/eusm createRole enterprise_role=CDB_DBA domain_name=OracleDefaultDomain realm_dn=dc=example,dc=com ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
 
+---------------------
+- VERIFY IN OUD ODSM
+---------------------
+Directory Manager --> Data Browser --> Data Tree --> dc=example,dc=com --> --> cn=OracleContext 
+     --> cn=Products --> cn=OracleDBSecurity 
+          --> cn=OracleDefaultDomin
+               --> cn=CDB_DBA
+Its DN: Distinguished Name cn=CDB_DBA,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=example,dc=com 
+
+- To delete it
+$ eusm deleteRole enterprise_role=CDB_DBA domain_name=OracleDefaultDomain realm_dn=dc=example,dc=com ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
+
+------------------------------------------------------------------------------------------------------
+ASSOCIATE GLOBAL ROLE IN DB (C##OUD_DBA_ROLE_GLOBAL) TO THE ENTERPRISE ROLE in OUD (CDB_DBA)
+------------------------------------------------------------------------------------------------------
+# QUESTION - here, should it be database_name=DB_NAME or DB_UNIQUE_NAME?
+$ eusm addGlobalRole enterprise_role=CDB_DBA domain_name=OracleDefaultDomain realm_dn=dc=example,dc=com database_name=DB_UNIQUE_NAME global_role=C##OUD_DBA_ROLE_GLOBAL dbuser=system dbuser_password=oracle#1 dbconnect_string=clustername-scan:1522/DB_UNIQUE_NAME ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
+
+----------------------------------------------
+GRANT ROLE
+----------------------------------------------
+NOTE: This is to create/use a 'group' in OUD LDAP to associate with the enterprise role.  
+        That is, 'grant' the enterprise role to a 'group' in OUD 
+             Then, we can associate this 'group' with users.
+      NOTE: In the 11g trial document, 'DBA' in group_dn=cn=DBA is the group DN
+               -->--> BUT, in that, THE ROLE AND GROUP WERE ACTUALLY PHYSICALLY ALSO ONE AND THE SAME
+                         -->--> LOOK AT THE GROUP_DN's heirarchy and the global-role's heirarchy are the same if you browse
+                         -->--> Look in this site for different role and group: 
+                                https://bdrouvot.wordpress.com/2016/04/30/oracle-unified-directory-and-user-security-quick-demo/
+                                   -->--> PROBABLY THE IDEA IS TO KEEP THEM SEPARATE - BUT DONE THIS WAY IN SOME OTHER SITE
+
+RAN THIS ONE: (as done in 11g - to keep it simple)
+# This has the role and group named same - to keep it simple
+/u02/app/oracle/product/11.2.0.4.RAC/bin/eusm grantRole enterprise_role=CDB_DBA domain_name=OracleDefaultDomain realm_dn=dc=example,dc=com group_dn=cn=CDB_DBA,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=example,dc=com ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
+
+# This has role and group separate - but group_dn should be pre-created
+#/u02/app/oracle/product/11.2.0.4.RAC/bin/eusm grantRole enterprise_role=CDB_DBA domain_name=OracleDefaultDomain realm_dn=dc=example,dc=com group_dn=cn=cdbdbas,dc=example,dc=com ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
+
+------------------------------
+VERIFY
+------------------------------
+-- VERIFY WITH EUSM COMMAND
+/u02/app/oracle/product/11.2.0.4.RAC/bin/eusm listEnterpriseRoleInfo enterprise_role=CDB_DBA domain_name=OracleDefaultDomain realm_dn=dc=example,dc=com ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
+
+INFOMATION FOR ENTERPRISE ROLE: CDB_DBA
+-------------------------------------------------
+LIST OF USERS
+-----------------
+LIST OF GROUPS
+-----------------
+cn=CDB_DBA,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=example,dc=com
+LIST OF GLOBAL ROLES
+--------------------
+DBNAME: RL4DB2_TTCE GLOBALROLE :C##OUD_DBA_ROLE_GLOBAL
+
+=====================================================================
+CREATE ENTERPRISE USERS IN OUD - AND ASSOCIATE THEM WITH GLOBAL USER
+=====================================================================
+Use the same user user1 that was created in 11g trial - this will help test that the same user can access both DB's.
+
+However, for reference, listed the user1 user and 'dbas' group create/associate guidelines below.
+
+-------------------------
+CREATE A OU FOR PEOPLE
+-------------------------
+Diretory Manager --> Data Browser --> Create --> Organization Unit
+Create it under dc=example,dc=com as people
+
+It will be created as Distinguished Name ou=people,dc=example,dc=com 
+
+------------------------------
+CREATE A GROUP FOR DBAs
+------------------------------
+Diretory Manager --> Data Browser --> Create --> Group Entry --> Static Group Entry
+Choose parent entry dc=example,dc=com
+Choose groupOfNames as the type of this group
+Give description as Full-access Infra DBAs
+
+It will be created as:  Distinguished Name ou=dbas,dc=example,dc=com 
+
+-----------------------------
+CREATE A USER UNDER OU PEOPLE
+-----------------------------
+Diretory Manager --> Data Browser --> Create --> User Entry
+Choose parent entry ou=people,dc=example,dc=com
+Give 'user1' as the value for all of these - Common Name, User ID, Last Name 
+
+It gets created as Distinguished Name cn=user1,ou=people,dc=example,dc=com 
+Question: Why not get created as uid=user1...?
+
+To Set password:
+Click on the user
+Go to 'Attributes' tab on the RHS
+Go to 'Optional Attributes' in it --> userpassword --> 'add' a password (I gave oracle as password)
+NOTE: you can also see 'uid' in the optional attributes section, with 'user1' as its value
+NOTE: Looks like password is in the 'organiational information' of the user in the 'user page' tab on RHS itself
+
+- VERIFY
+$ ldapbind -h 10.63.160.170 -p 1389 -D cn=user1,ou=people,dc=example,dc=com -w oracle
+bind successful
+
+$ ldapbind -h 10.63.160.170 -p 1389 -D uid=user1,ou=people,dc=example,dc=com -w oracle
+ldap_bind: Invalid credentials
+Question - Why uid=user1 does not work?
+
+$ ldapsearch -v -h  10.63.160.170 -p 1389 -D  cn='eusroot,ou=eusadmins,dc=example,dc=com' -w oracle#1 -b ou=people,dc=example,dc=com "(cn=user1)"
+     ldap_open( 10.63.160.170, 1389 )
+     filter pattern: (cn=user1)
+     returning: ALL
+     filter is: ((cn=user1))
+     cn=user1,ou=people,dc=example,dc=com
+     userPassword={SSHA}BLCHoGsvTX6S1C7s4sxctfj7Wz08itrzvmIkuA==
+     objectclass=top
+     objectclass=organizationalPerson
+     objectclass=person
+     objectclass=inetOrgPerson
+     uid=user1
+     cn=user1
+     sn=user1
+
+------------------------------------
+ADD THIS USER USER1 INTO GROUP DBAS
+------------------------------------
+Go to group 'dbas'
+In the 'Group Page' tab --> Member Information --> Add --> cn=user1,ou=people,dc=example,dc=com
+NOTE: You can choose user's DN via the select button also
+Click Apply
+
+- VERIFY
+Go to the user --> on RHS Additional User Information --> Group Membership --> shows Group DNs cn=dbas,dc=example,dc=com
+
+========================================
+ADD DBAS TO THE ENTERPRISE ROLE 'CDB_DBA'
+========================================
+Traverse to the 'CDB_DBA' CN as we did before:
+Data Tree --> Root --> dc=example,dc=com --> cn=OracleContext --> cn=Products --> cn=OracleDBSecurity --> cn=DBA
+
+To that, on the RHS --> Group Page --> Member Information --> Unique Member 
+                                        --> Add (worked - try the 'dbas' group first to see if that works for all users in that group)
+                                             --> cn=dbas,dc=example,dc=com
+                                             
+                                      
