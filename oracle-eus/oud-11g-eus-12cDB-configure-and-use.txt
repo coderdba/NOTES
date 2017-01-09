@@ -677,6 +677,38 @@ Data Browser --> Data Tree --> dc=example,dc=com --> cn=OracleContext --> cn=PDB
 To see the global user of the DB that got mapped:
  CLICK 'OPTIONAL ATTRIBUTES' on the RHS
      You will see:
-          orcldbnativeuser oud_global_ident_user
+          orcldbnativeuser oud_global_ident_schema_user
+
+
+======================================
+CREATE ENTERPRISE ROLES
+======================================
+https://wiki.loopback.org/confluence/display/KB/Configure+EUS+with+OUD%2C+AD+and+DB12c#ConfigureEUSwithOUD,ADandDB12c-Registerdatabasewithdirectory
+
+QUESTION - We are using GLOBAL_DB_NAME as of now everywhere for database_name - should it be DB_NAME?
+               Otherwise, how will primary-standby work?
+               
+-----------------------------------
+CREATE AN ENTERPRISE ROLE (PDB_DBA)
+-----------------------------------
+NOTE: Create a new role CDB_DBA just to distinguish for POC purpose. 
+      One role DBA should be good for 11G, 12C CDB and 12c CDB together.
+      
+$ /u02/app/oracle/product/11.2.0.4.RAC/bin/eusm createRole enterprise_role=PDB_DBA domain_name=OracleDefaultDomain realm_dn=dc=example,dc=com ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
+
+---------------------
+- VERIFY IN OUD ODSM
+---------------------
+Directory Manager --> Data Browser --> Data Tree --> dc=example,dc=com --> --> cn=OracleContext 
+     --> cn=Products --> cn=OracleDBSecurity 
+          --> cn=OracleDefaultDomin
+               --> cn=PDB_DBA
+Its DN: Distinguished Name Distinguished Name cn=PDB_DBA,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=example,dc=com
+
+------------------------------------------------------------------------------------------------------
+ASSOCIATE GLOBAL ROLE IN DB (C##OUD_DBA_ROLE_GLOBAL) TO THE ENTERPRISE ROLE in OUD (CDB_DBA)
+------------------------------------------------------------------------------------------------------
+# QUESTION - here, should it be database_name=DB_NAME or DB_UNIQUE_NAME?
+$ eusm addGlobalRole enterprise_role=CDB_DBA domain_name=OracleDefaultDomain realm_dn=dc=example,dc=com database_name=PDBNAME_DB_UNIQUE_NAME global_role=OUD_DBA_ROLE_GLOBAL dbuser=system dbuser_password=oracle#1 dbconnect_string=clustername-scan:1522/PDBNAME ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
 
 
