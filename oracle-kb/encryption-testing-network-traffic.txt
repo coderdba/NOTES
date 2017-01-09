@@ -1,0 +1,108 @@
+https://content-calpoly-edu.s3.amazonaws.com/polydata/1/userguides/TestingEncryptedDatabaseConnections.pdf
+
+Testing Encrypted Database Connections
+This document describes how to verify that your network connection to an Oracle database is being encrypted. To
+set up encrypted connections, see the document “Oracle Secure Database Connectivity.”
+Overview
+To validate that your network traffic is being encrypted when you connect to an Oracle database, you can enable
+client tracing and then examine the trace file to verify the encryption. You may optionally want to run a trace
+before you enable encryption so that you can see what that looks like before you trace your encrypted connection.
+Note: If your client has multiple Oracle clients installed, be sure you are working with the correct sqlnet.ora file.
+The basic steps are: 1) Enable tracing; 2) Run a SQL query; 3) Examine the trace file; and 4) Turn off tracing.
+Tracing a Database Connection
+1. Tracing is enabled by adding configuration parameters to your sqlnet.ora file (see the “Oracle Secure Database
+Connectivity” document for detailed instructions on how to locate your sqlnet.ora file):
+DIAG_ADR_ENABLED=off
+TRACE_DIRECTORY_CLIENT = c:\temp
+TRACE_LEVEL_CLIENT = 16
+TRACE_FILE_CLIENT = sqlnet_encryption.trc
+Notes:
+TRACE_DIRECTORY_CLIENT and TRACE_FILE_CLIENT can be any values you choose.
+Oracle will add numerical digits to the file name you supply for TRACE_FILE_CLIENT.
+For UNIX-type servers the TRACE_DIRECTORY_CLIENT must be a directory path such as /tmp.
+2. Use SQL*Plus or another tool to establish a connection to your target database. Run a simple query against an
+object that you have access to.
+3. Review the contents of c:\temp\sqlnet_encryption.trc. You should not see any clear text that corresponds to
+the query you issued, in which case you have successfully encrypted your database connections.
+4. Remove or comment-out the entries you added to your sqlnet.ora file to turn client tracing off. If you do not
+disable client tracing, then you will generate large trace files for every database connection and query that you
+issue.
+You can comment-out the tracing parameters by inserting a leading pound sign, as shown below:
+#DIAG_ADR_ENABLED=off
+#TRACE_DIRECTORY_CLIENT = c:\temp
+#TRACE_LEVEL_CLIENT = 16
+#TRACE_FILE_CLIENT = sqlnet_encryption.trc
+Save the changes to your sqlnet.ora file. Your database connections will continue to be encrypted, but no trace
+files will be generated. You are now done!
+Example
+The following sample trace file output illustrates the difference between encrypted and unencrypted connections.
+The trace files will be very large. The output we’re looking for is usually near the end of the trace file. The
+following output shows a trace for the unencrypted SQL statement “select dept5_dept_name from
+warehouse.department_tb where dept5_deptid = '133700'”. In this instance, we searched the trace file for
+“deptid” to quickly get to the relevant part of the trace file:
+[18-NOV-2011 15:48:56:966] nspsend: packet dump
+[18-NOV-2011 15:48:56:966] nspsend: 00 CE 00 00 06 00 00 00 |........|
+[18-NOV-2011 15:48:56:966] nspsend: 00 00 03 5E 08 61 80 00 |...^.a..|
+[18-NOV-2011 15:48:56:966] nspsend: 00 00 00 00 00 01 54 00 |......T.|
+[18-NOV-2011 15:48:56:966] nspsend: 00 00 01 0D 00 00 00 00 |........|
+[18-NOV-2011 15:48:56:966] nspsend: 01 00 00 00 00 01 00 00 |........|
+[18-NOV-2011 15:48:56:966] nspsend: 00 00 00 00 00 00 00 00 |........|
+[18-NOV-2011 15:48:56:966] nspsend: 00 00 00 00 00 00 01 01 |........|
+[18-NOV-2011 15:48:56:966] nspsend: 00 00 00 00 00 00 00 00 |........|
+[18-NOV-2011 15:48:56:966] nspsend: 00 01 FE 40 73 65 6C 65 |...@sele|
+[18-NOV-2011 15:48:56:966] nspsend: 63 74 20 64 65 70 74 35 |ct.dept5|
+[18-NOV-2011 15:48:56:966] nspsend: 5F 64 65 70 74 5F 6E 61 |_dept_na|
+[18-NOV-2011 15:48:56:966] nspsend: 6D 65 0A 20 20 66 72 6F |me...fro|
+[18-NOV-2011 15:48:56:966] nspsend: 6D 20 77 61 72 65 68 6F |m.wareho|
+[18-NOV-2011 15:48:56:966] nspsend: 75 73 65 2E 64 65 70 61 |use.depa|
+[18-NOV-2011 15:48:56:966] nspsend: 72 74 6D 65 6E 74 5F 74 |rtment_t|
+[18-NOV-2011 15:48:56:966] nspsend: 62 0A 20 77 68 65 72 65 |b..where|
+[18-NOV-2011 15:48:56:966] nspsend: 20 64 65 70 14 74 35 5F |.dep.t5_|
+[18-NOV-2011 15:48:56:966] nspsend: 64 65 70 74 69 64 20 3D |deptid.=|
+[18-NOV-2011 15:48:56:966] nspsend: 20 27 31 33 33 37 30 30 |.'133700|
+[18-NOV-2011 15:48:56:966] nspsend: 27 00 01 00 00 00 00 00 |'.......|
+[18-NOV-2011 15:48:56:966] nspsend: 00 00 00 00 00 00 00 00 |........|
+[18-NOV-2011 15:48:56:966] nspsend: 00 00 00 00 00 00 00 00 |........|
+[18-NOV-2011 15:48:56:966] nspsend: 00 00 00 00 00 00 01 00 |........|
+[18-NOV-2011 15:48:56:966] nspsend: 00 00 00 00 00 00 00 00 |........|
+[18-NOV-2011 15:48:56:966] nspsend: 00 00 00 00 00 00 00 00 |........|
+[18-NOV-2011 15:48:56:966] nspsend: 00 00 00 00 00 00 |...... |
+[18-NOV-2011 15:48:56:966] nspsend: 206 bytes to transport
+In the output above, you can easily see the select statement and its values in clear text on the right. If the select
+statement contained values for SSNs, birthdates or other sensitive information they would be in clear text, and we
+don’t want that to happen. Farther down in the log you will see the results of your query in clear text, and we
+definitely don’t want that.
+The output below shows trace file information for an encrypted connection. Since the query is not in clear text we
+can’t search for it. The easiest thing to do is search for the second occurrence of “naeecom”. If encryption was
+used successfully, you’ll see a line saying “The server chose the 'AES256' encryption algorithm” and another line
+saying “encryption is active, using AES256”:
+[18-NOV-2011 16:04:41:290] naeecom: entry
+[18-NOV-2011 16:04:41:290] naeecom: The server chose the 'AES256' encryption algorithm
+[18-NOV-2011 16:04:41:290] naeecom: exit
+[18-NOV-2011 16:04:41:290] naeccom: entry
+[18-NOV-2011 16:04:41:290] naeccom: The server chose the 'SHA1' crypto-checksumming algorithm
+[18-NOV-2011 16:04:41:290] naeccom: exit
+[18-NOV-2011 16:04:41:290] na_tns: entry
+[18-NOV-2011 16:04:41:290] na_tns: Secure Network Services is available.
+[18-NOV-2011 16:04:41:290] nau_adi: entry
+[18-NOV-2011 16:04:41:290] nau_adi: exit
+[18-NOV-2011 16:04:41:290] na_tns: authentication is not active
+[18-NOV-2011 16:04:41:290] na_tns: encryption is active, using AES256
+[18-NOV-2011 16:04:41:290] na_tns: crypto-checksumming is active, using SHA1
+[18-NOV-2011 16:04:41:290] na_tns: exit
+If encryption was not successfully enabled, you will see these entries instead of the ones listed above:
+[18-NOV-2011 16:08:52:637] naeecom: entry
+[18-NOV-2011 16:08:52:637] naeecom: Encryption inactive
+[18-NOV-2011 16:08:52:637] naeecom: exit
+[18-NOV-2011 16:08:52:637] naeccom: entry
+[18-NOV-2011 16:08:52:637] naeccom: Crypto-Checksumming inactive
+[18-NOV-2011 16:08:52:637] naeccom: exit
+[18-NOV-2011 16:08:52:637] na_tns: entry
+[18-NOV-2011 16:08:52:637] na_tns: Secure Network Services is available.
+[18-NOV-2011 16:08:52:637] nau_adi: entry
+[18-NOV-2011 16:08:52:637] nau_adi: exit
+[18-NOV-2011 16:08:52:637] na_tns: authentication is not active
+[18-NOV-2011 16:08:52:637] na_tns: encryption is not active
+[18-NOV-2011 16:08:52:637] na_tns: crypto-checksumming is not active
+[18-NOV-2011 16:08:52:637] na_tns: exit
+-end-
