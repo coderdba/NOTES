@@ -7,7 +7,7 @@ In this, we will use the root user, OU, realm and enterprise user created in oud
 
 =======================================
 ---------------------------------------
-            EUS FOR 12C CDB
+            EUS FOR 12C CDB (PDB later in this doc)
 ---------------------------------------
 =======================================
 DB=L4D2
@@ -527,6 +527,123 @@ C##OUD_DBA_ROLE_GLOBAL
 
 26 rows selected.
 
+=======================================
+---------------------------------------
+            EUS FOR 12C PDB
+---------------------------------------
+=======================================
+
+======================
+REGISTER PDB IN OUD
+======================
+$ dbca -silent -configurePluggableDatabase -sourceDB RL4DB2_TTCE -pdbname RL4DB2PD1 -sysDBAUserName sys -sysDBAPassword "oracle#1" -registerWithDirService true -dirServiceUserName cn='eusroot,ou=eusadmins,dc=example,dc=com' -dirServicePassword oracle#1 -walletPassword 'oracle#1' -listeners listener
+
+You will see PDB as:
+Distinguished Name	cn=PDBNAME_DB_UNIQUE_NAME,cn=OracleContext,dc=example,dc=com
+Its password in Optional Attributes
+Its wallet in /u02/app/oracle/admin/DB_UNIQUE_NAME/399C2BFF74093219E053BD88420A5996/wallet
+Where 399C2BFF74093219E053BD88420A5996 is the ID of the PDB
+
+TBD - Other types of verifications - later 
+
+- VERIFY IF DB IS IN THE WALLET
+
+$ cd /u02/app/oracle/admin/DB_UNIQUE_NAME/399C2BFF74093219E053BD88420A5996/wallet
+
+$ orapki wallet display -wallet .
+Oracle PKI Tool : Version 12.1.0.2
+Copyright (c) 2004, 2014, Oracle and/or its affiliates. All rights reserved.
+
+Requested Certificates:
+User Certificates:
+Oracle Secret Store entries:
+ORACLE.SECURITY.DN
+ORACLE.SECURITY.PASSWORD
+Trusted Certificates:
+
+$ mkstore -wrl . -viewEntry ORACLE.SECURITY.DN
+Oracle Secret Store Tool : Version 12.1.0.2
+Copyright (c) 2004, 2014, Oracle and/or its affiliates. All rights reserved.
+
+Enter wallet password:
+ORACLE.SECURITY.DN = cn=RL4DB2PD1_RL4DB2_TTCE,cn=OracleContext,dc=example,dc=com
+
+$ mkstore -wrl . -viewEntry ORACLE.SECURITY.PASSWORD
+Oracle Secret Store Tool : Version 12.1.0.2
+Copyright (c) 2004, 2014, Oracle and/or its affiliates. All rights reserved.
+
+Enter wallet password:
+ORACLE.SECURITY.PASSWORD = 0~U1FhwRbXv7
+
+- VERIFY USING LDAPBIND
+$ ldapbind -h 10.63.160.170 -p 1389 -D cn=PDBNAME_DB_UNIQUE_NAME,cn=OracleContext,dc=example,dc=com -q
+password: < give the password found as value of ORACLE.SECURITY.PASSWORD >
+bind successful
+
+-----------------------------------
+ASSIGN CERTIFICATE TO WALLET
+-----------------------------------
+NOTE: This certificate is created with keytool in OUD server - self-signed (see install document)
+NOTE: This is the certificate entry in orapki wallet display output - Subject: CN=oudhost.company.com,O=CompanyName,C=US  
+
+- Add certificate
+$ orapki wallet add -wallet /u02/app/oracle/admin/DB_UNIQUE_NAME/PDB_UID/wallet -cert ./oud-server-cert.txt -trusted_cert -pwd "oracle#1"
+
+- Verify - NOTE: This is much shorter compared to 11g display - need to check that why
+$ orapki wallet display -wallet /u02/app/oracle/admin/DB_UNIQUE_NAME/PDB_UID/wallet
+Requested Certificates:
+User Certificates:
+Oracle Secret Store entries:
+ORACLE.SECURITY.DN
+ORACLE.SECURITY.PASSWORD
+Trusted Certificates:
+Subject:        CN=CN=oudhost.company.com,O=CompanyName,C=US
+
+====================================
+CREATE SCHEMA, ROLES, GLOBAL USERS
+====================================
+NOTE: Do this like we did for 11g - as a PDB objects are similar to 11g DB objects
+
+spool 12cpdbsetup.lst
+
+set echo on
+
+create role oud_appwrite_role_local;
+create role oud_appread_role_local;
+
+create role oud_appwrite_role_global identified globally;
+create role oud_appread_role_global identified globally;
+create role oud_dba_role_global identified globally;
+
+grant oud_appwrite_role_local to oud_appwrite_role_global;
+grant oud_appread_role_local to oud_appread_role_global;
+grant dba to oud_dba_role_global;
+
+grant connect to oud_appwrite_role_global;
+grant connect to oud_appread_role_global;
+grant connect to oud_dba_role_global;
+
+create user oudappmgr identified by oudappmgr123;
+
+create table oudappmgr.emp (id int, name varchar2(10));
+create table oudappmgr.dept (id int, name varchar2(10));
+
+create user oud_global_ident_schema_user  identified globally;
+
+grant select, insert, update, delete on oudappmgr.emp to oud_appwrite_role_local;
+grant select, insert, update, delete on oudappmgr.emp to oud_appwrite_role_local;
+
+grant select, insert, update, delete on oudappmgr.emp to oud_appread_role_local;
+grant select on oudappmgr.emp to oud_appread_role_local;
+
+-- Just for extra testing
+create user oud_global_ident_schema_user2  identified globally;
+
+spool off
+
+====================================================
+MAP IN OUD THE GLOBAL IDENT USER FOR THIS DB 
+====================================================
 
 
 
