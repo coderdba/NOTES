@@ -1,0 +1,70 @@
+=======================================================================
+ORA-28047 "database is not a member of any enterprise domain in OID"
+=======================================================================
+ldapsearch -h <OID_hostname> -D cn=orcladmin -w <your_password> cn=OracleDefaultDomain uniquemember|findstr <missing_alias>
+
+=======================================================================
+SITE 1
+=======================================================================
+http://vanbortel.blogspot.in/2010/06/ora-28047-database-is-not-member-of-any.html
+ORA-28047 "database is not a member of any enterprise domain in OID"
+
+Amazing... Two-and-a-half-thousand hits and no answer. Metalink: two hits and no answer. Why me?
+OK; here's what is happening, and how to resolve the issue. I have not figured out what causes the problem - it seems intermittent.
+Update: might have something to do with settings (stickyness?) on the loadbalancer.
+Symptoms
+
+You will be confronted with this error while trying Enterprise Security:
+sqlplus s/s@<missing_alias>
+SQL*Plus: Release 10.2.0.4.0 - Production on Fri Jun 11 10:26:49 2010
+Copyright (c) 1982, 2007, Oracle.  All Rights Reserved.
+
+ERROR:
+ORA-28047: database is not a member of any enterprise domain in OID
+
+Enter user-name: 
+
+You have registered the database, and all seems well. No errors were shown during the process, none to be found in the logs, and your database can be found, using LDAP name resolving.
+It can also be found in your default Realm (LDAP root in Oracle slang) using:
+ldapsearch -h <OID_hostname> cn=<missing_alias>
+
+What causes ORA-28047
+
+Exactly what is says: your database is not known in any Enterprise Domain.
+You may check it, using this query:
+ldapsearch -h <OID_hostname> -D cn=orcladmin -w <your_password> cn=OracleDefaultDomain uniquemember|findstr <missing_alias>
+
+Change findstr to grep if you're on Unix or Linux; I was resolving this issue with a client that uses MS Windows workstations.
+Change OracleDefaultDomain to something else, if you use multiple security domains (I doubt if any)
+How to resolve
+
+Well, that's obvious now: add a member to the OracleDefaultDomain. For some reason, Oracle's Directory Manager does not allow you to do that, but other tools do. If all else fails, you can still do it from the commandline, using ldapmodify:
+ldapmodify <OID_hostname> -D cn=orcladmin -w <your_password> -f ora28047.ldif
+
+The contents of the file ORA28047.ldif is:
+dn: cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=<your_realm_here>
+changetype: modify
+add: uniquemember
+uniquemember:cn=<missing_alias>,cn=oraclecontext,dc=<your_realm_here>
+
+Mind the formatting... lines cannot be broken (as blogger formatting does)
+ORA-28273
+
+That should be the sign that all works: plus connects to the database, the database knows it needs to go to the OID, it cannot find the specified user ("s") in the OID:
+sqlplus s/s@<missing_alias>
+SQL*Plus: Release 10.2.0.4.0 - Production on Fri Jun 11 10:26:49 2010
+Copyright (c) 1982, 2007, Oracle.  All Rights Reserved.
+
+ERROR:
+ORA-28273: No mapping for user nickname to LDAP distinguished name exists.
+
+Taking it one step further: ORA-28274
+
+If you use an actual OID-known account, you should get ORA-28274: No ORACLE password attribute corresponding to user nickname exists:
+sqlplus bortel/s@<missing_alias>
+SQL*Plus: Release 10.2.0.4.0 - Production on Fri Jun 11 10:26:49 2010
+Copyright (c) 1982, 2007, Oracle.  All Rights Reserved.
+
+ERROR:
+ORA-28274: No ORACLE password attribute corresponding to user nickname exists.
+POSTED BY FRANK AT 6/11/2010 10:54:00 AM  
