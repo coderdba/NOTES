@@ -1,0 +1,239 @@
+	EUS - ORA-28030: Server Encountered Problems Accessing OUD (Doc ID 1986819.1)	To BottomTo Bottom	
+
+In this Document
+Symptoms
+Cause
+Solution
+References
+
+APPLIES TO:
+
+Oracle Unified Directory - Version 11.1.2.2.0 and later
+Information in this document applies to any platform.
+Affected DB versions - 11.1.1.1 and up to and including 12.1.0.2
+SYMPTOMS
+
+After Following KM doc: CVE-2014-3566 Instructions to Mitigate the SSL v3.0 Vulnerability (aka "Poodle Attack") in Oracle Unified Directory (Doc ID 1950331.1) to disable SSLv3, EUS authentication fails with the following errors:
+
+oud-/$ sqlplus
+
+SQL*Plus: Release 11.2.0.4.0 Production on Thu Mar 5 07:36:11 2015
+
+Copyright (c) 1982, 2013, Oracle.  All rights reserved.
+
+Enter user-name: user.0
+Enter password: 
+ERROR:
+ORA-28030: Server encountered problems accessing LDAP directory service
+
+oud-/u01/Middleware/asinst_1/OUD/logs$ tail access 
+
+[05/Mar/2015:07:36:14 -0700] CONNECT conn=69 from=192.168.59.30:33503 to=192.168.59.30:1636 protocol=LDAPS
+[05/Mar/2015:07:36:14 -0700] DISCONNECT conn=69 reason="I/O Error" msg="Client requested protocol SSLv3 not enabled or not supported"
+
+ 
+
+This problem will also occur using any JDK version greater than JDK 7u75 - http://www.oracle.com/technetwork/java/javase/7u75-relnotes-2389086.html\
+
+Starting with JDK 7u75 release, the SSLv3 protocol (Secure Socket Layer) has been deactivated and is not available by default.
+
+CAUSE
+
+ Bug 19285025
+
+SOLUTION
+
+Apply patch: 19285025, available via the patch portal.
+
+ 
+
+Example:
+
+ - Shutdown Database & Listener
+
+oud-/scratch/patch/db/19285025$ lsnrctl stop
+
+LSNRCTL for Linux: Version 11.2.0.4.0 - Production on 05-MAR-2015 07:51:14
+
+Copyright (c) 1991, 2013, Oracle.  All rights reserved.
+
+Connecting to (DESCRIPTION=(ADDRESS=(PROTOCOL=IPC)(KEY=EXTPROC1521)))
+The command completed successfully
+
+oud-/scratch/patch/db/19285025$ sqlplus '/ as sysdba'
+
+SQL*Plus: Release 11.2.0.4.0 Production on Thu Mar 5 07:51:21 2015
+
+Copyright (c) 1982, 2013, Oracle.  All rights reserved.
+
+
+Connected to:
+Oracle Database 11g Enterprise Edition Release 11.2.0.4.0 - 64bit Production
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+
+SQL> shutdown immediate;   
+Database closed.
+Database dismounted.
+ORACLE instance shut down.
+SQL> quit
+Disconnected from Oracle Database 11g Enterprise Edition Release 11.2.0.4.0 - 64bit Production
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+
+ 
+
+ Apply Patch 19285025
+
+**Set ORACLE_HOME to the proper location for your environment..** 
+
+Example:
+
+export ORACLE_HOME=/u01/Middleware/Oracle_IDM1
+
+
+oud-/scratch/patch/db/19285025$ /u01/Middleware/Oracle_IDM1/OPatch/opatch apply
+Oracle Interim Patch Installer version 11.2.0.3.4
+Copyright (c) 2012, Oracle Corporation.  All rights reserved.
+
+
+Oracle Home       : /u01/Middleware/Oracle_IDM1
+Central Inventory : /u01/oraInventory
+   from           : /u01/Middleware/Oracle_IDM1/oraInst.loc
+OPatch version    : 11.2.0.3.4
+OUI version       : 11.2.0.4.0
+Log file location : /u01/Middleware/Oracle_IDM1/cfgtoollogs/opatch/19285025_Mar_05_2015_07_51_41/apply2015-03-05_07-51-41AM_1.log
+
+
+OPatch detects the Middleware Home as "/u01/Middleware"
+
+Applying interim patch '19285025' to OH '/u01/Middleware/Oracle_IDM1'
+Verifying environment and performing prerequisite checks...
+All checks passed.
+
+Please shutdown Oracle instances running out of this ORACLE_HOME on the local system.
+(Oracle Home = '/u01/Middleware/Oracle_IDM1')
+
+
+Is the local system ready for patching? [y|n]
+y
+User Responded with: Y
+Backing up files...
+
+Patching component oracle.ldap.rsf, 11.2.0.4.0...
+
+Patching component oracle.rdbms, 11.2.0.4.0...
+
+Patching component oracle.rdbms.rsf, 11.2.0.4.0...
+
+Verifying the update...
+Patch 19285025 successfully applied
+Log file location: /u01/Middleware/Oracle_IDM1/cfgtoollogs/opatch/19285025_Mar_05_2015_07_51_41/apply2015-03-05_07-51-41AM_1.log
+
+OPatch succeeded.
+
+ 
+
+ Start Database & Listener
+
+
+oud-/scratch/patch/db/19285025$ lsnrctl start
+
+LSNRCTL for Linux: Version 11.2.0.4.0 - Production on 05-MAR-2015 07:52:09
+
+Copyright (c) 1991, 2013, Oracle.  All rights reserved.
+
+Starting /u01/Middleware/Oracle_IDM1/bin/tnslsnr: please wait...
+
+TNSLSNR for Linux: Version 11.2.0.4.0 - Production
+System parameter file is /u01/Middleware/Oracle_IDM1/network/admin/listener.ora
+Log messages written to /u01/app/diag/tnslsnr/oud/listener/alert/log.xml
+Listening on: (DESCRIPTION=(ADDRESS=(PROTOCOL=ipc)(KEY=EXTPROC1521)))
+Listening on: (DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(HOST=oud)(PORT=1521)))
+
+Connecting to (DESCRIPTION=(ADDRESS=(PROTOCOL=IPC)(KEY=EXTPROC1521)))
+STATUS of the LISTENER
+------------------------
+Alias                     LISTENER
+Version                   TNSLSNR for Linux: Version 11.2.0.4.0 - Production
+Start Date                05-MAR-2015 07:52:09
+Uptime                    0 days 0 hr. 0 min. 0 sec
+Trace Level               off
+Security                  ON: Local OS Authentication
+SNMP                      OFF
+Listener Parameter File   /u01/Middleware/Oracle_IDM1/network/admin/listener.ora
+Listener Log File         /u01/app/diag/tnslsnr/oud/listener/alert/log.xml
+Listening Endpoints Summary...
+  (DESCRIPTION=(ADDRESS=(PROTOCOL=ipc)(KEY=EXTPROC1521)))
+  (DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(HOST=oud)(PORT=1521)))
+The listener supports no services
+The command completed successfully
+
+
+oud-/scratch/patch/db/19285025$ sqlplus '/ as sysdba'
+
+SQL*Plus: Release 11.2.0.4.0 Production on Thu Mar 5 07:52:13 2015
+
+Copyright (c) 1982, 2013, Oracle.  All rights reserved.
+
+Connected to an idle instance.
+
+SQL> startup
+ORACLE instance started.
+
+Total System Global Area 1.0088E+10 bytes
+Fixed Size                  2261928 bytes
+Variable Size            1845496920 bytes
+Database Buffers         8220835840 bytes
+Redo Buffers               19595264 bytes
+Database mounted.
+Database opened.
+
+SQL> quit
+Disconnected from Oracle Database 11g Enterprise Edition Release 11.2.0.4.0 - 64bit Production
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+
+
+ Verify EUS Authentication
+
+oud-/u01/Middleware/Oracle_IDM1/network/admin$ sqlplus
+
+SQL*Plus: Release 11.2.0.4.0 Production on Thu Mar 5 07:53:20 2015
+
+Copyright (c) 1982, 2013, Oracle.  All rights reserved.
+
+Enter user-name: user.0
+Enter password: 
+
+Connected to:
+Oracle Database 11g Enterprise Edition Release 11.2.0.4.0 - 64bit Production
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+
+SQL> quit
+
+
+Alternative Solution
+
+If patch 19285025 cannot be applied (whatever the reason may be), then there is an alternative solution.  Although not recommended, the alternative solution is to re-enable SSLv3 in the JVM that's hosting OUD.  The following site provides links to the Release Notes for the various major Java versions where instructions to re-enable SSLv3 can be found...
+
+http://www.oracle.com/technetwork/java/javase/documentation/cve-2014-3566-2342133.html
+
+Referencing the Java 7 update 75 Release Notes...
+
+7u75 Update Release Notes
+http://www.oracle.com/technetwork/java/javase/7u75-relnotes-2389086.html
+
+here is the relevant excerpt...
+
+SSLv3 is disabled by default
+
+Starting with JDK 7u75 release, the SSLv3 protocol (Secure Socket Layer) has been deactivated and is not available by default. See the java.security.Security property jdk.tls.disabledAlgorithms in <JRE_HOME>/lib/security/java.security file.
+
+If SSLv3 is absolutely required, the protocol can be reactivated by removing "SSLv3" from the jdk.tls.disabledAlgorithms property in the java.security file or by dynamically setting this Security property to "true" before JSSE is initialized.
+
+It should be noted that SSLv3 is obsolete and should no longer be used.
+
+Here are the high level steps to re-enable SSLv3 for OUD...
+
+1. Stop OUD instance(s)
+2. Make the necessary change to Java as instructed in the release notes
+3. Start OUD instance(s)
+4. Test EUS authentication
