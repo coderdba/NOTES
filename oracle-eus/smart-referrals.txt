@@ -1,0 +1,32 @@
+Assumed you have registered PRIMARY_UNIQUE_NAME into directory under cn=PRIMARY_UNIQUE_NAME ,cn=OracleContext,dc=example,dc=com  , 
+then you could create Aliases for that database with different logical name pointing to the real one. 
+Since OUD does not support Aliases yet, we can use smart referrals instead of Aliases. 
+So as a logical service name I could use for example "service1" . 
+You have to create a LDIF file with following information and import that LDIF file in OUD:
+
+dn: cn=service1,cn=OracleContext,dc=example,dc=com
+objectclass: top
+objectclass: referral
+objectclass: extensibleObject
+objectclass: orclNetServiceAlias
+ref: ldaps://oud_server_name:1636/cn=DB_UNIQUE_NAME,cn=OracleContext,dc=example,dc=com
+ 
+First of all since the DB_UNIQUE_NAME is different for primary and secondary , 
+then you have to use the same "smart referral" mechanism to create a link . 
+So for example if your database was registered as cn=PRIMARY_DB_UNIQUE_NAME,cn=OracleContext,dc=example,dc=com on primary, 
+then you have to create the referral as 
+dn: cn=STANDBY_DB_UNIQUE_NAME,cn=OracleContext,dc=example,dc=com
+objectclass: top
+objectclass: referral
+objectclass: extensibleObject
+objectclass: orclNetServiceAlias
+ref: ldaps://oralx0003.hq.target.com:1636/cn=PRIMARY_DB_UNIQUE_NAME,cn=OracleContext,dc=example,dc=com
+Secondly you have to add the new service name the connect string for the standby system to OUD for the registered service. 
+
+So if dbca had created the connect string like 
+(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=primary-scan)(PORT=1522)))(CONNECT_DATA=(SERVICE_NAME=PRIMARY_UNIQUE_NAME)))
+
+You would need to add a second connect string to OUD with
+(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=standby-scan)(PORT=1522)))(CONNECT_DATA=(SERVICE_NAME=STANDBY_DB_UNIQUE_NAME)))
+
+You may use another hostname or port number in this connect string if they also differ from the primary one . 
