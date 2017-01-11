@@ -237,6 +237,13 @@ bind successful
         EUS FOR A 11G DATABASE
 --------------------------------------
 ======================================
+
+******************************************************************************************************************
+IMPORTANT: Set ORACLE_BASE and TNS_ADMIN environment variables for the DB.  This is necessary to avoid ORA-28030.
+           Use srvctl setenv if starting db using srvctl.  
+           Use o/s environment variables if starting db with sqlplus.
+******************************************************************************************************************
+
 Pre-requisites - a root user - either default 'Directory Admin' or 'eusroot' or other be available in OUD.
 In this case:
 eusroot password oracle#1
@@ -245,6 +252,16 @@ eusroot password oracle#1
 ************
 NOTE: See various NOTE and QUESTION to know and answer.
 ************
+
+
+==================================
+SET DB ENVIRONMENT AND RESTART DB
+==================================
+******************************************************************************************************************
+IMPORTANT: Set ORACLE_BASE and TNS_ADMIN environment variables for the DB.  This is necessary to avoid ORA-28030.
+           Use srvctl setenv if starting db using srvctl.  
+           Use o/s environment variables if starting db with sqlplus.
+******************************************************************************************************************
 
 ======================
 REGISTER DB IN OUD
@@ -441,9 +458,13 @@ spool off
 ====================================================
 MAP IN OUD THE GLOBAL IDENT USER FOR THIS DB 
 ====================================================
--------------------------
-DO THE MAPPING
--------------------------
+---------------------------------------------------
+MAP THE GLOBAL IDENT USER TO A GROUP/USER/HEIRARCHY 
+---------------------------------------------------
+NOTE: IMPORTANT:  The global-ident-user denoted by 'schema' in the createMapping command 
+                  is mapped to a user/group/heirarchy denoted by 'map_dn'
+                  If mapped to a group or heirarchy, then all 'users' under its tree will be mapped to the global-ident-user in DB.
+                  
 $ eusm createMapping database_name=DB_UNIQUE_NAME realm_dn='dc=example,dc=com' map_type=SUBTREE map_dn='dc=example,dc=com' schema=oud_global_ident_schema_user ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn='cn=eusroot,ou=eusadmins,dc=example,dc=com' ldap_user_password=oracle#1
 
 NOTE: This command does not produce any screen output
@@ -673,9 +694,17 @@ Look up the 'member information' in the RHS -
 ================================================
 MAP THIS USER TO THE GLOBAL-IDENT-USER IN THE DB
 ================================================
---------
-MAP
---------
+NOTE: IT IS NOT REQUIRED to explicitly map the user to the global-ident-user.
+The earlier createmapping would have mapped it to a heirarchy/group already.
+($ eusm createMapping database_name=DB_UNIQUE_NAME realm_dn='dc=example,dc=com' map_type=SUBTREE map_dn='dc=example,dc=com' schema=oud_global_ident_schema_user ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn='cn=eusroot,ou=eusadmins,dc=example,dc=com' ldap_user_password=oracle#1
+)
+
+However, it is given here FYI and optional step
+
+--------------------------------
+OPTIONAL (see note above)
+MAP USER TO GLOBAL IDENT USER
+--------------------------------
 $ eusm createMapping realm_dn=dc=example,dc=com  ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn='eusroot,ou=eusadmins,dc=example,dc=com' ldap_user_password=oracle#1 database_name="DB_UNIQUE_NAME" map_type="ENTRY" map_dn='cn=user1,ou=people,dc=example,dc=com' schema=oud_global_ident_schema_user
 
 --------
@@ -702,7 +731,6 @@ Mapping Level :DATABASE
 =========================================
 CONNECT AS THE NEW USER USER1
 =========================================
-
 -------------------------
 CREATE LDAP.ORA in $TNS_ADMIN
 -------------------------
@@ -714,8 +742,11 @@ DIRECTORY_SERVER_TYPE = OID
 CREATE SQLNET.ORA in $TNS_ADMIN
 -------------------------
 NOTE: Provide the right DB_UNIQUE_NAME of the DB below
+NOTE: Add LDAP to DIRECTORY_PATH
+NOTE: WALLET_LOCATION is not necessary if DB is started with TNS_ADMIN and ORACLE_BASE environment set 
+      (setenv for srvctl, o/s env for sqlplus)
 
-NAMES.DIRECTORY_PATH= (TNSNAMES, EZCONNECT)
+NAMES.DIRECTORY_PATH= (LDAP, TNSNAMES, EZCONNECT)
 WALLET_LOCATION=
     (SOURCE=(METHOD=FILE)(METHOD_DATA=
       (DIRECTORY=/u02/app/oracle/admin/DB_UNIQUE_NAME/wallet)))
