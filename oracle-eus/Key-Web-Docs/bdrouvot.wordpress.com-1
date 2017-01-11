@@ -1,0 +1,170 @@
+https://bdrouvot.wordpress.com/2016/04/30/oracle-unified-directory-and-user-security-quick-demo/
+
+Oracle Unified Directory and user security: quick demo
+Posted on 30/04/2016 by bdrouvot
+Introduction
+
+Oracle Unified Directory (OUD) can be used to centrally manage database users across the enterprise.
+
+It allows us to manage roles and privileges across various databases registered with the directory.
+
+Users connect to the database by providing credentials that are stored in Oracle Unified Directory, then the database executes LDAP search operations to query user specific authentication and authorization information.
+
+This post does not cover the OUD installation.
+
+Setup Steps
+
+So, once the OUD has been installed the remaining steps are:
+
+Register the database into the OUD.
+Create global roles and global users into the database.
+Create groups and users into the OUD.
+Link OUD groups with databases roles.
+Let’s setup.
+
+Step 1: Register the database into the OUD
+
+>$ cat $ORACLE_HOME/network/admin/ldap.ora
+DIRECTORY_SERVERS=(oud:1389:1636)
+DEFAULT_ADMIN_CONTEXT="dc=bdt,dc=com"
+DIRECTORY_SERVER_TYPE=OID
+
+>$ cat register_database_oud.ksh
+dbca -silent -configureDatabase -sourceDB PBDT -registerWithDirService true -dirServiceUserName "cn=orcladmin" -dirServicePassword "bdtbdt" -walletPassword "monster123#"
+
+>$ ksh ./register_database_oud.ksh
+Preparing to Configure Database
+6% complete
+13% complete
+66% complete
+Completing Database Configuration
+100% complete
+Look at the log file "/u01/app/oracle/cfgtoollogs/dbca/PBDT/PBDT20.log" for further details.
+Step 2: Create global roles and global users into the database
+
+SQL> !cat prepare_oud_users.sql
+create role org_dba identified globally;
+grant dba to org_dba;
+create role org_connect identified globally;
+grant create session to org_connect;
+create user org_user identified globally;
+
+SQL> @prepare_oud_users.sql
+
+Role created.
+
+
+Grant succeeded.
+
+
+Role created.
+
+
+Grant succeeded.
+
+
+User created.
+As you can see:
+
+DBA has been granted to the ORG_DBA role.
+CREATE SESSION has been granted to the ORG_CONNECT role.
+The user ORG_USER has not been granted any privileges.
+Step 3: Create groups and users into the OUD
+
+As an example, a ldif file has been created to:
+
+create 2 users: bdt_dba and bdt_connect.
+create 2 groups: DBA_GROUP and CONNECT_GROUP.
+assign bdt_dba to the DBA_GROUP and bdt_connect to the CONNECT_GROUP.
+>$ cat newgroupsusers.ldif
+dn: cn=groups,dc=bdt,dc=com
+changetype: add
+objectclass: top
+objectclass: groupOfNames
+cn: groups
+
+dn: cn=users,dc=bdt,dc=com
+changetype: add
+objectclass: top
+objectclass: groupOfNames
+cn: users
+
+dn: cn=bdt_connect,cn=users,dc=bdt,dc=com
+changetype: add
+objectclass: top
+objectclass: person
+objectclass: organizationalPerson
+objectclass: inetOrgPerson
+cn: bdt_connect
+sn: bdt_connect
+uid: bdt_connect
+userpassword: bdtconnect
+
+dn: cn=CONNECT_GROUP,cn=groups,dc=bdt,dc=com
+changetype: add
+objectclass: top
+objectclass: groupOfNames
+cn: CONNECT_GROUP
+member: cn=bdt_connect,cn=users,dc=bdt,dc=com
+
+dn: cn=bdt_dba,cn=users,dc=bdt,dc=com
+changetype: add
+objectclass: top
+objectclass: person
+objectclass: organizationalPerson
+objectclass: inetOrgPerson
+cn: bdt_dba
+sn: bdt_dba
+uid: bdt_dba
+userpassword: bdtdba
+
+dn: cn=DBA_GROUP,cn=groups,dc=bdt,dc=com
+changetype: add
+objectclass: top
+objectclass: groupOfNames
+cn: DBA_GROUP
+member: cn=bdt_dba,cn=users,dc=bdt,dc=com
+and then launch:
+
+$> cat create_ldap_groups_users.ksh
+ldapadd -h oud -p 1389 -D "cn=orcladmin" -w bdtbdt -f ./newgroupsusers.ldif -v
+
+$> ksh ./create_ldap_groups_users.ksh
+So that the users and groups have been created into the OUD.
+
+A graphical view of what has been done into the OUD (thanks to the Apache Directory Studio) is:
+
+Screen Shot 2016-04-30 at 13.48.21
+
+Step 4: Link OUD groups with database roles.
+
+>$ ksh ./mapdb_ldap.ksh
++ echo 'Mapping User'
+Mapping User
++ eusm createMapping database_name=PBDT realm_dn='dc=bdt,dc=com' map_type=SUBTREE map_dn='cn=users,dc=bdt,dc=com' schema=ORG_USER ldap_host=oud ldap_port=1389 ldap_user_dn='cn=orcladmin' ldap_user_password=bdtbdt
++ echo 'Create Enterprise role'
+Create Enterprise role
++ eusm createRole enterprise_role=PBDT_dba_role domain_name=OracleDefaultDomain realm_dn='dc=bdt,dc=com' ldap_host=oud ldap_port=1389 ldap_user_dn='cn=orcladmin' ldap_user_password=bdtbdt
++ eusm createRole enterprise_role=PBDT_connect_role domain_name=OracleDefaultDomain realm_dn='dc=bdt,dc=com' ldap_host=oud ldap_port=1389 ldap_user_dn='cn=orcladmin' ldap_user_password=bdtbdt
++ echo 'Link Roles'
+Link Roles
++ eusm addGlobalRole enterprise_role=PBDT_dba_role domain_name=OracleDefaultDomain realm_dn='dc=bdt,dc=com' database_name=PBDT global_role=ORG_DBA dbuser=system dbuser_password=bdtbdt dbconnect_string=dprima:1521:PBDT ldap_host=oud ldap_port=1389 ldap_user_dn='cn=orcladmin' ldap_user_password=bdtbdt
++ eusm addGlobalRole enterprise_role=PBDT_connect_role domain_name=OracleDefaultDomain realm_dn='dc=bdt,dc=com' database_name=PBDT global_role=ORG_CONNECT dbuser=system dbuser_password=bdtbdt dbconnect_string=dprima:1521:PBDT ldap_host=oud ldap_port=1389 ldap_user_dn='cn=orcladmin' ldap_user_password=bdtbdt
++ echo 'Grant Roles'
+Grant Roles
++ eusm grantRole enterprise_role=PBDT_dba_role domain_name=OracleDefaultDomain realm_dn='dc=bdt,dc=com' group_dn='cn=DBA_GROUP,cn=groups,dc=bdt,dc=com' ldap_host=oud ldap_port=1389 ldap_user_dn='cn=orcladmin' ldap_user_password=bdtbdt
++ eusm grantRole enterprise_role=PBDT_connect_role domain_name=OracleDefaultDomain realm_dn='dc=bdt,dc=com' group_dn='cn=CONNECT_GROUP,cn=groups,dc=bdt,dc=com' ldap_host=oud ldap_port=1389 ldap_user_dn='cn=orcladmin' ldap_user_password=bdtbdt
+So that, for this database only, there is a mapping between:
+
+The database ORG_DBA role (created in step 2) and the OUD DBA_GROUP group (created in step 3).
+The database ORG_CONNECT role (created in step 2) and the OUD CONNECT_GROUP group (created in step 3).
+Authentication and authorization results:
+
+You can view the result into this video:
+
+
+As you can see:
+
+There is no bdt_dba nor bdt_connect oracle users into the database.
+I logged in with the bdt_dba OUD user, then was connected as ORG_USER into the database and have been able to query the dba_users view.
+I logged in with the bdt_connect OUD user, then was connected as ORG_USER into the database and (as expected) have not been able to query the dba_users view due to the lack of permission.
