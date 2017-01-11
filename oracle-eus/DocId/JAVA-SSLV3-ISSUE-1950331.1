@@ -1,0 +1,125 @@
+CVE-2014-3566 Instructions to Mitigate the SSL v3.0 Vulnerability (aka "Poodle Attack") in Oracle Unified Directory (Doc ID 1950331.1)	To BottomTo Bottom	
+
+In this Document
+Description
+Occurrence
+Symptoms
+Workaround
+History
+APPLIES TO:
+
+Oracle Unified Directory - Version 11.1.1.5.0 to 11.1.2.3.0 [Release 11g]
+Information in this document applies to any platform.
+DESCRIPTION
+
+This document provides instructions to disable the SSL v3.0 in Oracle Unified Directory related to the security vulnerability referenced in CVE-2014-3566 (Padding Oracle On Downgraded Legacy Encryption, or "Poodle"). This security vulnerability is the result of a design flaw in SSL v3.0. This vulnerability does not affect TLS and is limited to SSL v3.0, which is widely considered as an obsolete protocol.
+This vulnerability can be mitigated by configuring the components of Oracle Unified Directory to use TLS. 
+
+OCCURRENCE
+
+Oracle Unified Directory has SSLv3 enabled by default unless the Jan 2015 CPU Java SE (or later) is installed.
+
+SYMPTOMS
+
+Please refer to the main Oracle web page describing the vulnerability: SSL V3.0 "Poodle" Vulnerability - CVE-2014-3566  
+
+WORKAROUND
+
+Since January 2015, Java SE now disables SSLv3 by default. 
+Installing the latest Java SE is the preferred method to prevent against Poodle attack. 
+
+http://www.oracle.com/technetwork/java/javase/downloads/index.html 
+http://www.oracle.com/technetwork/topics/security/cpujan2015-1972971.html 
+
+If you can not use the latest Java SE version, then follow the following steps to reduce the risk of a Poodle attack.
+
+You can mitigate the risk by removing SSLv3 from the LDAP, LDAPS and other connection handlers. As LDAP supports a startTLS extended operation, you must configure the supported SSL protocols on the LDAP connector, as well as the LDAPS connector.
+
+OUD with Java 6:
+
+For LDAPS :
+dsconfig set-connection-handler-prop \
+--handler-name LDAPS\ Connection\ Handler \
+--add ssl-protocol:TLSv1 \ 
+--add ssl-protocol:SSLv2Hello \ 
+--hostname localhost \
+--port 4444 \
+--trustAll \
+--bindDN cn=directory\ manager \
+--bindPasswordFile ****** \
+--no-prompt
+
+For StartTLS :
+dsconfig set-connection-handler-prop \
+--handler-name LDAP\ Connection\ Handler \
+--add ssl-protocol:TLSv1 \ 
+--add ssl-protocol:SSLv2Hello \
+--hostname localhost \
+--port 4444 \
+--trustAll \
+--bindDN cn=directory\ manager \
+--bindPasswordFile ****** \
+--no-prompt
+
+For Replication :
+dsconfig set-crypto-manager-prop \
+--add ssl-protocol:TLSv1 \ 
+--add ssl-protocol:SSLv2Hello \
+--hostname localhost \
+--port 4444 \
+--trustAll \
+--bindDN cn=directory\ manager \
+--bindPasswordFile ****** \
+--no-prompt
+
+
+OUD with Java 7:
+
+For LDAPS :
+dsconfig set-connection-handler-prop \
+--handler-name LDAPS\ Connection\ Handler \
+--add ssl-protocol:TLSv1 \
+--add ssl-protocol:TLSv1.1 \
+--add ssl-protocol:TLSv1.2 \
+--hostname acadie \
+--port 4444 \
+--trustAll \
+--bindDN cn=directory\ manager \
+--bindPasswordFile ****** \
+--no-prompt
+
+For StartTLS :
+dsconfig set-connection-handler-prop \
+--handler-name LDAP\ Connection\ Handler \
+--add ssl-protocol:TLSv1 \
+--add ssl-protocol:TLSv1.1 \
+--add ssl-protocol:TLSv1.2 \
+--hostname acadie \
+--port 4444 \
+--trustAll \
+--bindDN cn=directory\ manager \
+--bindPasswordFile ****** \
+--no-prompt
+
+For Replication :
+dsconfig set-crypto-manager-prop \
+--add ssl-protocol:TLSv1 \
+--add ssl-protocol:TLSv1.1 \
+--add ssl-protocol:TLSv1.2 \
+--hostname localhost \
+--port 4444 \
+--trustAll \
+--bindDN cn=directory\ manager \
+--bindPasswordFile ****** \
+--no-prompt 
+
+ 
+
+Note: SSLv3 for the Admin port can only be disabled by upgrading and/or applying the Critical Patch Update releases listed here which have SSLv3 disabled by default -
+
+http://www.oracle.com/technetwork/java/javase/documentation/cve-2014-3566-2342133.html
+
+ 
+
+
+Note : Be aware that providing a wrong protocol name will be accepted silently by OUD, but the server will start to misbehave (or completely fail). If you experience such behavior, re-verify the protocol names you entered (including spaces).
