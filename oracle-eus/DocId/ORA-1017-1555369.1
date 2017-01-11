@@ -1,0 +1,38 @@
+OUD with EUS support - Users Unable To Login To DB With LDAP Account via EUS (ORA-1017) (Doc ID 1555369.1)	To BottomTo Bottom	
+
+In this Document
+Symptoms
+Cause
+Solution
+References
+
+APPLIES TO:
+
+Oracle Unified Directory - Version 11.1.2.0.0 and later
+Information in this document applies to any platform.
+SYMPTOMS
+
+Users imported to OUD R2 from ldif are unable to authenticate to SQL*Plus db via LDAP (using OUD and EUS). Users created with ODSM can authenticate successfully.
+
+The authentication failure can throw the following error in the Oracle db client:
+
+Error information for ORA-1017 during Key Encryption:
+Logon user       : MYDBUSER
+ZT Code Error    : Generic Error Code
+KZLD is doing LDAP unbind 
+
+
+CAUSE
+
+OUD R2 with EUS support configured will add the orcluser and orcluserv2 objectclasses when an LDAP user first tries to authenticate to the db. If those objectclasses already exist, as could be the case when users are created from an ldif import, they will be ignored by the EUS workflow element in OUD. Those users will be unable to authenticate.
+
+This behavior has been logged as bug 16490835 and is fixed in version 11.1.2.1.0 and later.
+
+SOLUTION
+
+ As a workaround, make sure that any user objects imported from ldif do not contain the orcluser and orcluserv2 objectclasses.
+
+REFERENCES
+
+BUG:16494437 - OUD WITH EUS - LOGIN TO DB VIA LDAP THROWS ERROR DURING KEY ENCRYPTION
+BUG:16490835 - EUS DOES NOT WORK WITH SOME USER ENTRIES
