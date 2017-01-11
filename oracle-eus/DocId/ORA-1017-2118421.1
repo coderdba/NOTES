@@ -1,0 +1,169 @@
+OUD-EUS Error When Attempting to Log In Using Sqlplus - "ORA-01017: invalid username/password; logon denied" (Doc ID 2118421.1)	To BottomTo Bottom	
+
+In this Document
+Symptoms
+Cause
+Solution
+References
+
+APPLIES TO:
+
+Oracle Unified Directory - Version 11.1.2.3.0 and later
+Information in this document applies to any platform.
+SYMPTOMS
+
+OUD 11.1.2.3.0 has been configured for EUS integration.  However, OUD (LDAP) users are unable to connect from database to OUD. 
+
+Here is the error generated on the database side...
+
+ERROR:
+ORA-28030: Server encountered problems accessing LDAP directory service
+And here is the corresponding access logging on the OUD side...
+
+[03/Mar/2016:12:25:03 +0000] DISCONNECT conn=115 reason="Client Disconnect"
+[03/Mar/2016:12:25:03 +0000] CONNECT conn=116 from=xx.x.x.xxx:46487 to=xx.xxx.x.x:1636 protocol=LDAPS
+[03/Mar/2016:12:25:04 +0000] DISCONNECT conn=116 reason="Client Disconnect"
+Patch 19285025 is then applied to address the ORA-28030 error.  Subsequent attempt to log in using sqlplus results in the following error...
+
+ORA-01017: invalid username/password; logon denied
+with trace file error output...
+
+kzld_search -s sub -b cn=DB,cn=OracleContext,dc=xx,dc=com
+search filter: (&(objectclass=orcldbEntrylevelMapping)(orclDBDistinguishedName=uid=user.10,ou=People,dc=xx,dc=com))
+KZLD_ERR: failed the search 28304.
+KZLD_ERR: 28304
+kzld_search -s sub -b cn=DB,cn=OracleContext,dc=xx,dc=com
+search filter: (&(objectclass=orcldbSubtreelevelMapping)(orclDDistinguishedName=ou=People,dc=xx,dc=com))
+KZLD_ERR: failed the search 28304.
+KZLD_ERR: 28304
+ 
+
+CAUSE
+
+There are multiple issues...
+
+1) Hitting Bug 19285025 : LDAP CLIENT & DBMS_LDAP W/ NOVELL SHA-2 CERTIFICATE ORA-31202 SSL HANDSHAKE FAIL
+
+Based on the symptoms in KM doc 1986819.1
+
+EUS - ORA-28030: Server Encountered Problems Accessing OUD (Doc ID 1986819.1)
+
+logging these errors -
+
+DISCONNECT conn=13 reason="I/O Error" msg="Client requested protocol SSLv3 not enabled or not supported"
+
+*and*
+
+the version of the JDK used is greater than JDK 7u75.
+
+Patch 19285025 is applied to address ORA-28030 error.  Subsequent attempt to log in using sqlplus generates the following error...
+
+ORA-01017: invalid username/password; logon denied
+with trace file error output...
+
+kzld_search -s sub -b cn=DB,cn=OracleContext,dc=xx,dc=com
+search filter: (&(objectclass=orcldbEntrylevelMapping)(orclDBDistinguishedName=uid=user.10,ou=People,dc=xx,dc=com))
+KZLD_ERR: failed the search 28304.
+ 
+
+How to configure the database to output a trace file -
+
+(from EUS Authentication Fails With ORA-28030 (Doc ID 783502.1))
+
+1. alter system set events '28033 trace name context forever, level 9';
+
+2. run the failing connect
+
+3. disable tracing:
+
+alter system set events '28033 trace name context off';
+
+ 
+2) Values in modifyRealm.ldif were not correctly modified to match the configuration.
+
+modifyRealm.ldif not correctly configured based on the following access log output...
+
+[08/Mar/2016:17:21:39 +0000] SEARCH REQ conn=111 op=4 msgID=5 base="ou=Users,dc=xx,dc=com" scope=sub filter="(uid=USER.0)" attrs="dn,authPassword,orclPassword,orclguid"
+[08/Mar/2016:17:21:39 +0000] SEARCH RES conn=111 op=4 msgID=5 result=32 message="The search base entry 'ou=Users,dc=xx,dc=com' does not exist" nentries=0 etime=2
+Ran the following ldapsearch command...
+
+ldapsearch -p 1389 -D "cn=directory manager" -w - -b "cn=Common,cn=Products,cn=OracleContext" "objectclass=*" +
+to check values added by modifyRealm.ldif.  It does not look like the values in modifyRealm.ldif were modified correctly before being added since users are *not* located under ou=Users,dc=xx,dc=com
+
+-bash-3.2$ grep -i orclSubscriberSearchBase ldapsearch_command_output.txt
+ds-sync-hist: orclsubscribersearchbase:000001534696e6ec38a700000001:repl:dc=xx,dc=com
+-bash-3.2$ grep -i orclDefaultSubscriber ldapsearch_command_output.txt
+ds-sync-hist: orcldefaultsubscriber:000001534696e6ec38a700000003:repl:dc=xx,dc=com
+-bash-3.2$ grep -i orclCommonUserSearchBase ldapsearch_command_output.txt
+ds-sync-hist: orclcommonusersearchbase:000001534696e6ec4dd20000001e:repl:ou=Users,dc=xx,dc=com
+-bash-3.2$ grep -i orclCommonUserCreateBase ldapsearch_command_output.txt
+ds-sync-hist: orclcommonusercreatebase:000001534696e6ec4dd20000001f:repl:ou=Users,dc=xx,dc=com
+It also looks like those configurations do not exist anymore due to replication since the attributes do not exist in the entry, but only exist in the replication history (ds-sync-hist).
+
+ 
+
+3) ACI issue when attempting to configure the OracleDefaultDomain in EM...
+
+NewMapping - javax.NoPermission.Exception: [LDAP: error code 50 - The entry cn=mapping1,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=xx,dc=com cannot be added due to insufficient access rights]; remaining name 'cn=mapping1,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=xx,dc=com'
+
+MAPPING0 - javax.NoPermission.Exception: [LDAP: error code 50 - The entry cn=MAPPING0,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=xx,dc=com cannot be added due to insufficient access rights]; remaining name 'cn=MAPPING0,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=xx,dc=com
+
+ACIs were not configured correctly.
+
+
+4) After EUS configuration with a corrected modifyRealm.ldif and added required ACIs, found that there is no mapping between the user and a database schema.
+
+The trace file output -
+
+kzld_search -s sub -b cn=DB,cn=OracleContext,dc=xx,dc=com
+search filter: (&(objectclass=orcldbEntrylevelMapping)(orclDBDistinguishedName=uid=user.10,ou=People,dc=xx,dc=com))
+KZLD_ERR: failed the search 28304.
+KZLD_ERR: 28304
+kzld_search -s sub -b cn=OSISDB,cn=OracleContext,dc=xx,dc=com
+search filter: (&(objectclass=orcldbSubtreelevelMapping)(orclDBDistinguishedName=ou=People,dc=xx,dc=com))
+KZLD_ERR: failed the search 28304.
+KZLD_ERR: 28304
+And OUD access log output where no entries are retrieved (nentries=0) -
+
+[10/Mar/2016:14:42:12 +0000] SEARCH REQ conn=45 op=11 msgID=12 base="cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,
+cn=OracleContext,dc=xx,dc=com" scope=sub filter="(&(objectclass=orcldbSubtreelevelMapping)(orclDBDistinguishedName=dc=xx,dc=com))" attrs="orclDBNativeUser"
+[10/Mar/2016:14:42:12 +0000] SEARCH RES conn=45 op=11 msgID=12 result=0 nentries=0 etime=1
+[10/Mar/2016:14:42:12 +0000] SEARCH REQ conn=45 op=12 msgID=13 base="cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,
+cn=OracleContext,dc=xx,dc=com" scope=sub filter="(&(objectclass=orcldbSubtreelevelMapping)(orclDBDistinguishedName=dc=com))" attrs="orclDBNativeUser"
+[10/Mar/2016:14:42:12 +0000] SEARCH RES conn=45 op=12 msgID=13 result=0 nentries=0 etime=2
+ 
+
+SOLUTION
+
+1) Apply database patch for Bug 19285025 by following KM doc -
+
+EUS - ORA-28030: Server Encountered Problems Accessing OUD (Doc ID 1986819.1)
+
+2) Modify modifyRealm.ldif so that it is configured with the correct DN where users exist.  Add entries from modifyRealm.ldif (that has been corrected) by using ldapmodify.
+
+28.4.3 Task 3: Configuring Users and Groups Location
+http://docs.oracle.com/cd/E49437_01/admin.111220/e22648/eus.htm#CJADHJHD
+
+2. Edit the modifyRealm.ldif file as follows:
+
+  Replace dc=example,dc=com with the correct naming context for your server instance.
+
+  Replace ou=people and ou=groups with the correct location of the user and group entries in your DIT.
+
+3) Add required ACIs.
+
+31.3.1 Configuring Oracle Directory Server as a Directory for Enterprise User Security
+https://docs.oracle.com/cd/E52734_01/oud/OUDAG/eus.htm#OUDAG11383
+
+21.1.4 To Add a Global ACI
+http://docs.oracle.com/cd/E29407_01/admin.111200/e22648/access_control.htm#solTO-ADD-A-GLOBAL-ACI
+
+4) Configure the user-schema mapping using EM making sure you follow all the steps listed at...
+
+31.3.1.5 Task 5: Configure Roles and Permissions
+https://docs.oracle.com/cd/E52734_01/oud/OUDAG/eus.htm#CIHHAHJB
+
+and specifically for user-schema mapping config...
+
+31.3.1.5.2 Step B: Create a New User-Schema Mapping
+https://docs.oracle.com/cd/E52734_01/oud/OUDAG/eus.htm#CHDJAAEG
