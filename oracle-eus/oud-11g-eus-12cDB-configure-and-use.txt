@@ -12,6 +12,21 @@ In this, we will use the root user, OU, realm and enterprise user created in oud
 =======================================
 DB=L4D2
 
+******************************************************************************************************************
+IMPORTANT: Set ORACLE_BASE and TNS_ADMIN environment variables for the DB.  This is necessary to avoid ORA-28030.
+           Use srvctl setenv if starting db using srvctl.  
+           Use o/s environment variables if starting db with sqlplus.
+******************************************************************************************************************
+
+==================================
+SET DB ENVIRONMENT AND RESTART DB
+==================================
+******************************************************************************************************************
+IMPORTANT: Set ORACLE_BASE and TNS_ADMIN environment variables for the DB.  This is necessary to avoid ORA-28030.
+           Use srvctl setenv if starting db using srvctl.  
+           Use o/s environment variables if starting db with sqlplus.
+******************************************************************************************************************
+
 ======================
 REGISTER DB IN OUD
 ======================
@@ -157,9 +172,16 @@ MAP IN OUD THE GLOBAL IDENT USER FOR THIS DB
 ====================================================
 NOTE: 12c eusm is erroring out. Therefore, use 11g eusm.
 
--------------------------
-DO THE MAPPING
--------------------------
+====================================================
+MAP IN OUD THE GLOBAL IDENT USER FOR THIS DB 
+====================================================
+---------------------------------------------------
+MAP THE GLOBAL IDENT USER TO A GROUP/USER/HEIRARCHY 
+---------------------------------------------------
+NOTE: IMPORTANT:  The global-ident-user denoted by 'schema' in the createMapping command 
+                  is mapped to a user/group/heirarchy denoted by 'map_dn'
+                  If mapped to a group or heirarchy, then all 'users' under its tree will be mapped to the global-ident-user in DB.
+                  
 $ /u02/app/oracle/product/11.2.0.4.RAC/bin/eusm createMapping database_name=DB_UNIQUE_NAME realm_dn='dc=example,dc=com' map_type=SUBTREE map_dn='dc=example,dc=com' schema=c##oud_global_ident_user ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn='cn=eusroot,ou=eusadmins,dc=example,dc=com' ldap_user_password=oracle#1
 
 NOTE: This command does not produce any screen output
@@ -383,9 +405,18 @@ Look up the 'member information' in the RHS -
 ================================================
 MAP THIS USER TO THE GLOBAL-IDENT-USER IN THE DB
 ================================================
---------
-MAP
---------
+
+NOTE: IT IS NOT REQUIRED to explicitly map the user to the global-ident-user.
+The earlier createmapping would have mapped it to a heirarchy/group already.
+($ /u02/app/oracle/product/11.2.0.4.RAC/bin/eusm createMapping database_name=DB_UNIQUE_NAME realm_dn='dc=example,dc=com' map_type=SUBTREE map_dn='dc=example,dc=com' schema=c##oud_global_ident_user ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn='cn=eusroot,ou=eusadmins,dc=example,dc=com' ldap_user_password=oracle#1
+)
+
+However, it is given here FYI and optional step
+
+--------------------------------
+OPTIONAL (see note above)
+MAP USER TO GLOBAL IDENT USER
+--------------------------------
 $ eusm createMapping realm_dn='dc=example,dc=com' ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn='cn=eusroot,ou=eusadmins,dc=example,dc=com' ldap_user_password=oracle#1 database_name=DB_UNIQUE_NAME map_type=ENTRY map_dn='cn=user1,ou=people,dc=example,dc=com' schema=c##oud_global_ident_user
 
 --------
