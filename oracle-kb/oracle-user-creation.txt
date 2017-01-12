@@ -1,0 +1,39 @@
+====================================================
+  CREATE ORACLE USER AND GROUP - VARIOUS SCENARIOS
+====================================================
+
+=================================
+DESIGN
+=================================
+
+Groups - 5001 for oinstall, 5002 for dba, 5003 for asmdba, 5004 for asmadm
+Users  - 501 for oracle, 502 for grid, 503 for oemagent, 504 for oud
+
+NOTE: Pre-create /u01/app as root owned directory - /u01/app/oud will be created
+
+===================================
+FILES THAT CONTAIN USERS AND GROUPS
+===================================
+NOTE: /etc/passwd shows primary group of a user
+      /etc/group shows secondary groups of a user indirectly - shows users attached to groups as secondary groups
+
+/etc/passwd
+oud:x:504:5001:oracle unified directory owner:/u01/app/oud:/bin/bash
+oracle:x:501:5001:oracle db software owner:/u01/app/oracle:/bin/bash
+
+/etc/group
+oinstall:x:5001:
+dba:x:5002:oracle
+
+=================================
+STANDALONE DB 
+- NO ASM
+- NO ROLE SEGREGATION
+=================================
+
+# groupadd -g 5001 oinstall
+# groupadd -g 5002 dba
+
+# useradd -u 501 -g oinstall -G dba -d /u01/app/oracle -m -c "oracle db software owner" oracle
+
+
