@@ -807,3 +807,94 @@ LIST OF GLOBAL ROLES
 --------------------
 DBNAME: RL4DB2PD1_RL4DB2_TTCE GLOBALROLE :OUD_DBA_ROLE_GLOBAL
 
+================================================================
+CREATE THE USER USER1 IN DB AND ASSIGN IT TO 'DBAS' GROUP
+================================================================
+NOTE: THIS IS ALREADY DONE IN CDB OR 11G TRIAL
+
+================================================================
+NOT REQUIRED - MAP THIS USER TO THE GLOBAL-IDENT-USER IN THE DB
+================================================================
+-- THIS IS NOT REQUIRED --
+SEE NOTES IN THE CDB SECTION UNDER "MAP THIS USER TO THE GLOBAL-IDENT-USER IN THE DB"
+
+======================================================
+CONNECT AND TEST
+======================================================
+-----------------------
+TNSPING
+-----------------------
+NOTE: When we register a DB or PDB in OUD, its entry in OUD acts as the alias to the DB or PDB
+      If we have 'LDAP' as one of the options in sqlnet.ora, this entry can be used as connect string
+
+NOTE: In the output below, note these:
+- uses sqlnet.ora
+- uses LDAP adapter to resolve the alias
+- uses the hostname instead of scan
+- TBD - As we like to use scan and not hostname, one can edit the entry PDB_NAME_DB_UNIQUE_NAME in OUD 
+        and modify the orclnetdescstring in the RHS 'Optional Attributes'
+        
+$ tnsping PDB_NAME_DB_UNIQUE_NAME
+Used parameter files:
+/usr/local/tns/sqlnet.ora
+Used LDAP adapter to resolve the alias
+Attempting to contact (DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=hostname.where.dbca.was.run)(PORT=1521)))(CONNECT_DATA=(SERVICE_NAME=PDB_NAME)))
+OK (0 msec)
+
+------------------------------------------------
+CONNECT USING SQLPLUS
+------------------------------------------------
+$ sqlplus user1@PDB_NAME_DB_UNIQUE_NAME
+
+SQL*Plus: Release 12.1.0.2.0 Production on Thu Jan 12 00:25:07 2017
+
+Copyright (c) 1982, 2014, Oracle.  All rights reserved.
+
+Enter password:
+
+Connected to:
+Oracle Database 12c Enterprise Edition Release 12.1.0.2.0 - 64bit Production
+With the Partitioning, Real Application Clusters, Automatic Storage Management, OLAP,
+Advanced Analytics and Real Application Testing options
+
+SQL> show user
+USER is "OUD_GLOBAL_IDENT_SCHEMA_USER"
+
+SQL> show con_id;
+
+CON_ID
+------------------------------
+3
+
+SQL> select * from session_roles;
+
+ROLE
+--------------------------------------------------------------------------------
+CONNECT
+DBA
+SELECT_CATALOG_ROLE
+EXECUTE_CATALOG_ROLE
+DELETE_CATALOG_ROLE
+CAPTURE_ADMIN
+EXP_FULL_DATABASE
+IMP_FULL_DATABASE
+DATAPUMP_EXP_FULL_DATABASE
+DATAPUMP_IMP_FULL_DATABASE
+XS_RESOURCE
+GATHER_SYSTEM_STATISTICS
+OPTIMIZER_PROCESSING_RATE
+EM_EXPRESS_BASIC
+EM_EXPRESS_ALL
+SCHEDULER_ADMIN
+HS_ADMIN_SELECT_ROLE
+HS_ADMIN_EXECUTE_ROLE
+XDBADMIN
+XDB_SET_INVOKER
+WM_ADMIN_ROLE
+JAVA_ADMIN
+JAVA_DEPLOY
+OLAP_XS_ADMIN
+OLAP_DBA
+OUD_DBA_ROLE_GLOBAL
+
+26 rows selected.
