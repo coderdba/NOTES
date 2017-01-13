@@ -1,0 +1,74 @@
+====================================
+RE-CREATE SPFILE WHEN DB IS DOWN
+====================================
+https://zhefeng.wordpress.com/2011/03/02/recreating-spfile-on-asm-storage-from-pfile/
+
+This can happen when someone modifies a parameter online, restarts db, and db does not start as the parameter was incorrect.
+
+
+Recreating spfile on ASM storage from pfile
+Filed under: [backup and recovery] — Tags: asm, create, pfile, spfile — zhefeng @ 2:46 pm
+Sometimes when you strewed up with parameters, you need to use the pfile as stepstone to undo the changes in spfile. 
+How does it happen if your spfile sits on ASM storage? Here is an workaround.
+1. try to screw up the db parameters
+SQL> show parameter memory
+NAME TYPE VALUE
+———————————— ———– ——————————
+hi_shared_memory_address integer 0
+memory_max_target big integer 1520M
+memory_target big integer 1520M
+shared_memory_address integer 0
+SQL> alter system set memory_max_target=0 scope=spfile;
+System altered.
+2. now bounce the instance, db will complain about the new settings
+SQL> shutdown
+Database closed.
+Database dismounted.
+ORACLE instance shut down.
+SQL> startup
+ORA-01078: failure in processing system parameters
+ORA-00837: Specified value of MEMORY_TARGET greater than MEMORY_MAX_TARGET
+3. in my case the spfile sits on ASM
+ASMCMD> ls -l spfile*
+Type Redund Striped Time Sys Name
+N spfileorcl.ora => +DATA/ORCL/PARAMETERFILE/spfile.267.744731331
+4. what we need to do is creating a pfile from spfile then modify parameter back to valid value, then start db from pfile
+1). With db not up, we can create pfile from spfile:
+SQL> create pfile from spfile=’+DATA/orcl/spfileorcl.ora’;
+2). modify the value in pfile ‘initorcl.ora’
+$ vi initorcl.ora
+*.memory_max_target=1583349760
+3). startup db with pfile
+SQL>startup mount –now it will use the pfile
+5. create the new spfile to ASM storage from “good” pfile
+SQL> create spfile=’+DATA/ORCL/spfileorcl.ora’ from pfile;
+File created.
+6. watch the file name in ASM storage has been changed, which means we just had a new spfile:
+ASMCMD> ls -l spfile*
+Type Redund Striped Time Sys Name
+N spfileorcl.ora => +DATA/ORCL/PARAMETERFILE/spfile.267.744733351
+7. now change the pfile back to be the “bootstrap” of correct spfile
+$ cat initorcl.ora
+spfile=’+DATA/ORCL/spfileorcl.ora’
+8. restart the database, it will pickup the correct spfile again
+$ sqlplus / as sysdba
+SQL> startup
+ORACLE instance started.
+Total System Global Area 1586708480 bytes
+Fixed Size 2213736 bytes
+Variable Size 973080728 bytes
+Database Buffers 603979776 bytes
+Redo Buffers 7434240 bytes
+Database mounted.
+Database opened.
+SQL> show parameter spfile
+NAME TYPE VALUE
+———————————— ———– ——————————
+spfile string +DATA/orcl/spfileorcl.ora
+SQL> show parameter memory
+NAME TYPE VALUE
+———————————— ———– ——————————
+hi_shared_memory_address integer 0
+memory_max_target big integer 1520M
+memory_target big integer 1520M
+shared_memory_address integer 0
