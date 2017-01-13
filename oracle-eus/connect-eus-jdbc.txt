@@ -17,4 +17,65 @@ Do the Oracle JDBC drivers support LDAP in the connection URL?
   Yes. JDBC THIN driver supports both regular LDAP and LDAP over SSL in the connection URL, 
   for example, when using Oracle Internet Directory as an LDAP provider. 
   Please refer to both the Oracle JDBC Developer's Guide and the Oracle Net Services Administrator's Guide for detail.
+  
+------------------------------
+JDBC URL 
+------------------------------
 
+------------------------------------------------------------------------------------------
+https://docs.oracle.com/cd/E11882_01/java.112/e16548/urls.htm
+------------------------------------------------------------------------------------------
+"jdbc:oracle:thin:@ldap://ldap.example.com:7777/sales,cn=OracleContext,dc=com"
+
+------------------------------------------------------------------------------------------
+https://docs.oracle.com/cd/E11882_01/java.112/e16548/urls.htm#CHDBICFA
+------------------------------------------------------------------------------------------
+
+LDAP Syntax
+
+An example of database specifier using the Lightweight Directory Access Protocol (LDAP) syntax is as follows:
+
+"jdbc:oracle:thin:@ldap://ldap.example.com:7777/sales,cn=OracleContext,dc=com"
+When using SSL, change this to:
+
+"jdbc:oracle:thin:@ldaps://ldap.example.com:7777/sales,cn=OracleContext,dc=com"
+Note:
+The JDBC Thin driver can use LDAP over SSL to communicate with Oracle Internet Directory if you substitute ldaps: for ldap: 
+in the database specifier. The LDAP server must be configured to use SSL. If it is not, then the connection attempt will hang.
+The JDBC Thin driver supports failover of a list of LDAP servers during the service name resolution process, without the need 
+for a hardware load balancer. Also, client-side load balancing is supported for connecting to LDAP servers. 
+A list of space separated LDAP URLs syntax is used to support failover and load balancing.
+
+When a list of LDAP URLs is specified, both failover and load balancing are enabled by default. The oracle.net.ldap_loadbalance
+connection property can be used to disable load balancing, and the oracle.net.ldap_failover connection property can be used to 
+disable failover.
+
+An example, which uses failover, but with client-side load balancing disabled, is as follows:
+
+Properties prop = new Properties();
+String url = "jdbc:oracle:thin:@ldap://ldap1.example.com:3500/cn=salesdept,cn=OracleContext,dc=com/salesdb " +
+"ldap://ldap2.example.com:3500/cn=salesdept,cn=OracleContext,dc=com/salesdb " +
+"ldap://ldap3.example.com:3500/cn=salesdept,cn=OracleContext,dc=com/salesdb";
+
+prop.put("oracle.net.ldap_loadbalance", "OFF" );
+OracleDataSource ods = new OracleDataSource();
+ods.setURL(url);
+ods.setConnectionProperties(prop);
+The JDBC Thin driver supports LDAP nonanonymous bind. A set of JNDI environment properties, which contains authentication information,
+can be specified for a data source. If a LDAP server is configured as not allowing anonymous bind, then authentication information must
+be provided to connect to the LDAP server. The following example shows a simple clear-text password authentication:
+
+String url = "jdbc:oracle:thin:@ldap://ldap.example.com:7777/sales,cn=salesdept,cn=OracleContext,dc=com";
+
+Properties prop = new Properties();
+prop.put("java.naming.security.authentication", "simple");
+prop.put("java.naming.security.principal","cn=salesdept,cn=OracleContext,dc=com");
+prop.put("java.naming.security.credentials", "mysecret");
+
+OracleDataSource ods = new OracleDataSource();
+ods.setURL(url);
+ods.setConnectionProperties(prop);
+Since JDBC passes down the three properties to JNDI, the authentication mechanism chosen by client is consistent with how these
+properties are interpreted by JNDI. For example, if the client specifies authentication information without explicitly specifying the
+java.naming.security.authentication property, then the default authentication mechanism is "simple". Please refer to relevant JDNI
+documentation for details.
