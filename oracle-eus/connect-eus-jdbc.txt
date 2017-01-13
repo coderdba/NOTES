@@ -81,7 +81,7 @@ java.naming.security.authentication property, then the default authentication me
 documentation for details.
 
 =============================
-EXAMPLES
+EXAMPLE SITES
 =============================
 -------------------
 CONNECT STRING ONLY
@@ -98,6 +98,7 @@ jdbc:oracle:thin:@ldap://<OID server name>:<OID port>/<DB SID or Service Name>,c
 jdbc:oracle:thin:@ldap://oid:5000/mydb1,cn=OracleContext,dc=myco,dc=com
 
 -------------------
+OTHER SITES
 -------------------
 https://markjbobak.wordpress.com/2013/12/11/referencing-ldap-for-jdbc-thin-client-connections/
 http://yong321.freeshell.org/oranotes/OracleConnectionSetup.html
@@ -111,3 +112,60 @@ http://www.javaworld.com/article/2076073/java-web-development/ldap-and-jndi--tog
 http://docs.oracle.com/javase/jndi/tutorial/ldap/security/ldap.html
 http://docs.oracle.com/javase/jndi/tutorial/getStarted/examples/directory.html
 http://www.ibm.com/support/knowledgecenter/SSSHYH_7.1.0.4/com.ibm.netcoolimpact.doc/user/imug_oracledb_ldap_url_t.html
+
+==================================
+EXAMPLE PROGRAM
+==================================
+TBD - DO A BIT MORE - GET SOME DATA FROM THE DB
+
+- SET ENVIRONMENT
+JAVA_HOME=/usr/java/jdk1.8.0_112
+CLASSPATH=/u01/app/oud/mydir/java-testing
+
+- TO COMPILE
+javac -classpath "/u01/app/oud/mydir/java-testing/ojdbc7.jar"  LdapOra1.java
+
+- TO RUN
+java -cp .:/u01/app/oud/mydir/java-testing/ojdbc7.jar LdapOra1
+
+- THE PROGRAM
+
+// Essential imports
+import java.util.Properties;
+
+import java.sql.*;
+import oracle.jdbc.*;
+import oracle.jdbc.pool.OracleDataSource;
+
+// Others that may be required later on
+import java.util.Hashtable;
+import javax.naming.Context;
+import javax.naming.NamingEnumeration;
+import javax.naming.NamingException;
+import javax.naming.directory.DirContext;
+import javax.naming.directory.SearchControls;
+import javax.naming.directory.SearchResult;
+import javax.naming.ldap.InitialLdapContext;
+import javax.naming.ldap.LdapContext;
+
+class LdapOra1 {
+
+public static void main(String[] args) throws SQLException {
+
+//String url = "jdbc:oracle:thin:@ldap://oud-hostname:oud-port/db_name_or_unique_name_as_registered,<the DN of the DB except DB name>";
+//String url = "jdbc:oracle:thin:@ldap://oralx0003.hq.target.com:1389/sales,cn=salesdept,cn=OracleContext,dc=com";
+//String url = "jdbc:oracle:thin:@ldap://oralx0003.hq.target.com:1636/sales,cn=salesdept,cn=OracleContext,dc=com";
+
+String url = "jdbc:oracle:thin:@ldap://oralx0003.hq.target.com:1389/RL4DB4_TTCE,cn=OracleContext,dc=example,dc=com";
+
+Properties prop = new Properties();
+prop.put("java.naming.security.authentication", "simple");
+prop.put("java.naming.security.principal","cn=user1,ou=people,dc=example,dc=com"); //LDAP user DN - DB enterprise user
+prop.put("java.naming.security.credentials", "oracle"); //password for the user
+
+OracleDataSource ods = new OracleDataSource();
+ods.setURL(url);
+ods.setConnectionProperties(prop);
+
+}
+}
