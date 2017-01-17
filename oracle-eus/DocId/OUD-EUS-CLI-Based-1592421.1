@@ -1,0 +1,368 @@
+OUD-EUS Setup Steps Using the Command Line Interface (CLI) (Doc ID 1592421.1)	To BottomTo Bottom	
+
+In this Document
+Purpose
+Details
+ 	OUD Server configuration with EUS
+ 	OUD Proxy configuration with EUS
+APPLIES TO:
+
+Oracle Unified Directory - Version 11.1.2.1.0 and later
+Information in this document applies to any platform.
+PURPOSE
+
+Additional configuration is required in order to configure Oracle Unified Directory (OUD) with Enterprise User Security (EUS). This additional config can be added either during installation (using oud-setup or oud-proxy-setup), or on an existing instance with ODSM.
+
+For customers wanting to perform this configuration on an existing instance but with command line tools, the following document describes all the required steps.
+
+DETAILS
+
+OUD Server configuration with EUS
+
+
+A new OUD instance can be created with an EUS configuration by running oud-setup --eus, but if you want to enable EUS on an existing instance, perform the following steps:
+Note: The procedure will use the following configuration:
+
+OUD LDAP port: 1389
+OUD LDAPs port: 1636
+Base DN used for EUS: dc=mydomain,dc=com
+Network-group name: network-group
+
+1. Enable SSL and configure cipher suites
+
+The database connects to OUD server using SASL-MD5 authentication mechanism. This mechanism takes place over SSL port, using specific cipher suites.
+
+2. LDAPS connection handler
+
+If your OUD server does not already provide a SSL port, you must configure a LDAPS connection handler:
+
+Create a keystore and generate a private key for the certificate, then generate a self-signed certificate:
+
+$ keytool -genkeypair -alias server-cert -keyalg rsa \
+          -dname "CN=myhost.mydomain.com,dc=mydomain,dc=com" \
+          -keystore $OUD_instance/OUD/config/keystore -storetype JKS
+$ keytool -selfcert -alias server-cert -validity 1825 \
+          -keystore $OUD_instance/OUD/config/keystore -storetype JKS
+Create a file keystore.pin containing the password you chose for the keystore:
+
+$ echo "password" > $OUD_instance/OUD/config/keystore.pin
+Export the public key:
+
+$ keytool -exportcert -alias server-cert -file $OUD_instance/OUD/config/server-cert.txt \
+          -rfc -keystore $OUD_instance/OUD/config/keystore -storetype JKS
+ Create a truststore and import the public key into it (if prompted, type yes to trust the certificate:
+
+$ keytool -importcert -alias server-cert -file $OUD_instance/OUD/config/server-cert.txt \
+keystore $OUD_instance/OUD/config/truststore -storetype JKS
+Use dsconfig to enable the key manager provider, trust manager provider and connection handler:
+
+$ OracleUnifiedDirectory/bin/dsconfig -h localhost -p 4444 -D cn=directory\ manager -j pwd.txt -X -n \
+          set-key-manager-provider-prop --provider-name JKS --set enabled:true
+$ OracleUnifiedDirectory/bin/dsconfig -h localhost -p 4444 -D cn=directory\ manager -j pwd.txt -X -n \
+          set-trust-manager-provider-prop --provider-name JKS --set enabled:true \
+          --set trust-store-pin-file:$OUD_instance/OUD/config/keystore.pin
+$ OracleUnifiedDirectory/bin/dsconfig -h localhost -p 4444 -D cn=directory\ manager -j pwd.txt -X -n \
+          set-connection-handler-prop --handler-name LDAPS\ Connection\ Handler \
+          --set enabled:true --set listen-port:1636
+You can test the SSL connection using the following command:
+
+$ OracleUnifiedDirectory/bin/ldapsearch -h localhost -p 1636 -Z -X -b "" -s base "(objectclass=*)"
+
+The root DSE entry should be returned.
+3. Cipher suites
+
+You must define the cipher suites used by your LDAPS connection handler:
+
+$ OracleUnifiedDirectory/bin/dsconfig -h localhost -p 4444 -D cn=directory\ manager -j pwd.txt -X -n \
+          set-connection-handler-prop \
+          --handler-name LDAPS\ Connection\ Handler \
+          --add ssl-cipher-suite:jvm \
+          --add ssl-cipher-suite:SSL_DH_anon_EXPORT_WITH_DES40_CBC_SHA \
+          --add ssl-cipher-suite:SSL_DH_anon_EXPORT_WITH_RC4_40_MD5 \
+          --add ssl-cipher-suite:SSL_DH_anon_WITH_3DES_EDE_CBC_SHA \
+          --add ssl-cipher-suite:SSL_DH_anon_WITH_DES_CBC_SHA \
+          --add ssl-cipher-suite:SSL_DH_anon_WITH_RC4_128_MD5
+4. Create cn=subschemasubentry
+
+The database checks that OUD contains the proper schema by sending searches on cn=subschemasubentry, while OUD provides its schema through cn=schema. The following steps configure DN renaming through cn=subschemasubentry based on the content of cn=schema
+
+$ OracleUnifiedDirectory/bin/dsconfig -h localhost -p 4444 -D cn=directory\ manager -j pwd.txt -X -n \
+          create-workflow-element \
+          --set client-base-dn:cn=subschemasubentry \
+          --set enabled:true \
+          --set next-workflow-element:schema \
+          --set source-base-dn:cn=schema \
+          --type dn-renaming \
+          --element-name subschemasubentry
+$ OracleUnifiedDirectory/bin/dsconfig -h localhost -p 4444 -D cn=directory\ manager -j pwd.txt -X -n \
+          create-workflow \
+          --set base-dn:cn=subschemasubentry \
+          --set enabled:true \
+          --set workflow-element:subschemasubentry \
+          --type generic \
+          --workflow-name subschemasubentry
+$ OracleUnifiedDirectory/bin/dsconfig -h localhost -p 4444 -D cn=directory\ manager -j pwd.txt -X -n \
+          set-network-group-prop \
+          --group-name network-group \
+          --add workflow:subschemasubentry
+
+5. Create a local backend for cn=OracleContext and cn=OracleSchemaVersion
+
+The database checks that the LDAP server is compliant by reading the content of cn=OracleContext and cn=OracleSchemaVersion. The following steps create a local database storing this information, and imports the required data into it.
+
+
+$OracleUnifiedDirectory/bin/dsconfig -h localhost -p 4444 -D cn=directory\ manager -j pwd.txt -X -n \
+          create-workflow-element \
+          --set base-dn:cn=OracleContext \
+          --set base-dn:cn=OracleSchemaVersion \
+          --set enabled:true \
+          --type db-local-backend \
+          --element-name OIDCompatibility
+$ OracleUnifiedDirectory/bin/dsconfig -h localhost -p 4444 -D cn=directory\ manager -j pwd.txt -X -n \
+          create-workflow \
+          --set base-dn:cn=OracleSchemaVersion \
+          --set enabled:true \
+          --set workflow-element:OIDCompatibility \
+          --type generic \
+          --workflow-name OracleSchemaVersion
+$ OracleUnifiedDirectory/bin/dsconfig -h localhost -p 4444 -D cn=directory\ manager -j pwd.txt -X -n \
+          create-workflow \
+          --set base-dn:cn=OracleContext \
+          --set enabled:true \
+          --set workflow-element:OIDCompatibility \
+          --type generic \
+          --workflow-name OracleContext
+$ OracleUnifiedDirectory/bin/dsconfig -h localhost -p 4444 -D cn=directory\ manager -j pwd.txt -X -n \
+          set-network-group-prop \
+          --group-name network-group \
+          --add workflow:OracleContext \
+          --add workflow:OracleSchemaVersion
+$ OracleUnifiedDirectory/bin/ldapmodify -h localhost -p 1389 -D cn=directory\ manager -j pwd.txt \
+          -a -f OracleUnifiedDirectory/config/EUS/oracleContext.ldif
+
+6. Configure the default password policy
+
+OUD uses a default password policy with SSHA-512 password storage scheme. EUS is compatible with this storage schema only from Oracle Database 12.1Beta2. This means that if you are using an older version of EUS, OUD must be configured with another password storage scheme. The following steps configure OUD to use Salted SHA1:
+
+$ OracleUnifiedDirectory/bin/dsconfig -h localhost -p 4444 -D cn=directory\ manager -j pwd.txt -X -n \
+          set-password-policy-prop \
+          --policy-name Default\ Password\ Policy \
+          --set default-password-storage-scheme:Salted\ SHA-1
+
+7. Create a local backend for cn=OracleContext,<baseDN>
+
+EUS reads and writes its configuration in cn=OracleContext,dc=mydomain,dc=com. This means that OUD must provide this baseDN. The following steps create and populate this naming context:
+
+$ OracleUnifiedDirectory/bin/dsconfig -h localhost -p 4444 -D cn=directory\ manager -j pwd.txt -X -n \
+          create-workflow-element \
+          --set base-dn:cn=OracleContext,dc=mydomain,dc=com \
+          --set enabled:true \
+          --type db-local-backend \
+          --element-name OracleContext0
+$ OracleUnifiedDirectory/bin/dsconfig -h localhost -p 4444 -D cn=directory\ manager -j pwd.txt -X -n \
+          create-workflow-element \
+          --set enabled:true \
+          --set next-workflow-element:OracleContext0 \
+          --type eus-context \
+          --element-name EusContext0
+$ OracleUnifiedDirectory/bin/dsconfig -h localhost -p 4444 -D cn=directory\ manager -j pwd.txt -X -n \
+          create-workflow \
+          --set base-dn:cn=OracleContext,dc=mydomain,dc=com \
+          --set enabled:true \
+          --set workflow-element:EusContext0 \
+          --type generic \
+          --workflow-name OracleContext0
+$ OracleUnifiedDirectory/bin/dsconfig -h localhost -p 4444 -D cn=directory\ manager -j pwd.txt -X -n \
+          set-network-group-prop \
+          --group-name network-group \
+          --add workflow:OracleContext0
+
+You must now edit the file OracleUnifiedDirectory/config/EUS/eusData.ldif:
+
+    Replace all occurrences of "dc=example,dc=com" with "dc=mydomain,dc=com".
+    Replace all occurrences of "uniquemember: cn=orcladmin" with "uniquemember: cn=directory manager".
+    Save the new file as OracleUnifiedDirectory/config/EUS/myeusData.ldif and import this LDIF file:
+
+$ OracleUnifiedDirectory/bin/ldapmodify -h localhost -p 1389 -D cn=directory\ manager -j pwd.txt \
+          -a -f OracleUnifiedDirectory/config/EUS/myeusData.ldif
+
+8. Create the EUS workflow element
+
+EUS users and groups are stored in the local backend. In order to be compatible with EUS, additional processing must be performed before actually writing to the local DB or reading from it. The EUS workflow element performs this additional processing and must be inserted before the local DB storing dc=mydomain,dc=com.
+
+If you have not already created dc=mydomain,dc=com:
+
+$ OracleUnifiedDirectory/bin/dsconfig -h localhost -p 4444 -D cn=directory\ manager -j pwd.txt -X -n \
+          create-workflow-element \
+          --set base-dn:dc=mydomain,dc=com \
+          --set enabled:true \
+          --type db-local-backend \
+          --element-name mydomain.com 
+
+Now you need to create the EUS workflow element that will process EUS requests:
+
+$ OracleUnifiedDirectory/bin/dsconfig -h localhost -p 4444 -D cn=directory\ manager -j pwd.txt -X -n \
+          create-workflow-element \
+          --set enabled:true \
+          --set eus-realm:dc=mydomain,dc=com \
+          --set next-workflow-element:mydomain.com \
+          --type eus \
+          --element-name Eus0 
+
+Note: if your baseDN dc=mydomain,dc=com was created during oud-setup, you must use the following value: --set next-workflow-element:userRoot
+
+If dc=mydomain,dc=com was created during the setup, you already have a corresponding workflow userRoot0, where we need to insert the EUS workflow element:
+
+$ OracleUnifiedDirectory/bin/dsconfig -h localhost -p 4444 -D cn=directory\ manager -j pwd.txt -X -n \
+          set-workflow-prop \
+          --workflow-name userRoot0 \
+          --set workflow-element:Eus0
+
+Otherwise we need to create the workflow and add it to the default network group:
+
+$ OracleUnifiedDirectory/bin/dsconfig -h localhost -p 4444 -D cn=directory\ manager -j pwd.txt -X -n \
+          create-workflow \
+          --set base-dn:dc=mydomain,dc=com \
+          --set enabled:true \
+          --set workflow-element:Eus0 \
+          --type generic \
+          --workflow-name userRoot0
+$ OracleUnifiedDirectory/bin/dsconfig -h localhost -p 4444 -D cn=directory\ manager -j pwd.txt -X -n \
+          set-network-group-prop \
+          --group-name network-group \
+          --add workflow:userRoot0
+
+9. Configure the ACIs
+
+EUS requires the following ACIs:
+
+ 
+
+   Anonymous access to read cn=subschemasubentry:
+    (target="ldap:///cn=subschemasubentry")(targetscope="base")(targetattr="objectClass||attributeTypes||dITContentRules||dITStructureRules||ldapSyntaxes||matchingRules||matchingRuleUse||nameForms||objectClasses")(version 3.0; acl "User-Visible SubSchemaSubentry Operational Attributes"; allow (read,search,compare) userdn="ldap:///anyone";)
+
+    Use of EUS-specific controls:
+    (targetcontrol="2.16.840.1.113894.1.8.16")(version 3.0; acl "Anonymous control access"; allow(read) userdn="ldap:///anyone";)
+    (targetcontrol="2.16.840.1.113894.1.8.2")(version 3.0; acl "Anonymous control access"; allow(read) userdn="ldap:///anyone";)
+
+    Anonymous access to read the subtree, except for the password attribute:
+    (target="ldap:///dc=mydomain,dc=com")(targetattr!="userpassword||authpassword||aci")(version 3.0; acl "Anonymous read access to subtree";allow (read,search,compare) userdn="ldap:///anyone";)
+
+    DB entry able to read authpassword:
+    (target="ldap:///dc=mydomain,dc=com")(targetattr="authpassword||userpassword")(version 3.0; acl "EUS reads authpassword"; allow (read,search,compare) userdn="ldap:///??sub?(&(objectclass=orclservice)(objectclass=orcldbserver))";)
+
+    DB entry able to write orclaccountstatusenabled:
+    (target="ldap:///dc=mydomain,dc=com")(targetattr="orclaccountstatusevent")(version 3.0; acl "EUS write orclaccountstatusenabled"; allow (write) userdn="ldap:///??sub?(&(objectclass=orclservice)(objectclass=orcldbserver))";)
+
+They can be added using the following command:
+
+$ OracleUnifiedDirectory/bin/dsconfig -h localhost -p 4444 -D cn=directory\ manager -j pwd.txt -X -n \
+          set-access-control-handler-prop \
+          --add global-aci:<ACI>
+
+10. Additional steps
+
+You can now perform the last configuration steps as described in the Admin Guide, i.e.
+
+  
+
+Edit OracleUnifiedDirectory/config/EUS/modifyRealm.ldif:
+        Replace dc=example,dc=com with dc=mydomain,dc=com
+        Replace ou=people,dc=example,dc=com with the DN where your user entries are stored
+        Replace ou=groups,dc=example,dc=com with the DN where your groups are stored
+    Import the file using the following command
+ 
+
+$ OracleUnifiedDirectory/bin/ldapmodify -h localhost -p 1389 -D cn=directory\ manager -j pwd.txt \
+          -a -f OracleUnifiedDirectory/config/EUS/modifyRealm.ldif
+You must now finish EUS configuration using netca, dbca and Enterprise Manager.
+
+ 
+
+ 
+
+OUD Proxy configuration with EUS
+
+
+OUD proxy can be installed with oud-proxy-setup --eusContext <baseDN>, but if you want to enable EUS on an existing proxy instance, perform the following steps:
+
+Note: the procedure will use the following configuration:
+
+OUD LDAP port: 1389
+OUD LDAPs port: 1636
+Base DN used for EUS: dc=mydomain,dc=com
+Network-group name: network-group
+1. Enable SSL and configure cipher suites
+
+Refer to above section.
+
+2. Create cn=subschemasubentry
+
+Refer to above section.
+
+3. Create a local backend for cn=OracleContext and cn=OracleSchemaVersion
+
+Refer to above section.
+
+4. Create a local backend for cn=OracleContext,<baseDN>
+
+Refer to above section.
+
+5. Create the EUS workflow element
+
+In the proxy use case, the users and groups are stored in a remote backend. The following commands define the LDAP Server Extension and ProxyLDAP workflow element:
+
+$ OracleUnifiedDirectory/bin/dsconfig -h localhost -p 4444 -D cn=directory\ manager -j pwd.txt -X -n \
+          create-extension \
+          --set enabled:true \
+          --set remote-ldap-server-address:myldaphostname \
+          --type ldap-server \
+          --extension-name proxy0
+$ OracleUnifiedDirectory/bin/dsconfig -h localhost -p 4444 -D cn=directory\ manager -j pwd.txt -X -n \
+          create-workflow-element \
+          --set client-cred-mode:use-client-identity \
+          --set enabled:true \
+          --set ldap-server-extension:proxy0 \
+          --set exclude-list:cn=directory\ manager \
+          --set exclude-list:cn=oraclecontext,dc=mydomain,dc=com \
+          --set remote-root-dn:<remote LDAP Server directory manager DN> \
+          --set remote-ldap-server-bind-dn:<remote LDAP Server directory manager DN> \
+          --set remote-ldap-server-bind-password:<remote dirmgr pwd> \
+          --set remote-root-password:<remote dirmgr pwd> \
+          --type proxy-ldap \
+          --element-name proxy-we0
+
+Then you must configure EUS workflow element, the workflow and the network group:
+
+$ OracleUnifiedDirectory/bin/dsconfig -h localhost -p 4444 -D cn=directory\ manager -j pwd.txt -X -n \
+          create-workflow-element \
+          --set enabled:true \
+          --set eus-realm:dc=mydomain,dc=com \
+          --set next-workflow-element:proxy-we0 \
+          --set server-type:<can be either ad, edir, odsee, oid, or oud>  \
+          --type eus \
+          --element-name eus-we0
+$ OracleUnifiedDirectory/bin/dsconfig -h localhost -p 4444 -D cn=directory\ manager -j pwd.txt -X -n \
+          create-workflow \
+          --set base-dn:dc=mydomain,dc=com \
+          --set enabled:true \
+          --set workflow-element:eus-we0 \
+          --type generic \
+          --workflow-name workflow0
+$ OracleUnifiedDirectory/bin/dsconfig -h localhost -p 4444 -D cn=directory\ manager -j pwd.txt -X -n \
+          set-network-group-prop \
+          --group-name network-group \
+          --add workflow:workflow0
+
+6. Configure the ACIs
+
+Refer to this above section.
+
+7. Additional steps
+
+Refer  to above section
+
+You must use the proxy credentials when configuring netca/dbca/EM (i.e. cn=directory manager) and not the credentials of the remote server.
+
+Note that the remote must be prepared for EUS.
+
