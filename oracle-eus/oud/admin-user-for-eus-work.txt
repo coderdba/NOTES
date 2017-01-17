@@ -43,3 +43,41 @@ sn: EUSADMIN
 numSubordinates: 0
 entryUUID: 60c05816-62ee-4c92-a98c-a6a453e9b6e5
 ds-pwp-password-policy-dn: cn=EUSADMIN_PASSWORD_POLICY,cn=Password Policies,cn=config
+
+======================================================
+CREATE A USER and SET IT UP TO BE A NON-ROOT EUS ADMIN
+======================================================
+https://docs.oracle.com/cd/E52734_01/oud/OUDAG/password_policies.htm#OUDAG00354
+http://stackoverflow.com/questions/17847891/how-can-i-add-an-admin-user-in-oracle-unified-directory-oud-11g-r2
+
+--------------------------
+Create user in OUD console
+--------------------------
+cn=eusadmin,ou=eusadmins,dc=example,dc=com
+
+----------------------------------------------
+On OUD server or elsewhere run these commands:
+----------------------------------------------
+- First, create a ldif file ~/eusadmin.ldif1 with the following contents:
+dn: cn=eusadmin,ou=eusadmins,dc=example,dc=com
+changetype: modify
+add: ds-pwp-password-policy-dn
+ds-pwp-password-policy-dn: cn="AES-Password-Storage-Policy,cn=Password Policies,cn=config"
+
+- Then run this:
+$ /u01/app/oracle/Middleware/OUD1/bin/ldapmodify -h oudhostname -p 1389 -D "cn=Directory Manager" -w oracle --filename ~/eusadmin.ldif1
+Processing MODIFY request for cn=eusadmin,ou=eusadmins,dc=example,dc=com
+MODIFY operation successful for DN cn=eusadmin,ou=eusadmins,dc=example,dc=com
+
+- Verify
+$ ldapsearch -h localhost -p 1389 -D "cn=Directory Manager" -j pwd-file -X -n -b "dc=example,dc=com" -s sub "(uid=mgarcia)" ds-pwp-password-policy-dn
+$ /u01/app/oracle/Middleware/OUD1/bin/ldapsearch -h oudhostname -p 1389 -D "cn=Directory Manager" -w oracle -b "dc=example,dc=com" -s sub "(cn=eusadmin)" ds-pwp-password-policy-dn
+  
+
+- Note-Caution
+
+
+Running this command per Oracle docs fails due to incorrect options or something:
+$ ldapmodify -h oralx0003 -p 1389 -D "cn=Directory Manager" -w oracle dn: cn=eusadmin,ou=eusadmins,dc=example,dc=com changetype: modify add: ds-pwp-password-policy-dn ds-pwp-password-policy-dn: cn="AES-Password-Storage-Policy,cn=Password Policies,cn=config"
+
+
