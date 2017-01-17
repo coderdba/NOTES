@@ -1,0 +1,245 @@
+Example of setting up Enterprise User Security with password authentication (Doc ID 185275.1)
+
+Example of Setting Up Enterprise User Security With Password Authentication
+Abstract
+
+This note provides a step by step example of setting up Enterprise User Security (EUS)
+with password authentication using Enterprise Security Manager (ESM) with Oracle Internet Directory (OID). This article is applicable only for 9i version. Please refer the references below for the later versions.
+
+Table of Contents
+
+Introduction
+Step-by-Step Example
+[CHECK] Verify that the database server can bind to the OID server
+[CHECK] Verify that the database is registered with OID
+[ACTION] Create a global schema
+[ACTION] Grant the required privileges to the global schema
+[ACTION] Create a new enterprise user using Enterprise Security Manager
+[CHECK] Verify that the new user has been created
+[ACTION] Allow database access for the new enterprise user
+[ACTION] Set up and map an enterprise domain
+[CHECK] Verify that the database can locate the enterprise domain
+[ACTION] Version 9.2: Add OracleDefaultDomain to OraclePasswordAccessibleDomains group
+[CHECK] Check that the new enterprise user can connect
+
+References
+Introduction
+
+This note provides a step by step example of setting up Enterprise User Security (EUS) with password authentication using Enterprise Security Manager (ESM) with Oracle Internet Directory (OID). The note makes the following assumptions: 
+That the OID version is 3.0.1 or above
+That the database version is 9.0.1 or above
+That the database server is configured for SSL - see note:189260.1 There is no need to define TCPS support in the listener for password authenticated enterprise users, simply create the database wallet with autologin enabled and define the wallet path in the SQLNET.ORA
+That OID is configured for SSL - see note:178714.1
+That the database is registered with OID using the Database Configuration Assistant (DBCA) (version 9.0.1 or above) or the Enterprise Securiry Manager (ESM) (version 9.2) - see Registering a database in the Directory
+That the directory already has an entry for the domain being created and that an OracleContext has been created for this domain - see note:112763.1
+
+The following will be used in the example: 
+The domain being set up is us.oracle.com 
+The following DN entry has been created in OID: dc=us,dc=oracle,dc=com 
+An OracleContext has been created under that DIT as follows: cn=OracleContext,dc=us,dc=oracle,dc=com 
+The OID ldap server is running on node oaly-pc port 389 SSL port 636 
+The database instance is ora9pc 
+The example user being created is jwalsh 
+The example global schema is globaluser
+Note that is is recommended NOT to use the root context (cn=OracleContext) for configuring Enterprise User Security. Rather use a subscriber as in the example above (cn=OracleContext,dc=us,dc=oracle,dc=com). In future releases it may not be supported to use the root context.
+
+For guidance troubleshooting problems with Enterprise User Security see note:191137.1 Troubleshooting Enterprise User Secrurity.
+
+Step-by-Step Example
+
+1. [CHECK] Verify that the database server can bind to the OID server
+
+Verify that the Database Server can bind to the OID server successfully using the ldapbind command: 
+               > ldapbind -h <oid_hostname> -p <SSL_port> -U 3 -W "file:<Wallet_path>" -P "<wallet_password>" 
+For example: 
+               > ldapbind -h oaly-pc -p 636 -U 3 -W "file:c:\winnt\profiles\oaly\oracle\wallets" -P "oaly12345" 
+Where: 
+-U 3 indicates client server authentication. "SSL Client and Server Authenticatio" must be selected for the SSL config set in OID 
+-W is the wallet location on the database server 
+-P is the password of the wallet
+
+The bind should be successful
+
+If the bind fails see note:189260.1 How to configure the database with SSL using a DN certificate and note:178714.1 Setting up OID for SSL. The database certificate for this example should have the DN cn=ora9pc,cn=OracleContext,dc=us,dc=oracle,dc=com
+
+2. [CHECK] Verify that the database is registered with OID
+
+Check that the RDBMS_SERVER_DN parameter in the server parameter file matches the DN in the database wallet: 
+For example if the database wallet has the following DN entry as the subject: cn=ora9pc,cn=OracleContext,dc=us,dc=oracle,dc=com, the RDBMS_SERVER_DN parameter should be: RDBMS_SERVER_DN="cn=ora9pc,cn=OracleContext,dc=us,dc=oracle,dc=com" 
+Note: 
+1. The case of the characters on the right hand side of the "=" signs is significant, for example cn=dB1 is not the same as cn=Db1 
+2. The case of the characters on the left hand side of the "=" signs is not significant, for example CN=db is the same as cn=db 
+
+To check the current setting of the rdbms_server_dn parameter connect as a dba user: 
+     SQL> select name,value from v$parameter where name='rdbms_server_dn'; 
+
+     NAME 
+     ---------------------------------------------------------------- 
+     VALUE 
+     -------------------------------------------------------------------------- 
+     rdbms_server_dn 
+     cn=ora9pc,cn=OracleContext,dc=us,dc=oracle,dc=com
+
+To check the certificate select the certificate in the Oracle Wallet Manager (owm) and the DN is displayed as the Subject Name. 
+Use the Oracle Directory Manager (ODM) (oidadmin from the command line) to confirm that the entry for the database is present in the directory.
+
+3. [ACTION] Create a global schema
+
+Connect to the database on the database server machine as a DBA user, for example system/manager and create a global schema as follows: 
+               > CREATE USER globaluser IDENTIFIED GLOBALLY AS '';
+
+4. [ACTION] Grant the required privileges to the global schema
+
+While still connected to the database as the DBA user grant the following privileges to the global schema as follows: 
+               > GRANT CREATE SESSION, CONNECT, RESOURCE TO globaluser;
+
+5. [ACTION] Create a new enterprise user using Enterprise Security Manager
+
+Run the Enterprise Security Manager. 
+To run the Enterprise Security Manager from a Unix environment issue the following command: $ oemapp esm 
+To run the Enterprise Security Manager from a Windows environment go to the Start menu, Programs, select the Oracle home folder, Integrated Management Tools folder, Enterprise Security Manager
+
+Select the Password Authentication radio button from the login screen. 
+            User:  cn=orcladmin 
+            Password: welcome 
+            Hostname: oaly-pc 
+            Port Number: 389
+
+To create a new enterprise user 
+Click on Operations from the menu and select Create Enterprise User. 
+The Create User window will be displayed. It has three tabs. Select the first tab; "User Naming" and fill in the displayed window. For example: 
+            Base: dc=us,dc=oracle,dc=com (For version 9.2 this will be cn=users,dc=us,dc=oracle,dc=com) 
+            First Name: John 
+            Surname: Walsh 
+            User ID: Jwalsh 
+            Apply Suffix: <you can leave it blank> 
+            Email address: John.Walsh@us.oracle.com 
+            Common Name: cn=Jwalsh
+
+Note: 
+The Common Name must not include a dot as per the defaulted value. For example "John.Walsh" is not valid.
+
+Click on the "Password" tab. Either accept the default password oem_temp (9.0.1), welcome1 (9.2) or enter a new password for the user Jwalsh by selecting the radio button "Enter Manually" and entering the password.
+
+Click on "OK" button.
+
+6. [CHECK] Verify that the new user has been created
+
+From the Enterprise Security Manager main window, click on the OID host in the navigator window to highlight it. 
+Click on the "All Users" tab. 
+Confirm that the base is dc=us,dc=oracle,dc=com (9.0.1), cn=users,dc=us,dc=oracle,dc=com (9.2). 
+Click on "Search Now" button. 
+Jwalsh should be listed with Distinguished Name cn=Jwalsh,dc=us,dc=oracle,dc=com (9.0.1), cn=Jwalsh,cn=users,dc=us,dc=oracle,dc=com (9.2).
+
+Jwalsh can also be seen from the Oracle Directory Manager GUI (ODM) under the same DN entry.
+
+7. [ACTION] Allow database access for the new enterprise user
+
+Using the Enterprise Security Manager, expand the folder "Users, by Search Base" from the navigator window under "Oracle Contexts", "us" object. 
+Click on the user object "us". 
+A. From the "Users" tab, check that the base is dc=us,dc=oracle,dc=com (9.0.1), cn=users,dc=us,dc=oracle,dc=com (9.2). 
+Click "Search Now". The user Jwalsh should be displayed. 
+B. Click the "Restricted Database Access" tab (9.0.1) or the "Allowed Database Access" tab (9.2). Check box "Restrict Logon to Authorized Enterprise Domains" (9.0.1) or "Allow Logon to Authorized Enterprise Domains" (9.2).
+
+8. [ACTION] Set up and map an enterprise domain
+
+Using the Enterprise Security Manager, from the navigator window under "Oracle Contexts", "us" expand the "Enterprise Domains" object. 
+Click on "OracleDefaultDomain".
+
+A. Click the the "Database" tab. 
+Check that "User Authentication" is set to "Oracle Wallet (SSL) and Password" in the popup list. 
+Check that the database ora9pc is listed.
+
+B. (OPTIONAL)To make Jwalsh an administrator for the domain dc=us,dc=oracle,dc=com. 
+Click the "Administrators" tab. 
+Click the "Add" button. 
+The "Add Users" window is displayed. 
+In the "Selection" field add the DN of the domain dc=us,dc=oracle,dc=com (9.0.1), cn=users,dc=us,dc=oracle,dc=com (9.2). 
+Click on the "Search Now" button. 
+A number of entries will be listed under two columns "Name" and "Distinguished Name". Click on the entry Jwalsh. 
+Click the "OK" button. 
+Jwalsh will be added under the Administrators tab.
+
+C. Click on the "Database Schema Mapping" tab. 
+Click the "Add" button. 
+The "Add Database Schema Mapping" window is displayed. 
+Expand the entry for the domain dc=us,dc=oracle,dc=com and select the user cn=Jwalsh,dc=us,dc=oracle,dc=com (9.0.1), cn=Jwalsh,cn=users,dc=us,dc=oracle,dc=com (9.2). The entry will appear in the "Directory Entry" field. 
+Click on the "Entry Level" radio button. 
+In the "Schema" field enter the global schema name globaluser (Created in step 3 above). 
+Click "OK". 
+globaluser and cn=Jwalsh,dc=us,dc=oracle,dc=com (9.0.1), cn=Jwalsh,cn=users,dc=us,dc=oracle,dc=com (9.2) should appear on the "Database Schema Mapping" tab.
+
+Click the "Apply" button so that it is greyed out, to apply the changes.
+
+9. [CHECK] Verify that the database can locate the enterprise domain
+
+To verify that the database can read the domain by issuing the following from the database server as the oracle user: 
+            > ldapsearch -h <OID host> -p <OID SSL port> -U 3 -W "file:<database wallet location>" -P <wallet password> 
+               -b "cn=OracleDBSecurity,cn=Products,cn=OracleContext,<DN of domain>" "objectclass=orcldbenterprisedomain"
+
+For example 
+            > ldapsearch -h oaly-pc -p 636 -U 3 -W "file:c:\winnt\profiles\oaly\oracle\wallets" -P oaly12345 
+               -b "cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=us,dc=oracle,dc=com" "objectclass=orcldbenterprisedomain"
+
+Here is an example of the output: 
+cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=us,dc=oracle,dc=com 
+orclentrylevelaci=access to attr=(*) by group="cn=OracleDBCreators,cn=OracleContext,dc=us,dc=oracle,dc=com" (write,selfwrite) 
+orclaci=access to entry by group="cn=OracleDomainAdmins,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=us,dc=oracle,dc=com" (browse,add,delete) by group="cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=us,dc=oracle,dc=com" (browse) 
+orclaci=access to attr=(*) by group="cn=OracleDomainAdmins,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=us,dc=oracle,dc=com" 
+(read,search,compare,selfwrite,write) by group="cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=us,dc=oracle,dc=com" (read,search,compare) 
+uniquemember=cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=us,dc=oracle,dc=com 
+uniquemember=cn=ora9pc,cn=OracleContext,dc=us,dc=oracle,dc=com 
+objectclass=top 
+objectclass=orclDBEnterpriseDomain 
+objectclass=orclDBEnterpriseDomain_82 
+objectclass=groupofuniquenames 
+objectclass=orclprivilegegroup 
+cn=OracleDefaultDomain 
+orcldbauthtypes=ALL 
+orcldbservermember=cn=ora9pc,cn=OracleContext,dc=us,dc=oracle,dc=com
+**************
+10. [ACTION] Version 9.2: Add OracleDefaultDomain to OraclePasswordAccessibleDomains group
+
+The OracleDefaultDomain must be added to the cn=OraclePasswordAccessibleDomains,cn=Groups,cn=OracleContext,<domain base for the context> entry. This can be done in 2 ways: 
+With the Oracle Directory Manager (ODM) GUI: connect as the superuser (e.g. orcladmin) navigate to the appropriate entry and add the new DN to the uniquemember attribute, click on apply button. 
+OR 
+Create an ldif file as follows. Note that there should be no line breaks in the entries when the LDIF file is created: 
+     dn: cn=OraclePasswordAccessibleDomains,cn=Groups,cn=OracleContext,<domain base for the context> 
+     changetype: modify 
+     add: uniquemember 
+     uniquemember: cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,<domain base for the context> 
+e.g. 
+     dn: cn=OraclePasswordAccessibleDomains,cn=Groups,cn=OracleContext,dc=us,dc=oracle,dc=com 
+     changetype: modify 
+     add: uniquemember 
+     uniquemember: cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=us,dc=oracle,dc=com 
+and execute the following command line utility: 
+     ldapmodify -h <OID server host> -p <LDAP port> -D "cn=orcladmin" -w welcome1 -a -v -f <LDIF file> 
+e.g. 
+     ldapmodify -h oaly-pc -p 389 -D "cn=orcladmin" -w welcome1 -a -v -f addgroup.ldif
+
+See note:207423.1
+
+11. [CHECK] Check that the new enterprise user can connect
+
+Launch a sqlplus session and connect as: jwalsh/oem_temp@ora9pc. For example: 
+           SQL> connect jwalsh/oem_temp@ora9pc 
+The user jwalsh does not exist in the database. The session will be connected as the global schema owner globaluser
+
+References
+
+note:191137.1 Troubleshooting Enterprise User Secrurity
+Oracle9i Net Services Administrator's Guide Release 9.0.1: Chapter 8: Setting up Directory Server Usage
+Oracle9i Net Services Administrator's Guide Release 2 (9.2): Chapter 8: Setting up Directory Server Usage
+note:178714.1 Setting Up OID for SSL
+Oracle Internet Directory Administrator's Guide Release 3.0.1: Chapter 12: Secure Sockets Layer (SSL) and the Directory
+Oracle Internet Directory Administrator's Guide Release 9.2: Chapter 11: Secure Sockets Layer (SSL) and the Directory
+note:166492.1 SSL Troubleshooting Guide
+note:112490.1 Configuring NET8 TCP/IP via SSL
+Oracle Advanced Security Administrator's Guide: Release 9.0.1: Chapter 7: Configuring Secure Socket Layer Athentication
+Oracle Advanced Security Administrator's Guide: Release 2(9.2): Chapter 7: Configuring Secure Socket Layer Athentication
+Oracle Advanced Security Administrator's Guide: Release 9.0.1: Part V Enterprise User Security
+Oracle Advanced Security Administrator's Guide: Release 2(9.2): Part V Enterprise User Security
+note:272196.1 Step By Step Guide To Configuring 10g Password Authenticated Enterprise User Security
+note:453853.1 Step by Step Guide To Troubleshooting 10g Enterprise User Security (EUS) - Password Authentication
+note:466662.1 Step by Step Guide To Configure 10g Enterprise User Security (EUS) - SSL Authentication
