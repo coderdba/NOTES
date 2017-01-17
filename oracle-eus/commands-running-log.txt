@@ -10,5 +10,28 @@ ldapsearch -h oudserver.company.com -p 1389 -D "cn=Directory Manager" -w "dirmgr
 ldapsearch -h oudserver.company.com -p 1389 -D  "cn=Directory Manager" -w "dirmgrpassword" \
 -b cn=oraclecontext,dc=example,dc=com "(cn=DB_AS_REGISTERED_IN_LDAP)"
 
+- List passwords and password policies
+ldapsearch -h oudhost -p 1389 -D cn='Directory Manager' -w oracle -b cn='Directory Manager,cn=Root DNs,cn=config' -s base objectclass='*' userpassword
+ldap_search: No such object
+ldap_search: additional info: The entry cn=Directory Manager,cn=Root DNs,cn=config specified as the search base does not exist in the Directory Server
+
+ldapsearch -h oudhost -p 1389 -D cn='Directory Manager' -w oracle -b cn='user1,ou=people,dc=example,dc=com' -s base objectclass='*' userpassword
+cn=user1,ou=people,dc=example,dc=com
+userpassword={SSHA}BLCHoGsvTX6S1C7s4sxctfj7Wz08itrzvmIkuA==
+
+ldapsearch -h oudhost -p 1389 -D cn='Directory Manager' -w oracle -b cn='eusadmin,ou=eusadmins,dc=example,dc=com' -s base objectclass='*' userpassword
+cn=eusadmin,ou=eusadmins,dc=example,dc=com
+userpassword={AES}AZaBCiO8M0aMmrRbAnBEOV9A0QBjTEeBBoafXxfgmxkz+v9ufy2MBYM=
+
+ldapsearch -h oudhost -p 1389 -D cn='Directory Manager' -w oracle -b dc='example,dc=com' -s sub '(uid=user1)' ds-pwp-password-policy-dn
+cn=user1,ou=people,dc=example,dc=com
+
+ldapsearch -h oudhost -p 1389 -D cn='Directory Manager' -w oracle -b ou='eusadmins,dc=example,dc=com' -s sub '(uid=eusadmin)' ds-pwp-password-policy-dn
+cn=eusadmin,ou=eusadmins,dc=example,dc=com
+ds-pwp-password-policy-dn=cn=AES,cn=Password Policies,cn=config
+
+ldapsearch -h oudhost -p 1389 -D cn='Directory Manager' -w oracle -b cn='eusadmin,ou=eusadmins,dc=example,dc=com' -s base objectclass='*' ds-pwp-password-policy-dn
+cn=eusadmin,ou=eusadmins,dc=example,dc=com
+ds-pwp-password-policy-dn=cn=AES,cn=Password Policies,cn=config
 
 
