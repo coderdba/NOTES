@@ -1,6 +1,106 @@
 =============================================================
 OPENLDAP INSTALL AND CONFIGURE
 =============================================================
+https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/3/html/Reference_Guide/s1-ldap-quickstart.html
+https://www.centos.org/docs/5/html/Deployment_Guide-en-US/s1-ldap-files.html
+http://www.openldap.org/doc/admin24/quickstart.html
+
+https://www.centos.org/docs/5/html/Deployment_Guide-en-US/ch-ldap.html
+
+TUTORIALS
+http://docs.adaptivecomputing.com/viewpoint/hpc/Content/topics/1-setup/installSetup/settingUpOpenLDAPOnCentos6.htm
+https://www.howtoforge.com/linux_openldap_setup_server_client
+http://easylinuxtutorials.blogspot.in/2013/11/installing-configuring-openldap-server.html
+
+===================================
+INSTALL OPENLDAP AND BASIC CONFIG
+===================================
+
+----------------------------
+INSTALL PACKAGES
+----------------------------
+Yum install the following:
+openldap-servers --> on where ldap server will be running
+openldap, openldap-clients, and nss_ldap --> on all clients using this ldap service on ldap server
+(Install this on server also as it is also a client for itself)
+
+-----------------------------
+GENERATE A ROOT PASSWORD (for LDAP Root - not unix root)
+-----------------------------
+# slappasswd
+Give a password (say, oracle)
+It will give a ssha hash on the screen.
+Use that to enter in slapd.conf file.
+
+-----------------------------
+CREATE/UPDATE SLAPD.CONF FILE
+-----------------------------
+Edit /etc/openldap/slapd.conf with the following contents
+
+suffix          "dc=example,dc=com"
+rootdn          "cn=root,dc=example,dc=com"
+rootpw          {SSHA}UH4ps9JCLwiAuHET2RFuaEcbLodQgyFc
+
+---------------------------
+START THE SERVICE
+---------------------------
+The rhel document says 'service ldap start'
+However, it did not work
+
+So, do 'service slapd start'
+Also, make slapd automatically come up using 'chkconfig slapd on'
+
+# chkconfig slapd on
+Note: Forwarding request to 'systemctl enable slapd.service'.
+Created symlink from /etc/systemd/system/multi-user.target.wants/slapd.service to /usr/lib/systemd/system/slapd.service.
+
+# service slapd start
+
+Redirecting to /bin/systemctl start  slapd.service
+[root@oralx0001 init.d]# service slapd status
+Redirecting to /bin/systemctl status  slapd.service
+● slapd.service - OpenLDAP Server Daemon
+   Loaded: loaded (/usr/lib/systemd/system/slapd.service; disabled; vendor preset: disabled)
+   Active: active (running) since Wed 2017-01-18 04:46:09 CST; 5s ago
+     Docs: man:slapd
+           man:slapd-config
+           man:slapd-hdb
+           man:slapd-mdb
+           file:///usr/share/doc/openldap-servers/guide.html
+  Process: 46649 ExecStart=/usr/sbin/slapd -u ldap -h ${SLAPD_URLS} $SLAPD_OPTIONS (code=exited, status=0/SUCCESS)
+  Process: 46633 ExecStartPre=/usr/libexec/openldap/check-config.sh (code=exited, status=0/SUCCESS)
+ Main PID: 46652 (slapd)
+   Memory: 3.3M
+   CGroup: /system.slice/slapd.service
+           └─46652 /usr/sbin/slapd -u ldap -h ldapi:/// ldap:///
+
+Jan 18 04:46:08 oralx0001 systemd[1]: Starting OpenLDAP Server Daemon...
+Jan 18 04:46:08 oralx0001 runuser[46636]: pam_unix(runuser:session): session opened for user ldap by (uid=0)
+Jan 18 04:46:09 oralx0001 slapd[46649]: @(#) $OpenLDAP: slapd 2.4.40 (Aug 17 2016 16:04:55) $
+                                                mockbuild@x86-019.build.eng.bos.redhat.com:/builddir/build/BUILD/openldap-2.4.40/openldap-2.4.40/servers/slapd
+Jan 18 04:46:09 oralx0001 slapd[46652]: hdb_db_open: warning - no DB_CONFIG file found in directory /var/lib/ldap: (2).
+                                        Expect poor performance for suffix "dc=my-domain,dc=com".
+Jan 18 04:46:09 oralx0001 slapd[46652]: slapd starting
+Jan 18 04:46:09 oralx0001 systemd[1]: Started OpenLDAP Server Daemon.
+
+
+========================= 
+CONFIG FILES
+========================= 
+https://www.centos.org/docs/5/html/Deployment_Guide-en-US/s1-ldap-files.html
+24.4. OpenLDAP Configuration Files
+
+OpenLDAP configuration files are installed into the /etc/openldap/ directory. The following is a brief list highlighting 
+the most important directories and files:
+
+/etc/openldap/ldap.conf — This is the configuration file for all client applications which use the OpenLDAP libraries 
+such as ldapsearch, ldapadd, Sendmail, Evolution, and Gnome Meeting.
+
+/etc/openldap/slapd.conf — This is the configuration file for the slapd daemon. 
+Refer to Section 24.6.1, “Editing /etc/openldap/slapd.conf” for more information.
+
+/etc/openldap/schema/ directory — This subdirectory contains the schema used by the slapd daemon. 
+Refer to Section 24.5, “The /etc/openldap/schema/ Directory” for more information.
 
 ========================= 
 FROM  REDHAT SITE
