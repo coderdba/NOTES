@@ -45,7 +45,21 @@ env |sort
 echo
 echo "INFO - Creating Database using DBCA command"
 echo
-dbca -silent -createDatabase -gdbName $DBNAME_UNIQUE -sid $DBNAME -nodelist $RACNODES -databaseType MULTIPURPOSE -characterSet AL32UTF8 -nationalCharacterSet AL16UTF16 -initParams db_name=$DBNAME,db_unique_name=$DBNAME_UNIQUE,db_block_size=8 -templatename General_Purpose.dbc -sysPassword sys123 -systemPassword system123 -createAsContainerDatabase true -numberOfPdbs 1 -pdbName $PDBNAME -pdbAdminUserName PDBADMIN -pdbAdminPassword pdbadmin123 -storageType ASM -diskGroupName DATA01 -recoveryGroupName FRA01 -redoLogFileSize 100 -emConfiguration NONE -sampleSchema false 
+dbca -silent -createDatabase -gdbName $DBNAME_UNIQUE -sid $DBNAME -nodelist $RACNODES -databaseType MULTIPURPOSE -characterSet AL32UTF8 -nationalCharacterSet AL16UTF16 -initParams db_name=$DBNAME,db_unique_name=$DBNAME_UNIQUE,db_block_size=8 -templatename General_Purpose.dbc -sysPassword sys123 -systemPassword system123 -createAsContainerDatabase true -numberOfPdbs 1 -pdbName $PDBNAME -pdbAdminUserName PDBADMIN -pdbAdminPassword pdbadmin123 -storageType ASM -diskGroupName DATA01 -recoveryGroupName FRA01 -redoLogFileSize 100 -emConfiguration NONE -sampleSchema false sga_target=4294967296
+#-initparams audit_file_dest=’/bkup/dbatools/adump’ \
+#-initparams compatible=’11.2.0.3′ \
+#-initparams db_create_file_dest=’+DATA’ \
+#-initparams db_create_online_log_dest_1=’+DATA’ \
+#-initparams db_create_online_log_dest_2=’+FRA’ \
+#-initparams diagnostic_dest=’/bkup’ \
+#-initparams parallel_max_servers=64 \
+#-initparams pga_aggregate_target=1824522240 \
+#-initparams processes=600 \
+#-initparams sga_target=4294967296 \
+#-initparams db_recovery_file_dest=’+FRA’ \
+#-initparams db_recovery_file_dest_size=4322230272
+
+
 
 if [ $? -ne 0 ]
 then
