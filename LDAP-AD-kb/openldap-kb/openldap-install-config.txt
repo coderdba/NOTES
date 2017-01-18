@@ -1,0 +1,78 @@
+=============================================================
+OPENLDAP INSTALL AND CONFIGURE
+=============================================================
+
+========================= 
+FROM  REDHAT SITE
+=========================
+https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/3/html/Reference_Guide/s1-ldap-quickstart.html
+
+13.6. OpenLDAP Setup Overview
+This section provides a quick overview for installing and configuring an OpenLDAP directory. For more details, refer to the following URLs:
+
+http://www.openldap.org/doc/admin/quickstart.html — The Quick-Start Guide on the OpenLDAP website.
+
+http://www.redhat.com/mirrors/LDP/HOWTO/LDAP-HOWTO.html — The LDAP Linux HOWTO from the Linux Documentation Project, mirrored on Red Hat's website.
+
+The basic steps for creating an LDAP server are as follows:
+
+Install the openldap, openldap-servers, and openldap-clients RPMs.
+
+Edit the /etc/openldap/slapd.conf file to specify the LDAP domain and server. Refer to Section 13.6.1 Editing /etc/openldap/slapd.conf for more information.
+
+Start slapd with the command:
+
+/sbin/service ldap start
+After configuring LDAP, use chkconfig, ntsysv, or the Services Configuration Tool to configure LDAP to start at boot time. For more information about configuring services, refer to the chapter titled Controlling Access to Services in the Red Hat Enterprise Linux System Administration Guide.
+
+Add entries to an LDAP directory with ldapadd.
+
+Use ldapsearch to determine if slapd is accessing the information correctly.
+
+At this point, the LDAP directory should be functioning properly and can be configured with LDAP-enabled applications.
+
+13.6.1. Editing /etc/openldap/slapd.conf
+To use the slapd LDAP server, modify its configuration file, /etc/openldap/slapd.conf, to specify the correct domain and server.
+
+The suffix line names the domain for which the LDAP server provides information and should be changed from:
+
+suffix          "dc=your-domain,dc=com"
+so that it reflects a fully qualified domain name. For example:
+
+suffix          "dc=example,dc=com"
+The rootdn entry is the Distinguished Name (DN) for a user who is unrestricted by access controls or administrative limit parameters 
+set for operations on the LDAP directory. The rootdn user can be thought of as the root user for the LDAP directory. 
+In the configuration file, change the rootdn line from its default value as in the following example:
+
+rootdn          "cn=root,dc=example,dc=com"
+When populating an LDAP directory over a network, change the rootpw line — replacing the default value with an encrypted password 
+string. To create an encrypted password string, type the following command:
+
+slappasswd
+When prompted, type and then re-type a password. The program prints the resulting encrypted password to the shell prompt.
+
+Next, copy the newly created encrypted password into the /etc/openldap/slapd.conf on one of the rootpw lines and remove the 
+hash mark (#).
+
+When finished, the line should look similar to the following example:
+
+rootpw {SSHA}vv2y+i6V6esazrIv70xSSnNAJE18bb2u
+Warning	Warning
+ 	
+LDAP passwords, including the rootpw directive specified in /etc/openldap/slapd.conf, are sent over the network unencrypted, 
+unless TLS encryption is enabled.
+
+To enable TLS encryption, review the comments in /etc/openldap/slapd.conf and refer the man page for slapd.conf.
+
+For added security, the rootpw directive should be commented out after populating the LDAP directory by preceding it with a 
+hash mark (#).
+
+When using the /usr/sbin/slapadd command line tool locally to populate the LDAP directory, use of the rootpw directive
+is not necessary.
+
+Important	Important
+ 	
+Only the root user can use /usr/sbin/slapadd. However, the directory server runs as the ldap user. Therefore the directory 
+server is unable to modify any files created by slapadd. To correct this issue, after using slapadd, type the following command:
+
+chown -R ldap /var/lib/ldap
