@@ -29,7 +29,10 @@ GENERATE A ROOT PASSWORD (for LDAP Root - not unix root)
 -----------------------------
 # slappasswd
 Give a password (say, oracle)
-It will give a ssha hash on the screen.
+It will give a ssha hash on the screen like the following:
+
+{SSHA}UH4ps9JCLwiAuHET2RFuaEcbLodQgyFc
+
 Use that to enter in slapd.conf file.
 
 -----------------------------
@@ -40,6 +43,16 @@ Edit /etc/openldap/slapd.conf with the following contents
 suffix          "dc=example,dc=com"
 rootdn          "cn=root,dc=example,dc=com"
 rootpw          {SSHA}UH4ps9JCLwiAuHET2RFuaEcbLodQgyFc
+
+-----------
+WHICH PORT?
+-----------
+Default ports:
+http://www.openldap.org/doc/admin24/runningslapd.html
+URL	Protocol	Transport
+ldap:///	LDAP	TCP port 389
+ldaps:///	LDAP over SSL	TCP port 636
+ldapi:///	LDAP	IPC (Unix-domain socket)
 
 ---------------------------
 START THE SERVICE
@@ -83,7 +96,26 @@ Jan 18 04:46:09 oralx0001 slapd[46652]: hdb_db_open: warning - no DB_CONFIG file
 Jan 18 04:46:09 oralx0001 slapd[46652]: slapd starting
 Jan 18 04:46:09 oralx0001 systemd[1]: Started OpenLDAP Server Daemon.
 
+- FIX FOR WARNING "hdb_db_open: warning - no DB_CONFIG file found"
+https://www.centos.org/forums/viewtopic.php?t=20050
 
+- VERIFY
+At this point, curl to ldap protocol of this server should work:
+
+# curl ldap://oralx0001:389
+DN:
+        objectClass: top
+        objectClass: OpenLDAProotDSE
+
+
+$ curl ldap://<hostname>
+DN:
+        objectClass: top
+        objectClass: OpenLDAProotDSE
+        
+
+
+-------INFO SECTIONS ---------
 ========================= 
 CONFIG FILES
 ========================= 
