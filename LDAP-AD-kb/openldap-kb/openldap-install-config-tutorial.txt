@@ -1,0 +1,183 @@
+http://docs.adaptivecomputing.com/viewpoint/hpc/Content/topics/1-setup/installSetup/settingUpOpenLDAPOnCentos6.htm
+
+Setting up OpenLDAP on CentOS 6
+
+These instructions are intended to help first-time LDAP administrators get up and running. The following procedures contain instructions for getting started using OpenLDAP on a CentOS 6 system. For more complete information on how to set up OpenLDAP see the OpenLDAP documentation.
+
+Installing and configuring OpenLDAP on Centos 6
+Adding an organizational unit (OU)
+Adding a user
+Adding a group
+Adding a user to a group
+
+Adaptive Computing is not responsible for creating, maintaining, or supporting customer LDAP or Active Directory configurations.
+
+Installing and configuring OpenLDAP on Centos 6
+First, you will need to install OpenLDAP. These instructions explain how you can do this on a CentOS 6 system.
+
+To install and configure OpenLDAP on Centos 6
+
+Run the following command:
+[root]# yum -y install openldap openldap-clients openldap-servers
+Generate a password hash to be used as the admin password. This password hash will be used when you create the root user for your LDAP installation. For example:
+[root]# slappasswd
+New password : p@ssw0rd
+Re-enter new password : p@ssw0rd
+{SSHA}5lPFVw19zeh7LT53hQH69znzj8TuBrLv
+Add the root user and the root user's password hash to the OpenLDAP configuration in the olcDatabase={2}bdb.ldif file. The root user will have permissions to add other users, groups, organizational units, etc. Do the following:
+Run this command:
+[root]# cd /etc/openldap/slapd.d/cn\=config
+[root]# vi olcDatabase\=\{2\}bdb.ldif
+If the olcRootPW attribute does not already exist, create it. Then set the value to be the hash you created from slappasswd. For example:
+olcRootPW: {SSHA}5lPFVw19zeh7LT53hQH69znzj8TuBrLv
+...
+While editing this file, change the distinguished name (DN) of the olcSuffix to something appropriate. The suffix typically corresponds to your DNS domain name, and it will be appended to the DN of every other LDAP entry in your LDAP tree.
+For example, let's say your company is called Acme Corporation, and that your domain name is "acme.com." You might make the following changes to the olcDatabase={2}bdb.ldif file:
+olcSuffix: dc=acme,dc=com
+...
+olcRootDN: cn=Manager,dc=acme,dc=com
+...
+olcRootPW: {SSHA}5lPFVw19zeh7LT53hQH69znzj8TuBrLv
+...
+
+Throughout the following examples in this topic, you will see dc=acme,dc=com. "acme" is only used as an example to illustrate what you would use as your own domain controller if your domain name was "acme.com." You should replace any references to "acme" with your own organization's domain name.
+
+Do not set the cn of your root user to "root" (cn=root,dc=acme,dc=com), or OpenLDAP will have problems.
+Modify the DN of the root user in the olcDatabase={1}monitor.ldif file to match the olcRootDN line in the olcDatabase={2}bdb.ldif file. Do the following:
+Run this command to edit the olcDatabase={1}monitor.ldif file:
+[root]# vi olcDatabase\=\{1\}monitor.ldif
+Modify the olcAccess line so that the dn.base matches the olcRootDN from the olcDatabase={2}bdb.ldif file. (In this example, dn.base should be "cn=Manager,dc=acme,dc=com".)
+olcAccess: {0}to * by dn.base="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" read by dn.base="cn=Manager,dc=acme,dc=com" read by * none
+Now the root user for your LDAP is cn=Manager,dc=acme,dc=com. The root user's password is the password that you entered using slappasswd (see step 2), which, in this example, is p@ssw0rd
+Hide the password hashes from users who should not have permission to view them.
+
+A full discussion on configuring access control in OpenLDAP is beyond the scope of this tutorial. For help, see the OpenLDAP Access Control documentation.
+Run this command to edit the oclDatabase\=\{2\}bdb.ldif file: 
+[root]# vi olcDatabase\=\{2\}bdb.ldif
+Add the following two lines to the end of the file to restrict users from viewing other users' password hashes.
+olcAccess: {0}to attrs=userPassword by self write by dn.base="cn=Manager,dc=acme,dc=com" write by anonymous auth by * none
+olcAccess: {1}to * by dn.base="cn=Manager,dc=acme,dc=com" write by self write by * read
+These lines allow a user to read and write his or her own password. It also allows a manager to read and write anyone's password. Anyone, including anonymous users, is allowed to view non-password attributes of other users.
+Make sure that OpenLDAP is configured to start when the machine starts up, and start the OpenLDAP service.
+[root]# chkconfig slapd on
+[root]# service slapd start
+Now, you must manually create the "dc=acme,dc=com" LDAP entry in your LDAP tree.
+An LDAP directory is analogous to a tree. Nodes in this tree are called LDAP "entries" and may represent users, groups, organizational units, domain controllers, or other objects. The attributes in each entry are determined by the LDAP schema. In this tutorial we will build entries based on the InetOrgPerson schema (which ships with OpenLDAP by default).
+In order to build our LDAP tree we must first create the root entry. Root entries are usually a special type of entry called a domain controller (DC). Because we are assuming that the organization is called Acme Corporation, and that the domain is "acme.com," we will create a domain controller LDAP entry called dc=acme,dc=com. Again, you will need to replace "acme" with your organization's domain name. Also note that dc=acme,dc=com is what is called an LDAP distinguished name (DN). An LDAP distinguished name uniquely identifies an LDAP entry.
+Do the following:
+Create a file called acme.ldif. (You can delete this file once its content has been added to LDAP, so in this example, we will create it in the /tmp folder.)
+[root]# cd /tmp
+[root]# vi acme.ldif
+Add the following lines in acme.ldif:
+dn: dc=acme,dc=com
+objectClass: dcObject
+objectClass: organization
+dc: acme
+o : acme
+Now add the contents of this file to LDAP. Run this command:
+[root]# ldapadd -f acme.ldif -D cn=Manager,dc=acme,dc=com -w p@ssw0rd
+Verify that your entry was added correctly.
+[root]# ldapsearch -x -LLL -b dc=acme,dc=com
+dn: dc=acme,dc=com 
+objectClass: dcObject
+objectClass: organization
+dc: acme
+o: acme
+By default, the CentOS 6 firewall will block external requests to OpenLDAP. In order to allow MWS to access LDAP, you will have to configure your firewall to allow connections on port 389. (Port 389 is the default LDAP port.)
+Configuring your firewall is beyond the scope of this tutorial; however, it may be helpful to know that the default firewall on CentOS is a service called iptables. (For more information, see the documentation on iptables.) In the most basic case, you may be able to add a rule to your firewall that accepts connections to port 389 by doing the following:
+Edit your iptables file:
+[root]# vi /etc/sysconfig/iptables
+Add the following line after all the ACCEPT lines but before any of the REJECT lines in your iptables file:
+# ... lines with ACCEPT should be above
+-A INPUT -p tcp --dport 389 -j ACCEPT
+# .. lines with REJECT should be below
+For example, here is a sample iptables file with this line added:
+*filter
+:INPUT ACCEPT [0:0]
+:FORWARD ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+-A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+-A INPUT -p icmp -j ACCEPT
+-A INPUT -i lo -j ACCEPT
+-A INPUT -m state --state NEW -m tcp -p tcp --dport 22 -j ACCEPT
+-A INPUT -p tcp --dport 389 -j ACCEPT
+-A INPUT -j REJECT --reject-with icmp-host-prohibited
+-A FORWARD -j REJECT --reject-with icmp-host-prohibited
+
+COMMIT
+Now flush iptables.
+[root]# iptables --flush
+
+Although providing instructions is beyond the scope of this tutorial, it is also highly recommended that you set up OpenLDAP to use SSL or TLS security to prevent passwords and other sensitive data from being sent in plain text. For information on how to do this, see the OpenLDAP TLS documentation.
+Now that you have installed and set up Open LDAP, you are ready to add organizational units (see Adding an organizational unit (OU)).
+
+Adding an organizational unit (OU)
+These instructions will describe how to populate the LDAP tree with organizational units (OUs), groups, and users, all of which are different types of LDAP entries. The examples that follow also presume an InetOrgPerson schema, because the InetOrgPerson schema is delivered with OpenLDAP by default.
+
+To add an organizational unit (OU) entry to the LDAP tree
+
+In this example, we are going to add an OU called "Users."
+
+Create a temporary file called users.ldif. (You can delete this file once its content has been added to LDAP, so in this example, we will create it in the /tmp folder.)
+[root]# cd /tmp
+[root]# vi users.ldif
+Add these lines to users.ldif:
+dn: ou=Users,dc=acme,dc=com
+objectClass: organizationalUnit
+ou: Users
+Add the contents of users.ldif file to LDAP.
+[root]# ldapadd -f users.ldif -D cn=Manager,dc=acme,dc=com -w p@ssw0rd
+Adding a user
+To add a user to LDAP
+
+In this example, we will add a user named "Bob Jones" to LDAP inside the "Users" OU.
+
+Create a temporary file called bob.ldif. (You can delete this file once its content has been added to LDAP, so in this example, we will create it in the /tmp folder.)
+[root]# cd /tmp
+[root]# vi bob.ldif
+Add these lines to bob.ldif:
+dn: cn=Bob Jones,ou=Users,dc=acme,dc=com
+cn: Bob Jones
+sn: Jones
+objectClass: inetOrgPerson
+userPassword: p@ssw0rd
+uid: bjones
+Add the contents of bob.ldif file to LDAP.
+[root]# ldapadd -f bob.ldif -D cn=Manager,dc=acme,dc=com -w p@ssw0rd
+Adding a group
+To add a group to LDAP
+
+In this example, we will add a group called "Engineering" to LDAP inside the "Users" OU.
+
+Create a temporary file called engineering.ldif. (You can delete this file once its content has been added to LDAP, so in this example, we will create it in the /tmp folder.)
+[root]# cd /tmp
+[root]# vi engineering.ldif
+Add these lines to engineering.ldif:
+dn: cn=Engineering,ou=Users,dc=acme,dc=com
+cn: Engineering
+objectClass: groupOfNames
+member: cn=Bob Jones,ou=Users,dc=acme,dc=com
+Add the contents of engineering.ldif file to LDAP.
+[root]# ldapadd -f engineering.ldif -D cn=Manager,dc=acme,dc=com -w p@ssw0rd
+Adding a user to a group
+To add a user to an LDAP group
+
+In this example, we will add an LDAP member named "Al Smith" to the "Engineering" LDAP group. This example assumes that user, Al Smith, has already been added to LDAP.
+
+
+Before you add a user to an LDAP group, the user must first be added to LDAP. For more information, see Adding a user.
+
+Create a temporary file called addUserToGroup.ldif. (You can delete this file once its content has been added to LDAP, so in this example, we will create it in the /tmp folder.)
+[root]# cd /tmp
+[root]# vi addUserToGroup.ldif
+Add these lines to addUserToGroup.ldif:
+dn: cn=Engineering,ou=Users,dc=acme,dc=com
+changetype: modify
+add: member
+member: cn=Al Smith,ou=Users,dc=acme,dc=com
+Now add the contents of addUserToGroup.ldif file to LDAP.
+[root]# ldapadd -f addUserToGroup.ldif -D cn=Manager,dc=acme,dc=com -w p@ssw0rd
+Related topics 
+Securing a Viewpoint-LDAP/Active Directory connection
+Installing Viewpoint
+About Viewpoint installation and setup
