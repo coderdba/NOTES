@@ -1,0 +1,214 @@
+http://www.itzgeek.com/how-tos/linux/centos-how-tos/step-step-openldap-server-configuration-centos-7-rhel-7.html
+
+
+Step by Step OpenLDAP Server Configuration on CentOS 7 / RHEL 7
+
+ RAJ  OCTOBER 18, 2016 0 COMMENTS  CENTOS 7, OPENLDAP
+
+ 
+
+ 
+OpenLDAP Server Configuration on CentOS 7
+OpenLDAP Server Configuration on CentOS 7
+OpenLDAP is an open-source implementation of Lightweight Directory Access Protocol developed by OpenLDAP project. LDAP is an Internet protocol that email and other programs use to look up contact information from a server. It is released under OpenLDAP public license; it is available for all major Linux distributions, AIX, Android, HP-UX, OS X, Solaris, Windows and z/OS.
+
+It functions like a relational database in certain ways and can be used to store any information. LDAP is not limited to store the information; it is also used as a backend database for “single sign-on” where one password for a user is shared between many services.
+
+
+ 
+In this tutorial, we will configure OpenLDAP for centralized login where the users use the single account to log in on multiple servers.
+
+Environment:
+
+HOST NAME	IP ADDRESS	OS	PURPOSE
+server.itzgeek.local	192.168.12.10	CentOS 7	LDAP Server
+client.itzgeek.local	192.168.12.20	CentOS 7	LDAP Client
+Prerequisites:
+
+1. Make sure both LDAP server “server.itzgeek.local” (192.168.12.10) and LDAP client “client.itzgeek.local” (192.168.12.20) are accessible.
+
+2. Make an entry for each machines in /etc/hosts for name resolution.
+
+
+ 
+vi /etc/hosts
+
+192.168.12.10 server.itzgeek.local server
+192.168.12.20 client.itzgeek.local client
+or
+
+If you plan to use server name instead of IP address, configure DNS server using article on How to Configure DNS Server on RHEL7.
+
+Here I will use IP address for all the configuration.
+
+Install LDAP:
+
+Install the following LDAP RPM packages to get started. Run below command on LDAP server (server.itzgeek.local).
+
+yum -y install openldap compat-openldap openldap-clients openldap-servers openldap-servers-sql openldap-devel
+Start the LDAP service and enable it for the auto start of service on system boot.
+
+systemctl start slapd.service
+systemctl enable slapd.service
+Verify the LDAP.
+
+netstat -antup | grep -i 389
+
+tcp        0      0 0.0.0.0:389             0.0.0.0:*               LISTEN      1520/slapd          
+tcp6       0      0 :::389                  :::*                    LISTEN      1520/slapd
+Setup LDAP root password:
+
+Run below command to create an LDAP root password; we will use this root password throughout this article. So make a note of this and keep it aside.
+
+[root@server ~]# slappasswd
+New password: 
+Re-enter new password: 
+{SSHA}d/thexcQUuSfe3rx3gRaEhHpNJ52N8D3
+[root@server ~]#
+Configure OpenLDAP server:
+
+OpenLDAP servers configuration files are found in /etc/openldap/slapd.d/. To start with the configuration of LDAP, we would need to update the variables “olcSuffix” and “olcRootDN“.
+
+olcSuffix –  Database Suffix, it is the domain name for which the LDAP server provides the information. In simple words, it should be changed to your domain
+name.
+
+olcRootDN – Root Distinguished Name (DN) entry for the user who has the unrestricted access to perform all administration activities on LDAP, like a root user.
+
+olcRootPW – Password for the above RootDN.
+
+
+ 
+Above entries are to be updated in /etc/openldap/slapd.d/cn=config/olcDatabase={2}hdb.ldif file. Manually edit of LDAP configuration is not recommended as you will lose changes whenever you run ldapmodify command.
+Please create a .ldif file and add the below entries.
+
+# vi db.ldif
+
+dn: olcDatabase={2}hdb,cn=config
+changetype: modify
+replace: olcSuffix
+olcSuffix: dc=itzgeek,dc=local
+
+dn: olcDatabase={2}hdb,cn=config
+changetype: modify
+replace: olcRootDN
+olcRootDN: cn=ldapadm,dc=itzgeek,dc=local
+
+dn: olcDatabase={2}hdb,cn=config
+changetype: modify
+replace: olcRootPW
+olcRootPW: {SSHA}QF+jBFJ/RWGVwPuDzQI87YJfJtKOYGhK
+Once you are done with the ldif file, send the configuration to the LDAP server.
+
+ldapmodify -Y EXTERNAL  -H ldapi:/// -f db.ldif
+Make a changes to /etc/openldap/slapd.d/cn=config/olcDatabase={1}monitor.ldif (Do not edit manually) file to restrict the monitor access only to ldap root (ldapadm) user not to others.
+
+# vi monitor.ldif
+
+dn: olcDatabase={1}monitor,cn=config
+changetype: modify
+replace: olcAccess
+olcAccess: {0}to * by dn.base="gidNumber=0+uidNumber=0,cn=peercred,cn=external, cn=auth" read by dn.base="cn=ldapadm,dc=itzgeek,dc=local" read by * none
+Once you have updated the file, send the configuration to the LDAP server.
+
+ldapmodify -Y EXTERNAL  -H ldapi:/// -f monitor.ldif
+Create LDAP certificate:
+
+Let’s create a self-signed certificate for our LDAP server, below command generates both certificate and private key in /etc/openldap/certs/ directory.
+
+openssl req -new -x509 -nodes -out /etc/openldap/certs/itzgeekldapcert.pem -keyout /etc/openldap/certs/itzgeekldapkey.pem -days 365
+
+Generating a 2048 bit RSA private key
+...+++
+.....................................+++
+writing new private key to '/etc/openldap/certs/itzgeekldapkey.pem'
+-----
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Country Name (2 letter code) [XX]: XX
+State or Province Name (full name) []: XX
+Locality Name (eg, city) [Default City]: XXXXXX
+Organization Name (eg, company) [Default Company Ltd]:ITzGeek
+Organizational Unit Name (eg, section) []:IT Infra
+Common Name (eg, your name or your server's hostname) []:server.itzgeek.local
+Email Address []:admin@itzgeek.com
+Set the owner and group permissions to ldap.
+
+chown -R ldap:ldap /etc/openldap/certs/*.pem
+Verify the created LDAP certificate under /etc/openldap/certs/.
+
+ll /etc/openldap/certs/*.pem
+-rw-r--r--. 1 ldap ldap 1440 Oct 10 02:31 /etc/openldap/certs/itzgeekldapcert.pem
+-rw-r--r--. 1 ldap ldap 1704 Oct 10 02:31 /etc/openldap/certs/itzgeekldapkey.pem
+Create certs.ldif file to configure LDAP to use secure communication using a self-signed certificate.
+
+# vi certs.ldif
+
+dn: cn=config
+changetype: modify
+replace: olcTLSCertificateFile
+olcTLSCertificateFile: /etc/openldap/certs/itzgeekldapcert.pem
+
+dn: cn=config
+changetype: modify
+replace: olcTLSCertificateKeyFile
+olcTLSCertificateKeyFile: /etc/openldap/certs/itzgeekldapkey.pem
+Import the configurations to LDAP server.
+
+ldapmodify -Y EXTERNAL  -H ldapi:/// -f certs.ldif
+Verify the configuration:
+
+slaptest -u
+You should get the following message confirms the verification is complete.
+
+config file testing succeeded
+Set up LDAP database:
+
+Copy the sample database configuration file to /var/lib/ldap and update the file permissions.
+
+cp /usr/share/openldap-servers/DB_CONFIG.example /var/lib/ldap/DB_CONFIG
+chown ldap:ldap /var/lib/ldap/*
+Add the cosine and nis LDAP schemas.
+
+ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/cosine.ldif
+ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/nis.ldif 
+ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/inetorgperson.ldif
+Generate base.ldif file for your domain.
+
+# vi base.ldif
+
+dn: dc=itzgeek,dc=local
+dc: itzgeek
+objectClass: top
+objectClass: domain
+
+dn: cn=ldapadm ,dc=itzgeek,dc=local
+objectClass: organizationalRole
+cn: ldapadm
+description: LDAP Manager
+
+dn: ou=People,dc=itzgeek,dc=local
+objectClass: organizationalUnit
+ou: People
+
+dn: ou=Group,dc=itzgeek,dc=local
+objectClass: organizationalUnit
+ou: Group
+Build the directory structure.
+
+ldapadd -x -W -D "cn=ldapadm,dc=itzgeek,dc=local" -f base.ldif
+ldapadd command will prompt you for the password of ldapadm (LDAP root user).
+Output:
+
+Enter LDAP Password: 
+adding new entry "dc=itzgeek,dc=local"
+
+adding new entry "cn=ldapadm ,dc=itzgeek,dc=local"
+
+adding new entry "ou=People,dc=itzgeek,dc=local"
+
+adding new entry "ou=Group,dc=itzgeek,dc=local"
