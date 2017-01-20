@@ -315,3 +315,47 @@ XML AUDIT FILE CONTENTS - FOR SIMILAR OPERATIONS AS ABOVE
 <AuditRecord><Audit_Type>4</Audit_Type><Session_Id>4294967295</Session_Id><StatementId>3</StatementId><EntryId>6</EntryId><Extended_Timestamp>2017-01-20T06:04:35.906843Z</Extended_Timestamp><DB_User>/</DB_User><Ext_Name>mylanid</Ext_Name><OS_User>mylanid</OS_User><Userhost>machinename</Userhost><OS_Process>14088</OS_Process><Terminal>pts/1</Terminal><Instance_Number>1</Instance_Number><Returncode>0</Returncode><OSPrivilege>SYSDBA</OSPrivilege><DBID>3137429114</DBID>
 <Sql_Text>commit</Sql_Text>
 </AuditRecord>
+
+-----------------------------
+STARTUP AND SHUTDOWN ACTIONS  (DIRECTLY ON DB SERVER)
+-----------------------------
+
+- Shutdown using srvctl seemed to record the privileged o/s user 'oracle' instead of the os user that did srvctl operation
+NOTE: <OS_User>oracle</OS_User> in the listing below
+...
+...
+<AuditRecord><Audit_Type>4</Audit_Type><Session_Id>4294967295</Session_Id><StatementId>4</StatementId><EntryId>5</EntryId><Extended_Timestamp>2017-01-20T06:34:30.853507Z</Extended_Timestamp><DB_User>/</DB_User><Ext_Name>oracle</Ext_Name><OS_User>oracle</OS_User><Userhost>db-host-name</Userhost><OS_Process>38078</OS_Process><Instance_Number>1</Instance_Number><Returncode>0</Returncode><OSPrivilege>SYSDBA</OSPrivilege>
+<Sql_Text>ALTER DATABASE DISMOUNT /* db agent *//* {1:56856:18033} */</Sql_Text>
+</AuditRecord>
+<AuditRecord><Audit_Type>8</Audit_Type><EntryId>6</EntryId><Extended_Timestamp>2017-01-20T06:34:30.854788Z</Extended_Timestamp><DB_User>/</DB_User><OS_User>oracle</OS_User><Userhost>db-host-name</Userhost><OS_Process>38078</OS_Process><Instance_Number>1</Instance_Number><Returncode>0</Returncode><OSPrivilege>SYSDBA</OSPrivilege>
+<Sql_Text>SHUTDOWN</Sql_Text>
+</AuditRecord>
+
+- Startup using sqlplus seemed to record the os user that did sqlplus-startup operation
+NOTE: With XML setting, it was a combination of .aud plain text file and a .xml file
+NOTE: With XML setting, the .aud file had the SHUTDOWN entry as below (also note that DBID does not have a value in it)
+        Oracle Database 11g Enterprise Edition Release 11.2.0.4.0 - 64bit Production
+        With the Partitioning, Real Application Clusters, OLAP, Data Mining
+        and Real Application Testing options
+        ORACLE_HOME = /u02/app/oracle/product/11.2.0.4.RAC
+        System name:    Linux
+        Node name:      db-hostname.com
+        Release:        2.6.32-573.22.1.el6.x86_64
+        Version:        #1 SMP Thu Mar 17 03:23:39 EDT 2016
+        Machine:        x86_64
+        Instance name: DB-INSTANCE-NAME
+        Redo thread mounted by this instance: 0 <none>
+        Oracle process number: 0
+        Unix process pid: 44686, image: oracle@db-hostname.com
+
+        Fri Jan 20 00:37:42 2017 -06:00
+        LENGTH : '156'
+        ACTION :[7] 'STARTUP'
+        DATABASE USER:[1] '/'
+        PRIVILEGE :[4] 'NONE'
+        CLIENT USER:[6] 'mylanid'
+        CLIENT TERMINAL:[13] 'Not Available'
+        STATUS:[1] '0'
+        DBID:[0] ''
+
+
