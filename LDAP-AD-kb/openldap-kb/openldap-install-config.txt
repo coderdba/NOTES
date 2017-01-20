@@ -473,6 +473,27 @@ NOTE: If server and client are same, no scp required if the 'client' directory i
 ------------------------------------------------------------------------------------
 Create a sssd.conf file at this location /etc/sssd/sssd.conf - on client
 ------------------------------------------------------------------------------------
+IMPORTANT: Make this file owner root:root and permission 600.  
+           Otherwise, sssd will not start, and gives status as follows:
+
+# systemctl status sssd.service
+● sssd.service - System Security Services Daemon
+   Loaded: loaded (/usr/lib/systemd/system/sssd.service; enabled; vendor preset: disabled)
+  Drop-In: /etc/systemd/system/sssd.service.d
+           └─journal.conf
+   Active: failed (Result: exit-code) since Fri 2017-01-20 05:48:37 CST; 14s ago
+  Process: 380 ExecStart=/usr/sbin/sssd -D -f (code=exited, status=4)
+
+Jan 20 05:48:37 oralx0001 systemd[1]: Starting System Security Services Daemon...
+Jan 20 05:48:37 oralx0001 sssd[380]: Cannot read config file /etc/sssd/sssd.conf. Please check that the file is accessible only by the owner and owned by root.root.
+Jan 20 05:48:37 oralx0001 systemd[1]: sssd.service: control process exited, code=exited status=4
+Jan 20 05:48:37 oralx0001 systemd[1]: Failed to start System Security Services Daemon.
+Jan 20 05:48:37 oralx0001 systemd[1]: Unit sssd.service entered failed state.
+Jan 20 05:48:37 oralx0001 systemd[1]: sssd.service failed.
+
+
+- FILE CONTENTS:
+
 [sssd]
 config_file_version = 2
 services = nss, pam
@@ -535,6 +556,8 @@ krb5_server = ldap1.example.com
 ------------------------------------------------
 Configure the client to use LDAP authentication 
 ------------------------------------------------
+Copy the server key.pem to /etc/openldap/cacerts - if not done already
+
 [root@client ~]# authconfig-tui
 
 Check "Use LDAP"
@@ -542,7 +565,55 @@ Press Next
 Check "Use TLS"
 Provide Server as ldap://10.63.166.33 (or hostname or dns name)
 Provide Base DN: dc=example,dc=com (pre-filled anyway from the ldif work we did earlier)
+Press OK
 
-Copy the server key.pem to /etc/openldap/cacerts - if not done already
+If not started automatically after pressing OK, then start sssd manually.
 
+# service sssd start
 
+- VERIFY
+# service sssd status
+Redirecting to /bin/systemctl status  sssd.service
+● sssd.service - System Security Services Daemon
+   Loaded: loaded (/usr/lib/systemd/system/sssd.service; enabled; vendor preset: disabled)
+  Drop-In: /etc/systemd/system/sssd.service.d
+           └─journal.conf
+   Active: active (running) since Fri 2017-01-20 05:49:29 CST; 24s ago
+  Process: 412 ExecStart=/usr/sbin/sssd -D -f (code=exited, status=0/SUCCESS)
+ Main PID: 413 (sssd)
+   Memory: 33.8M
+   CGroup: /system.slice/sssd.service
+           ├─413 /usr/sbin/sssd -D -f
+           ├─414 /usr/libexec/sssd/sssd_be --domain default --uid 0 --gid 0 --debug-to-files
+           ├─416 /usr/libexec/sssd/sssd_nss --uid 0 --gid 0 --debug-to-files
+           ├─417 /usr/libexec/sssd/sssd_pam --uid 0 --gid 0 --debug-to-files
+           └─418 /usr/libexec/sssd/sssd_autofs --uid 0 --gid 0 --debug-to-files
+
+Jan 20 05:49:17 oralx0001 systemd[1]: Starting System Security Services Daemon...
+Jan 20 05:49:17 oralx0001 sssd[413]: Starting up
+Jan 20 05:49:18 oralx0001 sssd[be[default]][414]: Starting up
+Jan 20 05:49:29 oralx0001 sssd[nss][416]: Starting up
+Jan 20 05:49:29 oralx0001 sssd[pam][417]: Starting up
+Jan 20 05:49:29 oralx0001 sssd[autofs][418]: Starting up
+Jan 20 05:49:29 oralx0001 systemd[1]: Started System Security Services Daemon.
+
+-----------------------
+ENABLE CONFIGURATION
+-----------------------
+# authconfig --enablesssd --enablesssdauth --enablelocauthorize --enablemkhomedir --update
+
+-----------------------
+VERIFY
+-----------------------
+# getent passwd usera
+usera:*:15001:10000:usera user:/home/usera:/bin/bash
+
+# id usera
+uid=15001(usera) gid=10000 groups=10000
+
+# su - usera
+su: warning: cannot change directory to /home/usera: No such file or directory
+/usr/bin/id: cannot find name for group ID 10000
+
+-bash-4.2$ id
+uid=15001(usera) gid=10000 groups=10000 context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023
