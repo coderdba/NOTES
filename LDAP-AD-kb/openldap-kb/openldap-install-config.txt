@@ -194,14 +194,45 @@ Organizational Unit Name (eg, section) []:
 Common Name (eg, your name or your server's hostname) []:
 Email Address []:
 
+# chown -R ldap:ldap /etc/openldap/certs/*.pem
+
 # ls -l
 total 88
 -rw-r--r--. 1 root root 65536 Jan 18 02:53 cert8.db
--rw-r--r--. 1 root root  1164 Jan 20 04:27 examplecomcert.pem
--rw-r--r--. 1 root root  1704 Jan 20 04:27 examplecomkey.pem
+-rw-r--r--. 1 ldap ldap  1164 Jan 20 04:27 examplecomcert.pem
+-rw-r--r--. 1 ldap ldap  1704 Jan 20 04:27 examplecomkey.pem
 -rw-r--r--. 1 root root 16384 Jan 18 02:53 key3.db
 -r--r-----. 1 root ldap    45 Nov  2  2015 password
 -rw-r--r--. 1 root root 16384 Nov  2  2015 secmod.db
+
+------------------------------
+APPLY CERTIFICATE and KEY
+------------------------------
+# cd /etc/openldap/slapd.d/cn=config
+
+# vi certs.ldif
+dn: cn=config
+changetype: modify
+replace: olcTLSCertificateFile
+olcTLSCertificateFile: /etc/openldap/certs/examplecomcert.pem
+
+dn: cn=config
+changetype: modify
+replace: olcTLSCertificateKeyFile
+olcTLSCertificateKeyFile: /etc/openldap/certs/examplecomkey.pem
+
+# ldapmodify -Y EXTERNAL  -H ldapi:/// -f certs.ldif
+
+------------------------------
+VERIFY CONFIGURATION
+------------------------------
+# slaptest -u
+5881e886 UNKNOWN attributeDescription "CHANGETYPE" inserted.
+5881e886 UNKNOWN attributeDescription "REPLACE" inserted.
+5881e886 is_entry_objectclass("cn=config,cn=config", "2.16.840.1.113730.3.2.6") no objectClass attribute
+5881e886 is_entry_objectclass("olcDatabase={2}hdb,cn=config,cn=config", "2.16.840.1.113730.3.2.6") no objectClass attribute
+5881e886 is_entry_objectclass("olcDatabase={1}monitor,cn=config,cn=config", "2.16.840.1.113730.3.2.6") no objectClass attribute
+config file testing succeeded
 
 
 
