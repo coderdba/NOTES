@@ -24,6 +24,7 @@ FOREMOST - SYS OPERATIONS AUDIT
    then it overrides the AUDIT_TRAIL parameter and SYS audit records are written to the system audit log using the SYSLOG utility.
 3. AUDIT_TRAIL = db or 'db extended' - WILL NOT make SYS audit records go to DB
 4. AUDIT_TRAIL = xml or xml exteded - will create the audits files in xml format
+5. Even bind variable and other values in SQLs also get listed.
 
 =============================
 AUDIT INFO VIEWS
@@ -114,18 +115,9 @@ https://oracle-base.com/articles/11g/auditing-enhancements-11gr2
         Manual Purge
         Automated Purging
         
-=============================
-SYS OPERATIONS AUDIT - A NOTE
-=============================
-
-Audits of sys operations always go to o/s file in /u02/app/oracle/admin/<db_unique_name>/adump.
-Even values also get listed.
-
-Grep for the object or schema etc in the audit files in the folder to get the details.
-
-=============================
-AUDITING DB ACTIVITIES
-=============================
+================================
+AUDITING DB ACTIVITIES - NON SYS
+================================
 
 ---------------------
 SETUP
@@ -175,8 +167,11 @@ select username, GLOBAL_UID, PROXY_SESSIONID, to_char(timestamp, 'DD-MON-YYYY HH
     from dba_audit_trail where username in ('USER1','USER2','USER3') order by timestamp;
 
 =====================================
-SYS AUDIT ACTION MONITORING IN TRACES
+SYS OPERATIONS AUDITING IN TRACES 
 =====================================
+NOTE: DB OR 'DB, EXTENDED' provide machine name in the top of the audit file only.
+      XML or 'XML, EXTENDED' provide the machine name in every record in the audit file.
+      
 ---------------------
 SETUP
 ---------------------
@@ -298,3 +293,25 @@ CLIENT USER:[6] 'dbgsm0'
 CLIENT TERMINAL:[5] 'pts/1'
 STATUS:[1] '0'
 DBID:[10] '3137429114'
+
+---------------------------------------------------------
+XML AUDIT FILE CONTENTS - FOR SIMILAR OPERATIONS AS ABOVE
+---------------------------------------------------------
+<AuditRecord><Audit_Type>8</Audit_Type><EntryId>1</EntryId><Extended_Timestamp>2017-01-20T06:04:06.146147Z</Extended_Timestamp><DB_User>/</DB_User><OS_User>mylanid</OS_User><Userhost>machinename</Userhost><OS_Process>14088</OS_Process><Terminal>pts/1</Terminal><Instance_Number>1</Instance_Number><Returncode>0</Returncode><OSPrivilege>SYSDBA</OSPrivilege><DBID>3137429114</DBID>
+<Sql_Text>CONNECT</Sql_Text>
+</AuditRecord>
+<AuditRecord><Audit_Type>4</Audit_Type><Session_Id>4294967295</Session_Id><StatementId>0</StatementId><EntryId>2</EntryId><Extended_Timestamp>2017-01-20T06:04:06.150136Z</Extended_Timestamp><DB_User>/</DB_User><Ext_Name>mylanid</Ext_Name><OS_User>mylanid</OS_User><Userhost>machinename</Userhost><OS_Process>14088</OS_Process><Terminal>pts/1</Terminal><Instance_Number>1</Instance_Number><Returncode>0</Returncode><OSPrivilege>SYSDBA</OSPrivilege><DBID>3137429114</DBID>
+<Sql_Text>COMMIT</Sql_Text>
+</AuditRecord>
+<AuditRecord><Audit_Type>4</Audit_Type><Session_Id>4294967295</Session_Id><StatementId>0</StatementId><EntryId>3</EntryId><Extended_Timestamp>2017-01-20T06:04:06.150530Z</Extended_Timestamp><DB_User>/</DB_User><Ext_Name>mylanid</Ext_Name><OS_User>mylanid</OS_User><Userhost>machinename</Userhost><OS_Process>14088</OS_Process><Terminal>pts/1</Terminal><Instance_Number>1</Instance_Number><Returncode>0</Returncode><OSPrivilege>SYSDBA</OSPrivilege><DBID>3137429114</DBID>
+<Sql_Text>COMMIT</Sql_Text>
+</AuditRecord>
+<AuditRecord><Audit_Type>4</Audit_Type><Session_Id>4294967295</Session_Id><StatementId>1</StatementId><EntryId>4</EntryId><Extended_Timestamp>2017-01-20T06:04:26.447820Z</Extended_Timestamp><DB_User>/</DB_User><Ext_Name>mylanid</Ext_Name><OS_User>mylanid</OS_User><Userhost>machinename</Userhost><OS_Process>14088</OS_Process><Terminal>pts/1</Terminal><Instance_Number>1</Instance_Number><Returncode>0</Returncode><OSPrivilege>SYSDBA</OSPrivilege><DBID>3137429114</DBID>
+<Sql_Text>delete aud$</Sql_Text>
+</AuditRecord>
+<AuditRecord><Audit_Type>4</Audit_Type><Session_Id>4294967295</Session_Id><StatementId>2</StatementId><EntryId>5</EntryId><Extended_Timestamp>2017-01-20T06:04:30.813160Z</Extended_Timestamp><DB_User>/</DB_User><Ext_Name>mylanid</Ext_Name><OS_User>mylanid</OS_User><Userhost>machinename</Userhost><OS_Process>14088</OS_Process><Terminal>pts/1</Terminal><Instance_Number>1</Instance_Number><Returncode>0</Returncode><Scn>33584366</Scn><OSPrivilege>SYSDBA</OSPrivilege><DBID>3137429114</DBID>
+<Sql_Text>select * from aud$</Sql_Text>
+</AuditRecord>
+<AuditRecord><Audit_Type>4</Audit_Type><Session_Id>4294967295</Session_Id><StatementId>3</StatementId><EntryId>6</EntryId><Extended_Timestamp>2017-01-20T06:04:35.906843Z</Extended_Timestamp><DB_User>/</DB_User><Ext_Name>mylanid</Ext_Name><OS_User>mylanid</OS_User><Userhost>machinename</Userhost><OS_Process>14088</OS_Process><Terminal>pts/1</Terminal><Instance_Number>1</Instance_Number><Returncode>0</Returncode><OSPrivilege>SYSDBA</OSPrivilege><DBID>3137429114</DBID>
+<Sql_Text>commit</Sql_Text>
+</AuditRecord>
