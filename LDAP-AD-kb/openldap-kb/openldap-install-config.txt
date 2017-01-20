@@ -425,9 +425,124 @@ CLIENT SIDE CONFIGURATION
 http://easylinuxtutorials.blogspot.in/2013/11/installing-configuring-openldap-server.html
 
 ----------------------------
-INSTALL PACKAGES
+INSTALL PACKAGES on client machine
 ----------------------------
+NOTE: Do on the server machine if testing on the same machine
+
 yum install openldap-clients sssd
 yum install authconfig-tui
+
+--------------------------------------
+UPDATE LDAP.CONF on the client machine
+--------------------------------------
+NOTE: Do on the server machine if testing on the same machine
+#
+# LDAP Defaults
+#
+
+# See ldap.conf(5) for details
+# This file should be world readable but not world writable.
+
+#BASE   dc=example,dc=com
+#URI    ldap://ldap.example.com ldap://ldap-master.example.com:666
+
+#SIZELIMIT      12
+#TIMELIMIT      15
+#DEREF          never
+
+# Commented 
+#TLS_CACERTDIR  /etc/openldap/certs
+
+# Turning this off breaks GSSAPI used with krb5 when rdns = false
+SASL_NOCANON    on
+
+# custom 
+ssl     start_tls
+TLS_REQCERT    allow
+TLS_CACERTDIR /etc/openldap/certs
+BASE    dc=example,dc=com
+URI     ldaps://10.63.166.33
+HOST    10.63.166.33
+
+------------------------------------------------------------------------------------
+Copy the public key of server to client (This is the key generated earlier)
+------------------------------------------------------------------------------------
+NOTE: If server and client are same, no scp required if the 'client' directory is same as server directory
+# scp /etc/openldap/certs/examplecomkey.pem clientmachine:/etc/openldap/certs/examplecomkey.pem
+
+------------------------------------------------------------------------------------
+Create a sssd.conf file at this location /etc/sssd/sssd.conf - on client
+------------------------------------------------------------------------------------
+[sssd]
+config_file_version = 2
+services = nss, pam
+domains = default
+
+[nss]
+filter_users = root,ldap,named,avahi,haldaemon,dbus,radiusd,news,nscd
+
+[pam]
+
+[domain/default]
+ldap_tls_reqcert = never
+auth_provider = ldap
+ldap_schema = rfc2307bis
+krb5_realm = EXAMPLE.COM
+ldap_search_base = dc=example,dc=com
+ldap_group_member = uniquemember
+id_provider = ldap
+ldap_id_use_start_tls = True
+chpass_provider = ldap
+ldap_uri = ldaps://10.63.166.33
+ldap_chpass_uri = ldaps://10.63.166.33
+krb5_kdcip = 10.63.166.33
+cache_credentials = True
+ldap_tls_cacertdir = /etc/openldap/cacerts
+entry_cache_timeout = 600
+ldap_network_timeout = 3
+krb5_server = 10.63.166.33
+
+-->--> Taken from the following example
+[sssd]
+config_file_version = 2
+services = nss, pam
+domains = default
+
+[nss]
+filter_users = root,ldap,named,avahi,haldaemon,dbus,radiusd,news,nscd
+
+[pam]
+
+[domain/default]
+ldap_tls_reqcert = never
+auth_provider = ldap
+ldap_schema = rfc2307bis
+krb5_realm = EXAMPLE.COM
+ldap_search_base = dc=example,dc=com
+ldap_group_member = uniquemember
+id_provider = ldap
+ldap_id_use_start_tls = True
+chpass_provider = ldap
+ldap_uri = ldaps://ldap1.example.com/
+ldap_chpass_uri = ldaps://.ldap1.example.com/
+krb5_kdcip = ldap1.example.com
+cache_credentials = True
+ldap_tls_cacertdir = /etc/openldap/cacerts
+entry_cache_timeout = 600
+ldap_network_timeout = 3
+krb5_server = ldap1.example.com
+
+------------------------------------------------
+Configure the client to use LDAP authentication 
+------------------------------------------------
+[root@client ~]# authconfig-tui
+
+Check "Use LDAP"
+Press Next
+Check "Use TLS"
+Provide Server as ldap://10.63.166.33 (or hostname or dns name)
+Provide Base DN: dc=example,dc=com (pre-filled anyway from the ldif work we did earlier)
+
+Copy the server key.pem to /etc/openldap/cacerts - if not done already
 
 
