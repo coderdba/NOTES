@@ -1,0 +1,173 @@
+======================================================================
+                OPENLDAP ON RHEL7 - INSTALL, CONFIG
+======================================================================
+http://www.itzgeek.com/how-tos/linux/centos-how-tos/step-step-openldap-server-configuration-centos-7-rhel-7.html
+
+==============
+Install LDAP
+==============
+
+Install the following LDAP RPM packages to get started. Run below command on LDAP server.
+
+yum -y install openldap compat-openldap openldap-clients openldap-servers openldap-servers-sql openldap-devel
+
+===================
+START THE SERVICE
+===================
+Start the LDAP service and enable it for the auto start of service on system boot.
+
+systemctl start slapd.service
+systemctl enable slapd.service
+
+- VERIFY
+netstat -antup | grep -i 389
+
+tcp        0      0 0.0.0.0:389             0.0.0.0:*               LISTEN      61857/slapd
+tcp6       0      0 :::389                  :::*                    LISTEN      61857/slapd
+
+tcp        0      0 10.63.166.33:35702      10.65.17.170:389        ESTABLISHED 2034/adclient 
+  --> this is for an AD client - which this machine already is authenticating with another AD server
+
+==========================
+Create LDAP root password:
+==========================
+Run below command to create an LDAP root password; we will use this root password throughout this article. So make a note of this and keep it aside.
+
+[root@server ~]# slappasswd
+New password:  <oracle>
+Re-enter new password:  <oracle>
+
+{SSHA}UH4ps9JCLwiAuHET2RFuaEcbLodQgyFc
+
+Keep the above SSHA hash for use in configuration below.
+
+==========================
+Configure OpenLDAP server:
+==========================
+
+OpenLDAP servers configuration files are found in /etc/openldap/slapd.d/. 
+
+--> NOTE: DONT MANUALLY EDIT THE FILE - Use ldapmodify using a different input-ldif file
+          - Manual edit of LDAP configuration is not recommended as you will lose changes whenever you run ldapmodify command.
+          
+----------------------------
+LDAP-DB CONFIGURATION
+----------------------------
+To start with the configuration of LDAP, we would need to update the variables “olcSuffix” and “olcRootDN“.
+
+
+
+Update the below entries in /etc/openldap/slapd.d/cn=config/olcDatabase={2}hdb.ldif file. 
+
+
+olcSuffix –  Database Suffix, it is the domain name for which the LDAP server provides the information. 
+              In simple words, it should be changed to your domain name.
+
+olcRootDN – Root Distinguished Name (DN) entry for the user who has the unrestricted access to perform all administration 
+              activities on LDAP, like a root user.
+
+olcRootPW – Password for the above RootDN.
+
+- CREATE A LDIF FILE TO DO THE MODIFICATION
+NOTE: Default entries are as follows:
+  olcSuffix: dc=my-domain,dc=com
+  olcRootDN: cn=Manager,dc=my-domain,dc=com
+  olcRootPW: Not set in the default file
+  
+# vi db.ldif
+
+dn: olcDatabase={2}hdb,cn=config
+changetype: modify
+replace: olcSuffix
+olcSuffix: dc=example,dc=com
+
+dn: olcDatabase={2}hdb,cn=config
+changetype: modify
+replace: olcRootDN
+olcRootDN: cn=Manager,dc=example,dc=com
+
+dn: olcDatabase={2}hdb,cn=config
+changetype: modify
+replace: olcRootPW
+olcrootPW: {SSHA}UH4ps9JCLwiAuHET2RFuaEcbLodQgyFc
+
+- APPLY THE CHANGES
+# ldapmodify -Y EXTERNAL  -H ldapi:/// -f db.ldif
+SASL/EXTERNAL authentication started
+SASL username: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+SASL SSF: 0
+modifying entry "olcDatabase={2}hdb,cn=config"
+
+modifying entry "olcDatabase={2}hdb,cn=config"
+
+modifying entry "olcDatabase={2}hdb,cn=config"
+
+- VERIFY
+Do a diff between the new hdb ldif and and the saved ldif
+--> NOTE: You will see that the password is actually differently hashed again!
+
+- LOOKUP THE ACTUAL DB LDIF FILE olcDatabase={2}hdb.ldif
+# AUTO-GENERATED FILE - DO NOT EDIT!! Use ldapmodify.
+# CRC32 84f35940
+dn: olcDatabase={2}hdb
+objectClass: olcDatabaseConfig
+objectClass: olcHdbConfig
+olcDatabase: {2}hdb
+olcDbDirectory: /var/lib/ldap
+olcDbIndex: objectClass eq,pres
+olcDbIndex: ou,cn,mail,surname,givenname eq,pres,sub
+structuralObjectClass: olcHdbConfig
+entryUUID: 56262992-71a7-1036-8bdb-a344a80a26fa
+creatorsName: cn=config
+createTimestamp: 20170118085333Z
+olcSuffix: dc=example,dc=com
+olcRootDN: cn=Manager,dc=example,dc=com
+olcRootPW:: e1NTSEF9VUg0cHM5SkNMd2lBdUhFVDJSRnVhRWNiTG9kUWd5RmM=
+entryCSN: 20170120100522.049918Z#000000#000#000000
+modifiersName: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+modifyTimestamp: 20170120100522Z
+
+
+----------------------------
+LDAP-MONITOR CONFIGURATION
+----------------------------
+Make a changes to /etc/openldap/slapd.d/cn=config/olcDatabase={1}monitor.ldif (Do not edit manually) 
+file to restrict the monitor access only to ldap root (ldapadm) user not to others.
+
+- CREATE AN INPUT LDIF FILE
+# vi monitor.ldif
+
+dn: olcDatabase={1}monitor,cn=config
+changetype: modify
+replace: olcAccess
+olcAccess: {0}to * by dn.base="gidNumber=0+uidNumber=0,cn=peercred,cn=external, cn=auth" read by dn.base="cn=Manager,dc=example,dc=com" read by * none
+
+- APPLY THE CHANGES
+ldapmodify -Y EXTERNAL  -H ldapi:/// -f monitor.ldif
+SASL/EXTERNAL authentication started
+SASL username: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+SASL SSF: 0
+modifying entry "olcDatabase={1}monitor,cn=config"
+
+- LOOKUP THE ACTUAL MONITOR.LDIF FILE olcDatabase={1}monitor.ldif
+
+dn: olcDatabase={1}monitor,cn=config
+changetype: modify
+replace: olcAccess
+olcAccess: {0}to * by dn.base="gidNumber=0+uidNumber=0,cn=peercred,cn=external, cn=auth" read by dn.base="cn=Manager,dc=example,dc=com" read by * none
+# AUTO-GENERATED FILE - DO NOT EDIT!! Use ldapmodify.
+# CRC32 10747841
+dn: olcDatabase={1}monitor
+objectClass: olcDatabaseConfig
+olcDatabase: {1}monitor
+structuralObjectClass: olcDatabaseConfig
+entryUUID: 562622f8-71a7-1036-8bda-a344a80a26fa
+creatorsName: cn=config
+createTimestamp: 20170118085333Z
+olcAccess: {0}to * by dn.base="gidNumber=0+uidNumber=0,cn=peercred,cn=extern
+ al, cn=auth" read by dn.base="cn=Manager,dc=example,dc=com" read by * none
+entryCSN: 20170120101238.992725Z#000000#000#000000
+modifiersName: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+modifyTimestamp: 20170120101238Z
+
+
