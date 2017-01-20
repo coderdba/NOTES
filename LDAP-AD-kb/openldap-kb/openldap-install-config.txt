@@ -639,6 +639,30 @@ group: centrifydc files sss
 netgroup:   files sss
 automount:  files
 
+TBD: su from root to usera is working. Directly logging on using putty with usera and its password oracle is not working
+
+------------------------------
+CHANGE USERA PASSWORD
+------------------------------
+- Create a new password:
+# slappasswd
+New password: oracle
+Re-enter new password: oracle
+
+{SSHA}UNOOXVC+m2TI1+U8wrfPGiKXfH5Z84P/
+
+- Create a file usera-changepass.ldif with the following content:
+dn: uid=usera,ou=people,dc=example,dc=com
+changetype: Modify
+replace: userPassword
+userPassword: {SSHA}UNOOXVC+m2TI1+U8wrfPGiKXfH5Z84P/
+
+# ldapmodify -c  -f usera-changepass.ldif -D "cn=Manager,dc=example,dc=com"  -w oracle
+- OR - 
+# ldapmodify -x -W -D "cn=Manager,dc=example,dc=com" -f usera-changepass.ldif [-w oracle]
+Enter LDAP Password:
+modifying entry "uid=usera,ou=people,dc=example,dc=com"
+
 ===========================================================================
 Troubleshooting: 
 ===========================================================================
@@ -649,3 +673,5 @@ Then initialize DB files for content in /var/lib/ldap directory
 [root@ldap1 ~]# echo "" | slapadd -f /etc/openldap/slapd.conf 
 After this again run the command
 [root@ldap1 ~]# slaptest -f /etc/openldap/slapd.conf -F /etc/openldap/slapd.d
+
+
