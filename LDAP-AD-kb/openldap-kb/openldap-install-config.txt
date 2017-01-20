@@ -298,6 +298,7 @@ CREATE DESIRED LDAP STRUCTURE
 Create a file 'base.ldif' in directory /etc/openldap/slapd.d/cn=config with following contents:
 NOTE: The "dc: example" after "dn: dc=example,dc=com" may not be necessary
 Also see: http://www.tldp.org/HOWTO/archived/LDAP-Implementation-HOWTO/files.html
+Also see: http://easylinuxtutorials.blogspot.in/2013/11/installing-configuring-openldap-server.html
 
 dn: dc=example,dc=com
 dc: example
@@ -329,4 +330,33 @@ adding new entry "ou=people,dc=example,dc=com"
 
 adding new entry "ou=group,dc=example,dc=com"
 
+--------------------------
+ADD A USER
+--------------------------
+http://easylinuxtutorials.blogspot.in/2013/11/installing-configuring-openldap-server.html
 
+- GENERATE AN INITIAL PASSWORD FOR THE USER
+# slappasswd
+New password: oracle
+Re-enter new password: oracle
+{SSHA}DXAhNADLJV+s2k3svePnZVyAiGBE05ir
+
+- CREATE LDIF usera.ldif
+
+dn: uid=usera,ou=users,dc=example,dc=com
+uid: usera
+cn: usera
+sn: 1
+objectClass: top
+objectClass: posixAccount
+objectClass: inetOrgPerson
+loginShell: /bin/bash
+homeDirectory: /home/usera
+uidNumber: 15001
+gidNumber: 10000
+userPassword: {SSHA}DXAhNADLJV+s2k3svePnZVyAiGBE05ir
+mail: usera@example.com
+gecos: usera user
+
+- ADD THE USER
+# ldapadd -x -W -D "cn=Manager,dc=example,dc=com" -f usera.ldif
