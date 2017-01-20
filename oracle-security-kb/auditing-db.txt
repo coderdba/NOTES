@@ -320,7 +320,9 @@ XML AUDIT FILE CONTENTS - FOR SIMILAR OPERATIONS AS ABOVE
 STARTUP AND SHUTDOWN ACTIONS  (DIRECTLY ON DB SERVER)
 -----------------------------
 
+-----------------------------
 - Shutdown using srvctl seemed to record the privileged o/s user 'oracle' instead of the os user that did srvctl operation
+-----------------------------
 NOTE: With XML setting, shutdown appeared in a xml file 
 NOTE: <OS_User>oracle</OS_User> in the listing below
 ...
@@ -332,12 +334,46 @@ NOTE: <OS_User>oracle</OS_User> in the listing below
 <Sql_Text>SHUTDOWN</Sql_Text>
 </AuditRecord>
 
+-----------------------------
 - Shutdown using sqlplus seem to show non-oracle ID which ran shutdown 
+-----------------------------
 NOTE: With XML setting, shutdown was recorded in a xml file (unlike startup with sqlplus which got recorded in .aud file)
 
+-----------------------------
+- Startup using srvctl seemed to record 'oracle' user than the non-oracle user that did sqlplus-startup operation
+-----------------------------
+NOTE: With XML setting, startup was recorded in .aud file, AND DBID was null, though instance id was mentioned
+NOTE: It produced two other xml files, all with 'oracle' and not the other user that did srvctl
+
+Oracle Database 11g Enterprise Edition Release 11.2.0.4.0 - 64bit Production
+With the Partitioning, Real Application Clusters, OLAP, Data Mining
+and Real Application Testing options
+ORACLE_HOME = /u02/app/oracle/product/11.2.0.4.RAC
+System name:    Linux
+Node name:      db-hostname
+Release:        2.6.32-573.22.1.el6.x86_64
+Version:        #1 SMP Thu Mar 17 03:23:39 EDT 2016
+Machine:        x86_64
+Instance name: DB-INSTANCE-NAME
+Redo thread mounted by this instance: 0 <none>
+Oracle process number: 0
+Unix process pid: 7055, image: oracle@d-9441dz1.target.com
+
+Fri Jan 20 00:49:31 2017 -06:00
+LENGTH : '156'
+ACTION :[7] 'STARTUP'
+DATABASE USER:[1] '/'
+PRIVILEGE :[4] 'NONE'
+CLIENT USER:[6] 'oracle'
+CLIENT TERMINAL:[13] 'Not Available'
+STATUS:[1] '0'
+DBID:[0] ''
+
+-----------------------------
 - Startup using sqlplus seemed to record the os user that did sqlplus-startup operation
-NOTE: With XML setting, it was a combination of .aud plain text file and a .xml file
-NOTE: With XML setting, the .aud file had the SHUTDOWN entry as below (also note that DBID does not have a value in it)
+-----------------------------
+NOTE: With XML setting, it was a combination of .aud plain text file and a .xml file (xml file did not have startup keyword)
+NOTE: With XML setting, the .aud file had the STARTUP entry as below (also note that DBID does not have a value in it)
         Oracle Database 11g Enterprise Edition Release 11.2.0.4.0 - 64bit Production
         With the Partitioning, Real Application Clusters, OLAP, Data Mining
         and Real Application Testing options
