@@ -234,6 +234,99 @@ VERIFY CONFIGURATION
 5881e886 is_entry_objectclass("olcDatabase={1}monitor,cn=config,cn=config", "2.16.840.1.113730.3.2.6") no objectClass attribute
 config file testing succeeded
 
+# service slapd status
+Redirecting to /bin/systemctl status  slapd.service
+● slapd.service - OpenLDAP Server Daemon
+   Loaded: loaded (/usr/lib/systemd/system/slapd.service; enabled; vendor preset: disabled)
+   Active: active (running) since Fri 2017-01-20 04:05:13 CST; 34min ago
+     Docs: man:slapd
+           man:slapd-config
+           man:slapd-hdb
+           man:slapd-mdb
+           file:///usr/share/doc/openldap-servers/guide.html
+  Process: 62316 ExecStart=/usr/sbin/slapd -u ldap -h ${SLAPD_URLS} $SLAPD_OPTIONS (code=exited, status=0/SUCCESS)
+  Process: 62287 ExecStartPre=/usr/libexec/openldap/check-config.sh (code=exited, status=0/SUCCESS)
+ Main PID: 62320 (slapd)
+   Memory: 4.0M
+   CGroup: /system.slice/slapd.service
+           └─62320 /usr/sbin/slapd -u ldap -h ldapi:/// ldap:///
 
+Jan 20 04:33:38 oralx0001 slapd[62320]: conn=1002 op=0 BIND dn="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" mech=EXTERNAL sasl_ssf=0 ssf=71
+Jan 20 04:33:38 oralx0001 slapd[62320]: conn=1002 op=0 RESULT tag=97 err=0 text=
+Jan 20 04:33:38 oralx0001 slapd[62320]: conn=1002 op=1 MOD dn="cn=config"
+Jan 20 04:33:38 oralx0001 slapd[62320]: conn=1002 op=1 MOD attr=olcTLSCertificateFile
+Jan 20 04:33:38 oralx0001 slapd[62320]: conn=1002 op=1 RESULT tag=103 err=0 text=
+Jan 20 04:33:38 oralx0001 slapd[62320]: conn=1002 op=2 MOD dn="cn=config"
+Jan 20 04:33:38 oralx0001 slapd[62320]: conn=1002 op=2 MOD attr=olcTLSCertificateKeyFile
+Jan 20 04:33:38 oralx0001 slapd[62320]: conn=1002 op=2 RESULT tag=103 err=0 text=
+Jan 20 04:33:38 oralx0001 slapd[62320]: conn=1002 op=3 UNBIND
+Jan 20 04:33:38 oralx0001 slapd[62320]: conn=1002 fd=11 closed
+
+====================================
+SETUP LDAP DATABASE
+====================================
+Copy the sample database configuration file to /var/lib/ldap and update the file permissions.
+# cp /usr/share/openldap-servers/DB_CONFIG.example /var/lib/ldap/DB_CONFIG
+# chown ldap:ldap /var/lib/ldap/*
+
+Add the cosine and nis LDAP schemas.
+ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/cosine.ldif
+ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/nis.ldif 
+ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/inetorgperson.ldif
+
+# ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/cosine.ldif
+SASL/EXTERNAL authentication started
+SASL username: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+SASL SSF: 0
+adding new entry "cn=cosine,cn=schema,cn=config"
+
+# ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/nis.ldif
+SASL/EXTERNAL authentication started
+SASL username: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+SASL SSF: 0
+adding new entry "cn=nis,cn=schema,cn=config"
+
+# ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/inetorgperson.ldif
+SASL/EXTERNAL authentication started
+SASL username: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+SASL SSF: 0
+adding new entry "cn=inetorgperson,cn=schema,cn=config"
+
+================================
+CREATE DESIRED LDAP STRUCTURE
+================================
+Create a file 'base.ldif' in directory /etc/openldap/slapd.d/cn=config with following contents:
+NOTE: The "dc: example" after "dn: dc=example,dc=com" may not be necessary
+Also see: http://www.tldp.org/HOWTO/archived/LDAP-Implementation-HOWTO/files.html
+
+dn: dc=example,dc=com
+dc: example
+objectClass: top
+objectClass: domain
+
+dn: cn=Manager,dc=example,dc=com
+objectClass: organizationalRole
+cn: Manager
+description: LDAP Manager
+
+dn: ou=people,dc=example,dc=com
+objectClass: organizationalUnit
+ou: People
+
+dn: ou=group,dc=example,dc=com
+objectClass: organizationalUnit
+ou: Group
+
+- BUILD THE DIRECTORY STRUCTURE
+# ldapadd -x -W -D "cn=Manager,dc=example,dc=com" -f base.ldif
+
+Enter LDAP Password: oracle
+adding new entry "dc=example,dc=com"
+
+adding new entry "cn=Manager,dc=example,dc=com"
+
+adding new entry "ou=people,dc=example,dc=com"
+
+adding new entry "ou=group,dc=example,dc=com"
 
 
