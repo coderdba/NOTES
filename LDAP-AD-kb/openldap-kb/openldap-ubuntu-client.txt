@@ -1,0 +1,160 @@
+https://help.ubuntu.com/community/LDAPClientAuthentication
+
+LDAPClientAuthentication
+Contents
+
+Introduction
+LDAP Client Authentication
+Automatically create home folders
+Assign local groups to users
+Finalize
+LDAP Host Access Authorization
+pam_check_host_attr (limited)
+pam_filter (limited)
+nss_base_<map> (recommended)
+Troubleshooting
+Credits
+Introduction
+This page is intended for anyone who wants to enable an Ubuntu client to authenticate on an existing OpenLDAP server. For more details on the server installation part see OpenLDAPServer.
+
+If you want Kerberos as well for single-sign-on (likely), see SingleSignOn. This configuration has been tested with Ubuntu 10.04 LTS and works transparently with pam_krb5.
+
+For authenticating on a Sun Java Enterprise System Directory Server, please consult the SunLDAPClientAuthentication page.
+
+For authenticating using a Mac OS X Leopard Server, consult the OSXLDAPClientAuthentication page.
+
+LDAP Client Authentication
+On Ubuntu 7.10 systems and newer use the auth-client-config and pam-auth-update tools to modify all necessary pam and nsswitch configuration files (see Credits and AuthClientConfig). Also, you are recommended to install nscd in order to avoid some of the issues described in the Troubleshooting section at the end of this document. The meta-package called ldap-auth-client will install all required packages for an ldap client (auth-client-config, ldap-auth-config, libnss-ldap and libpam-ldap):
+
+
+sudo apt-get install ldap-auth-client nscd
+Set up /etc/nsswitch.conf to use ldap lookups by running:
+
+
+sudo auth-client-config -t nss -p lac_ldap
+On 10.04 systems this lac_ldap configuration can be found in /etc/auth-client-config/profile.d/ldap-auth-config and comes with the ldap-auth-config package. On older systems you could create it like this:
+
+
+[lac_ldap]
+nss_passwd=passwd: files ldap
+nss_group=group: files ldap
+nss_shadow=shadow: files ldap
+nss_netgroup=netgroup: nis
+Automatically create home folders
+In order to get the pam_mkhomedir module working you could create a file like /usr/share/pam-configs/my_mkhomedir:
+
+
+Name: activate mkhomedir
+Default: yes
+Priority: 900
+Session-Type: Additional
+Session:
+        required                        pam_mkhomedir.so umask=0022 skel=/etc/skel
+and activate it by running pam-auth-update. This roughly equals editing /etc/pam.d/common-session by hand and adding the following line before any pam_ldap and pam_krb5 settings:
+
+
+session required        pam_mkhomedir.so umask=0022 skel=/etc/skel
+Assign local groups to users
+To assign local groups to a domain (ldap) user do the following edit /etc/security/group.conf and add something like the following to it (log in as a local user and run the groups command to verify what to add): 
+
+
+*;*;*;Al0000-2400;audio,cdrom,dialout,floppy
+In order to get the pam_group module working you could create a file like /usr/share/pam-configs/my_groups:
+
+
+Name: activate /etc/security/group.conf
+Default: yes
+Priority: 900
+Auth-Type: Primary
+Auth:
+        required                        pam_group.so use_first_pass
+and activate it by running pam-auth-update. This roughly equals editing /etc/pam.d/common-auth by hand and adding the following line before any pam_ldap and pam_krb5 settings:
+
+
+auth    required     pam_group.so use_first_pass
+You should now have local groups showing up for users logging in via gdm and ssh and can verify this by executing id or groups.
+
+Finalize
+Just to make sure everything works, run the following:
+
+
+pam-auth-update
+/etc/init.d/nscd restart
+LDAP Host Access Authorization
+Host based authentication allows you to restrict who can log into a machine that uses LDAP for authentication. Basically you add an attribute to each LDAP user's record that includes hostnames that they are allowed to log in to. Each client system then checks this field against its own hostname and either allows or denies login based upon the attribute field.
+
+There are different methods to enforce host-based authentication:
+
+using pam_check_host_attr authentication in /etc/ldap.conf
+
+using pam_filter authentication in /etc/ldap.conf
+
+using nss_base_<map> authentication in /etc/ldap.conf (recommended)
+
+pam_check_host_attr (limited)
+Warning: depending on your configuration, host-based authentication will always succeed. For additional information see /usr/share/doc/libpam-ldap/ and man nss_ldap (does not support the pam_filter configuration).
+
+Using the pam_check_host_attr directive to enforce host authentication has the effect that users are explicitly informed they are not permitted to access the host with an error message: Access denied for this host. 
+
+Libpam-ldap requires that you use the host attribute. The package documentation includes a schema which provides this attribute, located at /etc/ldap/schema/ldapns.schema, which can be added to slapd.conf if needed. You can populate that attribute creating an LDIF file your_file.ldif:
+
+
+dn: uid=user_to_change,ou=Users,dc=example,dc=com
+changetype: modify
+add: host
+host: thehostname
+The hostname should match the output from the hostname command. When in doubt, check the slapd logs on the server. Make the change using:
+
+
+ldapmodify -H ldaps://ldapserver -D "cn=admin,dc=example,dc=com" -x -W -f your_file.ldif
+On the client side, simply modify /etc/ldap.conf (or other appropriate configuration file as defined in pam.d) to include the line:
+
+
+pam_check_host_attr yes
+pam_filter (limited)
+Warning: depending on your configuration, host-based authentication will always succeed. For additional information see /usr/share/doc/libpam-ldap/ and man nss_ldap (does not support the pam_filter configuration).
+
+Using the pam_filter directive in /etc/ldap.conf it is possible to enforce PAM to only access accounts with attributes of our choosing. Users who are not permitted access to the host will receive no error, instead PAM responds as if they have entered an incorrect password. 
+
+If we want to use the host attribute, we can add the schema located at /etc/ldap/schema/ldapns.schema and create a filter which matches thehostname or * in /etc/ldap.conf:
+
+
+pam_filter |(host=thehostname)(host=\*)
+Another example using GOsa's accessTo and trustModel attributes would look like the following:
+
+
+pam_filter |(&(accessTo=thehostname)(trustModel=byhost))(trustModel=fullaccess)
+nss_base_<map> (recommended)
+Using the nss_base_<map> directives in /etc/ldap.conf has all the advantages as using the pam_filter directive, but should also work with nss_ldap.
+
+If we want to use the host attribute, we can add the schema located at /etc/ldap/schema/ldapns.schema and create filters which match thehostname or * in /etc/ldap.conf:
+
+
+nss_base_passwd ou=Users,dc=example,dc=com?one?|(host=thehostname)(host=\*)
+nss_base_shadow ou=Users,dc=example,dc=com?one?|(host=thehostname)(host=\*)
+nss_base_group  ou=Groups,dc=example,dc=com?one
+Troubleshooting
+If you have lookup failures on some accounts using libpam-ldap, try installing libpam-ldapd instead (to be configured via /etc/nslcd.conf).
+
+If you get setreuid errors like sudo: setreuid(ROOT_UID, user_uid): Operation not permitted, then have a look at this bug report for libcrypt. A simple workaround is installing nscd.
+
+Information about why pam_filter will NOT always work, while nss_base_<map> should, can be found in this forum
+
+You can verify your LDAP information using the following commands
+
+$ id
+$ id YOURUSERNAME (will not show additional groups)
+
+$ getent passwd
+$ getent shadow
+$ getent group
+An old bug alert on this site states: make sure /etc/libnss-ldap.conf and /etc/pam_ldap.conf has bind_policy soft. If not, you risk running into udev-issues at boot-time.
+
+Credits
+some of the information used in this document was found on this page.
+
+pam(7) manpage
+nss_ldap(5) manpage
+auth-client-config(8) manpage
+pam-auth-update(8) manpage
+An alternate directory server authentication HOWTO KRB5+LDAP Authentication
