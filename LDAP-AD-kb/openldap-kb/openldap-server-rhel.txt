@@ -296,10 +296,11 @@ adding new entry "cn=inetorgperson,cn=schema,cn=config"
 ================================
 CREATE DESIRED LDAP STRUCTURE
 ================================
+
+- CREATE LDIF
 Create a file 'base.ldif' in directory /etc/openldap/slapd.d/cn=config with following contents:
-NOTE: The "dc: example" after "dn: dc=example,dc=com" may not be necessary
-Also see: http://www.tldp.org/HOWTO/archived/LDAP-Implementation-HOWTO/files.html
-Also see: http://easylinuxtutorials.blogspot.in/2013/11/installing-configuring-openldap-server.html
+    Also see: http://www.tldp.org/HOWTO/archived/LDAP-Implementation-HOWTO/files.html
+    Also see: http://easylinuxtutorials.blogspot.in/2013/11/installing-configuring-openldap-server.html
 
 dn: dc=example,dc=com
 dc: example
@@ -418,6 +419,44 @@ result: 0 Success
 
 # numResponses: 6
 # numEntries: 5
+
+
+--------------------------
+ADD A GROUP
+--------------------------
+
+- LDIF
+NOTE: Userpassword is optional for a group - userPassword:: e2NyeXB0fXg= (or other password value)
+
+File: group1.ldif
+-----------------
+dn: cn=ldapusers,ou=group,dc=example,dc=com
+objectClass: posixGroup
+objectClass: top
+cn: ldapusers
+gidNumber: 10000
+memberUid: uid=usera
+memberUid: uid=userb
+memberUid: uid=userc
+memberUid: uid=userd
+
+- ADD
+ldapadd -x -W -D "cn=Manager,dc=example,dc=com" -f group1.ldif
+
+Enter LDAP Password:
+adding new entry "cn=ldapusers,ou=group,dc=example,dc=com"
+
+- VERIFY
+# ldapusers, group, example.com
+dn: cn=ldapusers,ou=group,dc=example,dc=com
+objectClass: posixGroup
+objectClass: top
+cn: ldapusers
+gidNumber: 10000
+memberUid: uid=usera
+memberUid: uid=userb
+memberUid: uid=userc
+memberUid: uid=userd
 
 ====================================
 CLIENT SIDE CONFIGURATION
