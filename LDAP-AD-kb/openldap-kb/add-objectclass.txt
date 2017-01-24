@@ -1,0 +1,30 @@
+--------------
+CREATE NEW OBJECT CLASS
+--------------
+http://www.zytrax.com/books/ldap/ch5/step4.html
+
+--------------
+ADD AN OBJECT CLASS TO AN EXISTING ENTRY
+--------------
+http://serverfault.com/questions/224687/how-to-modify-add-a-new-objectclass-to-an-entry-in-openldap
+
+Here is an example LDIF file to add the objectClass posixAccount to an existing entry uid=testuser,ou=people,dc=example,dc=com of e.g. objectClass inetOrgPerson:
+
+dn: uid=testuser,ou=people,dc=example,dc=com
+changetype: modify
+add: objectClass
+objectClass: posixAccount
+-
+add: homeDirectory
+homeDirectory: /home/testuser
+-
+add: uidNumber
+uidNumber: 1000
+-
+add: gidNumber
+gidNumber: 1000
+The - are important to separate the add blocks. One has to make sure that all necessary attributes (for posixAccount homeDirectory, uidNumber, gidNumber) are added in the same file.
+
+The LDIF file can be added e.g. with
+
+ldapmodify -x -D 'cn=root,dc=example,dc=com' -W -f filename.ldif
