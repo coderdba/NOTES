@@ -11,21 +11,116 @@ Create a Vagrant VM from bento/ubuntu-14.04
 - Or, otherwise create an Ubuntu machine
 
 =================================
-PREPARE LDAP SERVER
+PREPARE LDAP SERVER and CLIENT
 =================================
+- SERVER
 Open port 389 (OpenLdap) or other of the LDAP server to world.  (refer to unix docs on how to open port)
 Note down the LDAP server name, IP, admin user DN and password
+
+- CLIENT
 Create an entry in the /etc/hosts of the client machine to point to LDAP server IP.
+Install ldap-utils on client - apt-get install ldap-utils
+Verify if client can talk to server using ldapsearch:
+$ ldapsearch -h ldap_hostname_or_ip -D cn=Manager,dc=example,dc=com -w Manager_password -b dc=example,dc=com
 
 =================================
 INSTALL LDAP CLIENT AND CONFIGURE
 =================================
+On client machine
+
+--------------------------
+Update the apt metadata
+--------------------------
+# apt-get update
+
+--------------------------
+Install
+--------------------------
+During the following install, a questionnaire will pop up - be ready for providing the details  (read first and then do)
+# apt-get install libpam-ldap nscd
+
+--------------------------
+Questionnaire popup
+--------------------------
+You will be asked a variety of questions similar to the those asked when you were installing the server components.
+
+- LDAP server Uniform Resource Identifier: ldap://LDAP-server-IP-Address
+        NOTE: Change the initial string from "ldapi:///" to "ldap://" before inputing your server's information
+
+- Distinguished name of the search base: dc=example,dc=com (or other)
+        NOTE: This phpldapadmin is if you are using phpldapadmin - otherwise, find from LDAP server config files
+        This should match the value you put in your LDAP server's /etc/phpldapadmin/config.php file.
+        Search for: " 'server','base',array " within the file.
+        Our example was "dc=test,dc=com"
+        
+- LDAP version to use: 3
+
+- Make local root Database admin: Yes
+
+- Does the LDAP database require login? No
+
+- LDAP account for root: cn=Manager,dc=example,dc=com  (or other)
+        NOTE: This phpldapadmin is if you are using phpldapadmin - otherwise, find from LDAP server config files
+        This should also match the value in your /etc/phpldapadmin/config.php.
+        Search for: " 'login','bind_id' " within the file
+        Our example was "cn=admin,dc=test,dc=com"
+        
+- LDAP root account password: Your-LDAP-root-password (oracle or other)
+
+--> If you make a mistake and need to change a value, you can go through the menu again by issuing this command:
+# dpkg-reconfigure ldap-auth-config
+
+
+Install will continue with messages similar to the following:
+Get:1 http://us.archive.ubuntu.com/ubuntu/ trusty/main auth-client-config all 0.9ubuntu1 [15.4 kB]
+Get:2 http://us.archive.ubuntu.com/ubuntu/ trusty/main libpam-ldap amd64 184-8.5ubuntu3 [46.0 kB]
+Get:3 http://us.archive.ubuntu.com/ubuntu/ trusty-updates/main libnss-ldap amd64 264-2.2ubuntu4.14.04.2 [57.0 kB]
+Get:4 http://us.archive.ubuntu.com/ubuntu/ trusty/main ldap-auth-client all 0.5.3 [2,760 B]
+Get:5 http://us.archive.ubuntu.com/ubuntu/ trusty/main ldap-auth-config all 0.5.3 [9,434 B]
+Get:6 http://us.archive.ubuntu.com/ubuntu/ trusty-updates/universe nscd amd64 2.19-0ubuntu6.9 [72.1 kB]
+Fetched 203 kB in 0s (262 kB/s)
+Preconfiguring packages ...
+Selecting previously unselected package auth-client-config.
+(Reading database ... 47939 files and directories currently installed.)
+Preparing to unpack .../auth-client-config_0.9ubuntu1_all.deb ...
+Unpacking auth-client-config (0.9ubuntu1) ...
+Selecting previously unselected package libpam-ldap:amd64.
+Preparing to unpack .../libpam-ldap_184-8.5ubuntu3_amd64.deb ...
+Unpacking libpam-ldap:amd64 (184-8.5ubuntu3) ...
+Selecting previously unselected package libnss-ldap:amd64.
+Preparing to unpack .../libnss-ldap_264-2.2ubuntu4.14.04.2_amd64.deb ...
+Unpacking libnss-ldap:amd64 (264-2.2ubuntu4.14.04.2) ...
+Selecting previously unselected package ldap-auth-client.
+Preparing to unpack .../ldap-auth-client_0.5.3_all.deb ...
+Unpacking ldap-auth-client (0.5.3) ...
+Processing triggers for man-db (2.6.7.1-1ubuntu1) ...
+Processing triggers for ureadahead (0.100.0-16) ...
+ureadahead will be reprofiled on next reboot
+Setting up auth-client-config (0.9ubuntu1) ...
+Selecting previously unselected package ldap-auth-config.
+(Reading database ... 48020 files and directories currently installed.)
+Preparing to unpack .../ldap-auth-config_0.5.3_all.deb ...
+Unpacking ldap-auth-config (0.5.3) ...
+Selecting previously unselected package nscd.
+Preparing to unpack .../nscd_2.19-0ubuntu6.9_amd64.deb ...
+Unpacking nscd (2.19-0ubuntu6.9) ...
+Processing triggers for ureadahead (0.100.0-16) ...
+Processing triggers for man-db (2.6.7.1-1ubuntu1) ...
+Setting up libnss-ldap:amd64 (264-2.2ubuntu4.14.04.2) ...
+update-rc.d: warning: default start runlevel arguments (2 3 4 5) do not match libnss-ldap Default-Start values (none)
+Setting up nscd (2.19-0ubuntu6.9) ...
+ * Starting Name Service Cache Daemon nscd
+   ...done.
+Processing triggers for ureadahead (0.100.0-16) ...
+Setting up ldap-auth-client (0.5.3) ...
+Setting up ldap-auth-config (0.5.3) ...
+Setting up libpam-ldap:amd64 (184-8.5ubuntu3) ...
 
 
 ================================
 VERIFY
 ================================
-ldapsearch -h ldap_hostname_or_ip -D cn=Manager,dc=example,dc=com -w oracle -b dc=example,dc=com
+ldapsearch -h ldap_hostname_or_ip -D cn=Manager,dc=example,dc=com -w Manager_password -b dc=example,dc=com
 
 ==============================
 APPENDIX - https://help.ubuntu.com/community/LDAPClientAuthentication
