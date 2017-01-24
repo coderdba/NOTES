@@ -1,8 +1,8 @@
 ==========================================
 LDAP CLIENT CONFIGURATION ON UBUNTU
 ==========================================
-https://www.digitalocean.com/community/tutorials/how-to-authenticate-client-computers-using-ldap-on-an-ubuntu-12-04-vps
-https://help.ubuntu.com/community/LDAPClientAuthentication
+Use this - https://www.digitalocean.com/community/tutorials/how-to-authenticate-client-computers-using-ldap-on-an-ubuntu-12-04-vps
+This is convoluted - https://help.ubuntu.com/community/LDAPClientAuthentication
 
 ==========================
 CLIENT MACHINE - BUILD
@@ -23,9 +23,9 @@ Install ldap-utils on client - apt-get install ldap-utils
 Verify if client can talk to server using ldapsearch:
 $ ldapsearch -h ldap_hostname_or_ip -D cn=Manager,dc=example,dc=com -w Manager_password -b dc=example,dc=com
 
-=================================
-INSTALL LDAP CLIENT AND CONFIGURE
-=================================
+=====================
+INSTALL LDAP CLIENT 
+=====================
 On client machine
 
 --------------------------
@@ -116,11 +116,202 @@ Setting up ldap-auth-client (0.5.3) ...
 Setting up ldap-auth-config (0.5.3) ...
 Setting up libpam-ldap:amd64 (184-8.5ubuntu3) ...
 
+======================
+CONFIGURE CLIENT
+======================
 
-================================
+--------------------
+/etc/nsswitch.conf
+--------------------
+--> Add 'ldap' in front of compat for passwd, group and shadow
+
+passwd:         ldap compat
+group:          ldap compat
+shadow:         ldap compat
+
+--------------------
+PAM
+--------------------
+Edit file /etc/pam.d/common-session 
+
+Add this line:
+session required    pam_mkhomedir.so skel=/etc/skel umask=0022
+
+--------------------
+RESTART CLIENT
+--------------------
+# /etc/init.d/nscd restart
+ * Restarting Name Service Cache Daemon nscd
+   ...done.
+
+=======
 VERIFY
-================================
-ldapsearch -h ldap_hostname_or_ip -D cn=Manager,dc=example,dc=com -w Manager_password -b dc=example,dc=com
+=======
+- Search 'passwd' entry of an LDAP user
+# getent passwd usera
+usera:*:15001:10000:usera user:/home/usera:/bin/bash
+(where usera is an LDAP user created already in the ldap server)
+
+- Logon as the LDAP user
+As this was a Vagrant VM, create a user 'junk' just to test this.
+# useradd junk
+# su - junk
+$ id
+uid=15005(junk) gid=15005(junk) groups=15005(junk)
+$ su - usera
+Password: (oracle or other)
+groups: cannot find name for group ID 10000  --> this is an error as a group 10000 was assigned in LDAP, but no such group in LDAP
+$ id
+uid=15001(usera) gid=10000 groups=10000
+$ pwd
+/home/usera
+
+========================================================================================================================
+APPENDIX
+https://www.digitalocean.com/community/tutorials/how-to-authenticate-client-computers-using-ldap-on-an-ubuntu-12-04-vps
+========================================================================================================================
+How To Authenticate Client Computers Using LDAP on an Ubuntu 12.04 VPS
+PostedOctober 2, 2013 253.1k views SECURITY PHP NETWORKING UBUNTU
+Introduction
+
+LDAP, or Lightweight Directory Access Protocol, is one way of keeping authentication information in a single centralized location. In a previous article, we discussed how to set up an LDAP server on an Ubuntu 12.04 VPS. This explained the actual server configuration.
+
+In this article, we will discuss how to configure a client machine to remotely authenticate with that server for various services.
+
+To complete this project, you will need an Ubuntu 12.04 server configured as the LDAP server. Look at the link to the previous guide if you haven't done so already. You will also need another Ubuntu 12.04 droplet to act as the client machine.
+
+Install Client Packages
+On the client machine, you will needs to install a few packages to make authentication function correctly with an LDAP server.
+
+You can install them from the default Ubuntu repositories with the following commands:
+
+sudo apt-get update
+sudo apt-get install libpam-ldap nscd
+You will be asked a variety of questions similar to the those asked when you were installing the server components.
+
+LDAP server Uniform Resource Identifier: ldap://LDAP-server-IP-Address
+
+Change the initial string from "ldapi:///" to "ldap://" before inputing your server's information
+Distinguished name of the search base:
+
+This should match the value you put in your LDAP server's /etc/phpldapadmin/config.php file.
+Search for: " 'server','base',array " within the file.
+Our example was "dc=test,dc=com"
+LDAP version to use: 3
+
+Make local root Database admin: Yes
+
+Does the LDAP database require login? No
+
+LDAP account for root:
+
+This should also match the value in your /etc/phpldapadmin/config.php.
+Search for: " 'login','bind_id' " within the file
+Our example was "cn=admin,dc=test,dc=com"
+LDAP root account password: Your-LDAP-root-password
+
+If you make a mistake and need to change a value, you can go through the menu again by issuing this command:
+
+sudo dpkg-reconfigure ldap-auth-config
+Configure Client Software
+We have to adjust a few files to tell our authentication files that they can look to our LDAP server for authentication information.
+
+First, edit the /etc/nsswitch.conf file. This will allow us to specify that the LDAP credentials should be modified when users issue authentication change commands.
+
+sudo nano /etc/nsswitch.conf
+The three lines we are interested in are the "passwd", "group", and "shadow" definitions. Modify them to look like this:
+
+passwd:         ldap compat
+group:          ldap compat
+shadow:         ldap compat
+Next, we will add a value to our PAM configuration.
+
+PAM, or Pluggable Authentication Modules, is a system that connects applications that can provide authentication to applications that require authentication.
+
+PAM is already implemented on most computers, and works behind the scenes without needing user interaction. When we installed and configured our LDAP PAM module, most of the needed information was added to the configuration files.
+
+Edit the /etc/pam.d/common-session file:
+
+sudo nano /etc/pam.d/common-session
+Add a line to the bottom of the configuration that reads:
+
+session required    pam_mkhomedir.so skel=/etc/skel umask=0022
+This will create a home directory on the client machine when an LDAP user logs in who does not have a home directory.
+
+We have to restart a service for these changes to be implemented:
+
+sudo /etc/init.d/nscd restart
+Permissions
+During the LDAP server configuration, we created a group called "admin". This was not chosen at random. It coincides with the "admin" group that is created by default on Ubuntu machines.
+
+The LDAP users that you added to the "admin" group will have access to the sudo command.
+
+This is because we have a line that gives members of the "admin" group sudo access within the /etc/sudoers file. Edit the file by issuing this command:
+
+sudo visudo
+There is a line that reads:
+
+%admin ALL=(ALL) ALL
+Entries that begin with a percentage sign (%) specify a group instead of a user. If you wish to disable this functionality, or only grant specific users this functionality, comment out this line:
+
+#%admin ALL=(ALL) ALL
+Log In as an LDAP User
+We have now configured our client machine enough to be able to log in as one of our LDAP users. This user does not have to exist on the client machine.
+
+In a new terminal window (it is best to keep your original terminal window logged in, in case of a configuration mistake), ssh into the client machine using an LDAP user's credentials:
+
+ssh LDAP_user@LDAP_client_IP_Address
+You should be able to log in as if your user had been created locally. Issue the print working directory command:
+
+pwd
+You should see that the home directory you selected for your user on the LDAP server is being used on this machine. It has been created on-demand to serve the LDAP user.
+
+If you log out and log in with a different LDAP user, you can see that there will be two home directory entries:
+
+ls /home
+user1  user2
+If your user is part of the "admin" group and you didn't disable the ability in the previous section, you will have normal sudo access, otherwise, you will not.
+
+If you issue the passwd command to change your password, you can see that it will be modifying your LDAP credentials:
+
+passwd
+Enter login(LDAP) password:
+Restricting Access by Group
+If you only want members of certain groups to be able to log into this specific machine, you can configure that restriction within the PAM files.
+
+Edit the following file with root privileges:
+
+sudo nano /etc/pam.d/common-auth
+At the bottom, we will specify that PAM should look at the security access file to see how to restrict user logins. Add this to the bottom:
+
+auth    required    pam_access.so
+Save and close the file.
+
+The file that PAM references for security information when that setting is configured is at /etc/security/access.conf. Open this file now, with root privileges:
+
+sudo nano /etc/security/access.conf
+We need to add a rule to the end of the file.
+
+The dash (-) at the beginning of the line means this is a restriction. From the first colon (:) to the next colon, we specify who this rule applies to.
+
+We specify that this applies to all users except root and the group "admin". Groups are given within parentheses.
+
+From the second colon to the end of the line, we will specify under which circumstances the rule should apply. In our case, the restriction will apply in all circumstances but local logins.
+
+-:ALL EXCEPT root (admin):ALL EXCEPT LOCAL
+This will allow us to restrict logins to the "admin" group. We can add other groups or change the group.
+
+This will also allow us to log in through the "console access" button on the DigitalOcean console if we somehow lock ourselves out of SSH.
+
+Keep in mind that this will apply to all users, not just LDAP users. So any users you create on the client machine will need to be a member of one of the specified groups.
+
+Conclusion
+You should now be able to authenticate multiple computers using a centralized LDAP server. Your LDAP users will be allowed to use any of the machines you configure in this way, as long as they have the appropriate login credentials.
+
+This can prevent your user information from becoming dispersed, duplicated, and unmanageable. When the number of users accessing your servers or projects is increasing, and the number of machines is also growing, LDAP authentication can be a huge help.
+
+By Justin Ellingwood
+
 
 ==============================
 APPENDIX - https://help.ubuntu.com/community/LDAPClientAuthentication
