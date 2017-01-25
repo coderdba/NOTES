@@ -28,7 +28,10 @@ NOTE - First attempt was done in oud-11g-eus-11gDB-configure-and-use.txt
 - CREATE A NEW GLOBAL USER
 SQL> create user oud_global_ident_schema_user2  identified globally;
 
-- ADD A NEW ENTERPRISE ROLE SYSDBA1, MAPPING TO SYSDBA DB ROLE
+- CREATE A NEW ENTERPRISE ROLE SYSDBA2
+eusm createRole enterprise_role=SYSDBA2 domain_name=OracleDefaultDomain realm_dn='dc=example,dc=com' ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn='cn=eusroot,ou=eusadmins,dc=example,dc=com' ldap_user_password=oracle#1
+
+- MAP THE ENTERPRISE ROLE SYSDBA2 TO SYSDBA DB ROLE
 -- Create file sysdba2.ldif with following content
 dn: cn=SYSDBA2,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=example,dc=com
 changetype: modify
@@ -38,7 +41,21 @@ orcldbserverrole: cn=GLOBAL_DB_NAME,cn=OracleContext,dc=example,dc=com,GlobalRol
 -- Add this role using 'ldapmodify'
 ldapmodify -h oud-host-name -p 1389 -D cn=eusroot,ou=eusadmins,dc=example,dc=com  -w "oracle#1" -v -f sysdba2.ldif
 
-- CREATE MAPPING OF NEW GLOBAL USER FOR THE DATABASE
+- VERIFY BY LISTING ROLE-INFO 
+NOTE: No users or groups assigned to the enterprise role yet
+$ eusm listEnterpriseRoleInfo enterprise_role=SYSDBA2 domain_name=OracleDefaultDomain realm_dn='dc=example,dc=com' ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn='cn=eusroot,ou=eusadmins,dc=example,dc=com' ldap_user_password=oracle#1
+INFOMATION FOR ENTERPRISE ROLE: SYSDBA2
+-------------------------------------------------
+LIST OF USERS
+-----------------
+LIST OF GROUPS
+-----------------
+LIST OF GLOBAL ROLES
+--------------------
+DBNAME: DB_UNIQUE_NAME GLOBALROLE :SYSDBA
+
+- CREATE MAPPING OF 'GLOBAL IDENT SCHEMA USER' FOR THE DATABASE 
+NOTE: Using the new global ident user created above
 eusm createMapping database_name=DB_UNIQUE_NAME realm_dn=dc=example,dc=com map_type=SUBTREE map_dn=dc=example,dc=com schema=oud_global_ident_schema_user2 ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn='eusroot,ou=eusadmins,dc=example,dc=com' ldap_user_password=oracle#1
 
 - VERIFY MAPPING
@@ -58,8 +75,10 @@ Mapping DN:    dc=example,dc=com
 Mapping schema:oud_global_ident_schema_user2
 Mapping Level :DATABASE
 
-- GRANT ROLE
+- GRANT ROLE (optional - see note below)
+NOTE: This may not be necessary - as this grants the role/group to itself
 eusm grantRole enterprise_role=SYSDBA2 domain_name=OracleDefaultDomain realm_dn=dc=example,dc=com group_dn=cn=SYSDBA2,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=example,dc=com ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
+
 
 
 
