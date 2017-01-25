@@ -18,3 +18,48 @@ This says, create a local user ALSO as 'identified globally' with actual uid/cn 
 SQL> CREATE USER USER1 IDENTIFIED GLOBALLY AS 'cn=user1,cn=people,cn=company,cn=com';
 
 Then doing sqlplus user1/user1_password@CONNECT_STRING as sysdba works.
+
+===============================
+MAIN STEPS AGAIN
+===============================
+NOTE - First attempt was done in oud-11g-eus-11gDB-configure-and-use.txt
+       THIS IS A SECOND ATTEMPT AS IT KEPT GIVING ORA-01017
+       
+- CREATE A NEW GLOBAL USER
+SQL> create user oud_global_ident_schema_user2  identified globally;
+
+- ADD A NEW ENTERPRISE ROLE SYSDBA1, MAPPING TO SYSDBA DB ROLE
+-- Create file sysdba2.ldif with following content
+dn: cn=SYSDBA2,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=example,dc=com
+changetype: modify
+add: orcldbserverrole
+orcldbserverrole: cn=GLOBAL_DB_NAME,cn=OracleContext,dc=example,dc=com,GlobalRole=SYSDBA
+
+-- Add this role using 'ldapmodify'
+ldapmodify -h oud-host-name -p 1389 -D cn=eusroot,ou=eusadmins,dc=example,dc=com  -w "oracle#1" -v -f sysdba2.ldif
+
+- CREATE MAPPING OF NEW GLOBAL USER FOR THE DATABASE
+eusm createMapping database_name=DB_UNIQUE_NAME realm_dn=dc=example,dc=com map_type=SUBTREE map_dn=dc=example,dc=com schema=oud_global_ident_schema_user2 ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn='eusroot,ou=eusadmins,dc=example,dc=com' ldap_user_password=oracle#1
+
+- VERIFY MAPPING
+eusm listMappings database_name=DB_UNIQUE_NAME realm_dn=dc=example,dc=com ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
+
+LIST OF DATABASE SCHEMA MAPPINGS::
+------------------------------------
+Mapping Name:  MAPPING0
+Mapping Type:  SUBTREE
+Mapping DN:    dc=example,dc=com
+Mapping schema:oud_global_ident_schema_user
+Mapping Level :DATABASE
+
+Mapping Name:  MAPPING1
+Mapping Type:  SUBTREE
+Mapping DN:    dc=example,dc=com
+Mapping schema:oud_global_ident_schema_user2
+Mapping Level :DATABASE
+
+- GRANT ROLE
+eusm grantRole enterprise_role=SYSDBA2 domain_name=OracleDefaultDomain realm_dn=dc=example,dc=com group_dn=cn=SYSDBA2,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=example,dc=com ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
+
+
+
