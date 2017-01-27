@@ -1,7 +1,9 @@
 ====================================================
 CAUTIONS and MUST-DOs WHILE CONFIGURING EUS WITH OUD
 ====================================================
-1. Set environment in DB registry using srvctl setenv:
+
+1. DB server - Set environment in DB registry using srvctl setenv:
+
 NOTE: This is to avoid ORA-28030
 NOTE: After setting them, restart the DB and Listener
 
@@ -9,14 +11,32 @@ ORACLE_BASE
 TNS_ADMIN
 ORACLE_HOME - it is also suggested to set ORACLE_HOME
 
-2. Add LDAP as a search path along with TNSNAMES and EZCONNECT
+srvctl setenv database -d DB_UNIQUE_NAME -t ORACLE_BASE=/u01/app/oracle
+srvctl setenv database -d DB_UNIQUE_NAME -t TNS_ADMIN=/usr/local/tns
+srvctl setenv database -d DB_UNIQUE_NAME -t ORACLE_HOME=/u01/app/oracle/product/11.2.0.4
 
-3. For 12c DB's with PDBs, create a soft-link in $ORACLE_BASE to $ORACLE_HOME/admin
+2. DB server & client machines - Add LDAP as a search path along with TNSNAMES and EZCONNECT
+NOTE: JDBC client machines probably do not need sqlnet.ora as they dont use sqlplus and such
 
-4. Set password policy as 'AES' for LDAP admin user
+NAMES.DIRECTORY_PATH= (LDAP, TNSNAMES, EZCONNECT)
+
+3. DB server - Add the following in sqlnet.ora to avoid errors from clients like JDBC
+
+The setting '8' will allow clients/jdbc-drivers from 10g (or 9i) onwards without issues 
+
+SQLNET.ALLOWED_LOGON_VERSION=8
+SQLNET.ALLOWED_LOGON_VERSION_CLIENT=8
+SQLNET.ALLOWED_LOGON_VERSION_SERVER=8
+
+4. DB server - For 12c DB's with PDBs, create a soft-link in $ORACLE_HOME to $ORACLE_BASE/admin
+
+This is to avoid ORA-28030 when connecting to PDB using enterprise user
+NOTE: However, the error seemed to vanish later though the link was removed - anyway, be safe, add link
+
+5. OUD Server - Set password policy as 'AES' for LDAP admin user
 NOTE: Otherwise 12c eusm does not work if LDAB admin user's password is non AES
 
-5. For OUD, use JDK version less than Java7-75
-It needs sslv3 protocol - either use less than Java 7u75 or enable sslv3 in higher versions of Java
+6. OUD Server - For OUD, use JDK version less than Java7-75
+It needs sslv3 protocol - either use less than Java 7u75 - OR - enable sslv3 in higher versions of Java
 Starting with JDK 7u75 release, the SSLv3 protocol (Secure Socket Layer) has been deactivated and is not available by default.
 
