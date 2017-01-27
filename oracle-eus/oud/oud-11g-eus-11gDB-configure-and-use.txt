@@ -1,0 +1,1325 @@
+=============================================================
+     OUD 11G - CONFIGURE AND USE THE PRODUCT for 11g DB EUS
+=============================================================
+
+
+=============================================================
+-------------------------------------------------------------
+IMPORTANT - Read CAUTIONS-AND-MUST-DOs.txt for MUST-DOs
+-------------------------------------------------------------
+=============================================================
+
+
+For installation - see oud-install-rhel7-wls10-adf11g.txt
+
+IMPORTANT: (from  support engineer)
+For RAC and EUS you can review: 
+How To Configure Enterprise User Security In Oracle RAC Environment ( Doc ID 316360.1 ) 
+How To Configure Directory Authentication for Database Administrative Users (SYSDBA and SYSOPER) ( Doc ID 457083.1 ) 
+How To Configure EUS Kerberos Authentication For Database Administrative Users (SYSDBA and SYSOPER) ( Doc ID 2081984.1 ) 
+VERY IMPORTANT - As a general rule srvctl needs the same environment variables as the oracle processes :
+                    ORACLE_BASE,ORACLE_HOME,TNS_ADMIN,etc 
+
+
+------------------------------------------
+For this doc, mostly used the following:
+------------------------------------------
+https://wiki.loopback.org/confluence/display/KB/Configure+EUS+with+OUD%2C+AD+and+DB12 --> with AD integration
+--> also read https://wiki.loopback.org/confluence/display/KB/Configure+EUS+with+OID
+https://bdrouvot.wordpress.com/2016/04/30/oracle-unified-directory-and-user-security-quick-demo/
+http://ziontech.com/blog/category/directory-services/
+     http://ziontech.com/blog/preparing_database/
+
+For SYSDBA EUS: 
+http://blog.yannickjaquier.com/oracle/enterprise-user-security-eus-password-authentication.html#LDAP_SYSDBA_authentication
+
+Oracle eus:  
+12c  https://docs.oracle.com/cd/E11882_01/network.112/e10744/getstrtd.htm#DBIMI234
+        https://docs.oracle.com/database/122/DBIMI/enterprise-user-security-configuration-tasks-and-troubleshooting.htm#DBIMI122
+        
+11g  https://docs.oracle.com/cd/E11882_01/network.112/e10744/configur.htm#DBIMI120
+
+From OUD guide - eus, proxy section
+http://docs.oracle.com/cd/E49437_01/admin.111220/e22648/eus.htm
+(look for similar sections in oud 11.1.2.3 guide also)
+
+11.1.2.3 proxy https://docs.oracle.com/cd/E52734_01/oud/OUDIG/setting_up_proxy.htm#OUDIG176
+11.1.2.3 eus  https://docs.oracle.com/cd/E52734_01/oud/OUDAG/eus.htm#OUDAG11374
+------------------------------------------
+OTHER LINKS
+------------------------------------------
+What are oud, ovd, oid etc:
+http://www.oraworld.co.uk/oracle-directory-services-oid-oud-odsee-ovd-dip/
+http://www.oraworld.co.uk/understanding-oracle-unified-directory-oud-overview-introduction/
+http://www.oraworld.co.uk/oracle-unified-directory-oud-installation/
+http://www.oraworld.co.uk/oracle-unified-directory-oud-setting-up-as-directory-server/
+
+Try this all-in-one:
+http://www.dbspecialists.com/files/presentations/implementing_oracle_11g_enterprise_user_security.pdf
+
+Oracle Docs:
+
+USE THIS - 11.1.2.3 version:
+
+     CATEGORY (LIKE INSTALL, ADMINISTER, CONFIGURE ETC)
+     Install: https://docs.oracle.com/cd/E52734_01/oud/OUDIG/toc.htm
+     Administer: https://docs.oracle.com/cd/E52734_01/oud/OUDAG/toc.htm
+           DB access config: https://docs.oracle.com/cd/E52734_01/oud/OUDAG/eus.htm#OUDAG11381
+
+     TASK SPECIFIC DOCS: --> these can be confusing and not all encompassing
+     Install: https://docs.oracle.com/cd/E52734_01/oud/oud-developdeploy.htm
+     Administer: https://docs.oracle.com/cd/E52734_01/oud/oud-administer.htm
+     
+     -------
+     Older versions:
+     Oracle Fusion Middleware Unified Directory 11g Release 2 (11.1.2.2)
+     docs.oracle.com/cd/E49437_01/index.htm
+
+     Introduction to Oracle Unified Directory - 11g Release 2 (11.1.2)
+     docs.oracle.com/cd/E29407_01/admin.111200/e22648/oud_overview.htm
+     
+     -----
+     Older versions:
+     http://docs.oracle.com/cd/E49437_01/index.htm - main OUD docs list
+     http://docs.oracle.com/cd/E49437_01/install.111220/e23737/toc.htm - installation guide
+     http://docs.oracle.com/cd/E49437_01/admin.111220/e22648/toc.htm - administration guide
+
+Basic steps to enable and configure OUD and DB for EUS authentication (Doc ID 1632509.1)
+http://www.oracle.com/technetwork/middleware/id-mgmt/learnmore/ovd-dsee-eus-085224.html --> OVD - not OUD
+http://docs.oracle.com/cd/B28359_01/network.111/b28528/getstrtd.htm#DBIMI237
+
+DB with OUD :
+USE THIS 11.1.2.3 VERSION - https://docs.oracle.com/cd/E52734_01/oud/OUDAG/eus.htm#OUDAG11381 --> DB access configuration with OUD (OUD-DB EUS integration)
+     http://docs.oracle.com/cd/E49437_01/admin.111220/e22648/toc.htm --> ??? chapter 28 similar to the above one??
+     
+- Seems good: SYSDBA users
+http://blog.yannickjaquier.com/oracle/enterprise-user-security-eus-password-authentication.html
+
+http://ziontech.com/blog/category/directory-services/
+     http://ziontech.com/blog/preparing_database/
+     
+https://wiki.loopback.org/confluence/display/KB/Configure+EUS+with+OUD%2C+AD+and+DB12 --> with AD integration
+
+DBCA,NETCA - http://ziontech.com/blog/preparing_database/
+DBCA only - http://ptotech.blogspot.in/2016/05/oudeus-running-dbca-from-command-line.html
+
+Examples:
+https://wiki.loopback.org/confluence/display/KB/Configure+EUS+with+OUD%2C+AD+and+DB12 --> with AD integration
+http://www.oraworld.co.uk/oracle-unified-directory-oud-setting-up-as-directory-server/ 
+https://bdrouvot.wordpress.com/2016/04/30/oracle-unified-directory-and-user-security-quick-demo/
+
+EUSM commands:
+EUSM, Command Line Tool For EUS Administration and Some EUS Good to Knows (Doc ID 1085065.1)
+https://blogs.oracle.com/sduloutr/entry/using_eusm_to_manage_eus
+
+Role create/map/eusm:
+https://wiki.loopback.org/confluence/display/KB/Configure+EUS+with+OUD%2C+AD+and+DB12c#ConfigureEUSwithOUD,ADandDB12c-Registerdatabasewithdirectory
+
+Global roles, enterprise roles:
+http://flylib.com/books/en/1.519.1.58/1/
+
+User management:
+https://docs.oracle.com/cd/E52734_01/oud/OUDAG/users_groups.htm#OUDAG00905
+
+=====================================
+LOGON TO OUD
+=====================================
+http://hostname.domain.com:7001/odsm
+
+-------------
+LOGIN
+-------------
+You will get the logon screen with the following fields (mandatory fields only are listed):
+Server - <give your hostname.domain.com or IP>
+Administration Port - 4444 (pre-populated - change if yours is different - did not change as mine was same)
+SSL Enabled - checked by default
+User Name - cn=Directory Manager
+Password - < give password set for "Directory Manager" during install/configure - in my case 'oracle' was the password)
+
+Press 'login' button.
+
+-------------
+CERTIFICATE
+-------------
+After login, a certificate-accept screen will pop-up (in this case it is a self signed certificate)
+--> Accept the certificate
+
+Then you will see the "Directory Manager" screen (as a tab).
+
+=========================================
+THE LDIF FILES
+=========================================
+$ cd /u01/app/oracle/Middleware/OUD1/config/EUS
+$ ls -l
+drwxr-x---. 4 oud oinstall  4096 Dec 21 02:45 ActiveDirectory
+-rw-r-----. 1 oud oinstall  5424 Mar 26  2014 eusData.ldif
+-rw-r-----. 1 oud oinstall  1608 Nov 15  2013 modifyRealm.ldif
+-rw-r-----. 1 oud oinstall 13597 Mar 26  2014 oracleContext.ldif
+
+======================================
+DN's REVIEW AND ADD ITEMS
+======================================
+Go to 'Data Browser' tab
+     Go to 'Data Tree' tab in the LHS of that page
+     
+You can see the following:
+Root
+--> cn=OracleContext
+--> cn=OracleSchemaVersion
+--> dc=example,dc=com --> this is the DN created during oud-setup
+
+-----------------------------
+CREATE AN ORGANIZATION UNIT (OU)
+-----------------------------
+- Create a OU called 'eusadmins' to put eus-administrators together
+NOTE: Create this (at least for now) under the basic DN created earlier - 'dc=example,dc=com'
+
+Click on the 'dc=example,dc=com'
+Click the create button with the + symbol and its drop-down
+Choose 'Organization Unit Entry'
+In the ensuing RHS panel, provide a 'Organization Unit' name - 'eusadmins'
+Click 'create' button on the RHS top corner
+
+Now, you should see ou=eusadmins under dc=example,dc=com
+
+------------------------------
+CREATE A USER UNDER THIS OU
+------------------------------
+Click the OU
+Click the create button with + symbol - and choose User Entry
+Choose the DN path - ou=eusadmins,dc=example,dc=com
+Provide the following info:
+     Common Name = eusadmin
+     User ID = eusadmin
+     Last Name = main
+Then press 'create' button on the right hand top corner
+
+You should now see on LHS the user cn=eusamin under ou=eusadmins
+And on the RHS - Distinguished Name cn=eusadmin,ou=eusadmins,dc=example,dc=com 
+
+TBD - Not sure how to assign privileges to do stuff in the directory-server to this user
+
+- How to make this a real user with a password
+Click on the user
+On the RHS panel, choose attributes --> Optional Attributes --> userpassword
+--> provide password and click 'apply'
+
+- VERIFY
+NOTE: Make sure 1389 port is open for tcp - use firewall commands for that
+Go to a oracle db server which has 'ldapbind' 
+$ ldapbind -h <your oud host> -p 1389 -D cn=eusadmin,ou=eusadmins,dc=example,dc=com -w oracle
+bind successful
+
+-- Try with a wrong password
+$  ldapbind -h 10.63.160.170 -p 1389 -D cn=eusadmin,ou=eusadmins,dc=example,dc=com -w oracle1
+ldap_bind: Invalid credentials
+
+===============================
+THE ROOT USER
+===============================
+The primary root user is the 'Directory Manager' that got created during oud-setup.
+You can add additional root users
+
+- Verify bind
+$ ldapbind -h <oud hostname> -p 1389 -D cn="Directory Manager" -w oracle
+bind successful
+
+-------------------------------
+Directory Manager user
+-------------------------------
+Click on 'configuration' tab
+--> General Configuration
+     --> Root Users
+          --> Directory Manager
+          
+Click on the 'Directory Manager'
+On the RHS, you will see 'Alternative Bind DN' as "cn=Directory Manager" and a password (hidden) also.
+
+--------------------------------
+Create additional root user
+--------------------------------
+Click on 'Create' button drop down
+Choose root user
+In the ensuing RHS panel, give username 'Name' as 'eusroot'
+Add an alternative Bind DN as "cn=eusroot,ou=eusadmins,dc=example,dc=com"
+Provide a password (gave 'oracle#1' to conform with root password policy)
+Let the privileges to be default for now
+
+Click 'create' on rhs top
+Now, you will see a new user eusadmin0 under Root Users
+NOTE: This user does not appear under ou=eusadmins under dc=example,dc=com in the 'Data Browser' tab (TBD - why?)
+
+- VERIFY
+$ ldapbind -h 10.63.160.170 -p 1389 -D cn='eusroot,ou=eusadmins,dc=example,dc=com' -w 'oracle#1'
+bind successful
+
+======================================
+--------------------------------------
+        EUS FOR A 11G DATABASE
+--------------------------------------
+======================================
+
+******************************************************************************************************************
+IMPORTANT: Set ORACLE_BASE and TNS_ADMIN environment variables for the DB.  This is necessary to avoid ORA-28030.
+           Use srvctl setenv if starting db using srvctl.  
+           Use o/s environment variables if starting db with sqlplus.
+******************************************************************************************************************
+
+Pre-requisites - a root user - either default 'Directory Admin' or 'eusroot' or other be available in OUD.
+In this case:
+eusroot password oracle#1
+'Directory Manager' password oracle
+
+************
+NOTE: See various NOTE and QUESTION to know and answer.
+************
+
+
+==================================
+SET DB ENVIRONMENT AND RESTART DB
+==================================
+******************************************************************************************************************
+IMPORTANT: Set ORACLE_BASE and TNS_ADMIN environment variables for the DB.  This is necessary to avoid ORA-28030.
+           Use srvctl setenv if starting db using srvctl.  
+           Use o/s environment variables if starting db with sqlplus.
+******************************************************************************************************************
+
+======================
+REGISTER DB IN OUD
+======================
+
+------------------------
+REGISTER DB
+------------------------
+dbca -silent -configureDatabase -sourceDB DB_UNIQUE_NAME -sysDBAUserName sys -sysDBAPassword "oracle#1" -registerWithDirService true -dirServiceUserName cn='eusroot,ou=eusadmins,dc=example,dc=com' -dirServicePassword oracle#1 -walletPassword 'oracle#1' -listeners listener
+     Preparing to Configure Database
+     6% complete
+     13% complete
+     66% complete
+     Completing Database Configuration
+     100% complete
+     Look at the log file "/u02/app/oracle/cfgtoollogs/dbca/DB_UNIQUE_NAME/DBNAME0.log" for further details.
+
+---------------------------------
+VERIFY with ldapsearch
+---------------------------------
+NOTE: oud-host-or-ip --> give the oud server hostname or ip
+
+NOTE: The output shows the orclSystemName as the hostname from where it registered
+NOTE: The output shows orclNetDescString with SCAN though it was not specified in dbca command except 'listener' was mentioned in dbca 
+
+NOTE: The object is created in OUD under 'oraclecontext' of baseDN dc=example,dc=com
+
+$ ldapsearch -h oud-host-or-ip -p 1389 -D  cn='eusroot,ou=eusadmins,dc=example,dc=com' -w oracle#1 -b cn=oraclecontext,dc=example,dc=com "(cn=DB_UNIQUE_NAME)"
+     cn=DB_UNIQUE_NAME,cn=OracleContext,dc=example,dc=com
+     orclVersion=112000
+     cn=DB_UNIQUE_NAME
+     orclServiceType=DB
+     objectClass=orclApplicationEntity
+     objectClass=orclDBServer_92
+     objectClass=orclService
+     objectClass=orclDBServer
+     objectClass=top
+     orclOracleHome=/u02/app/oracle/product/11.2.0.4
+     orclSystemName=< hostname from where dbca register db was run >
+     orclNetDescString=(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=clusterName-scan)(PORT=1522)))(CONNECT_DATA=(SERVICE_NAME=DB_UNIQUE_NAME)))
+     orclDBGlobalName=DB_UNIQUE_NAME
+     orclcommonrpwdattribute={SASL-MD5}sD8XoUI3JT35W+NZDZz9nQ==
+     userPassword={SSHA}Q7V3Xe9RU5iClI5QRKGhPnBEpksjLUzQ8yPHSw==
+     orclNetDescName=000:cn=DESCRIPTION_0
+     
+------------------------------------------
+VERIFY WITH EUSM COMMAND
+------------------------------------------
+
+eusm listDBInfo realm_dn='dc=example,dc=com' database_name=DB_UNIQUE_NAME ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn='cn=eusroot,ou=eusadmins,dc=example,dc=com' ldap_user_password=oracle#1
+
+INFOMATION FOR DATABASE: DB_UNIQUE_NAME
+-------------------------------------------------
+Database Distinguished name: cn=DB_UNIQUE_NAME,cn=OracleContext,dc=example,dc=com
+Database version:       112000
+ORACLE_SID:             null
+Database Host:          <hostname from where dbca register db was run>
+ORACLE_HOME:            /u02/app/oracle/product/11.2.0.4
+Database Service:       DB
+Global Database Name:   DB_UNIQUE_NAME
+Oracle Net Description: (DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=clustername-scan)(PORT=1522)))(CONNECT_DATA=(SERVICE_NAME=DB_UNIQUE_NAME)))
+
+------------------------------------------
+VERIFY IN OUD WHERE THIS DB IS REGISTGERED
+------------------------------------------
+NOTE: It is created as a cn directly under OracleContext of dc=example,dc=com
+
+Go to 'Data Browser' --> 'Data Tree' 
+     --> dc=example,dc=com --> cn=OracleContext 
+     
+          --> cn=DB_UNIQUE_NAME  
+          
+               --> under that there will be the following 'cn' items:
+                    DESCRIPTION_0
+                    OracleDBAdmins
+                    OracleDBAgents ... etc
+
+--------------------------------------------
+VERIFY IF WALLET HAS BEEN CREATED
+--------------------------------------------
+$ ls -l /u02/app/oracle/admin/DB_UNIQUE_NAME/wallet
+-rw------- 1 oracle dba 3853 Dec 30 00:07 cwallet.sso
+-rw------- 1 oracle dba 3776 Dec 30 00:07 ewallet.p12
+
+---------------------------------------------
+VERIFY IF DB IS IN THE WALLET
+---------------------------------------------
+Go to the wallet directory /u02/app/oracle/admin/DB_UNIQUE_NAME/wallet.
+
+$ orapki wallet display -wallet .
+Oracle PKI Tool : Version 11.2.0.4.0 - Production
+Copyright (c) 2004, 2013, Oracle and/or its affiliates. All rights reserved.
+
+Requested Certificates:
+User Certificates:
+Oracle Secret Store entries:
+ORACLE.SECURITY.DN
+ORACLE.SECURITY.PASSWORD
+Trusted Certificates:
+Subject:        OU=Class 1 Public Primary Certification Authority,O=VeriSign\, Inc.,C=US
+Subject:        OU=Class 3 Public Primary Certification Authority,O=VeriSign\, Inc.,C=US
+Subject:        OU=Class 2 Public Primary Certification Authority,O=VeriSign\, Inc.,C=US
+Subject:        OU=Secure Server Certification Authority,O=RSA Data Security\, Inc.,C=US
+Subject:        CN=GTE CyberTrust Global Root,OU=GTE CyberTrust Solutions\, Inc.,O=GTE Corporation,C=US
+
+$  mkstore -wrl . -viewEntry ORACLE.SECURITY.DN
+Oracle Secret Store Tool : Version 11.2.0.4.0 - Production
+Copyright (c) 2004, 2013, Oracle and/or its affiliates. All rights reserved.
+
+Enter wallet password:   < oracle#1 >
+ORACLE.SECURITY.DN = cn=DB_UNIQUE_NAME,cn=OracleContext,dc=example,dc=com
+
+$ mkstore -wrl . -viewEntry ORACLE.SECURITY.PASSWORD
+Oracle Secret Store Tool : Version 11.2.0.4.0 - Production
+Copyright (c) 2004, 2013, Oracle and/or its affiliates. All rights reserved.
+
+Enter wallet password:  < oracle#1 >
+ORACLE.SECURITY.PASSWORD = Dl8~7KTixVq7
+--> This is the password for the DB DN in OUD
+
+- VERIFY
+$ ldapbind -h 10.63.160.170 -p 1389 -D cn=DB_UNIQUE_NAME,cn=OracleContext,dc=example,dc=com -q
+password: < give the password found as value of ORACLE.SECURITY.PASSWORD >
+bind successful
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+This is the password of the DB in OUD.
+The DN of DB would have this password in OUD
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------------------
+ASSIGN CERTIFICATE TO WALLET
+-----------------------------------
+TBD- DID NOT DO THIS YET - FIND OUT DETAILS/NEED AND DO THIS LATER
+--> Or, did we do it?  Looks like this was done
+
+NOTE: Certificate is created with keytool - self-signed (see install doc)
+NOTE: This is the certificate entry in orapki wallet display output - Subject: CN=oudhost.company.com,O=CompanyName,C=US  
+
+- Add certificate
+$ orapki wallet add -wallet /u02/app/oracle/admin/DB_UNIQUE_NAME/wallet -cert ./oud-server-cert.txt -trusted_cert -pwd "oracle#1"
+
+- Verify
+$ orapki wallet display -wallet /u02/app/oracle/admin/DB_UNIQUE_NAME/wallet
+Requested Certificates:
+User Certificates:
+Oracle Secret Store entries:
+ORACLE.SECURITY.DN
+ORACLE.SECURITY.PASSWORD
+Trusted Certificates:
+Subject:        OU=Class 2 Public Primary Certification Authority,O=VeriSign\, Inc.,C=US
+Subject:        CN=oudhost.company.com,O=CompanyName,C=US  
+Subject:        OU=Secure Server Certification Authority,O=RSA Data Security\, Inc.,C=US
+Subject:        OU=Class 3 Public Primary Certification Authority,O=VeriSign\, Inc.,C=US
+Subject:        OU=Class 1 Public Primary Certification Authority,O=VeriSign\, Inc.,C=US
+Subject:        CN=GTE CyberTrust Global Root,OU=GTE CyberTrust Solutions\, Inc.,O=GTE Corporation,C=US
+
+====================================
+CREATE SCHEMA, ROLES, GLOBAL USERS
+====================================
+spool 11gsetup
+
+set echo on
+
+create role oud_appwrite_role_local;
+create role oud_appread_role_local;
+
+create role oud_appwrite_role_global identified globally;
+create role oud_appread_role_global identified globally;
+create role oud_dba_role_global identified globally;
+
+grant oud_appwrite_role_local to oud_appwrite_role_global;
+grant oud_appread_role_local to oud_appread_role_global;
+grant dba to oud_dba_role_global;
+
+grant connect to oud_appwrite_role_global;
+grant connect to oud_appread_role_global;
+grant connect to oud_dba_role_global;
+
+create user oudappmgr identified by oudappmgr123;
+
+create table oudappmgr.emp (id int, name varchar2(10));
+create table oudappmgr.dept (id int, name varchar2(10));
+
+create user oud_global_ident_schema_user  identified globally;
+
+grant select, insert, update, delete on oudappmgr.emp to oud_appwrite_role_local;
+grant select, insert, update, delete on oudappmgr.emp to oud_appwrite_role_local;
+
+grant select, insert, update, delete on oudappmgr.emp to oud_appread_role_local;
+grant select on oudappmgr.emp to oud_appread_role_local;
+
+spool off
+
+====================================================
+MAP IN OUD THE GLOBAL IDENT USER FOR THIS DB 
+====================================================
+---------------------------------------------------
+MAP THE GLOBAL IDENT USER TO A GROUP/USER/HEIRARCHY 
+---------------------------------------------------
+NOTE: IMPORTANT:  The global-ident-user denoted by 'schema' in the createMapping command 
+                  is mapped to a user/group/heirarchy denoted by 'map_dn'
+                  If mapped to a group or heirarchy, then all 'users' under its tree will be mapped to the global-ident-user in DB.
+                  
+$ eusm createMapping database_name=DB_UNIQUE_NAME realm_dn='dc=example,dc=com' map_type=SUBTREE map_dn='dc=example,dc=com' schema=oud_global_ident_schema_user ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn='cn=eusroot,ou=eusadmins,dc=example,dc=com' ldap_user_password=oracle#1
+
+NOTE: The database_name is optional.  If not used all databases in the realm will map to the same schema=oud_global_ident_schema_user
+NOTE: This command does not produce any screen output. Therefore, verify using listmappings:
+          
+-------------------------
+VERIFY USING LISTMAPPING
+-------------------------
+$ eusm listMappings database_name=DB_UNIQUE_NAME realm_dn=dc=example,dc=com ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
+
+LIST OF DATABASE SCHEMA MAPPINGS::
+------------------------------------
+Mapping Name:  MAPPING0
+Mapping Type:  SUBTREE
+Mapping DN:    dc=example,dc=com
+Mapping schema:oud_global_ident_schema_user
+Mapping Level :DATABASE
+
+-------------------------
+VERIFY IN ODSM GUI
+-------------------------
+Data Browser --> Data Tree --> dc=example,dc=com --> cn=OracleContext --> cn=DB_UNIQUE_NAME --> cn=mapping0
+- That will show on the RHS: Distinguished Name cn=mapping0,cn=DB_UNIQUE_NAME,cn=OracleContext,dc=example,dc=com 
+
+To see the global user of the DB that got mapped:
+ CLICK 'OPTIONAL ATTRIBUTES' on the RHS
+     You will see:
+          orcldbnativeuser oud_global_ident_schema_user
+          
+======================================
+CREATE ENTERPRISE ROLES
+======================================
+https://wiki.loopback.org/confluence/display/KB/Configure+EUS+with+OUD%2C+AD+and+DB12c#ConfigureEUSwithOUD,ADandDB12c-Registerdatabasewithdirectory
+
+QUESTION - We are using GLOBAL_DB_NAME as of now everywhere for database_name - should it be DB_NAME?
+               Otherwise, how will primary-standby work?
+
+----------------------------------
+CREATE AN ENTERPRISE ROLE (DBA)
+----------------------------------
+$ eusm createRole enterprise_role=DBA domain_name=OracleDefaultDomain realm_dn=dc=example,dc=com ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
+
+---------------------
+- VERIFY IN OUD ODSM
+---------------------
+Directory Manager --> Data Browser --> Data Tree --> dc=example,dc=com --> --> cn=OracleContext 
+     --> cn=Products --> cn=OracleDBSecurity 
+          --> cn=OracleDefaultDomin
+               --> cn=DBA
+Its DN: Distinguished Name cn=DBA,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=example,dc=com 
+
+- To delete it
+$ eusm deleteRole enterprise_role=DBA domain_name=OracleDefaultDomain realm_dn=dc=example,dc=com ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
+
+------------------------------------------------------------------------------------------------------
+ASSOCIATE GLOBAL ROLE (OUD_DBA_ROLE_GLOBAL) IN DB TO THE ENTERPRISE ROLE (DBA)
+------------------------------------------------------------------------------------------------------
+# QUESTION - here, should it be database_name=DB_NAME or DB_UNIQUE_NAME?
+
+--> Used DB_UNIQUE_NAME for now
+$ eusm addGlobalRole enterprise_role=DBA domain_name=OracleDefaultDomain realm_dn='dc=example,dc=com' database_name=DB_UNIQUE_NAME global_role=OUD_DBA_ROLE_GLOBAL dbuser=system dbuser_password=oracle#1 dbconnect_string=clustername-scan:1522/DB_UNIQUE_NAME ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn='cn=eusroot,ou=eusadmins,dc=example,dc=com' ldap_user_password=oracle#1
+
+
+--> this is with DB_NAME
+$ eusm addGlobalRole enterprise_role=DBA domain_name=OracleDefaultDomain realm_dn=dc=example,dc=com database_name=DB_NAME global_role=OUD_DBA_ROLE_GLOBAL dbuser=system dbuser_password=oracle#1 dbconnect_string=clustername-scan:1522/DB_UNIQUE_NAME ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
+
+----------------------------------------------
+GRANT ROLE
+----------------------------------------------
+NOTE: This is to create/use a 'group' in OUD LDAP to associate with the enterprise role.  
+      Then, we can probably associate this 'group' with users.
+      NOTE: In the example below, the 'DBA' in group_dn=cn=DBA is the group DN
+               -->--> BUT, in this example THEY ARE ACTUALLY PHYSICALLY ALSO ONE AND THE SAME
+                         -->--> LOOK AT THE GROUP_DN's heirarchy and the global-role's heirarchy are the same if you browse
+                         -->--> Look in this site for different role and group: 
+                                https://bdrouvot.wordpress.com/2016/04/30/oracle-unified-directory-and-user-security-quick-demo/
+                                   -->--> PROBABLY THE IDEA IS TO KEEP THEM SEPARATE - BUT DONE THIS WAY IN SOME OTHER SITE
+               
+
+# QUESTION - here, should it be DB_NAME or DB_UNIQUE_NAME?
+
+# This did not work - QUESTION - what is that group_dn with DBA_UNIQUE_NAME the oud engineer had created?  Was it manually created?
+#eusm grantRole enterprise_role=DBA domain_name=OracleDefaultDomain realm_dn=dc=example,dc=com group_dn=cn=DBA,ou=DB_UNIQUE_NAME,ou=Groups,dc=example,dc=com ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
+
+# This worked - with the group_dn specified as the DN of the DBA role in OUD (see verification after createRole command above)
+eusm grantRole enterprise_role=DBA domain_name=OracleDefaultDomain realm_dn=dc=example,dc=com group_dn=cn=DBA,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=example,dc=com ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
+
+------------------------------
+VERIFY
+------------------------------
+-- VERIFY WITH EUSM COMMAND
+$ eusm listEnterpriseRoleInfo enterprise_role=DBA domain_name=OracleDefaultDomain realm_dn=dc=example,dc=com ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
+
+INFOMATION FOR ENTERPRISE ROLE: DBA
+-------------------------------------------------
+LIST OF USERS
+-----------------
+LIST OF GROUPS
+-----------------
+cn=DBA,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=example,dc=com
+LIST OF GLOBAL ROLES
+--------------------
+DBNAME: GLOBAL_DB_NAME GLOBALROLE :OUD_DBA_ROLE_GLOBAL
+
+-- VERIFY IN OUD ODSM
+Data Browser --> Data Tree --> Root --> dc=example,dc=com --> OracleContext 
+     --> products--> OracleDBSecurity --> OracleDefaultDomain --> DBA
+
+Distinguished Name:  cn=DBA,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=example,dc=com
+
+Traverse to the group cn=DBA,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=example,dc=com
+Look up the 'member information' in the RHS - 
+--> for now, due to 'keep it simple' grantrole command, the same group is a member also of itself
+
+=====================================================================
+CREATE ENTERPRISE USERS IN OUD - AND ASSOCIATE THEM WITH GLOBAL USER
+=====================================================================
+Not sure what these commands are (from https://wiki.loopback.org/confluence/display/KB/Configure+EUS+with+OUD%2C+AD+and+DB12c#ConfigureEUSwithOUD,ADandDB12c-Registerdatabasewithdirectory)
+[oracle@ioaotow01 ~]$ eusm createMapping realm_dn="OU=AO,OU=IT-Department,DC=tested,DC=lcl" ldap_port=1389 ldap_host=ioaotow03  ldap_user_dn="cn=Directory Manager" ldap_user_password="secret12" database_name="testdb" map_type="ENTRY" map_dn="CN=user01,OU=AO,OU=IT-Department,DC=tested,DC=lcl" schema=GLOBAL_ADMIN
+[oracle@ioaotow01 ~]$ eusm listMappings realm_dn="OU=AO,OU=IT-Department,DC=tested,DC=lcl" ldap_port=1389 ldap_host=ioaotow03 ldap_user_dn="CN=Directory Manager" ldap_user_password="secret12" database_name="testdb"
+
+-------------------------
+CREATE A OU FOR PEOPLE
+-------------------------
+Diretory Manager --> Data Browser --> Create --> Organization Unit
+Create it under dc=example,dc=com as people
+
+It will be created as Distinguished Name ou=people,dc=example,dc=com 
+
+------------------------------
+CREATE A GROUP FOR DBAs
+------------------------------
+Diretory Manager --> Data Browser --> Create --> Group Entry --> Static Group Entry
+Choose parent entry dc=example,dc=com
+Choose groupOfNames as the type of this group
+Give description as Full-access Infra DBAs
+
+It will be created as:  Distinguished Name ou=dbas,dc=example,dc=com 
+
+-----------------------------
+CREATE A USER UNDER OU PEOPLE
+-----------------------------
+Diretory Manager --> Data Browser --> Create --> User Entry
+Choose parent entry ou=people,dc=example,dc=com
+Give 'user1' as the value for all of these - Common Name, User ID, Last Name 
+
+It gets created as Distinguished Name cn=user1,ou=people,dc=example,dc=com 
+Question: Why not get created as uid=user1...?
+
+To Set password:
+Click on the user
+Go to 'Attributes' tab on the RHS
+Go to 'Optional Attributes' in it --> userpassword --> 'add' a password (I gave oracle as password)
+NOTE: you can also see 'uid' in the optional attributes section, with 'user1' as its value
+NOTE: Looks like password is in the 'organiational information' of the user in the 'user page' tab on RHS itself
+
+- VERIFY
+$ ldapbind -h 10.63.160.170 -p 1389 -D cn=user1,ou=people,dc=example,dc=com -w oracle
+bind successful
+
+$ ldapbind -h 10.63.160.170 -p 1389 -D uid=user1,ou=people,dc=example,dc=com -w oracle
+ldap_bind: Invalid credentials
+Question - Why uid=user1 does not work?
+
+$ ldapsearch -v -h  10.63.160.170 -p 1389 -D  cn='eusroot,ou=eusadmins,dc=example,dc=com' -w oracle#1 -b ou=people,dc=example,dc=com "(cn=user1)"
+     ldap_open( 10.63.160.170, 1389 )
+     filter pattern: (cn=user1)
+     returning: ALL
+     filter is: ((cn=user1))
+     cn=user1,ou=people,dc=example,dc=com
+     userPassword={SSHA}BLCHoGsvTX6S1C7s4sxctfj7Wz08itrzvmIkuA==
+     objectclass=top
+     objectclass=organizationalPerson
+     objectclass=person
+     objectclass=inetOrgPerson
+     uid=user1
+     cn=user1
+     sn=user1
+
+------------------------------------
+ADD THIS USER USER1 INTO GROUP DBAS
+------------------------------------
+Go to group 'dbas'
+In the 'Group Page' tab --> Member Information --> Add --> cn=user1,ou=people,dc=example,dc=com
+NOTE: You can choose user's DN via the select button also
+Click Apply
+
+- VERIFY
+Go to the user --> on RHS Additional User Information --> Group Membership	--> shows Group DNs cn=dbas,dc=example,dc=com
+
+========================================
+ADD DBAS TO THE ENTERPRISE ROLE 'DBA'
+========================================
+Traverse to the 'DBA' CN as we did before:
+Data Tree --> Root --> dc=example,dc=com --> cn=OracleContext --> cn=Products --> cn=OracleDBSecurity --> cn=DBA
+
+To that, on the RHS --> Group Page --> Member Information --> Unique Member 
+                                        --> Add (worked - try the 'dbas' group first to see if that works for all users in that group)
+                                             --> cn=dbas,dc=example,dc=com
+                                             
+- VERIFY USING EUSM
+NOTE: You can see 'dbas' cn is also added now
+$ eusm listEnterpriseRoleInfo enterprise_role=DBA domain_name=OracleDefaultDomain realm_dn=dc=example,dc=com ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
+
+INFOMATION FOR ENTERPRISE ROLE: DBA
+-------------------------------------------------
+LIST OF USERS
+-----------------
+LIST OF GROUPS
+-----------------
+cn=DBA,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=example,dc=com
+cn=dbas,dc=example,dc=com
+LIST OF GLOBAL ROLES
+--------------------
+DBNAME: DB_UNIQUE_NAME GLOBALROLE :OUD_DBA_ROLE_GLOBAL
+
+-- VERIFY IN OUD ODSM
+Data Browser --> Data Tree --> Root --> dc=example,dc=com --> OracleContext 
+     --> products--> OracleDBSecurity --> OracleDefaultDomain --> DBA
+
+Distinguished Name:  cn=DBA,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=example,dc=com
+
+Traverse to the group cn=DBA,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=example,dc=com
+Look up the 'member information' in the RHS - 
+--> Now, you will see 'dbas' group also added to this role/group 'DBA'
+
+================================================
+MAP THIS USER TO THE GLOBAL-IDENT-USER IN THE DB
+================================================
+NOTE: IT IS NOT REQUIRED to explicitly map the user to the global-ident-user.
+The earlier createmapping would have mapped it to a heirarchy/group already.
+($ eusm createMapping database_name=DB_UNIQUE_NAME realm_dn='dc=example,dc=com' map_type=SUBTREE map_dn='dc=example,dc=com' schema=oud_global_ident_schema_user ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn='cn=eusroot,ou=eusadmins,dc=example,dc=com' ldap_user_password=oracle#1
+)
+
+However, it is given here FYI and optional step
+
+--------------------------------
+OPTIONAL (see note above)
+MAP USER TO GLOBAL IDENT USER
+--------------------------------
+$ eusm createMapping realm_dn=dc=example,dc=com  ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn='eusroot,ou=eusadmins,dc=example,dc=com' ldap_user_password=oracle#1 database_name="DB_UNIQUE_NAME" map_type="ENTRY" map_dn='cn=user1,ou=people,dc=example,dc=com' schema=oud_global_ident_schema_user
+
+--------
+VERIFY
+--------
+NOTE: MAPPING0 is for the DB to its own global user
+      MAPPING1 is for the db global user schema to user1 enterprise user
+      
+eusm listMappings database_name=DB_UNIQUE_NAME realm_dn='dc=example,dc=com' ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn='cn=eusroot,ou=eusadmins,dc=example,dc=com' ldap_user_password=oracle#1
+LIST OF DATABASE SCHEMA MAPPINGS::
+------------------------------------
+Mapping Name:  MAPPING0
+Mapping Type:  SUBTREE
+Mapping DN:    dc=example,dc=com
+Mapping schema:oud_global_ident_schema_user
+Mapping Level :DATABASE
+
+Mapping Name:  MAPPING1
+Mapping Type:  ENTRY
+Mapping DN:    cn=user1,ou=people,dc=example,dc=com
+Mapping schema:oud_global_ident_schema_user
+Mapping Level :DATABASE
+
+=========================================
+CONNECT AS THE NEW USER USER1
+=========================================
+-------------------------
+CREATE LDAP.ORA in $TNS_ADMIN
+-------------------------
+DIRECTORY_SERVERS= (10.63.160.170:1389:1636)
+DEFAULT_ADMIN_CONTEXT = "dc=example,dc=com"
+DIRECTORY_SERVER_TYPE = OID
+
+-------------------------
+CREATE SQLNET.ORA in $TNS_ADMIN
+-------------------------
+NOTE: Provide the right DB_UNIQUE_NAME of the DB below
+NOTE: Add LDAP to DIRECTORY_PATH
+NOTE: WALLET_LOCATION is not necessary if DB is started with TNS_ADMIN and ORACLE_BASE environment set 
+      (setenv for srvctl, o/s env for sqlplus)
+
+NAMES.DIRECTORY_PATH= (LDAP, TNSNAMES, EZCONNECT)
+WALLET_LOCATION=
+    (SOURCE=(METHOD=FILE)(METHOD_DATA=
+      (DIRECTORY=/u02/app/oracle/admin/DB_UNIQUE_NAME/wallet)))
+
+------------------------
+CONNECT AS USER1
+------------------------
+NOTE- VARIOUS TROUBLESHOOTING DONE FOR THIS DUE TO THE INITIAL ERROR BELOW
+-->-->-->--> FINALLY, THE ROOT CAUSE SEEMS TO BE THIS:
+When DB is started with srvctl it would not know the location of wallet, EVEN THOUGH setenv is done setting ORACLE_BASE.
+--> DB then actually should pick up wallet from location mentioned in the sqlnet.ora file - but it was not picking it up
+--> THIS IS THE PROBLEM
+
+SOLUTION (WORKAROUND actually):
+Therefore, set ORACLE_BASE in the o/s environment and start the DB using sqlplus 
+- which will make DB know ORACLE_BASE and default wallet location (each instance needs separate startup) 
+--> Then DB seems to pick up the wallet even if wallet location is not mentioned in sqlnet.ora
+
+SQL> connect user1/oracle
+ERROR:
+ORA-28030: Server encountered problems accessing LDAP directory service
+--> For this error, fix LDAP.ORA and SQLNET.ORA
+
+SQL> connect user1/oracle
+ERROR:
+ORA-28030: Server encountered problems accessing LDAP directory service
+--> This could be wallet error
+
+----- ONCE ISSUE IS RESOLVED, HERE IS THE OUTPUT -----
+
+SQL> connect user1/oracle@DB_UNIQUE_NAME
+Connected.
+SQL> show user
+USER is "OUD_GLOBAL_IDENT_SCHEMA_USER"
+SQL> select * from session_roles;
+
+ROLE
+------------------------------
+OUD_DBA_ROLE_GLOBAL
+CONNECT
+DBA
+SELECT_CATALOG_ROLE
+HS_ADMIN_SELECT_ROLE
+EXECUTE_CATALOG_ROLE
+HS_ADMIN_EXECUTE_ROLE
+DELETE_CATALOG_ROLE
+EXP_FULL_DATABASE
+IMP_FULL_DATABASE
+DATAPUMP_EXP_FULL_DATABASE
+
+ROLE
+------------------------------
+DATAPUMP_IMP_FULL_DATABASE
+GATHER_SYSTEM_STATISTICS
+SCHEDULER_ADMIN
+WM_ADMIN_ROLE
+JAVA_ADMIN
+JAVA_DEPLOY
+XDBADMIN
+XDB_SET_INVOKER
+OLAP_XS_ADMIN
+OLAP_DBA
+
+21 rows selected.
+
+SQL>
+SQL> connect user1/oracle
+Connected.
+SQL> show user
+USER is "OUD_GLOBAL_IDENT_SCHEMA_USER"
+SQL> select * from session_roles;
+
+ROLE
+------------------------------
+OUD_DBA_ROLE_GLOBAL
+CONNECT
+DBA
+SELECT_CATALOG_ROLE
+HS_ADMIN_SELECT_ROLE
+EXECUTE_CATALOG_ROLE
+HS_ADMIN_EXECUTE_ROLE
+DELETE_CATALOG_ROLE
+EXP_FULL_DATABASE
+IMP_FULL_DATABASE
+DATAPUMP_EXP_FULL_DATABASE
+
+ROLE
+------------------------------
+DATAPUMP_IMP_FULL_DATABASE
+GATHER_SYSTEM_STATISTICS
+SCHEDULER_ADMIN
+WM_ADMIN_ROLE
+JAVA_ADMIN
+JAVA_DEPLOY
+XDBADMIN
+XDB_SET_INVOKER
+OLAP_XS_ADMIN
+OLAP_DBA
+
+21 rows selected.
+
+==================================================================
+CREATE A SYSDBA ROLE AND ASSIGN USER TO IT AND TEST
+==================================================================
+http://blog.yannickjaquier.com/oracle/enterprise-user-security-eus-password-authentication.html#LDAP_SYSDBA_authentication
+How To Configure Directory Authentication for Database Administrative Users (SYSDBA and SYSOPER) (Doc ID 457083.1)
+
+-----------------------------------
+Create a new enterprise role SYSDBA
+-----------------------------------
+$ eusm createRole enterprise_role=SYSDBA domain_name=OracleDefaultDomain realm_dn=dc=example,dc=com ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
+
+-------------------------------------------------
+Assign SYSDBA DB role to enterprise role SYSDBA
+-------------------------------------------------
+NOTE: We cannot assign SYSDBA DB role to a db global-role as we did for DBA role.
+NOTE: Also, "eusm addGlobalRole" does not have the capability of assigning out-of-the-box SYSDBA non-global DB role to enterprise role
+
+Therefore, we create a ldif and use ldapmodify for that.
+
+- step 1
+The LDIF file: sysdba.ldif (Note: The first SYSDBA is the enterprise role in OUD, the second SYSDBA is the DB role)
+dn: cn=SYSDBA,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=example,dc=com
+changetype: modify
+add: orcldbserverrole
+orcldbserverrole: cn=GLOBAL_DB_NAME,cn=OracleContext,dc=example,dc=com,GlobalRole=SYSDBA
+
+- step 2
+ldapmodify -h oud-host-name-or-ip -p 1389 -D cn=eusroot,ou=eusadmins,dc=example,dc=com -w "oracle#1" -v -f sysdba.ldif
+
+- verify in OUD clicking role in ODSM
+--> The attributes should show the db-server-role DN which is cn=GLOBAL_DB_NAME,cn=OracleContext,dc=example,dc=com,GlobalRole=SYSDBA
+
+- step 3
+eusm grantRole enterprise_role=SYSDBA domain_name=OracleDefaultDomain realm_dn=dc=example,dc=com group_dn=cn=SYSDBA,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=example,dc=com ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
+
+- step 4
+eusm listEnterpriseRoleInfo enterprise_role=SYSDBA domain_name=OracleDefaultDomain realm_dn=dc=example,dc=com ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
+
+NOTE: In this case, the 'list of groups' IS SAME AS THE ROLE DN itself - as we have not assigned a different group to this role yet.
+
+INFOMATION FOR ENTERPRISE ROLE: SYSDBA 
+------------------------------------------------- 
+LIST OF USERS 
+----------------- 
+cn=user1,ou=people,dc=example,dc=com 
+
+LIST OF GROUPS 
+----------------- 
+cn=SYSDBA,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=example,dc=com 
+
+LIST OF GLOBAL ROLES 
+-------------------- 
+DBNAME: DB_UNIQUE_NAME GLOBALROLE :SYSDBA 
+
+----------------------------------------------------------------------
+ASSIGN THE USER/GROUP IN OUD TO THE ENTERPRISE ROLE IN OUD
+----------------------------------------------------------------------
+NOTE: Added previously created 'dbas' group itself to this new enterprise role - ideally, should be a different group of users
+
+Traverse to the 'SYSDBA' CN as we did before for 'DBA'
+Data Tree --> Root --> dc=example,dc=com --> cn=OracleContext --> cn=Products --> cn=OracleDBSecurity --> cn=SYSDBA
+
+To that, on the RHS --> Group Page --> Member Information --> Unique Member 
+                                        --> Add (worked - try the 'dbas' group first to see if that works for all users in that group)
+                                             --> cn=dbas,dc=example,dc=com
+
+- VERIFY
+$ eusm listEnterpriseRoleInfo enterprise_role=SYSDBA domain_name=OracleDefaultDomain realm_dn=dc=example,dc=com ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn=eusroot,ou=eusadmins,dc=example,dc=com ldap_user_password=oracle#1
+NOTE: In this case, the 'list of groups' IS SAME AS THE ROLE DN itself - PLUS - this newly added 'dbas' group
+
+INFOMATION FOR ENTERPRISE ROLE: SYSDBA 
+------------------------------------------------- 
+LIST OF USERS 
+----------------- 
+cn=user1,ou=people,dc=example,dc=com 
+
+LIST OF GROUPS 
+----------------- 
+cn=SYSDBA,cn=OracleDefaultDomain,cn=OracleDBSecurity,cn=Products,cn=OracleContext,dc=example,dc=com 
+cn=dbas,dc=example,dc=com 
+
+LIST OF GLOBAL ROLES 
+-------------------- 
+DBNAME: DB_UNIQUE_NAME GLOBALROLE :SYSDBA 
+
+-----------------------------------
+TEST CONNECTION
+-----------------------------------
+NOTE: Logon from a different cluster/laptop or different non-DBA unix user on the same machine
+$ sqlplus user1/oracle as sysdba --> if from local machine, but a non-DBA unix user
+$ sqlplus user1/oracle@DB_TNS_ENTRY as sysdba --> if from a different machine
+
+TBD TBD TBD --> errors again!
+
+$ id 
+uid=513(gow1) gid=513(gow1) groups=513(gow1)
+
+$ sqlplus user1/oracle as sysdba
+ERROR:
+ORA-01017: invalid username/password; logon denied
+
+Bug 13866372 - ORA-1017 while connecting as SYSDBA with enterprise users (Doc ID 13866372.8)
+OERR: ORA-1017 "invalid username/password; logon denied" Reference Note (Doc ID 18608.1)
+
+------------------------------------------------------------------------------------------------------------------------------
+
+-------------------------
+TROUBLESHOOTING
+-------------------------
+Try re-registering DB using dbca - so that wallet gets created newly
+
+# Unregister
+$ dbca -silent -configureDatabase -sourceDB DB_UNIQUE_NAME -unregisterWithDirService true -dirServiceUserName cn='eusroot,ou=eusadmins,dc=example,dc=com' -dirServicePassword oracle#1 -walletPassword 'oracle#1' -listeners listener
+
+# Register again
+dbca -silent -configureDatabase -sourceDB DB_UNIQUE_NAME -sysDBAUserName sys -sysDBAPassword "oracle#1" -registerWithDirService true -dirServiceUserName cn='eusroot,ou=eusadmins,dc=example,dc=com' -dirServicePassword oracle#1 -walletPassword 'oracle#1' -listeners listener
+
+# Create DB mapping again
+eusm createMapping database_name=DB_UNIQUE_NAME realm_dn=dc=example,dc=com map_type=SUBTREE map_dn=dc=example,dc=com schema=oud_global_ident_schema_user ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn='eusroot,ou=eusadmins,dc=example,dc=com' ldap_user_password=oracle#1
+
+# Map the user again
+eusm createMapping realm_dn=dc=example,dc=com  ldap_host=10.63.160.170 ldap_port=1389 ldap_user_dn=cn='eusroot,ou=eusadmins,dc=example,dc=com' ldap_user_password=oracle#1 database_name="DB_UNIQUE_NAME" map_type="ENTRY" map_dn='cn=user1,ou=people,dc=example,dc=com' schema=oud_global_ident_schema_user
+
+
+--> Recoonect did not help - same error again
+
+-------------------------
+TROUBLESHOOT further
+-------------------------
+SQL> alter system set events '28033 trace name context forever, level 9';
+System altered.
+
+SQL> connect user1/orcle
+ERROR:
+ORA-28030: Server encountered problems accessing LDAP directory service
+Warning: You are no longer connected to ORACLE.
+
+SQL>  alter system set events ‘28033 trace name context off';
+System altered.
+
+/u02/app/oracle/diag/rdbms/<db_unique_name>/<SID>/trace: vi <SID>_ora_12748.trc
+
+*** 2016-12-30 08:59:29.174
+*** SESSION ID:(1517.39737) 2016-12-30 08:59:29.174
+*** CLIENT ID:() 2016-12-30 08:59:29.174
+*** SERVICE NAME:(SYS$USERS) 2016-12-30 08:59:29.174
+*** MODULE NAME:(sqlplus@d-9441dz1.target.com (TNS V1-V3)) 2016-12-30 08:59:29.174
+*** ACTION NAME:() 2016-12-30 08:59:29.174
+
+KZLD_ERR: failed to open connection to 10.63.160.170:1636
+KZLD_ERR: 28030
+KZLD_ERR: found err from kzldini.
+
+--> Open 1636 port in oud host's firewall
+# iptables -L -n |grep -i tcp
+ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:22 ctstate NEW
+ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:1389 ctstate NEW
+ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:7001 ctstate NEW
+
+# firewall-cmd --zone=public --add-port=1636/tcp --permanent
+success
+
+# firewall-cmd --reload
+success
+
+# iptables -L -n |grep -i tcp
+ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:22 ctstate NEW
+ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:1389 ctstate NEW
+ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:7001 ctstate NEW
+ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:1636 ctstate NEW
+
+
+--> still same error ora-28030
+
+Setting events now showed this in trace file:
+
+kzld_discover received ldaptype: OID
+KZLD_ERR: DB-OID SSL noauth failed. Err=554
+KZLD_ERR: 554
+KZLD is doing LDAP unbind
+KZLD_ERR: found err from kzldini.
+
+TBD - see this https://community.oracle.com/thread/3800206
+
+$ ldapbind -h 10.63.160.170 -p 1389 -U 3 -W 'file:/u02/app/oracle/admin/DB_UNIQUE_NAME/wallet' -P 'oracle#1'
+SSL Handshake Failed
+
+--> same with port 1636 also
+
+TBD - See this - http://www.oraworld.co.uk/oracle-internet-directory-oid-ssl-handshake-failed-on-oid-nodes-com-octetstring-vde-util-directoryexception-ldap-error-2-simple-bind-failed-oidserver-oraworld-local636/
+
+TBD - see this - http://laurentschneider.com/wordpress/2007/03/configure-oid-with-ssl.html
+
+http://docs.oracle.com/cd/E29407_01/install.111200/e23737/setting_up_ds.htm
+     NOTE: Note that you can only enable a server instance for EUS if you have enabled SSL access 
+
+-----------------------------------
+TROUBLESHOOT FURTHER - setup SSL with key
+-----------------------------------
+http://www.k21technologies.com/configure-oracle-unified-directory-in-ssl-mode-with-self-signed-certificate/
+https://blogs.oracle.com/sduloutr/entry/migrating_dsee_ssl_certificates_to
+https://docs.oracle.com/cd/E52734_01/oud/OUDAG/security_clients_severs.htm#OUDAG00050
+     26.1.2 Accepting SSL-Based Connections Using a Self-Signed Certificate
+     https://docs.oracle.com/cd/E52734_01/oud/OUDAG/security_clients_severs.htm#OUDAG00513
+     (old version - https://docs.oracle.com/cd/E22289_01/html/821-1273/getting-ssl-up-and-running-quickly.html)
+https://floblanc.wordpress.com/2016/02/04/how-to-use-ssl-authentication-between-the-eus-database-and-oud/
+     https://floblanc.wordpress.com/2016/03/09/how-to-configure-eus-ssl-authentication-with-oud/
+
+- GENERATE KEYSTORE
+
+On OUD server:
+-------------
+Logon as 'oud' user
+Go to directory /u01/app/oracle/Middleware/oudinst1/OUD
+Backup 'config' directory - as keystore will be re-created/created there
+You can notice that a file 'keystore' already exists in config directory
+
+$ keytool -genkeypair -alias oud-server-cert -keyalg rsa \
+  -dname "CN=oudhost.company.com,O=Company Name,C=US" \ 
+  -keystore config/keystore -storetype JKS
+  
+Enter keystore password: oracle#1
+Re-enter new password: oracle#1
+Enter key password for <oud-server-cert>
+        (RETURN if same as keystore password): oracle#1
+  
+This will create a new file 'keystore' in config subdirectory.
+
+- Generate a self-signed certificate for the key
+$ keytool -selfcert -alias oud-server-cert -validity 1825 -keystore config/keystore -storetype JKS
+Enter keystore password: oracle#1
+
+- Place the keystore password in config/keystore.pin
+Edit the file config/keystore.pin, remove the current entry 
+-- (backup the file before doing that)
+
+Place oracle#1 - the keystore password we chose
+
+- Export the public key for the certificate that you created
+$ keytool -exportcert -alias oud-server-cert -file config/oud-server-cert.txt -rfc -keystore config/keystore -storetype JKS
+
+This will create a certificate file config/oud-server-cert.txt
+with content like the following
+-----BEGIN CERTIFICATE-----
+MIIDNzCCAh+gAwIBAgIEXOcr9DANBgkqhkiG9w0BAQsFADBMMQswCQYDVQQGEwJV
+...
+yo7unqQfg5OxZ0eUK7LrT5hZigq1hfoBUvNU3WH8Rsa3HespFjW0a7V0lK7nIJFf
+LUUH2uEVdozGiZeWTmN1Qa0ElJxgI9+zuDhrPl9bsrLveR1BvrzI53xIBS9Yu1GD
+HvijYBI9J/04bmQ=
+
+- Create a new trust store and import the server certificate into that trust store.
+Backup the current config/truststore file
+$ keytool -importcert -alias server-cert -file config/oud-server-cert.txt -keystore config/truststore -storetype JKS
+Enter keystore password: oracle#1
+Re-enter new password: oracle#1
+               Owner: CN=oudhost.company.com, O=Company Name, C=US
+               Issuer: CN=oudhost.company.com, O=Company Name, C=US
+               Serial number: 5ce72bf4
+               Valid from: Fri Dec 30 10:23:54 CST 2016 until: Wed Dec 29 10:23:54 CST 2021
+               Certificate fingerprints:
+                        MD5:  D4:F2:44:7A:02:81:7E:67:28:D4:F2:77:73:16:AA:CA
+                        SHA1: E4:E5:FE:E6:21:41:6E:57:C0:2B:29:E5:6D:37:01:DF:4B:65:E8:EF
+                        SHA256: 07:E2:FF:08:DC:8C:88:39:88:6A:6E:0F:E4:A7:15:71:6D:48:CB:F6:98:59:39:0C:80:9D:CC:43:26:CA:93:36
+                        Signature algorithm name: SHA256withRSA
+                        Version: 3
+
+               Extensions:
+
+               #1: ObjectId: 2.5.29.14 Criticality=false
+               SubjectKeyIdentifier [
+               KeyIdentifier [
+               0000: 45 02 C1 7E E1 72 24 43   79 CF F0 97 4C 47 54 02  E....r$Cy...LGT.
+               0010: D6 43 96 18                                        .C..
+               ]
+               ]
+
+Trust this certificate? [no]:  yes
+
+Certificate was added to keystore
+
+- Enable 
+Create a file ~/pwd.txt and place the keystore password in it
+
+Go to /u01/app/oracle/Middleware/oudinst1/OUD/bin
+
+./dsconfig -D cn='eusroot,ou=eusadmins,dc=example,dc=com' -j ~/pwd.txt -X -n set-key-manager-provider-prop --provider-name JKS --set enabled:true
+
+./dsconfig -D cn='eusroot,ou=eusadmins,dc=example,dc=com' -j ~/pwd.txt -X -n set-trust-manager-provider-prop --provider-name JKS --set enabled:true
+
+./dsconfig -D cn='eusroot,ou=eusadmins,dc=example,dc=com' -j ~/pwd.txt -X -n \
+set-connection-handler-prop --handler-name "LDAPS Connection Handler" \
+  --set trust-manager-provider:JKS --set key-manager-provider:JKS \
+  --set listen-port:1636 --set enabled:true
+
+          Port 1636 is the standard LDAPS port, but you might not be able to use this port if it is already taken 
+          or if you are a regular user. If you must accept SSL-based connections on a port other than 1636, 
+          change the listen-port property in the last command to the port number being used.
+
+          If you have specified a different value for -keypass and -storepass when generating the private key in step 1, 
+          you must provide the key password using dsconfig:
+
+          $ dsconfig -D "cn=directory manager" -j pwd-file -X -n \
+          create-key-manager-provider-key-pin --provider-name JKS --set
+           key-pin-file:<file with key password> --type generic --pin-name
+           server-cert
+          For the name of the key pin, provide the same name of the alias of the certificate. 
+          This is needed to identify which key pin/password is associated with each certificate in the key manager provider.
+
+          If, in step 3, you created a text file with a location and name other than config/keystore.pin, 
+          for example a text file called config/mykeystore.pin, specify that information as follows:
+
+          $ dsconfig -D "cn=directory manager" -j pwd-file -X -n \
+            set-key-manager-provider-prop --provider-name JKS --set enabled:true \
+            --set keystore-pin-file:/config/mykeystore.pin
+
+Now, there should be a listener running on port 1636:
+
+$ netstat -an |grep LISTEN
+tcp        0      0 0.0.0.0:8000            0.0.0.0:*               LISTEN
+tcp        0      0 0.0.0.0:4750            0.0.0.0:*               LISTEN
+tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN
+tcp        0      0 127.0.0.1:25            0.0.0.0:*               LISTEN
+tcp6       0      0 :::1636                 :::*                    LISTEN
+tcp6       0      0 :::1389                 :::*                    LISTEN
+tcp6       0      0 :::22                   :::*                    LISTEN
+tcp6       0      0 ::1:7001                :::*                    LISTEN
+tcp6       0      0 fe80::250:56ff:fea:7001 :::*                    LISTEN
+tcp6       0      0 127.0.0.1:7001          :::*                    LISTEN
+tcp6       0      0 10.63.160.170:7001      :::*                    LISTEN
+tcp6       0      0 ::1:25                  :::*                    LISTEN
+tcp6       0      0 :::4444                 :::*                    LISTEN
+
+- VERIFY
+$ cd /u01/app/oracle/Middleware/oudinst1/OUD/bin
+$ ./ldapsearch --port 1636 --useSSL --baseDN "" --searchScope base "(objectClass=*)"
+The server is using the following certificate:
+    Subject DN:  CN=oudhost.company.com, O=Oracle Unified Directory Self-Signed Certificate
+    Issuer DN:  CN=oudhost.company.com, O=Oracle Unified Directory Self-Signed Certificate
+    Validity:  Wed Dec 21 03:41:44 CST 2016 through Fri Dec 21 03:41:44 CST 2018
+Do you wish to trust this certificate and continue connecting to the server?
+Please enter "yes" or "no":yes
+dn:
+objectClass: top
+objectClass: ds-root-dse
+
+- Copy the certificate to the DB server
+Copy the config/oud-server-cert.txt to some place in the db server
+
+- Import the certificate into the DB wallet
+Syntax: orapki wallet add -wallet <PathToDBWallet> -cert oud-cert.txt -trusted_cert -pwd <WalletPassword>
+
+$ cd /u02/app/oracle/admin/DB_UNIQUE_NAME/wallet
+$ orapki wallet add -wallet . -cert ~/oud-server-cert.txt -trusted_cert -pwd "oracle#1"
+
+- VERIFY if the wallet now has the certificate
+$ orapki wallet display -wallet .
+     Oracle PKI Tool : Version 11.2.0.4.0 - Production
+     Copyright (c) 2004, 2013, Oracle and/or its affiliates. All rights reserved.
+
+     Requested Certificates:
+     User Certificates:
+     Oracle Secret Store entries:
+     ORACLE.SECURITY.DN
+     ORACLE.SECURITY.PASSWORD
+     Trusted Certificates:
+     Subject:        OU=Class 2 Public Primary Certification Authority,O=VeriSign\, Inc.,C=US
+     Subject:        CN=oudhost.company.com,O=My Company,C=US
+     Subject:        OU=Secure Server Certification Authority,O=RSA Data Security\, Inc.,C=US
+     Subject:        OU=Class 3 Public Primary Certification Authority,O=VeriSign\, Inc.,C=US
+     Subject:        OU=Class 1 Public Primary Certification Authority,O=VeriSign\, Inc.,C=US
+     Subject:        CN=GTE CyberTrust Global Root,OU=GTE CyberTrust Solutions\, Inc.,O=GTE Corporation,C=US
+     
+$ mkstore -wrl . -viewEntry ORACLE.SECURITY.DN
+Enter wallet password: oracle#1
+ORACLE.SECURITY.DN = cn=DB_UNIQUE_NAME,cn=OracleContext,dc=example,dc=com
+
+$ mkstore -wrl . -viewEntry ORACLE.SECURITY.PASSWORD
+Enter wallet password: oracle#1
+ORACLE.SECURITY.PASSWORD = GLYJ2+^7aEC5
+
+- Restart OUD
+$ cd /u01/app/oracle/Middleware/oudinst1/OUD/bin
+$ ./stop-ds
+$ ./start-ds
+
+- Try connecting to db now
+SQL> connect a/b@DB_UNIQUE_NAME
+ERROR:
+ORA-28030: Server encountered problems accessing LDAP directory service
+
+-- STILL THE SAME PROBLEM
+kzld_discover received ldaptype: OID
+KZLD_ERR: DB-OID SSL noauth failed. Err=554
+KZLD_ERR: 554
+KZLD is doing LDAP unbind
+KZLD_ERR: found err from kzldini.
+
+-- Check LDAP access setting of the DB and see changing that helps
+SQL> show parameter ldap
+
+NAME                                 TYPE        VALUE
+------------------------------------ ----------- ------------------------------
+ldap_directory_access                string      PASSWORD
+ldap_directory_sysauth               string      no
+SQL> ALTER SYSTEM SET LDAP_DIRECTORY_ACCESS = SSL;
+
+System altered.
+
+SQL> connect x/x
+ERROR:
+ORA-28045: SSL authentication between database and OID failed
+
+---------------------------------------
+TROUBLESHOOT FURTHER
+---------------------------------------
+
+-----------------------
+How to Test EUS Bind with OID Registered DB Wallet and Password (Doc ID 729272.1)
+Use the ORACLE.SECURITY.PASSWORD from wallet for -w argument below
+-------------------
+
+$ ldapbind -h 10.63.160.170 -p 1389 -D cn=DB_UNIQUE_NAME,cn=OracleContext,dc=example,dc=com -w "GLYJ2+^7aEC5"
+bind successful
+
+$ ldapbind -h 10.63.160.170 -p 1636 -D cn=DB_UNIQUE_NAME,cn=OracleContext,dc=example,dc=com -w "GLYJ2+^7aEC5"
+ldap_bind: Can't contact LDAP server
+
+-------------------
+Enterprise User Security Configuration: Resolving ORA-28030 Errors (Doc ID 261178.1)	
+-------------------
+$ ldapbind -h 10.63.160.170 -p 1636 -U 3 -W /u02/app/oracle/admin/DB_UNIQUE_NAME/wallet -P oracle#1
+Unable to open wallet
+--> https://aprilcsims.wordpress.com/2009/08/26/troubleshooting-oracle-wallet-hari-kari-style/
+
+$ ldapbind -h 10.63.160.170 -p 1636 -U 1 -W /u02/app/oracle/admin/DB_UNIQUE_NAME/wallet -P oracle#1
+SSL handshake failed
+
+$ ldapbind -h 10.63.160.170 -p 1636 -U 2 -W /u02/app/oracle/admin/DB_UNIQUE_NAME/wallet -P oracle#1
+Unable to open wallet
+
+$ ldapbind -h 10.63.160.170 -p 1636 -U 3 -W "/u02/app/oracle/admin/DB_UNIQUE_NAME/wallet -P oracle#1
+Unable to open wallet
+ 
+------------------
+ERROR IN OUD SERVER - sslv3 not supported- in logs/access on oud server
+------------------
+http://www.dbarj.com.br/en/2015/03/oracle-unified-directory-client-requested-protocol-sslv3-not-enabled-not-supported/
+
+
+-- FINALLY, THIS SEEMED TO BE THE FIX:
+EUS Authentication Fails With ORA-28030 (Doc ID 783502.1)
+--> 1. starting DB with sqlplus (not srvctl)
+--> 2. copying wallet to its oracle-home location
+--->--->  NEED TO FIGURE OUT WHICH OF THE ABOVE TWO IS THE FIX
