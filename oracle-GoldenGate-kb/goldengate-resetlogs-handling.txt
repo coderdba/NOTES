@@ -1,0 +1,607 @@
+=======================
+GOLDENGATE RUNNING LOG
+=======================
+Trying to figure out restart from resetlogs at source
+	http://docs.oracle.com/goldengate/c1221/gg-winux/GWUAD/wu_adminops.htm#GWUAD708
+	20.2 Initializing the Transaction Logs
+
+
+ggsci 13> info all
+
+Program     Status      Group       Lag at Chkpt  Time Since Chkpt
+
+MANAGER     RUNNING
+EXTRACT     RUNNING     EMIG1       00:00:10      00:00:01
+EXTRACT     RUNNING     PMIG1       00:00:00      00:00:08
+REPLICAT    ABENDED     RMIG1       00:00:00      13:37:16
+
+---- SEND LOGEND
+ggsci 2> dblogin useridalias oggmigsrc
+Successfully logged into database.
+
+ggsci 3> send extract emig1 logend
+
+ERROR: EXTRACT EMIG1 not currently running.
+
+--> Assuming this did not fail like the above,
+	Continue issuing the command until it returns a YES status, indicating that there are no more records to process.
+
+
+--> AFTER THIS, WAIT FOR EXTRACT AND REPLICAT TO BE FULLY IN SYNCH
+On the target system, run GGSCI and issue the SEND REPLICAT command with the STATUS option. This command queries Replicat to determine whether or not it is finished 
+
+processing the data that remains in the trail.
+
+SEND REPLICAT group STATUS
+Continue issuing the command until it shows 0 records in the current transaction, for example:
+
+Sending STATUS request to REPLICAT REPSTAB...
+Current status:
+  Seqno 0, Rba 9035
+  0 records in current transaction.
+
+
+
+---- STOP AND DELETE EXT/PUMP/REPLICAT
+
+ggsci 14> stop emig1
+
+Sending STOP request to EXTRACT EMIG1 ...
+Request processed.
+
+
+ggsci 15> stop pmig1
+
+Sending STOP request to EXTRACT PMIG1 ...
+Request processed.
+
+
+ggsci 16> stop rmig1
+REPLICAT RMIG1 is already stopped.
+
+
+-- Logon first to the DB and then delete extract
+ggsci 25>  dblogin useridalias oggmigsrc
+Successfully logged into database.
+
+
+ggsci 17> delete emig1
+Deleted EXTRACT EMIG1.
+
+
+ggsci 18> delete pmig1
+Deleted EXTRACT PMIG1.
+
+ggsci 21> dblogin useridalias oggmigdest
+Successfully logged into database.
+
+ggsci 22>  delete rmig1
+
+2016-07-14 23:12:33  WARNING OGG-02541  Replicat could not process some SQL errors before being dropped or unregistered. This may cause the data to be out of sync.
+
+2016-07-14 23:12:38  INFO    OGG-02529  Successfully unregistered REPLICAT RMIG1 inbound server OGG$RMIG1 from database.
+Deleted REPLICAT RMIG1.
+
+
+
+---- ADD BACK NOW
+
+ggsci 23> dblogin useridalias oggmigsrc
+Successfully logged into database.
+
+ggsci 24> register extract emig1 database
+ERROR: This EXTRACT EMIG1 is already registered with the database.
+
+
+ggsci 25> add extract emig1, integrated tranlog, begin now
+EXTRACT added.
+
+
+ggsci 26> add exttrail /app/oracle/product/12.1.2.1.OGG/dirdat/EMIG1/ex extract emig1
+EXTTRAIL added.
+
+
+ggsci 27> add extract pmig1, exttrailsource /app/oracle/product/12.1.2.1.OGG/dirdat/EMIG1/ex
+EXTRACT added.
+
+
+ggsci 28> add rmttrail /app/oracle/product/12.1.2.1.OGG/dirdat/RMIG1/rx, extract pmig1
+RMTTRAIL added.
+
+
+ggsci 29> dblogin useridalias oggmigdest
+Successfully logged into database.
+
+ggsci 30> add replicat rmig1 integrated exttrail /app/oracle/product/12.1.2.1.OGG/dirdat/RMIG1/rx
+REPLICAT (Integrated) added.
+
+
+ggsci 32> start emig1
+
+Sending START request to MANAGER ...
+EXTRACT EMIG1 starting
+
+
+ggsci 33> start pmig1
+
+Sending START request to MANAGER ...
+EXTRACT PMIG1 starting
+
+
+ggsci 34> start rmig1
+
+Sending START request to MANAGER ...
+REPLICAT RMIG1 starting
+
+
+ggsci 35> info all
+
+Program     Status      Group       Lag at Chkpt  Time Since Chkpt
+
+MANAGER     RUNNING
+EXTRACT     ABENDED     EMIG1       00:00:00      00:03:00
+EXTRACT     ABENDED     PMIG1       00:00:00      00:01:59
+REPLICAT    STOPPED     RIODS01     00:00:00      2068:28:09
+REPLICAT    STOPPED     RIODS02     00:00:00      2068:28:01
+REPLICAT    ABENDED     RIODS03     00:00:00      1879:34:58
+REPLICAT    RUNNING     RMIG1       00:00:00      00:01:00
+
+
+ggsci 36> info all
+
+Program     Status      Group       Lag at Chkpt  Time Since Chkpt
+
+MANAGER     RUNNING
+EXTRACT     ABENDED     EMIG1       00:00:00      00:03:04
+EXTRACT     ABENDED     PMIG1       00:00:00      00:02:03
+REPLICAT    STOPPED     RIODS01     00:00:00      2068:28:13
+REPLICAT    STOPPED     RIODS02     00:00:00      2068:28:04
+REPLICAT    ABENDED     RIODS03     00:00:00      1879:35:01
+REPLICAT    ABENDED     RMIG1       00:00:00      00:01:04
+
+
+------ LOG WITH ABENDS (in first attempt done incorrectly with wrong path for trail files)
+$ tail -20 g*log
+2016-07-14 23:03:36  INFO    OGG-01815  Oracle GoldenGate Delivery for Oracle, rmig1.prm:  Virtual Memory Facilities for: COM
+    anon alloc: mmap(MAP_ANON)  anon free: munmap
+    file alloc: mmap(MAP_SHARED)  file free: munmap
+    target directories:
+    /app/oracle/product/12.1.2.1.OGG/dirtmp.
+2016-07-14 23:03:36  INFO    OGG-02526  Oracle GoldenGate Delivery for Oracle, rmig1.prm:  Parameter FILTERDUPTRANSACTIONS is ignored by Integrated Replicat.
+2016-07-14 23:03:36  INFO    OGG-02527  Oracle GoldenGate Delivery for Oracle, rmig1.prm:  Integrated Replicat does not populate a trace table.
+2016-07-14 23:03:36  INFO    OGG-02545  Oracle GoldenGate Delivery for Oracle, rmig1.prm:  Parameter GROUPTRANSOPS is ignored by Integrated Replicat when parallelism 
+
+is greater than 1.
+2016-07-14 23:03:37  INFO    OGG-02530  Oracle GoldenGate Delivery for Oracle, rmig1.prm:  Integrated replicat successfully attached to inbound server OGG$RMIG1.
+2016-07-14 23:03:38  INFO    OGG-00996  Oracle GoldenGate Delivery for Oracle, rmig1.prm:  REPLICAT RMIG1 started.
+2016-07-14 23:03:38  WARNING OGG-02544  Oracle GoldenGate Delivery for Oracle, rmig1.prm:  Unhandled error (ORA-26787: The row with key ("ID") = (1) does not exist in 
+
+table GGDESTMGR.EMP
+ORA-01403: no data found) while processing the record at SEQNO 2, RBA 1770 in Integrated mode. REPLICAT will retry in Direct mode.
+2016-07-14 23:03:38  ERROR   OGG-01029  Oracle GoldenGate Delivery for Oracle, rmig1.prm:  Extract reposition err - Could not reposition -- 
+
+/app/oracle/product/12.1.2.1.OGG/dirdat/RMIG1/rx000002 missing.
+2016-07-14 23:03:39  INFO    OGG-00987  Oracle GoldenGate Command Interpreter for Oracle:  GGSCI command (oracle): info all.
+2016-07-14 23:03:42  ERROR   OGG-01668  Oracle GoldenGate Delivery for Oracle, rmig1.prm:  PROCESS ABENDING.
+
+
+------ LOG FILE WITH SUCCESS (note that the trail files start with 0)
+
+2016-07-14 23:17:29  INFO    OGG-00987  Oracle GoldenGate Command Interpreter for Oracle:  GGSCI command (oracle): info all.
+2016-07-14 23:17:36  INFO    OGG-00987  Oracle GoldenGate Command Interpreter for Oracle:  GGSCI command (oracle): start emig1.
+2016-07-14 23:17:36  INFO    OGG-00963  Oracle GoldenGate Manager for Oracle, mgr.prm:  Command received from GGSCI on host [10.67.193.10]:36105 (START EXTRACT EMIG1 
+
+).
+2016-07-14 23:17:36  INFO    OGG-00975  Oracle GoldenGate Manager for Oracle, mgr.prm:  EXTRACT EMIG1 starting.
+2016-07-14 23:17:36  INFO    OGG-00992  Oracle GoldenGate Capture for Oracle, emig1.prm:  EXTRACT EMIG1 starting.
+2016-07-14 23:17:36  INFO    OGG-03059  Oracle GoldenGate Capture for Oracle, emig1.prm:  Operating system character set identified as UTF-8.
+2016-07-14 23:17:36  INFO    OGG-02695  Oracle GoldenGate Capture for Oracle, emig1.prm:  ANSI SQL parameter syntax is used for parameter parsing.
+2016-07-14 23:17:37  INFO    OGG-03522  Oracle GoldenGate Capture for Oracle, emig1.prm:  Setting session time zone to source database time zone 'GMT'.
+2016-07-14 23:17:37  WARNING OGG-04033  Oracle GoldenGate Capture for Oracle, emig1.prm:   LOGALLSUPCOLS has set the NOCOMPRESSDELETES and GETUPDATEBEFORES parameters 
+
+on.
+2016-07-14 23:17:37  INFO    OGG-01635  Oracle GoldenGate Capture for Oracle, emig1.prm:  BOUNDED RECOVERY: reset to initial or altered checkpoint.
+2016-07-14 23:17:37  INFO    OGG-01815  Oracle GoldenGate Capture for Oracle, emig1.prm:  Virtual Memory Facilities for: BR
+    anon alloc: mmap(MAP_ANON)  anon free: munmap
+    file alloc: mmap(MAP_SHARED)  file free: munmap
+    target directories:
+    /app/oracle/product/12.1.2.1.OGG/BR/EMIG1.
+2016-07-14 23:17:37  INFO    OGG-01851  Oracle GoldenGate Capture for Oracle, emig1.prm:  filecaching started: thread ID: 140044857767680.
+2016-07-14 23:17:37  INFO    OGG-01815  Oracle GoldenGate Capture for Oracle, emig1.prm:  Virtual Memory Facilities for: COM
+    anon alloc: mmap(MAP_ANON)  anon free: munmap
+    file alloc: mmap(MAP_SHARED)  file free: munmap
+    target directories:
+    /app/oracle/product/12.1.2.1.OGG/dirtmp.
+2016-07-14 23:17:38  INFO    OGG-02089  Oracle GoldenGate Capture for Oracle, emig1.prm:  Source redo compatibility version is: 11.2.0.4.
+2016-07-14 23:17:39  WARNING OGG-02045  Oracle GoldenGate Capture for Oracle, emig1.prm:  Database does not have streams_pool_size initialization parameter configured.
+2016-07-14 23:17:40  INFO    OGG-02068  Oracle GoldenGate Capture for Oracle, emig1.prm:  Integrated capture successfully attached to logmining server OGG$CAP_EMIG1 
+
+using OGGCapture API.
+2016-07-14 23:17:40  INFO    OGG-02086  Oracle GoldenGate Capture for Oracle, emig1.prm:  Integrated Dictionary will be used.
+2016-07-14 23:17:40  INFO    OGG-00993  Oracle GoldenGate Capture for Oracle, emig1.prm:  EXTRACT EMIG1 started.
+2016-07-14 23:17:40  INFO    OGG-01052  Oracle GoldenGate Capture for Oracle, emig1.prm:  No recovery is required for target file 
+
+/app/oracle/product/12.1.2.1.OGG/dirdat/EMIG1/ex000000, at RBA 0 (file not opened).
+2016-07-14 23:17:40  INFO    OGG-01478  Oracle GoldenGate Capture for Oracle, emig1.prm:  Output file /app/oracle/product/12.1.2.1.OGG/dirdat/EMIG1/ex is using format 
+
+RELEASE 12.1.
+2016-07-14 23:17:40  INFO    OGG-03522  Oracle GoldenGate Capture for Oracle, emig1.prm:  Setting session time zone to source database time zone 'GMT'.
+2016-07-14 23:18:05  INFO    OGG-00987  Oracle GoldenGate Command Interpreter for Oracle:  GGSCI command (oracle): info all.
+2016-07-14 23:18:05  INFO    OGG-00987  Oracle GoldenGate Command Interpreter for Oracle:  GGSCI command (oracle): info all.
+2016-07-14 23:18:06  INFO    OGG-01021  Oracle GoldenGate Capture for Oracle, emig1.prm:  Command received from GGSCI: GETLAG.
+2016-07-14 23:18:43  INFO    OGG-00987  Oracle GoldenGate Command Interpreter for Oracle:  GGSCI command (oracle): start pmig1.
+2016-07-14 23:18:43  INFO    OGG-00963  Oracle GoldenGate Manager for Oracle, mgr.prm:  Command received from GGSCI on host [10.67.193.10]:36171 (START EXTRACT PMIG1 
+
+).
+2016-07-14 23:18:43  INFO    OGG-00975  Oracle GoldenGate Manager for Oracle, mgr.prm:  EXTRACT PMIG1 starting.
+2016-07-14 23:18:43  INFO    OGG-00992  Oracle GoldenGate Capture for Oracle, pmig1.prm:  EXTRACT PMIG1 starting.
+2016-07-14 23:18:43  INFO    OGG-03059  Oracle GoldenGate Capture for Oracle, pmig1.prm:  Operating system character set identified as UTF-8.
+2016-07-14 23:18:43  INFO    OGG-02695  Oracle GoldenGate Capture for Oracle, pmig1.prm:  ANSI SQL parameter syntax is used for parameter parsing.
+2016-07-14 23:18:44  INFO    OGG-03522  Oracle GoldenGate Capture for Oracle, pmig1.prm:  Setting session time zone to source database time zone 'GMT'.
+2016-07-14 23:18:44  INFO    OGG-01851  Oracle GoldenGate Capture for Oracle, pmig1.prm:  filecaching started: thread ID: 140093070325504.
+2016-07-14 23:18:44  INFO    OGG-01815  Oracle GoldenGate Capture for Oracle, pmig1.prm:  Virtual Memory Facilities for: COM
+    anon alloc: mmap(MAP_ANON)  anon free: munmap
+    file alloc: mmap(MAP_SHARED)  file free: munmap
+    target directories:
+    /app/oracle/product/12.1.2.1.OGG/dirtmp.
+2016-07-14 23:18:44  INFO    OGG-00993  Oracle GoldenGate Capture for Oracle, pmig1.prm:  EXTRACT PMIG1 started.
+2016-07-14 23:18:44  INFO    OGG-00963  Oracle GoldenGate Manager for Oracle, mgr.prm:  Command received from EXTRACT on host [10.67.193.10]:36176 (START SERVER CPU -1 
+
+PRI -1  TIMEOUT 300 PARAMS ).
+2016-07-14 23:18:44  INFO    OGG-01677  Oracle GoldenGate Collector for Oracle:  Waiting for connection (started dynamically).
+2016-07-14 23:18:44  INFO    OGG-00963  Oracle GoldenGate Manager for Oracle, mgr.prm:  Command received from SERVER on host [::1]:46594 (REPORT 40841 7810).
+2016-07-14 23:18:44  INFO    OGG-00974  Oracle GoldenGate Manager for Oracle, mgr.prm:  Manager started collector process (Port 7810).
+2016-07-14 23:18:44  INFO    OGG-01228  Oracle GoldenGate Collector for Oracle:  Timeout in 300 seconds.
+2016-07-14 23:18:49  INFO    OGG-01229  Oracle GoldenGate Collector for Oracle:  Connected to hostname.do.com:50067.
+2016-07-14 23:18:49  INFO    OGG-01226  Oracle GoldenGate Collector for Oracle:  Socket buffer size set to 87379 (flush size 27985).
+2016-07-14 23:18:49  INFO    OGG-01226  Oracle GoldenGate Capture for Oracle, pmig1.prm:  Socket buffer size set to 330075 (flush size 27985).
+2016-07-14 23:18:49  INFO    OGG-01052  Oracle GoldenGate Capture for Oracle, pmig1.prm:  No recovery is required for target file 
+
+/app/oracle/product/12.1.2.1.OGG/dirdat/RMIG1/rx000000, at RBA 0 (file not opened).
+2016-07-14 23:18:49  INFO    OGG-01478  Oracle GoldenGate Capture for Oracle, pmig1.prm:  Output file /app/oracle/product/12.1.2.1.OGG/dirdat/RMIG1/rx is using format 
+
+RELEASE 12.1.
+2016-07-14 23:18:49  INFO    OGG-01669  Oracle GoldenGate Collector for Oracle:  Opening /app/oracle/product/12.1.2.1.OGG/dirdat/RMIG1/rx000000 (byte -1, current EOF 
+
+0).
+2016-07-14 23:19:02  INFO    OGG-00987  Oracle GoldenGate Command Interpreter for Oracle:  GGSCI command (oracle): info all.
+2016-07-14 23:19:04  INFO    OGG-00987  Oracle GoldenGate Command Interpreter for Oracle:  GGSCI command (oracle): info all.
+2016-07-14 23:19:07  INFO    OGG-01021  Oracle GoldenGate Capture for Oracle, pmig1.prm:  Command received from GGSCI: GETLAG.
+
+
+2016-07-14 23:20:59  INFO    OGG-00963  Oracle GoldenGate Manager for Oracle, mgr.prm:  Command received from GGSCI on host [10.67.193.10]:36283 (START REPLICAT RMIG1 
+
+).
+2016-07-14 23:21:00  INFO    OGG-00975  Oracle GoldenGate Manager for Oracle, mgr.prm:  REPLICAT RMIG1 starting.
+2016-07-14 23:21:00  INFO    OGG-00995  Oracle GoldenGate Delivery for Oracle, rmig1.prm:  REPLICAT RMIG1 starting.
+2016-07-14 23:21:00  WARNING OGG-02904  Oracle GoldenGate Delivery for Oracle, rmig1.prm:  Replication of PARTIAL XML containing NCHAR/NVARCHAR/NCLOB data may cause 
+
+divergence.
+2016-07-14 23:21:00  INFO    OGG-03059  Oracle GoldenGate Delivery for Oracle, rmig1.prm:  Operating system character set identified as UTF-8.
+2016-07-14 23:21:00  INFO    OGG-02695  Oracle GoldenGate Delivery for Oracle, rmig1.prm:  ANSI SQL parameter syntax is used for parameter parsing.
+2016-07-14 23:21:00  INFO    OGG-06451  Oracle GoldenGate Delivery for Oracle, rmig1.prm:  Triggers will be suppressed by default.
+2016-07-14 23:21:01  INFO    OGG-01971  Oracle GoldenGate Delivery for Oracle, rmig1.prm:  The previous message, 'INFO OGG-06451', repeated 1 times.
+2016-07-14 23:21:01  INFO    OGG-01815  Oracle GoldenGate Delivery for Oracle, rmig1.prm:  Virtual Memory Facilities for: COM
+    anon alloc: mmap(MAP_ANON)  anon free: munmap
+    file alloc: mmap(MAP_SHARED)  file free: munmap
+    target directories:
+    /app/oracle/product/12.1.2.1.OGG/dirtmp.
+2016-07-14 23:21:01  INFO    OGG-02526  Oracle GoldenGate Delivery for Oracle, rmig1.prm:  Parameter FILTERDUPTRANSACTIONS is ignored by Integrated Replicat.
+2016-07-14 23:21:01  INFO    OGG-02527  Oracle GoldenGate Delivery for Oracle, rmig1.prm:  Integrated Replicat does not populate a trace table.
+2016-07-14 23:21:01  INFO    OGG-02545  Oracle GoldenGate Delivery for Oracle, rmig1.prm:  Parameter GROUPTRANSOPS is ignored by Integrated Replicat when parallelism 
+
+is greater than 1.
+2016-07-14 23:21:02  INFO    OGG-02528  Oracle GoldenGate Delivery for Oracle, rmig1.prm:  REPLICAT RMIG1 successfully registered with database as inbound server OGG
+
+$RMIG1.
+2016-07-14 23:21:03  INFO    OGG-00987  Oracle GoldenGate Command Interpreter for Oracle:  GGSCI command (oracle): info all.
+2016-07-14 23:21:03  INFO    OGG-00987  Oracle GoldenGate Command Interpreter for Oracle:  GGSCI command (oracle): info all.
+2016-07-14 23:21:04  INFO    OGG-02530  Oracle GoldenGate Delivery for Oracle, rmig1.prm:  Integrated replicat successfully attached to inbound server OGG$RMIG1.
+2016-07-14 23:21:04  INFO    OGG-00996  Oracle GoldenGate Delivery for Oracle, rmig1.prm:  REPLICAT RMIG1 started.
+2016-07-14 23:21:06  INFO    OGG-01021  Oracle GoldenGate Delivery for Oracle, rmig1.prm:  Command received from GGSCI: GETLAG.
+
+
+---- DO SOME DATA ADD-AND-SYNCH
+
+--> Content of EMP table now (after adding fresh 5 rows)
+
+INFO - Checking source
+
+        ID NAME
+---------- ----------
+         1 1
+         2 2
+         3 3
+         4 4
+         5 5
+
+INFO - Checking dest
+
+        ID NAME
+---------- ----------
+         1 1
+         2 2
+         3 3
+         4 4
+         5 5
+
+
+RESETLOGS PROCESS FROM http://docs.oracle.com/goldengate/c1221/gg-winux/GWUAD/wu_adminops.htm#GWUAD707
+Stop the application from accessing the database. This stops more transaction data from being logged.
+
+Run GGSCI and issue the SEND EXTRACT command with the LOGEND option for the primary Extract group. This command queries Extract to determine whether or not Extract is 
+
+finished processing the records that remain in the transaction log.
+
+SEND EXTRACT group LOGEND
+Continue issuing the command until it returns a YES status, indicating that there are no more records to process.
+
+--> Following the above:
+
+ggsci 41> send extract emig1 logend
+
+Sending LOGEND request to EXTRACT EMIG1 ...
+NO.
+
+--> IT NEVER REACHED 'YES'
+
+So, stopping the source DB now
+
+$ srvctl stop database -d DB_UNIQUE_NAME
+
+Next, check replicat
+ggsci 53> SEND REPLICAT rmig1 status
+
+Sending STATUS request to REPLICAT RMIG1 ...
+  Current status: At EOF
+  Sequence #: 0
+  RBA: 2175
+  0 records in current transaction
+
+NEXT STEP PER DOC
+Stop the primary Extract group, the data pump (if used), and the Replicat group.
+
+STOP EXTRACT emig1
+STOP EXTRACT pmig1
+STOP REPLICAT rmig1
+
+Delete the Extract, data pump, and Replicat groups.
+
+DELETE EXTRACT emig1
+DELETE EXTRACT pmig1
+DELETE REPLICAT rmig1
+
+--> Doing the above
+
+ggsci 54> STOP EXTRACT emig1
+EXTRACT EMIG1 is already stopped.
+
+
+ggsci 55> STOP EXTRACT pmig1
+
+Sending STOP request to EXTRACT PMIG1 ...
+Request processed.
+
+
+ggsci 56> STOP REPLICAT rmig1
+
+Sending STOP request to REPLICAT RMIG1 ...
+Request processed.
+
+ggsci> dblogin useridalias OGGMIGSRC
+
+ggsci 57> DELETE EXTRACT emig1
+Deleted EXTRACT EMIG1.
+
+
+ggsci 58> DELETE EXTRACT pmig1
+Deleted EXTRACT PMIG1.
+
+
+ggsci 59> DELETE REPLICAT rmig1
+
+2016-07-14 23:39:53  INFO    OGG-02529  Successfully unregistered REPLICAT RMIG1 inbound server OGG$RMIG1 from database.
+Deleted REPLICAT RMIG1.
+
+
+
+
+NEXT STEP PER DOC
+
+Using standard operating system commands, delete the trail files.
+
+Stop the database.
+
+Initialize and restart the database. --> RESETLOGS
+
+-->
+$ << remove extract trail files >>
+$ << remove replicat trail files >>
+
+$ srvctl stop database -d DB_UNIQUE_NAME
+
+$ sqlplus / as sysdba
+SQL> startup mount;
+ORACLE instance started.
+
+Total System Global Area 1.2159E+11 bytes
+Fixed Size                  2268072 bytes
+Variable Size            1.5032E+10 bytes
+Database Buffers         1.0630E+11 bytes
+Redo Buffers              257765376 bytes
+Database mounted.
+SQL> recover database until cancel;
+Media recovery complete.
+SQL> alter database open resetlogs;
+
+Database altered.
+
+SQL> Disconnected from Oracle Database 11g Enterprise Edition Release 11.2.0.4.0 - 64bit Production
+With the Partitioning, Real Application Clusters, Automatic Storage Management, OLAP,
+Data Mining and Real Application Testing options
+
+$ srvctl stop database -d DB_UNIQUE_NAME
+$ srvctl start database -d DB_UNIQUE_NAME
+
+
+NEXT STEP PER DOC
+
+
+Recreate the primary Extract group.
+Add its trail
+Recreate pump
+Add its trail
+Recreate replicat
+
+Start extract
+Start pump
+Start replicat
+
+
+ggsci 66> dblogin useridalias oggmigsrc
+Successfully logged into database.
+
+ggsci 67> register extract emig1 database
+ERROR: This EXTRACT EMIG1 is already registered with the database.
+
+
+ggsci 68> add extract emig1, integrated tranlog, begin now
+EXTRACT added.
+
+
+ggsci 69> add exttrail /app/oracle/product/12.1.2.1.OGG/dirdat/EMIG1/ex extract emig1
+EXTTRAIL added.
+
+
+ggsci 70> add extract pmig1, exttrailsource /app/oracle/product/12.1.2.1.OGG/dirdat/EMIG1/ex
+EXTRACT added.
+
+
+ggsci 71> add rmttrail /app/oracle/product/12.1.2.1.OGG/dirdat/RMIG1/rx, extract pmig1
+RMTTRAIL added.
+
+
+ggsci 72> info all
+
+Program     Status      Group       Lag at Chkpt  Time Since Chkpt
+
+MANAGER     RUNNING
+EXTRACT     STOPPED     EMIG1       00:00:00      00:00:42
+EXTRACT     STOPPED     PMIG1       00:00:00      00:00:27
+REPLICAT    STOPPED     RIODS01     00:00:00      2069:15:26
+REPLICAT    STOPPED     RIODS02     00:00:00      2069:15:17
+REPLICAT    ABENDED     RIODS03     00:00:00      1880:22:14
+
+
+ggsci 73> dblogin useridalias oggmigdest
+Successfully logged into database.
+
+ggsci 74> add replicat rmig1 integrated exttrail /app/oracle/product/12.1.2.1.OGG/dirdat/RMIG1/rx
+REPLICAT (Integrated) added.
+
+
+ggsci 75> /app/oracle/product/12.1.2.1.OGG: ./ggsci
+
+Oracle GoldenGate Command Interpreter for Oracle
+Version 12.1.2.1.8 21205662 OGGCORE_12.1.2.1.0OGGBP_PLATFORMS_150620.0201_FBO
+Linux, x64, 64bit (optimized), Oracle 11g on Jun 20 2015 09:46:21
+Operating system character set identified as UTF-8.
+
+Copyright (C) 1995, 2015, Oracle and/or its affiliates. All rights reserved.
+
+
+
+ggsci 1> start emig1
+
+Sending START request to MANAGER ...
+EXTRACT EMIG1 starting
+
+
+ggsci 2> start pmig1
+
+Sending START request to MANAGER ...
+EXTRACT PMIG1 starting
+
+
+ggsci 3> start rmig1
+
+Sending START request to MANAGER ...
+REPLICAT RMIG1 starting
+
+============================
+NOW - CHECK
+============================
+
+--------------------
+NEW DATA COMING IN
+--------------------
+
+Insert row '6' into source:
+insert into ggsrcmgr.emp values (6,'6');
+
+Verify replication happened or not:
+NOTE that the row-6 is inserted in destination also.
+
+INFO - Checking source
+EMP table
+
+        ID NAME
+---------- ----------
+         1 1
+         2 2
+         3 3
+         4 4
+         5 5
+         6 6
+
+6 rows selected.
+
+INFO - Checking dest
+EMP table
+
+        ID NAME
+---------- ----------
+         1 1
+         2 2
+         3 3
+         4 4
+         5 5
+         6 6
+
+6 rows selected.
+
+--------------------
+CHANGE EXISTING DATA
+--------------------
+update ggsrcmgr.emp set name='111' where id=1;
+
+Verify replication happened or not:
+NOTE that the row-1 has been updated in destination also
+
+INFO - Checking source
+EMP table
+
+        ID NAME
+---------- ----------
+         1 111
+         2 2
+         3 3
+         4 4
+         5 5
+         6 6
+
+6 rows selected.
+
+INFO - Checking dest
+EMP table
+
+        ID NAME
+---------- ----------
+         1 111
+         2 2
+         3 3
+         4 4
+         5 5
+         6 6
+
+6 rows selected.
