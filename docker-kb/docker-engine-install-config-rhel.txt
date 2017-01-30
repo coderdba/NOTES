@@ -1,0 +1,299 @@
+===================================================
+DOCKER-ENGINE INSTALL/CONFIG ON LINUX - REDHAT
+===================================================
+https://docs.docker.com/engine/faq/#
+https://docs.docker.com/engine/installation/linux/rhel/
+
+===============================
+INSTALL
+===============================
+----------------
+Install with yum
+----------------
+Log into your machine as a user with sudo or root privileges.
+
+Make sure your existing packages are up-to-date.
+$ sudo yum update
+
+Add the yum repo.
+$ sudo tee /etc/yum.repos.d/docker.repo <<-'EOF'
+[dockerrepo]
+name=Docker Repository
+baseurl=https://yum.dockerproject.org/repo/main/centos/7/
+enabled=1
+gpgcheck=1
+gpgkey=https://yum.dockerproject.org/gpg
+EOF
+
+Install the Docker package.
+$ sudo yum install docker-engine
+
+Enable the service.
+$ sudo systemctl enable docker.service
+
+Start the Docker daemon.
+$ sudo systemctl start docker
+
+Verify docker is installed correctly by running a test image in a container.
+ $ sudo docker run --rm hello-world
+
+ You will see the following messages:
+     Unable to find image 'hello-world:latest' locally
+     latest: Pulling from library/hello-world
+     c04b14da8d14: Pull complete
+     Digest: sha256:0256e8a36e2070f7bf2d0b0763dbabdd67798512411de4cdcf9431a1feb60fd9
+     Status: Downloaded newer image for hello-world:latest
+
+     Hello from Docker!
+     This message shows that your installation appears to be working correctly.
+
+     To generate this message, Docker took the following steps:
+      1. The Docker client contacted the Docker daemon.
+      2. The Docker daemon pulled the "hello-world" image from the Docker Hub.
+      3. The Docker daemon created a new container from that image which runs the
+         executable that produces the output you are currently reading.
+      4. The Docker daemon streamed that output to the Docker client, which sent it
+         to your terminal.
+
+     To try something more ambitious, you can run an Ubuntu container with:
+      $ docker run -it ubuntu bash
+
+     Share images, automate workflows, and more with a free Docker Hub account:
+      https://hub.docker.com
+
+     For more examples and ideas, visit:
+      https://docs.docker.com/engine/userguide/
+  
+If you need to add an HTTP Proxy, set a different directory or partition for the Docker runtime files, 
+or make other customizations, read our Systemd article to learn how to customize your Systemd Docker daemon options.
+
+-----------------------
+Install with the script
+-----------------------
+Log into your machine as a user with sudo or root privileges.
+
+Make sure your existing packages are up-to-date.
+$ sudo yum update
+
+Run the Docker installation script.
+$ curl -fsSL https://get.docker.com/ | sh
+This script adds the docker.repo repository and installs Docker.
+
+Enable the service.
+$ sudo systemctl enable docker.service
+
+Start the Docker daemon.
+$ sudo systemctl start docker
+
+Verify docker is installed correctly by running a test image in a container.
+$ sudo docker run hello-world
+
+If you need to add an HTTP Proxy, set a different directory or partition for the Docker runtime files, 
+or make other customizations, read our Systemd article to learn how to customize your Systemd Docker daemon options.
+
+====================
+CONFIGURE
+====================
+
+Create a group 'docker' and a user 'docker' or other with group docker.
+Use that new user with docker group to run docker images.
+
+# groupadd docker
+groupadd: group 'docker' already exists
+
+# useradd docker -g docker
+
+$ sudo su - docker
+$ which docker
+/bin/docker
+
+$ docker run ubuntu /bin/echo 'Hello world'
+Unable to find image 'ubuntu:latest' locally
+latest: Pulling from library/ubuntu
+
+aed15891ba52: Pull complete
+773ae8583d14: Pull complete
+d1d48771f782: Pull complete
+cd3d6cd6c0cf: Pull complete
+8ff6f8a9120c: Pull complete
+Digest: sha256:35bc48a1ca97c3971611dc4662d08d131869daa692acb281c7e9e052924e38b1
+Status: Downloaded newer image for ubuntu:latest
+Hello world
+
+========================
+DIRECTORIES
+========================
+Where are the images stored: http://stackoverflow.com/questions/19234831/where-are-docker-images-stored-on-the-host-machine
+
+---------------------------------
+ALL DIRECTORIES
+---------------------------------
+./var/lib/docker
+./var/spool/mail/docker
+./run/docker
+./sys/fs/cgroup/hugetlb/docker
+./sys/fs/cgroup/perf_event/docker
+./sys/fs/cgroup/blkio/docker
+./sys/fs/cgroup/net_cls/docker
+./sys/fs/cgroup/freezer/docker
+./sys/fs/cgroup/devices/docker
+./sys/fs/cgroup/memory/docker
+./sys/fs/cgroup/cpu,cpuacct/docker
+./sys/fs/cgroup/cpuset/docker
+./sys/fs/cgroup/systemd/docker
+./usr/bin/docker
+./usr/share/bash-completion/completions/docker
+./etc/selinux/targeted/active/modules/100/docker
+./etc/docker
+./home/docker
+
+---------------------------
+/var/lib/docker
+---------------------------
+# cd /var/lib/docker
+# ls -l
+total 32
+drwx------. 4 root root 4096 Nov 22 04:18 containers
+drwx------. 5 root root 4096 Nov 18 04:09 devicemapper
+drwx------. 3 root root 4096 Nov 18 04:09 image
+drwxr-x---. 3 root root 4096 Nov 18 04:09 network
+drwx------. 2 root root 4096 Nov 18 04:09 swarm
+drwx------. 2 root root 4096 Nov 22 04:13 tmp
+drwx------. 2 root root 4096 Nov 18 04:09 trust
+drwx------. 2 root root 4096 Nov 18 04:09 volumes
+
+-------------------------
+Image Store directory 
+-------------------------
+/var/lib/docker/devicemapper/devicemapper contains the images
+NOTE: The ls -l output does not give right size info.  Use du -sk instead
+# ls -l
+total 184120
+-rw-------. 1 root root 107374182400 Nov 22 04:18 data
+-rw-------. 1 root root   2147483648 Nov 22 04:24 metadata
+
+# du -sk *
+193404  data
+1156    metadata
+
+- Pull one more image
+# docker pull ubuntu:15.04
+
+# docker images
+REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+ubuntu              latest              e4415b714b62        5 days ago          128.1 MB
+hello-world         latest              c54a2cc56cbb        4 months ago        1.848 kB
+ubuntu              15.04               d1b55fd07600        10 months ago       131.3 MB
+
+- Check the size of image store now
+# cd /var/lib/docker/devicemapper/devicemapper
+# ls -l
+total 354208
+-rw-------. 1 root root 107374182400 Nov 22 04:52 data
+-rw-------. 1 root root   2147483648 Nov 22 04:52 metadata
+# du -sk *
+353052  data
+1156    metadata
+
+- Remove an image
+# docker rmi d1b55fd07600
+
+This removes the Ubuntu 15.04
+Check with du -sk again and you will see reduced size of the image store folder
+
+-------------------
+/var/lib/docker/image
+-------------------
+TBD
+
+-------------------------------------
+/var/lib/docker/containers
+-------------------------------------
+# pwd
+/var/lib/docker/containers
+[root@oralx0001 containers]# ls -l
+total 44
+drwx------. 3 root root 4096 Nov 22 04:59 0085f870f9c5a46188654ef4e4d176112754c1e2c348917e121fd6f78fa3c021
+drwx------. 3 root root 4096 Nov 22 05:08 24d9bda64c8597445de6c01e384d32470a23ce513be71543375defeac267b228
+drwx------. 3 root root 4096 Nov 22 05:09 3e19c71effa4541c6d0287335435d57e9c5f9fb36d524e3339f0fc51b3f46115
+drwx------. 3 root root 4096 Nov 22 05:09 417b0c13a564752bb9608c78ff86794a63eba7e49a63c05ad56fb740b994f34e
+drwx------. 3 root root 4096 Nov 22 04:28 578fe996e8668936c0197d996c759f32df2ccb65632d2773b0885e2a8c6be443
+drwx------. 3 root root 4096 Nov 22 04:18 613d05a82920056043ebaae8eb22d94b7755bcb6fc0aa834ecceb162d3c65c10
+drwx------. 3 root root 4096 Nov 22 04:59 64750038156f5641631e5b3c8f54220ab860a5c9fa75653973a8d43bfaec4b5d
+drwx------. 3 root root 4096 Nov 22 04:13 671844140cc87179eebf95a487a1c90a0b375f22ba9e7f30231695e08a51dc34
+drwx------. 3 root root 4096 Nov 22 04:28 baecd3935cab13196306aac823e66b4e3e41539caeb80b72916be6b8d2c2df08
+drwx------. 3 root root 4096 Nov 22 05:08 d3e8790ff8ebfa75843d150df69bc443881a22e1f26b7f0730f8bd6b6dcc241e
+drwx------. 3 root root 4096 Nov 22 05:09 f768c4d88927377c276ade8e0f164b62a45f7097f73fc330763493a01651b037
+
+# cd 0085f870f9c5a46188654ef4e4d176112754c1e2c348917e121fd6f78fa3c021
+# ls -l 
+total 32
+-rw-r-----. 1 root root   82 Nov 22 04:59 0085f870f9c5a46188654ef4e4d176112754c1e2c348917e121fd6f78fa3c021-json.log
+-rw-rw-rw-. 1 root root 2378 Nov 22 04:59 config.v2.json
+-rw-rw-rw-. 1 root root 1059 Nov 22 04:59 hostconfig.json
+-rw-r--r--. 1 root root   13 Nov 22 04:59 hostname
+-rw-r--r--. 1 root root  174 Nov 22 04:59 hosts
+-rw-r--r--. 1 root root   78 Nov 22 04:59 resolv.conf
+-rw-r--r--. 1 root root   71 Nov 22 04:59 resolv.conf.hash
+drwx------. 2 root root 4096 Nov 22 04:59 shm
+
+================================
+RUNNING A SPECIFIC IMAGE VERSION
+================================
+$ docker images
+REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+ubuntu              latest              e4415b714b62        5 days ago          128.1 MB
+hello-world         latest              c54a2cc56cbb        4 months ago        1.848 kB
+ubuntu              15.04               d1b55fd07600        10 months ago       131.3 MB
+
+$ docker run ubuntu /bin/echo 'hello world'
+hello world
+
+$ docker run ubuntu:15.04 /bin/echo 'hello world'
+hello world
+
+========================================
+MOVING DOCKER FOLDERS TO ANOTHER DIRECTORY
+========================================
+TBD
+Main folder of docker is /var/lib/docker that contains all images, metadata etc.
+That can eat up much space in '/' filesystem.
+https://github.com/docker/docker/issues/3127
+https://forums.docker.com/t/how-do-i-change-the-docker-image-installation-directory/1169
+
+- Stop docker
+# systemctl stop docker
+
+- Move the docker folder
+Move /var/lib/docker to another location - say /disk1/docker
+Make link to /disk1/docker in /var/lib
+# cd /var/lib
+# ln -s /disk1/docker
+
+- Start docker
+# systemctl start docker
+
+NOTE: The sites above mention setting a parameter in /etc/default/docker or /etc/systemctl/docker file as follows:
+other_args="-g /disk1/docker"
+or
+other_args="-g /disk1/docker"
+
+===========================================
+REMOVE DOCKER and IMAGES
+===========================================
+https://docs.docker.com/engine/installation/linux/centos/
+
+You can uninstall the Docker software with yum.
+
+- List the installed Docker packages.
+$ yum list installed | grep docker
+docker-engine.x86_64     1.7.1-0.1.el7@/docker-engine-1.7.1-0.1.el7.x86_64
+
+- Remove the package.
+$ sudo yum -y remove docker-engine.x86_64
+
+NOTE- This command does not remove images, containers, volumes, or user-created configuration files on your host.
+
+- To delete all images, containers, and volumes, run the following command:
+$ rm -rf /var/lib/docker
+Locate and delete any user-created configuration files.
