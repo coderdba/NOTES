@@ -1,0 +1,284 @@
+=====================================================
+              POSTGRES BACKUPS AND PITR
+=====================================================
+https://www.postgresql.org/docs/9.5/static/backup.html
+
+** https://www.postgresql.org/docs/9.5/static/continuous-archiving.html --> for base, wal backups and pitr
+** https://opensourcedbms.com/dbms/how-to-do-point-in-time-recovery-with-postgresql-9-2-pitr-3/ --> good with restore also
+** https://www.mkyong.com/database/postgresql-point-in-time-recovery-incremental-backup/ --> with REAL PITR restore
+
+https://www.postgresql.org/docs/9.5/static/wal-internals.html
+
+==================================================
+-- NOTE - LOOK FOR EXAMPLE TOWARDS THE END --
+==================================================
+
+=========================
+WRITE AHEAD LOG - WAL
+=========================
+https://www.postgresql.org/docs/9.5/static/wal-internals.html
+
+WAL are similar to redologs of Oracle - but NOT round-robin - so, they also act as archivelogs of oracle.
+Used for both crash recovery and PITR.
+
+Directory - pg_xlog (like /var/lib/pgsql/9.5/data/pg_xlog)
+Size of each 'segment file' - 16 MB (can be changed by altering the --with-wal-segsize configure option when building the server)
+
+  When not using WAL archiving, the system normally creates just a few segment files and then "recycles" them by renaming 
+  no-longer-needed segment files to higher segment numbers. It's assumed that segment files whose contents precede the 
+  checkpoint-before-last are no longer of interest and can be recycled.
+
+- WARM STANDBY
+If we continuously feed the series of WAL files to another machine that has been loaded with the same base backup file, 
+we have a warm standby system: at any point we can bring up the second machine and it will have a nearly-current copy of the database.
+
+==========================
+BACKUP PRINCIPLE
+==========================
+Backup all data-files - 'base backup'
+Backup WAL files - 'WAL archiving'
+
+==========================
+ENABLE WAL
+==========================
+https://www.postgresql.org/docs/9.5/static/continuous-archiving.html#BACKUP-ARCHIVING-WAL
+
+WAL has to be set up at Postgres startup properly. Otherwise backup errors out:
+
+postgres=# SELECT pg_start_backup('label');
+ERROR:  WAL level not sufficient for making an online backup
+HINT:  wal_level must be set to "archive", "hot_standby", or "logical" at server start.
+    
+- Edit data/postgresql.conf and modify as follows 
+
+wal_level=archive
+archive_mode=on
+archive_command='command to copy wal files to a backup location'
+
+wal_level = archive                    # minimal, archive, hot_standby, or logical
+                                       # (change requires restart)
+
+# - Archiving -
+
+archive_mode = on               # enables archiving; off, on, or always
+                                # (change requires restart)
+                                
+archive_command = 'test ! -f /var/lib/pgsql/9.5/backups/wal/%f && cp %p /var/lib/pgsql/9.5/backups/wal/%f'
+#archive_command = ''           # command to use to archive a logfile segment
+                                # placeholders: %p = path of file to archive
+                                #               %f = file name only
+                                # e.g. 'test ! -f /mnt/server/archivedir/%f && cp %p /mnt/server/archivedir/%f'
+
+- Restart postgres
+# systemctl start postgresql-9.5
+
+- Verify
+Go to the directory /var/lib/pgsql/9.5/backups/wal and find older serial number files backed up there.
+In the pg_xlog directory, newer serial number files will be present - which will be later backed up.
+
+===========================================
+BASE BACKUP - MANUAL METHOD
+===========================================
+
+- Mark the instance to be in backup mode (like tablespace/datafile begin backup in oracle)
+-bash-4.2$ psql
+psql (9.5.3)
+Type "help" for help.
+
+postgres=# SELECT pg_start_backup('label');  --> give this or any other label
+ pg_start_backup
+-----------------
+ 0/9000028
+(1 row)
+
+- Copy the contents of the 'data' directory to somewhere 
+NOTE: Use this folder and command or some other method or to-tape commands
+
+$ tar cvf /var/lib/pgsql/9.5/backups/base_backup_<label>.tar data
+
+- Mark the end of backup (like end backup in oracle)
+postgres=# SELECT pg_stop_backup();
+NOTICE:  pg_stop_backup complete, all required WAL segments have been archived
+ pg_stop_backup
+----------------
+ 0/90000C0
+(1 row)
+
+=============================
+EXAMPLE 1 - backup and pitr
+=============================
+Initialize a new DB
+Enable WAL
+Enable WAL archiving
+Create a table table1 - note down the time (time 1)
+Create a backup
+Create another table table2 - note down the time (time 2)
+Wait for 10 min - note down the time (time 3)
+Create yet another table table3 - note down the time (time 4)
+Insert some rows into talbes 1 and 2
+Crash the DB
+Restore the DB to time 3
+You should see only empty table 1 and table 2 - and should not see table3
+
+-------------------
+DETAILED STEPS 
+-------------------
+- Initialize a new DB
+$ initdb
+--> This creates the 'data' folder and basic structures in the folder
+
+$ pg_ctl start
+--> This starts the instance
+
+- Enable WAL & WAL archiving
+Create a backup directory /var/lib/pgsql/9.5/backups/data/wal (data represents the main instance folder)
+
+In data/postgresql.conf set the following:
+wal_level = archive
+archive_mode = on
+archive_command = 'test ! -f /var/lib/pgsql/9.5/backups/data/wal/%f && cp %p /var/lib/pgsql/9.5/backups/data/wal/%f'
+
+- Restart postgres 
+Either use pg_ctl stop/start or if it is only one instance, then systemctl as below
+
+# systemctl stop postgresql-9.5
+# systemctl start postgresql-9.5
+
+# ps -ef|grep postgr
+root     31726 31689  0 00:10 pts/1    00:00:00 sudo su - postgres
+root     32184 31726  0 00:11 pts/1    00:00:00 su - postgres
+postgres 32192 32184  0 00:11 pts/1    00:00:00 -bash
+postgres 32726     1  0 00:26 ?        00:00:00 /usr/pgsql-9.5/bin/postgres -D /var/lib/pgsql/9.5/data
+
+- Force a log-switch to verify if WAL archiving is running well
+$ psql
+postgres=# select pg_switch_xlog();
+ pg_switch_xlog
+----------------
+ 0/17BF720
+(1 row)
+
+Check if WAL is archived in /var/lib/pgsql/9.5/backups/data/wal:
+$ ls -l
+total 16384
+-rw-------. 1 postgres postgres 16777216 Nov 14 00:52 000000010000000000000001
+
+- Create a table table1 - note down the time (time 1)
+$ psql
+postgres=# create database db1;
+postgres=# \c db1
+
+db1=# create table table1 (c1 int, c2 int);
+CREATE TABLE
+
+$ date
+Mon Nov 14 00:55:26 CST 2016 (time 1)
+
+- Create a backup
+postgres=# SELECT pg_start_backup('20161114base1');
+
+$ tar cvf /var/lib/pgsql/9.5/backups/data/20161114base1.tar /var/lib/pgsql/9.5/data
+
+postgres=# SELECT pg_stop_backup();
+
+- Create another table table2 - note down the time (time 2)
+
+$ psql
+postgres=# \c db1
+db1=# create table table2 (c1 int, c2 int);
+CREATE TABLE
+
+$ date
+Mon Nov 14 01:01:18 CST 2016 (time 2)
+
+- Wait for 10 min - note down the time (time 3)
+$ date
+date
+Mon Nov 14 01:10:28 CST 2016 (time 3)
+
+- Create yet another table table3 
+$ psql
+postgres=# \c db1
+db1=# create table table3 (c1 int, c2 int);
+CREATE TABLE
+
+- Insert some rows into talbes 1 and 2 - note down the time (time 4)
+db1=# insert into table1 values (1,1);
+INSERT 0 1
+db1=# insert into table2 values (1,1);
+INSERT 0 1
+
+$ date
+Mon Nov 14 01:14:05 CST 2016 - time 4
+
+- Crash the DB
+$ pg_ctl stop
+$ mv /var/lib/pgsql/9.5/data /var/lib/pgsql/9.5/data-crash
+
+- Restore the DB to time 3
+
+-- Restore the base backup to original location
+$ cd /
+$ tar xvfp /var/lib/pgsql/9.5/backups/data/20161114base1.tar
+$ cd /var/lib/pgsql/9.5/data --> and verify
+
+-- Note down the archived wal's
+$ cd /var/lib/pgsql/9.5/backups/data/wal
+$ ls -l
+-rw-------. 1 postgres postgres 16777216 Nov 14 00:52 000000010000000000000001
+-rw-------. 1 postgres postgres 16777216 Nov 14 00:58 000000010000000000000002
+-rw-------. 1 postgres postgres 16777216 Nov 14 00:59 000000010000000000000003
+-rw-------. 1 postgres postgres      297 Nov 14 00:59 000000010000000000000003.00000028.backup
+-rw-------. 1 postgres postgres 16777216 Nov 14 01:14 000000010000000000000004
+
+-- Remove the restored wal's in pg_xlog
+$ cd /var/lib/pgsql/9.5/data/pg_xlog
+$ rm *
+
+-- Check if there are unarchived logs in the 'data-crash' directory
+$ cd /var/lib/pgsql/9.5/data-crash/pg_xlog
+$ ls -l
+-rw-------. 1 postgres postgres      297 Nov 14 00:59 000000010000000000000003.00000028.backup
+-rw-------. 1 postgres postgres 16777216 Nov 14 01:14 000000010000000000000004
+-rw-------. 1 postgres postgres 16777216 Nov 14 01:14 000000010000000000000005
+-rw-------. 1 postgres postgres 16777216 Nov 14 00:59 000000010000000000000006
+
+-- Copy the not yet archived logs from data-crash directory to the main pg_xlog directory
+$ cp /var/lib/pgsql/9.5/data-crash/pg_xlog/*[5-6] /var/lib/pgsql/9.5/data/pg_xlog
+
+-- Create a file recovery.conf in the 'data' directory with the following content:
+The recovery_target_time should be the 'time 3' timestamp (Mon Nov 14 01:10:28 CST 2016)
+
+restore_command = 'cp /var/lib/pgsql/9.5/backups/data/wal/%f %p'
+recovery_target_time = '2016-11-14 01:10:28'
+
+-- Start the instance
+$ pg_ctl start
+
+- You should see only empty table 1 and table 2 - and should not see table3
+
+$ psql
+psql (9.5.3)
+Type "help" for help.
+
+postgres=# \c db1
+You are now connected to database "db1" as user "postgres".
+db1=# \dt
+         List of relations
+ Schema |  Name  | Type  |  Owner
+--------+--------+-------+----------
+ public | table1 | table | postgres
+ public | table2 | table | postgres
+(2 rows)
+
+db1=# select count(*)  from table1;
+ count
+-------
+     0
+(1 row)
+
+db1=# select count(*) from table2;
+ count
+-------
+     0
+(1 row)
