@@ -1,0 +1,179 @@
+======================================
+    FILESYSTEM MANAGEMENT
+======================================
+
+==================================================================
+CREATE AND MOUNT FILESYSTEM - WITHOUT LOGICAL VOLUMES IN THE DISK
+==================================================================
+
+# fdisk /dev/sdb
+Welcome to fdisk (util-linux 2.23.2).
+
+Changes will remain in memory only, until you decide to write them.
+Be careful before using the write command.
+
+Device does not contain a recognized partition table
+Building a new DOS disklabel with disk identifier 0xbadb6ddb.
+
+Command (m for help): n
+Partition type:
+   p   primary (0 primary, 0 extended, 4 free)
+   e   extended
+Select (default p): p
+Partition number (1-4, default 1): 1
+First sector (2048-104857599, default 2048):
+Using default value 2048
+Last sector, +sectors or +size{K,M,G} (2048-104857599, default 104857599):
+Using default value 104857599
+Partition 1 of type Linux and of size 50 GiB is set
+
+Command (m for help): w
+The partition table has been altered!
+
+Calling ioctl() to re-read partition table.
+Syncing disks.
+
+* Verify:
+[root@linx0001 dev]# ls -l sd*
+brw-rw----. 1 root disk 8,  0 May  7 15:15 sda
+brw-rw----. 1 root disk 8,  1 May  7 15:15 sda1
+brw-rw----. 1 root disk 8,  2 May  7 15:15 sda2
+brw-rw----. 1 root disk 8, 16 Jun 22 01:07 sdb
+brw-rw----. 1 root disk 8, 17 Jun 22 01:07 sdb1
+
+# mkfs.ext4 /dev/sdb1
+mke2fs 1.42.9 (28-Dec-2013)
+Filesystem label=
+OS type: Linux
+Block size=4096 (log=2)
+Fragment size=4096 (log=2)
+Stride=0 blocks, Stripe width=0 blocks
+3276800 inodes, 13106944 blocks
+655347 blocks (5.00%) reserved for the super user
+First data block=0
+Maximum filesystem blocks=2162163712
+400 block groups
+32768 blocks per group, 32768 fragments per group
+8192 inodes per group
+Superblock backups stored on blocks:
+        32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632, 2654208,
+        4096000, 7962624, 11239424
+
+Allocating group tables: done
+Writing inode tables: done
+Creating journal (32768 blocks): done
+Writing superblocks and filesystem accounting information: done
+
+# mount -t ext4 /dev/sdb1 /fs1
+
+#  df -k | grep fs1
+/dev/sdb1                          51473888   53272  48782844   1% /fs1
+
+---------------------------------
+PERSIST THE MOUNT ACROSS REBOOTS
+---------------------------------
+http://askubuntu.com/questions/45607/how-to-mount-partition-permanently
+Make entry in /etc/fstab as follows:
+/dev/sdb1 /disk1 ext4 defaults 0 2
+
+If that does not work, find the UUID of the device:
+$ blkid
+
+And enter in fstab as follows:
+UUID=03ec5dd3-45c0-4f95-a363-61ff321a09ff /disk1 ext4 defaults  0 2
+
+
+-----------------------
+UNMOUNT AND REMOUNT (ON A DIFFERENT DIRECTORY)
+-----------------------
+NOTE: Files on the F/S are preserved upon umount and remount
+
+[root@linx0001 opt]# umount /fs1
+[root@linx0001 opt]# rmdir /fs1
+[root@linx0001 opt]# mkdir /disk1
+[root@linx0001 opt]# mount -t ext4 /dev/sdb1 /disk1
+[root@linx0001 opt]# df -k |grep disk1
+/dev/sdb1                          51473888   53272  48782844   1% /disk1
+[root@linx0001 opt]# cd /disk1
+[root@linx0001 disk1]# touch ddd
+[root@linx0001 disk1]# ls -l
+total 16
+-rw-r--r--. 1 root root     0 Jun 22 01:21 ddd
+drwx------. 2 root root 16384 Jun 22 01:13 lost+found
+[root@linx0001 disk1]# echo "something" > ddd2
+[root@linx0001 disk1]# cd
+[root@linx0001 ~]# umount /disk1
+[root@linx0001 ~]# mkdir /disk2
+[root@linx0001 ~]# mount -t ext4 /dev/sdb1 /disk2
+[root@linx0001 ~]# cd /disk2
+[root@linx0001 disk2]# ls -l
+total 20
+-rw-r--r--. 1 root root     0 Jun 22 01:21 ddd
+-rw-r--r--. 1 root root    10 Jun 22 01:21 ddd2
+drwx------. 2 root root 16384 Jun 22 01:13 lost+found
+
+
+==========================================================
+EXTENDING AN F/S WITH A NEW DISK
+==========================================================
+TBD
+Not tried yet - can be difficult to remove that disk from that f/s later without negative effects
+
+==========================================================
+LOGICAL VOLUME MANAGEMENT - LVM
+==========================================================
+# lvm
+
+lvm> pvdisplay
+  --- Physical volume ---
+  PV Name               /dev/sda2
+  VG Name               rootvg
+  PV Size               59.51 GiB / not usable 3.00 MiB
+  Allocatable           yes
+  PE Size               4.00 MiB
+  Total PE              15234
+  Free PE               3436
+  Allocated PE          11798
+  PV UUID               pN9llD-xHo4-jsRn-L3tC-pUhH-eeKi-CcR4Oc
+
+lvm> lvdisplay
+  --- Logical volume ---
+  LV Path                /dev/rootvg/root
+  LV Name                root
+  VG Name                rootvg
+  LV UUID                fSGL2Y-1aXW-3bdz-erU2-kXIv-g0dy-okz3fZ
+  LV Write Access        read/write
+  LV Creation host, time localhost, 2015-03-17 10:11:16 -0500
+  LV Status              available
+  # open                 1
+  LV Size                9.77 GiB
+  Current LE             2500
+  Segments               1
+  Allocation             inherit
+  Read ahead sectors     auto
+  - currently set to     8192
+  Block device           253:1
+
+  --- Logical volume ---
+  LV Path                /dev/rootvg/tmp
+  LV Name                tmp
+  VG Name                rootvg
+  LV UUID                PYefZu-O0RP-vxs6-XydQ-wccs-4prd-rewIvg
+  LV Write Access        read/write
+  LV Creation host, time localhost, 2015-03-17 10:11:17 -0500
+  LV Status              available
+  # open                 1
+  LV Size                4.88 GiB
+  Current LE             1250
+  Segments               1
+  Allocation             inherit
+  Read ahead sectors     auto
+  - currently set to     8192
+  Block device           253:2
+
+  --- Logical volume ---
+  LV Path                /dev/rootvg/apps
+...
+...
+...
+and so on ...
