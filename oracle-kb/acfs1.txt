@@ -1,0 +1,268 @@
+3 sloc)  10.8 KB
+ACFS FILESYSTEM IN ORACLE - AS GENERAL PURPOSE CLUSTER MOUNTED SHARED FILESYSTEM
+
+https://oracle-base.com/articles/11g/acfs-11gr2
+http://oracle-info.com/2013/01/17/asm-acfs-filesystem-practiced-and-explained/
+https://oracle-base.com/articles/10g/asm-using-asmlib-and-raw-devices
+
+Intro to ACFS
+https://docs.oracle.com/cd/E11882_01/server.112/e18951/asmfilesystem.htm#OSTMG30000
+
+Oracle Dynamic Volume Manager- ODVM
+http://docs.oracle.com/cd/E11882_01/server.112/e18951/asmfilesystem.htm#OSTMG32000
+
+Tutorial
+Quick one - http://www.oracle.com/webfolder/technetwork/tutorials/obe/db/11g/r2/prod/storage/acfs/acfs.htm
+ACFS install - driver install with acfsroot - http://spbutterworth.com/2014/10/22/oracles-acfs-clustered-file-system-installation/
+Good one - includes driver-check- http://www.hhutzler.de/blog/acfs-install-on-top-of-grid-12-1/
+
+Diskgroup management:
+http://docs.oracle.com/cd/E11882_01/server.112/e18951/asmdiskgrps.htm#CHDFBFJD
+
+Troubleshoot - missing modules:
+http://oracleinaction.com/ora-15477-communicate-volume-driver/
+  $ lsmod |grep oracle
+  oracleacfs           3332147  1
+  oracleadvm            512629  6
+  oracleoks             510437  2 oracleacfs,oracleadvm
+  oracleasm              54297  1
+  
+  Also see: http://www.idevelopment.info/data/Oracle/DBA_tips/Automatic_Storage_Management/ASM_50.shtml
+            http://spbutterworth.com/2014/10/22/oracles-acfs-clustered-file-system-installation/
+
+http://nyoug.org/wp-content/uploads/2014/12/Anderson_ACFS_Flex.pdf
+ACFS
+• ASM Clustered file system
+• In many ways, a file system like any other (EXT3)
+• POSIX and Windows compliant
+• Has some nice features
+– Clusterable (obviously)
+– Snapshots
+– Replication
+– Encryption
+
+● ACFS is free
+– Support has strings
+– Must use with “another” Oracle
+product
+• Requires Grid Infrastructure
+– (also free)
+• See “Cloud FS” in the Oracle Store 
+
+When Is ACFS Useful?
+• Database related files
+– The Oracle home
+– bfile LOBs
+– Data Pump dumps, external tables
+• File systems used by applications
+– Mail servers
+– Apache web listeners
+– MySQL databases
+• Anything that needs replication to a DR site
+• Files where encryption is needed
+
+=========================================================================================
+                  READ THESE FOR SURE
+=========================================================================================
+
+https://docs.oracle.com/cd/E11882_01/server.112/e18951/asmfilesystem.htm#OSTMG34100:
+Oracle Clusterware resources support Oracle ACFS, Oracle Kernel Services Driver (OKS), Oracle ADVM startup, 
+the Oracle ACFS cluster mount registry, and Oracle ACFS single file system startup, shutdown, and steady-state actions.
+
+The following list summarizes Oracle ACFS resource-based management.
+
+  $ lsmod |grep oracle
+  oracleacfs           3332147  1
+  oracleadvm            512629  6
+  oracleoks             510437  2 oracleacfs,oracleadvm
+  oracleasm              54297  1
+  (NOTE - oracleasm usually installs alright)
+
+(They are installed in the root action after grid software install as per 
+https://docs.oracle.com/cd/E11882_01/server.112/e18951/asmfs_extra.htm#OSTMG35200)
+
+If not installed, then run as root (per http://oracleinaction.com/ora-15477-communicate-volume-driver/)
+$ acfsroot install -v
+
+The Oracle ACFS, Oracle Kernel Services (OKS), and Oracle ADVM drivers are dynamically loaded when the 
+Oracle ASM instance is started.
+
+Oracle ACFS
+This driver processes all Oracle ACFS file and directory operations.
+
+Oracle ADVM
+This driver provides block device services for Oracle ASM volume files that are used by file systems for creating file systems.
+
+Oracle Kernel Services Driver (OKS)
+This driver provides portable driver services for memory allocation, synchronization primitives, and distributed locking services to Oracle ACFS and Oracle ADVM.
+
+=========================================================================================
+                        ACFS CONFIGURATION USING COMMAND LINE
+=========================================================================================
+http://brenotozo.blogspot.in/2014/04/acfs-12g-automatic-storage-management.html
+https://oracle-base.com/articles/11g/acfs-11gr2
+
+>Create mount points on the file system of each node for the new volume.
+
+$ mkdir -p /u01/app/grid/acfs/vol/acfsv01
+$ chown grid:oradba /u01/app/grid/acfs/vol/acfsv01
+
+>As the "grid" user, switch to the ASM environment on node 1 of the RAC, then connect to the ASM instance using SQL*Plus.
+
+[oracle@rac1 ~]$ . oraenv
+ORACLE_SID = [RAC1] ? +ASM1
+
+>Create a diskgroup
+
+>>Find candidate disks
+
+$ asmcmd
+ASMCMD> lsdsk --candidate -k
+
+Total_MB  Free_MB   OS_MB  Name    Failgroup  Failgroup_Type  Library                                               Label   UDID  Product  Redund   Path
+       0        0  262138                     REGULAR         ASM Library - Generic Linux, version 2.0.4 (KABI_V2)  ASM007                 UNKNOWN  ORCL:ASM007
+
+Or,
+$ sqlplus / as sysasm
+SQL> SELECT GROUP_NUMBER, NAME, PATH, MOUNT_STATUS FROM V$ASM_DISK where group_number=0;
+
+>>Create the diskgroup
+
+$ sqlplus / as sysasm
+SQL> CREATE DISKGROUP ACFSDG EXTERNAL REDUNDANCY DISK 'ORCL:ASM007' attribute 'compatible.asm' = '12.1.0.2.0';
+
+>>Verify
+
+ASMCMD> lsdg
+State    Type    Rebal  Sector  Block       AU  Total_MB  Free_MB  Req_mir_free_MB  Usable_file_MB  Offline_disks  Voting_files  Name
+MOUNTED  EXTERN  N         512   4096  1048576    262138   251841                0          251841              0             N  ACFSDG/
+
+>Create the ACFS volume
+
+>> USING SQLPLUS 
+$ sqlplus / as sysasm
+SQL> ALTER DISKGROUP ACFSDG ADD VOLUME acfs01 SIZE 10G;
+
+(NOTE - To drop the volume - ALTER DISKGROUP ACFSDG drop volume acfs01;)
+
+>> ALTERNATIVE, use acmca to cretae the volume
+$ asmca -silent -createVolume -volumename acfs01 -volumeDiskgroup ACFSDG -volumesizeGB 10
+
+> Verify
+$ sqlplus / as sysasm
+SQL> select a.* from v$asm_volume a, v$asm_diskgroup b where b.name='ACFSDG' and a.group_number = b.group_number;
+
+SQL> select volume_name, volume_device from v$asm_volume;
+
+VOLUME_NAME                VOLUME_DEVICE
+------------------------------ ------------------------------
+ACFS01                         /dev/asm/acfs01-272
+ACFS02                         /dev/asm/acfs02-272
+
+>Create ACFS
+$ asmca -silent -createACFS -acfsVolumeDevice /dev/asm/acfs01-272 -acfsMountPoint /u01/app/grid/acfs/vol/acfs01
+--> this ran successfully, but did not create the 'acfs01' under /u01/app/grid/acfs/vol.
+ASM Cluster File System created on /dev/asm/acfs01-272 successfully. Run the generated ACFS registration script 
+/u01/app/grid/cfgtoollogs/asmca/scripts/acfs_script.sh as privileged user to register the ACFS with 
+Grid Infrastructure and to mount the ACFS. 
+The ACFS registration script needs to be run only on this node: <node where you ran the command>.
+
+      If you get an error "Selected ASM volume is disabled. ASM volume should be enabled to create ASM Cluster File System" 
+      then fix it with the following:
+      
+      $ sqlplus / as sysasm
+      SQL>  alter diskgroup acfsdg enable volume acfs01;
+
+>>As root - Run the shell that is created to register this in clusterware
+/u01/app/grid/cfgtoollogs/asmca/scripts/acfs_script.sh
+
+>>As root - Mount the volume to a mount-point
+/bin/mount -t acfs /dev/asm/acfs01-272 /u01/app/grid/acfs/vol/acfs01
+
+>>As root - change permissions of the mount-point
+$ cd /u01/app/grid/acfs/vol
+$ chown grid:oradba acfs01  OR chown grid:oinstall acfs01
+
+>>Verify
+
+As oracle and grid users that belong to 'oradba' or 'oinstall' check if you can touch/create/copy a file in this directory.
+
+$ df -k |grep acf
+/dev/asm/acfs01-272     10485760       98896   10386864   1% /u01/app/grid/acfs/vol/acfs01
+
+>Verify Cluster resources
+$ crsctl stat res -t
+--------------------------------------------------------------------------------
+Name           Target  State        Server                   State details
+--------------------------------------------------------------------------------
+Local Resources
+--------------------------------------------------------------------------------
+ora.ACFSDG.ACFS01.advm
+               ONLINE  ONLINE       node2-hostname                Volume device /dev/a
+                                                             sm/acfs01-272 is onl
+                                                             ine,STABLE
+               ONLINE  ONLINE       node2-hostname     Volume device /dev/a
+                                                             sm/acfs01-272 is onl
+                                                             ine,STABLE
+ora.ACFSDG.ACFS02.advm
+               ONLINE  ONLINE       node2-hostname                STABLE
+               OFFLINE OFFLINE      node2-hostname     Volume device /dev/a
+                                                             sm/acfs02-272 is off
+                                                             line,STABLE
+ora.acfsdg.acfs01.acfs
+               ONLINE  ONLINE       node2-hostname                mounted on /u01/app/
+                                                             grid/acfs/vol/acfs01
+                                                             ,STABLE
+               ONLINE  ONLINE       node2-hostnamemounted on /u01/app/
+                                                             grid/acfs/vol/acfs01
+                                                             ,STABLE
+
+
+ASMCMD> volinfo -G acfsdg acfs01
+Diskgroup Name: ACFSDG
+
+         Volume Name: ACFS01
+         Volume Device: /dev/asm/acfs01-272
+         State: ENABLED
+         Size (MB): 10240
+         Resize Unit (MB): 64
+         Redundancy: UNPROT
+         Stripe Columns: 8
+         Stripe Width (K): 1024
+         Usage: ACFS
+         Mountpath: /u01/app/grid/acfs/vol/acfs01
+
+ASMCMD> volstat -G acfsdg
+
+DISKGROUP NUMBER / NAME:  5 / ACFSDG
+---------------------------------------
+  VOLUME_NAME
+     READS           BYTES_READ      READ_TIME       READ_ERRS
+     WRITES          BYTES_WRITTEN   WRITE_TIME      WRITE_ERRS
+  -------------------------------------------------------------
+  ACFS01
+     371             228352          1440            0
+     58              108544          510.999         0
+  ACFS02
+     0               0               0               0
+     0               0               0               0
+
+>Resize - Increase (root not required)
+
+Here, give the increment with a '+' symbol.
+
+$ /sbin/acfsutil size +10M -d /dev/asm/acfs01-272 /u01/app/grid/acfs/vol/acfs01
+acfsutil size: new file system size: 10804527104 (10304MB)
+
+$ /sbin/acfsutil size +10M -d /dev/asm/acfs01-272 /u01/app/grid/acfs/vol/acfs01
+acfsutil size: new file system size: 10871635968 (10368MB)
+
+$ /sbin/acfsutil size +50M -d /dev/asm/acfs01-272 /u01/app/grid/acfs/vol/acfs01
+acfsutil size: new file system size: 10938744832 (10432MB)
+
+>Resize - Decrease (root not required)
+
+Here, give the new size we need, and no symbol.
+
+$ /sbin/acfsutil size 10G -d /dev/asm/acfs01-272 /u01/app/grid/acfs/vol/acfs01
+acfsutil size: new file system size: 10737418240 (10240MB)
