@@ -1,0 +1,171 @@
+=================================================
+      INSERT INTO SELECT * FROM
+=================================================
+
+http://stackoverflow.com/questions/6083132/postgresql-insert-into-select --> local 'remote' connection
+http://stackoverflow.com/questions/12297402/postgresql-dblink-in-stored-functions-from-local-to-remote-database
+http://stackoverflow.com/questions/3862648/how-to-use-install-dblink-in-postgresql --> with user/pass for real remote DB
+
+DBLINK FUNCTION:
+https://www.postgresql.org/docs/9.5/static/contrib-dblink-function.html
+http://stackoverflow.com/questions/29516922/postgressql-dblink-no-function-matches-the-given-name-and-argument-types
+https://www.postgresql.org/message-id/f642fc4f-d81f-48a0-ae6f-30a210e42f4c@11g2000prv.googlegroups.com
+
+
+----------------------------------
+CREATE THE EXTENSION 'DBLINK'
+----------------------------------
+$ psql <dbname>
+
+postgres=# create extension dblink;
+CREATE EXTENSION
+
+- Verify
+postgres=# \dx
+                                 List of installed extensions
+  Name   | Version |   Schema   |                         Description
+---------+---------+------------+--------------------------------------------------------------
+ dblink  | 1.1     | public     | connect to other PostgreSQL databases from within a database
+ plpgsql | 1.0     | pg_catalog | PL/pgSQL procedural language
+ 
+ postgres=# SELECT oid::regprocedure FROM pg_proc WHERE proname = 'dblink';
+ 
+            oid
+---------------------------
+ dblink(text)
+ dblink(text,boolean)
+ dblink(text,text)
+ dblink(text,text,boolean)
+(4 rows)
+
+
+
+----------------------------------
+THE TABLES IN DATABASE APPDB
+----------------------------------
+appdb=# \dt
+          List of relations
+ Schema |   Name    | Type  | Owner
+--------+-----------+-------+--------
+ public | city      | table | appdba
+ public | dept      | table | appdba
+ public | emp       | table | appdba
+ public | salary    | table | appdba
+ public | sales     | table | appdba
+ public | sales_feb | table | appdba
+ public | sales_jan | table | appdba
+(7 rows)
+
+appdb=# \dt app*.*
+          List of relations
+    Schema    | Name | Type  | Owner
+--------------+------+-------+--------
+ appdbschema1 | emp  | table | appdba
+ appdbschema2 | emp  | table | appdba
+(2 rows)
+
+----------------------------------
+THE TABLES IN DATABASE APPDW
+----------------------------------
+appdw=# \dt
+        List of relations
+ Schema | Name  | Type  | Owner
+--------+-------+-------+--------
+ public | empdw | table | appdba
+
+----------------------------------
+TABLE DESCRIPTION
+----------------------------------
+
+EMP and EMPDW tables:
+
+ Column |         Type          | Modifiers
+--------+-----------------------+-----------
+ id     | integer               |
+ name   | character varying(10) |
+
+----------------------------------
+STEPS FROM THE WEBSITE
+----------------------------------
+http://stackoverflow.com/questions/6083132/postgresql-insert-into-select
+
+psql dbtest
+CREATE TABLE tblB (id serial, time integer);
+INSERT INTO tblB (time) VALUES (5000), (2000);
+
+psql postgres
+CREATE TABLE tblA (id serial, time integer);
+
+INSERT INTO tblA
+    SELECT id, time 
+    FROM dblink('dbname=dbtest', 'SELECT id, time FROM tblB')
+    AS t(id integer, time integer)
+    WHERE time > 1000;
+
+TABLE tblA;
+ id | time 
+----+------
+  1 | 5000
+  2 | 2000
+(2 rows)
+
+----------------------------------
+THE TRIAL - AS POSTGRES USER
+----------------------------------
+TBD
+- Logon to 'appdw' database (to insert into its table FROM a remote table from appdb database)
+
+$ psql appdw
+appdw=# --> logged on as 'postgres' superuser now
+
+- Run this insert statement:
+
+--> try with and without ::text
+INSERT INTO empdw
+    SELECT id, name 
+    FROM public.dblink('dbname=appdb'::text, 'SELECT id, name FROM emp'::text)
+    AS t(id integer, name varchar);
+    
+appdw=# INSERT INTO empdw
+    SELECT id, name 
+    FROM public.dblink('dbname=appdb', 'SELECT id, name FROM emp')
+    AS t(id integer, name varchar);
+    
+appdw=# select * from empdw;
+ id | name
+----+------
+  1 | 1
+  1 | 1
+(2 rows)
+
+----------------------------------
+THE TRIAL - AS APPUSER USER (NON-SUPERUSER)
+----------------------------------
+TBD
+- Logon to 'appdw' database as appuser user (to insert into its table FROM a remote table from appdb database)
+
+$ psql -U appuser -d appdw -h hostname -W
+
+appdw=> --> logged on as 'appuser' non-superuser now
+
+- Run this insert statement:
+
+--> try with and without ::text
+INSERT INTO empdw
+    SELECT id, name 
+    FROM public.dblink('host=the_allowed_hostname dbname=appdb user=appuser password=appuser'::text, 'SELECT id, name FROM emp'::text)
+    AS t(id integer, name varchar);
+    
+INSERT INTO empdw
+    SELECT id, name 
+    FROM public.dblink('host=the_allowed_hostname dbname=appdb user=appuser password=appuser', 'SELECT id, name FROM emp')
+    AS t(id integer, name varchar);
+    
+appdw=> select * from empdw;
+ id | name
+----+------
+  1 | 1
+  1 | 1
+  1 | 1
+  1 | 1
+(4 rows)
