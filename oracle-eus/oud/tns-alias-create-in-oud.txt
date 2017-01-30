@@ -1,0 +1,83 @@
+==================================
+        TNS-ALIAS IN OUD
+==================================
+
+SERVICE OF A DB
+SERVICE OF A STANDBY DB (only standby side)
+SERVICE OF PRIMARY and STANDBY DB COMBINED
+SERVICE OF TWO DISPARATE DB's
+
+==================================
+SERVICE OF A DB
+==================================
+
+-----------------------------------
+CONFIGURE USING ODSM
+-----------------------------------
+NOTE: If you have a database already registered, it will also be an alias to itself in OUD.  You can do a create-like using it.
+
+Navigate to 	cn=DB_UNIQUE_NAME,cn=OracleContext,dc=example,dc=com
+Click 'Create Like' button on left hand vertical pane top
+Object class screen (LHS):
+- orclApplicationEntity
+- orclDBServer_92
+- orclService
+- orclDBServer
+- top
+Click Next
+
+Mandatory Attributes screen:
+cn=DBNAME_LDAP_ALIAS1 (or other convenient name like APP1_PROD)
+Click Next
+
+Optional Attributes screen:
+Clear everything except orclnetdescstring
+Add the correct string for orclnetdescstring like:
+  (DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=clustername-scan)(PORT=1522)))(CONNECT_DATA=(SERVICE_NAME=SERVICE_NAME_TO_USE)))
+Delete the 'userpassword' entry if present
+Click Next
+
+RDN Attribute(s) Selection screen:
+Choose just 'cn' which is the CN chosen in "Mandatory Attributes" screen above.
+If that does not define this alias uniquely, change the CN name or choose more items here 
+ (and dont clear those items in the optional attributes screen)
+Click Next
+
+Summary screen:
+Create New Entry : Summary
+Parent Entry	cn=OracleContext,dc=example,dc=com
+Distinguished Name	cn=DBANAME_LDAP_ALIAS1,cn=OracleContext,dc=example,dc=com
+Mandatory Attributes
+cn	
+Value
+DBNAME_LDAP_ALIAS2
+objectclass	
+Value
+orclApplicationEntity
+orclDBServer_92
+orclService
+orclDBServer
+top
+
+Optional Attributes
+orclcommonrpwdattribute	
+orcldbglobalname	
+orclnetdescname	
+orclnetdescstring	(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=clustername-scan)(PORT=1522)))(CONNECT_DATA=(SERVICE_NAME=DBNAME_LDAP)))
+
+Click Finish
+
+This will create an alias Distinguished Name	cn=DBNAME_LDAP_ALIAS2,cn=OracleContext,dc=example,dc=com
+
+- VERIFY
+On the DB server, with LDAP as an option in sqlnet.ora, do a tnsping and sqlplus.
+
+$ tnsping DBNAME_LDAP_ALIAS2
+OK
+
+$ sqlplus user1/oracle@DBNAME_LDAP_ALIAS2
+SQL> show user
+USER is "OUD_GLOBAL_IDENT_SCHEMA_USER"
+
+
+
