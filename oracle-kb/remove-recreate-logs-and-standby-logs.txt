@@ -1,0 +1,96 @@
+https://dbakalyan.wordpress.com/2013/04/29/renamingdropping-and-recreating-online-redo-logs-and-standby-logfiles/
+
+Renaming/Dropping and recreating online redo logs and Standby logfiles
+
+Posted by dbakalyan on April 29, 2013
+
+We are in process of testing Dataguard with Physical standby.
+After we created Primary and Standby DB’s we realize what we haven’t put file names as per our standard.
+So I got the task to rename both, online redo logs and standby logs. This what I did :
+
+1. Following is the script to identify all log files we have
+SELECT GROUP#, BYTES, ‘ONLINE’ AS TYPE FROM V$LOG
+UNION
+SELECT GROUP#, BYTES, ‘STANDBY’ AS TYPE FROM V$STANDBY_LOG
+ORDER BY 1;
+
+2. Make sure protection mode is MAXPERFORMANCE:
+SELECT PROTECTION_MODE, PROTECTION_LEVEL, DATABASE_ROLE FROM V$DATABASE
+
+First we start working on Standby database
+
+3. STOP redo apply
+ALTER DATABASE RECOVER MANAGED STANDBY DATABASE CANCEL;
+
+4. Set STANDBY_FILE_MANAGEMENT to MANUAL.
+ALTER SYSTEM SET STANDBY_FILE_MANAGEMENT=’MANUAL’;
+
+5. Gather current status of all member.
+SQL> select member from v$logfile;
+
+6. Prepare command to drop standby redo logfiles.
+select ‘alter database drop standby logfile group ‘ group# ‘;’ from v$standby_log;
+
+7. Prepare command to drop online redo logfiles.
+select ‘alter database drop logfile group ‘ group# ‘;’ from v$log;
+
+8. Check the status of online redolog group.
+SELECT GROUP#, STATUS FROM V$LOG;
+
+GROUP# STATUS
+———- —————-
+1 CLEARING_CURRENT
+3 CLEARING
+2 CLEARING
+We can not drop CLEARING_CURRENT status logs, for that you have sync with Primary
+
+(Easy way is, leave them for a while and move ahead with droping Primary Database redo logs, and come back to Standby and you will be able to do it).
+
+9. Clear the log group first before drop.
+ALTER DATABASE CLEAR LOGFILE GROUP 1;
+
+10. Now drop online redo log.
+alter database drop logfile group 1;
+Follow the same process for rest of the groups.
+
+11. Now drop standby redo logs, leave the one which refuses to drop.
+alter database drop standby logfile group 5;
+
+12. Now create new online redo logs.
+ALTER DATABASE ADD LOGFILE GROUP 1 ‘/path/redo_01.dbf’ SIZE 10M;
+
+13. Now we will crate standby redo logs.
+ALTER DATABASE ADD STANDBY LOGFILE ‘/path/redo_std_by_05.dbf’ SIZE 10M REUSE;
+
+14. Again check the current status of member.
+select member from v$logfile;
+
+Now you will see latest updated names for all files.
+The one which left we can do them after We are done with Primary DB.
+
+Now on Primary Database:
+
+15. Follow step 5,6,7 to know current status and prepare commands.
+
+16. Drop Standby redo logs and recreate them
+alter database drop standby logfile group 5;
+ALTER DATABASE ADD STANDBY LOGFILE ‘/path/redo_std_by_05.dbf’ SIZE 10M REUSE;
+
+17. Drop online Redo logs, recrate, switch and drop next inactive one.
+alter database drop logfile group 1;
+ALTER DATABASE ADD LOGFILE GROUP 1 ‘/path/redo_01.dbf’ SIZE 10M;
+ALTER SYSTEM SWITCH LOGFILE;
+SELECT GROUP#, STATUS FROM V$LOG;
+18. Check the new status.
+select member from v$logfile;
+
+Now come back to Standby Database back and drop recreate left over online and standby redo logs.
+
+19. Set STANDBY_FILE_MANAGEMENT to AUTO.
+ALTER SYSTEM SET STANDBY_FILE_MANAGEMENT=’AUTO’;
+
+20. start redo apply.
+ALTER DATABASE RECOVER MANAGED STANDBY DATABASE DISCONNECT FROM SESSION;
+
+21. Check the status of applied log again.
+select sequence#, applied from v$archived_log;
