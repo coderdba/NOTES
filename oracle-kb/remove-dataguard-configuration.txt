@@ -1,0 +1,137 @@
+http://www.oracledbasupport.co.uk/how-to-safely-remove-a-data-guard-broker-configuration-under-racnon-rac-setup-2/
+
+How to Safely Remove a Data Guard Broker Configuration under RAC/NON-RAC setup
+Posted By Sagar Patil
+1) Remove the Data Guard Broker Configuration
+
+Using the Commandline DGMGRL
+SQL> show parameter dg_broker;
+NAME                                 TYPE        VALUE
+———————————— ———– ——————————
+dg_broker_config_file1               string      /mnt/data/oradata/PROD/dr1PROD.dat
+dg_broker_config_file2               string      /mnt/data/oradata/PROD/dr2PROD.dat
+dg_broker_start                      boolean     TRUE
+
+
+DGMGRL> connect sys/sysgsadm
+Connected.
+DGMGRL> show configuration;
+Configuration – dataguard
+Protection Mode: MaxPerformance
+Databases:
+PROD  – Primary database
+PROD – Physical standby database
+Fast-Start Failover: DISABLED
+Configuration Status:
+SUCCESS
+
+DGMGRL> remove configuration;
+Removed configuration
+DGMGRL> show configuration;
+ORA-16532: Data Guard broker configuration does not exist
+Configuration details cannot be determined by DGMGRL
+
+2) On the primary database set dg_broker_start=false:
+
+SQL> show parameter dg_broker
+
+NAME                                 TYPE        VALUE
+———————————— ———– ——————————
+dg_broker_config_file1               string      ?/dbs/dr1@.dat
+dg_broker_config_file2               string      ?/dbs/dr2@.dat
+dg_broker_start                      boolean     TRUE
+
+SQL> alter system set dg_broker_start=false scope=both;
+
+System altered.
+
+SQL> show parameter dg_broker;
+NAME                                 TYPE        VALUE
+———————————— ———– ——————————
+dg_broker_config_file1               string      /mnt/data/oradata/PROD/dr1PROD.dat
+dg_broker_config_file2               string      /mnt/data/oradata/PROD/dr2PROD.dat
+dg_broker_start                      boolean     TRUE
+
+3) On the primary disable any archive destinations that are archiving to the standby:
+
+SQL> column A format 999;
+column B format a40;
+column C format a10;
+column C word_wrapped;
+column D word_wrapped;
+select dest_id A,destination B,status C
+from v$archive_dest
+where target=’STANDBY’;
+A B                                        C
+—- —————————————- ———-
+2 dg_PROD                                VALID
+
+Primary> show parameter log_archive_dest_state_2;
+NAME                                 TYPE        VALUE
+———————————— ———– ——————————
+log_archive_dest_state_2             string      ENABLE
+
+Primary> alter system set log_archive_dest_state_2=defer scope=both;
+System altered.
+
+Primary> show parameter log_archive_dest_state_2;
+NAME                                 TYPE        VALUE
+———————————— ———– ——————————
+log_archive_dest_state_2             string      DEFER
+
+ 
+
+4) on the standby set the dg_broker_start parameter to false:
+
+SQL> show parameter dg_broker;
+NAME                                 TYPE        VALUE
+———————————— ———– ——————————
+dg_broker_config_file1               string      /mnt/data/oradata/PROD/dr1PROD.dat
+dg_broker_config_file2               string      /mnt/data/oradata/PROD/dr2PROD.dat
+dg_broker_start                      boolean     TRUE
+
+SQL> alter system set dg_broker_start=false scope=both;
+System altered.
+
+5) On both system remove metadata files
+
+oracle@hasunclu1:/u03/oracle/9.2.0/dbs> rm /mnt/data/oradata/PROD/dr1PROD.dat
+oracle@hasunclu1:/u03/oracle/9.2.0/dbs> rm /mnt/data/oradata/PROD/dr2PROD.dat
+
+If required you can activate standby database as below :
+
+Standby> Shutdown abort;
+
+Standby> startup;
+ORACLE instance started.
+Total System Global Area 9152860160 bytes
+Fixed Size                  2234056 bytes
+Variable Size            6610225464 bytes
+Database Buffers         2516582400 bytes
+Redo Buffers               23818240 bytes
+Database mounted.
+ORA-10456: cannot open standby database; media recovery session may be in progress
+
+SQL> alter database activate standby database;
+Database altered.
+
+SQL> startup force;
+ORACLE instance started.
+Total System Global Area 9152860160 bytes
+Fixed Size                  2234056 bytes
+Variable Size            6610225464 bytes
+Database Buffers         2516582400 bytes
+Redo Buffers               23818240 bytes
+Database mounted.
+Database opened.
+
+[oracle@Node2 PROD]$ srvctl stop database -d PROD
+[oracle@Node2 PROD]$ srvctl start database -d PROD
+
+[oracle@Node2 PROD]$ srvctl status instance -d PROD -n Node1
+Instance PROD1 is running on node Node1
+[oracle@Node2 PROD]$ srvctl status instance -d PROD -n Node2
+Instance PROD2 is running on node Node2
+
+The database won’t be opened by srvctl commands as it’s configured for STANDBY mode under Datauard setup.
+Please change service mode using srvctl from MOUNT TO OPEN.
