@@ -1,6 +1,41 @@
 --------------
 LDAP COMMANDS
 --------------
+- List all root-users
+
+-- If running directly on OUD server
+ldapsearch -p 4444 -b "cn=root DNs,cn=config" -D "cn=directory manager" -w password --useSSL "objectclass=*" dn 
+
+-- If running remotely
+
+- List password policy of a root user - run as a root use like root2 or other or directory manager itself
+NOTE: Run this directly on the OUD server
+ldapsearch -p 4444 -b "cn=root DNs,cn=config" -D "cn=root2" -w password  --useSSL  '(cn=directory manager)' ds-pwp-password-policy-dn
+ldapsearch -p 4444 -b "cn=root DNs,cn=config" -D "cn=directory manager" -w password  --useSSL  '(cn=root2)' ds-pwp-password-policy-dn
+
+Output will be similar to:
+dn: cn=Directory Manager,cn=Root DNs,cn=config
+ds-pwp-password-policy-dn: cn=Root Password Policy,cn=Password Policies,cn=config
+
+- List password policy of ALL root users
+NOTE: Run this directly on the OUD server
+$ ldapsearch -p 4444 -b "cn=root DNs,cn=config" -D "cn=directory manager" -w oracle  --useSSL  '(cn=*)' ds-pwp-password-policy-dn
+The server is using the following certificate:
+    Subject DN:  CN=oud-hostname, O=Administration Connector Self-Signed Certificate
+    Issuer DN:  CN=oud-hostname, O=Administration Connector Self-Signed Certificate
+    Validity:  Wed Dec 21 03:42:01 CST 2016 through Fri Dec 21 03:42:01 CST 2018
+Do you wish to trust this certificate and continue connecting to the server?
+Please enter "yes" or "no":yes
+dn: cn=Root DNs,cn=config
+
+dn: cn=root1,cn=Root DNs,cn=config
+ds-pwp-password-policy-dn: cn=Root Password Policy,cn=Password Policies,cn=config
+
+dn: cn=root2,cn=Root DNs,cn=config
+ds-pwp-password-policy-dn: cn=Root Password Policy,cn=Password Policies,cn=config
+
+dn: cn=Directory Manager,cn=Root DNs,cn=config
+ds-pwp-password-policy-dn: cn=Root Password Policy,cn=Password Policies,cn=config
 
 - Display userpassword of a user
 --> this is from troubleshooting for LDAP error ORA-28274: No ORACLE password attribute corresponding to user nickname exists
