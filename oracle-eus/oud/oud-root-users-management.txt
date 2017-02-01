@@ -1,0 +1,62 @@
+============================================
+      ROOT USER MANAGEMENT IN OUD
+============================================
+
+--------------------------------------------------------
+How to set a specific password-policy for a 'root user' 
+--------------------------------------------------------
+- Stop OUD 
+- edit config.ldif : 
+NOTE: Root users will have cn=Root DNs,cn=config as their first two levels
+NOTE: In the file - change ds-pwp-password-policy-dn attribute with custom password policy
+
+dn: cn=Directory Manager,cn=Root DNs,cn=config 
+objectClass: person 
+objectClass: organizationalPerson 
+objectClass: inetOrgPerson 
+objectClass: top 
+objectClass: ds-cfg-root-dn-user 
+userpassword: {SSHA512}KtQ68evT8D/HcT8ltg0BeAzeU5PlTwp0Ttq1fiY2Va6GxV25cCm+ezNlnBcfDH/b/Bo2XuJFQa8aYRJgFEwIaHcnmt6nV4vF 
+givenName: Directory 
+cn: Directory Manager 
+ds-cfg-alternate-bind-dn: cn=Directory Manager 
+sn: Manager 
+ds-pwp-password-policy-dn: cn=Root Password Policy,cn=Password Policies,cn=config 
+ds-rlim-time-limit: 0 
+ds-rlim-lookthrough-limit: 0 
+ds-rlim-idle-time-limit: 0 
+ds-rlim-size-limit: 0 
+
+
+- Change ds-pwp-password-policy-dn attribute with custom password policy 
+- Start OUD 
+
+----------------------------------------------------------------------------------------------------------------
+How to list the password policy that is assigned to a 'root user' 
+----------------------------------------------------------------------------------------------------------------
+NOTE: The following commands work only for non-root-users
+      For root users, see cmd-running-log.txt (its extract below)
+
+$ ldapsearch -h localhost -p 1389 -D "cn=Directory Manager" -j pwd-file -X -b "dc=example,dc=com" -s sub "(uid=admin_user)" ds-pwp-password-policy-dn 
+
+- List password policy of a root user - run as a root use like root2 or other or directory manager itself
+NOTE: Run this directly on the OUD server
+ldapsearch -p 4444 -b "cn=root DNs,cn=config" -D "cn=root2" -w password  --useSSL  '(cn=directory manager)' ds-pwp-password-policy-dn
+ldapsearch -p 4444 -b "cn=root DNs,cn=config" -D "cn=directory manager" -w password  --useSSL  '(cn=root2)' ds-pwp-password-policy-dn
+
+Output will be similar to:
+dn: cn=Directory Manager,cn=Root DNs,cn=config
+ds-pwp-password-policy-dn: cn=Root Password Policy,cn=Password Policies,cn=config
+
+
+----------------------------------------------------------------------------------------------------------------
+How to list all users assigned to a specific password policy 
+----------------------------------------------------------------------------------------------------------------
+NOTE: The following commands work only for non-root-users
+      For root users, see cmd-running-log.txt (its extract below)
+      
+$ ldapsearch -h localhost -p 1389 -D "cn=Directory Manager" -j pwd-file -X -b "dc=example,dc=com" -s sub "(uid=*)" ds-pwp-password-policy-dn 
+
+- List password policy of ALL root users
+NOTE: Run this directly on the OUD server
+$ ldapsearch -p 4444 -b "cn=root DNs,cn=config" -D "cn=directory manager" -w password  --useSSL  '(cn=*)' ds-pwp-password-policy
