@@ -1,0 +1,120 @@
+===================================
+UNIX GROUPS FOR ORACLE INSTALLATION
+===================================
+
+Descriptions of o/s groups:
+Grid - https://docs.oracle.com/database/121/CWLIN/usrgrps.htm
+Database - https://docs.oracle.com/database/121/SSDBI/usr_grps.htm#SSDBI7652
+
+How to change the unix group of OSDBA etc:
+http://emrebaransel.blogspot.in/2008/08/sqlplus-as-sysdba-problem-with-not.html
+http://www.idevelopment.info/data/Oracle/DBA_tips/Database_Administration/DBA_51.shtml
+
+================================
+GROUPS - ORACLE TERMINOLOGIES
+================================
+---------------------------------------------------------------------------------------------------------------------------------------
+Oracle Terminology and privileges                     Unix group(typical) Purpose
+---------------------------------------------------------------------------------------------------------------------------------------
+OINSTALL      - ALL SW  - No privileges             - oinstall            Install software only - no privilege on ASM, DB etc
+
+OSDBA         - DB      - SYSDBA privilege          - dba                 Super-user like DBA activities, sqlplus / as sysdba
+OSOPER        - DB      - SYSOPER privilege         - oper                Operator - startup/shutdown DB 
+OSBACKUPDBA   - DB      - SYSBACKUP privilege       - backupdba           Backup/recovery related admin activities
+OSDGDBA       - DB      - SYSDG privilege           - dgdba               Administer and monitor data-guard
+OSKMDBA       - DB      - SYSKM privilege           - kmdba               Manage encryption keys, wallet 
+
+OSASM         - Grid    - SYSASM privilege          - asmadmin            Administer ASM - for 'grid' user and asm admininstrator users
+OSDBA for ASM - Grid&DB -                           - asmdba              To rw ASM disks - for 'grid' user and Oracle install users 
+OSOPER for ASM - Grid   -                           - asmoper             Operator - startup/shutdown ASM    
+
+=========================
+USERS TO CREATE - MINIMAL
+=========================
+grid   - grid/clusterware software install & ASM instance, disks creation and administration
+oracle - oracle software install and database & creation/administration
+oem    - OEM server and agent install
+
+- GROUP MEMBERSHIPS OF THESE USERS
+grid   - oinstall, admadmin, asmdba
+oracle - oinstall, dba, asmdba
+oem    - oinstall
+
+======================================
+RESPONSE FILES - SOFTWARE INSTALLATION
+======================================
+NOTE: TBD: What is the osdba thing in the sections below?
+
+NOTE: These are all one example - may not be perfect
+
+-------------------
+GRID SOFTWARE
+-------------------
+oracle.install.asm.OSDBA=asmdba
+oracle.install.asm.OSOPER=
+oracle.install.asm.OSASM=asmadm
+
+-------------------
+DATABASE SOFTWARE
+-------------------
+11g:
+UNIX_GROUP_NAME=oinstall
+oracle.install.db.DBA_GROUP=dba
+oracle.install.db.OPER_GROUP=
+
+12c:
+UNIX_GROUP_NAME=oinstall
+oracle.install.db.DBA_GROUP=dba
+oracle.install.db.OPER_GROUP=
+oracle.install.db.BACKUPDBA_GROUP=dba
+oracle.install.db.DGDBA_GROUP=asmdba
+oracle.install.db.KMDBA_GROUP=osdba??
+
+===============================================
+WHERE IS ALL THIS INFO STORED POST-INSTALLATION
+===============================================
+
+----------------------------
+INSTALL GROUP INFO FILE
+----------------------------
+/etc/oraInst.loc
+
+inventory_loc=/u01/app/oraInventory
+inst_group=oinstall
+
+----------------------------
+ADMIN-GROUP INFO FILES
+----------------------------
+$ORACLE_HOME/rdbms/lib/config.c --> Both for Grid and DB software
+
+-----------------
+GRID config.c 12c
+-----------------
+NOTE: This is one example - may not be perfect
+
+#define SS_DBA_GRP "asmdba"
+#define SS_OPER_GRP ""
+#define SS_ASM_GRP "asmadm"
+#define SS_BKP_GRP "asmadm"
+#define SS_DGD_GRP "asmadm"
+#define SS_KMT_GRP "asmadm"
+
+----------------
+DB config.c
+----------------
+11g:
+#define SS_DBA_GRP "dba"
+#define SS_OPER_GRP ""
+#define SS_ASM_GRP ""
+
+12c:
+#define SS_DBA_GRP "dba"
+#define SS_OPER_GRP ""
+#define SS_ASM_GRP  ""
+#define SS_BKP_GRP "dba"
+#define SS_DGD_GRP "asmdba"
+#define SS_KMT_GRP "osdba"??
+
+
+
+
