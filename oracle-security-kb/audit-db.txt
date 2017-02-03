@@ -19,12 +19,15 @@ How to use it: http://docs.oracle.com/cloud/latest/db112/DBSEG/auditing.htm#DBSE
 ===============================
 FOREMOST - SYS OPERATIONS AUDIT
 ===============================
-1. SYS operations are ALWAYS LOGGED IN OS - NOT IN DB AUD$ TABLE
+NOTE:  XML format audit files show DBID (not DBNAME)
+
+1. SYS operations are ALWAYS LOGGED IN OS in adump directory (audit_dump_dest) - NOT IN DB AUD$ TABLE
 2. On UNIX platforms, if the AUDIT_SYSLOG_LEVEL parameter has also been set, 
    then it overrides the AUDIT_TRAIL parameter and SYS audit records are written to the system audit log using the SYSLOG utility.
 3. AUDIT_TRAIL = db or 'db extended' - WILL NOT make SYS audit records go to DB
 4. AUDIT_TRAIL = xml or xml exteded - will create the audits files in xml format
 5. Even bind variable and other values in SQLs also get listed.
+6. Enterprise user audits also get logged in adump directory
 
 =============================
 AUDIT INFO VIEWS
@@ -57,3 +60,84 @@ DBA_PRIV_AUDIT_OPTS --> describes current system privileges being audited across
 DBA_REPAUDIT_ATTRIBUTE
 DBA_REPAUDIT_COLUMN
 DBA_STMT_AUDIT_OPTS --> current system (not object level) auditing options across the system
+
+======================================
+AUDITING USERS
+======================================
+TBD
+
+======================================
+AUDITING ENTERPRISE USERS - SYSDBA
+======================================
+
+- SET/CONFIRM AUDIT PARAMETERS
+SQL> show parameter audit
+
+NAME                                 TYPE        VALUE
+------------------------------------ ----------- ------------------------------
+audit_file_dest                      string      /u01/app/oracle/admin/DB_UNIQUE_NAME/adump
+audit_sys_operations                 boolean     TRUE
+audit_syslog_level                   string
+audit_trail                          string      XML, EXTENDED
+
+- CONNECT TO DB USING AN ENTERPRISE USER AS SYSDBA AND CHECK IF IT IS ENTEPRISE USER
+$ sqlplus user3/oracle@ALIAS as sysdba 
+
+SQL> show user 
+USER is "SYS" 
+
+SQL> select SYS_CONTEXT('USERENV','ENTERPRISE_IDENTITY') from dual; 
+
+SYS_CONTEXT('USERENV','ENTERPRISE_IDENTITY') 
+-------------------------------------------------------------------------------- 
+cn=user3,ou=people,dc=example,dc=com 
+
+SQL> select sys_context('userenv','authenticated_identity') from dual; 
+
+SYS_CONTEXT('USERENV','AUTHENTICATED_IDENTITY') 
+-------------------------------------------------------------------------------- 
+oracle
+
+-- DO SOME WORK AS THE ENTERPRISE SYSDBA USER
+SQL> create user x1 identified by x2;
+
+User created.
+
+SQL> grant connect, resource to x1;
+
+Grant succeeded.
+
+SQL> create table x1.x123 (id number);
+
+Table created.
+
+- VERIFY AUDIT
+$ cd /u01/app/oracle/admin/DB_UNIQUE_NAME/adump
+$  grep x123 *
+DBNAME_ora_48436_201702024444306242836.xml:<Sql_Text>create table x1.x123 (id number)</Sql_Text>
+
+$  cat DBNAME_ora_48436_201702024444306242836.xml
+<?xml version="1.0" encoding="UTF-8"?>
+  <Audit xmlns="http://xmlns.oracle.com/oracleas/schema/dbserver_audittrail-11_2.xsd"
+   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xsi:schemaLocation="http://xmlns.oracle.com/oracleas/schema/dbserver_audittrail-11_2.xsd">
+   <Version>11.2</Version>
+<AuditRecord><Audit_Type>8</Audit_Type><EntryId>1</EntryId><Extended_Timestamp>2017-02-03T05:00:44.746826Z</Extended_Timestamp><DB_User>USER3</DB_User><OS_User>oracle</OS_User><Userhost>hostname.loggedOn</Userhost><OS_Process>48436</OS_Process><Terminal>pts/1</Terminal><Instance_Number>1</Instance_Number><Returncode>0</Returncode><OSPrivilege>SYSDBA</OSPrivilege><DBID>3908082222</DBID>
+<Sql_Text>CONNECT</Sql_Text>
+</AuditRecord>
+<AuditRecord><Audit_Type>4</Audit_Type><Session_Id>4294967295</Session_Id><StatementId>0</StatementId><EntryId>2</EntryId><Extended_Timestamp>2017-02-03T05:00:44.750864Z</Extended_Timestamp><DB_User>/</DB_User><OS_User>oracle</OS_User><Userhost>hostname.loggedOn</Userhost><OS_Process>48436</OS_Process><Terminal>pts/1</Terminal><Instance_Number>1</Instance_Number><Returncode>0</Returncode><OSPrivilege>SYSDBA</OSPrivilege><DBID>3908082222</DBID>
+<Sql_Text>COMMIT</Sql_Text>
+</AuditRecord>
+<AuditRecord><Audit_Type>4</Audit_Type><Session_Id>4294967295</Session_Id><StatementId>0</StatementId><EntryId>3</EntryId><Extended_Timestamp>2017-02-03T05:00:44.751321Z</Extended_Timestamp><DB_User>/</DB_User><OS_User>oracle</OS_User><Userhost>hostname.loggedOn</Userhost><OS_Process>48436</OS_Process><Terminal>pts/1</Terminal><Instance_Number>1</Instance_Number><Returncode>0</Returncode><OSPrivilege>SYSDBA</OSPrivilege><DBID>3908082222</DBID>
+<Sql_Text>COMMIT</Sql_Text>
+</AuditRecord>
+<AuditRecord><Audit_Type>4</Audit_Type><Session_Id>4294967295</Session_Id><StatementId>1</StatementId><EntryId>4</EntryId><Extended_Timestamp>2017-02-03T05:00:52.859545Z</Extended_Timestamp><DB_User>/</DB_User><OS_User>oracle</OS_User><Userhost>hostname.loggedOn</Userhost><OS_Process>48436</OS_Process><Terminal>pts/1</Terminal><Instance_Number>1</Instance_Number><Returncode>0</Returncode><OSPrivilege>SYSDBA</OSPrivilege><DBID>3908082222</DBID>
+<Sql_Text>create user x1 identified by *</Sql_Text>
+</AuditRecord>
+<AuditRecord><Audit_Type>4</Audit_Type><Session_Id>4294967295</Session_Id><StatementId>2</StatementId><EntryId>5</EntryId><Extended_Timestamp>2017-02-03T05:01:02.364923Z</Extended_Timestamp><DB_User>/</DB_User><OS_User>oracle</OS_User><Userhost>hostname.loggedOn</Userhost><OS_Process>48436</OS_Process><Terminal>pts/1</Terminal><Instance_Number>1</Instance_Number><Returncode>0</Returncode><OSPrivilege>SYSDBA</OSPrivilege><DBID>3908082222</DBID>
+<Sql_Text>grant connect, resource to x1 </Sql_Text>
+</AuditRecord>
+<AuditRecord><Audit_Type>4</Audit_Type><Session_Id>4294967295</Session_Id><StatementId>3</StatementId><EntryId>6</EntryId><Extended_Timestamp>2017-02-03T05:01:13.510325Z</Extended_Timestamp><DB_User>/</DB_User><OS_User>oracle</OS_User><Userhost>hostname.loggedOn</Userhost><OS_Process>48436</OS_Process><Terminal>pts/1</Terminal><Instance_Number>1</Instance_Number><Returncode>0</Returncode><OSPrivilege>SYSDBA</OSPrivilege><DBID>3908082222<DBID>
+<Sql_Text>create table x1.x123 (id number)</Sql_Text>
+</AuditRecord>
+</Audit>
