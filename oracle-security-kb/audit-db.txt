@@ -62,13 +62,28 @@ DBA_REPAUDIT_COLUMN
 DBA_STMT_AUDIT_OPTS --> current system (not object level) auditing options across the system
 
 ======================================
-AUDITING USERS
+AUDITING NON-SYS USERS
 ======================================
 TBD
 
 ======================================
-AUDITING ENTERPRISE USERS - SYSDBA
+AUDIT SYS OPERATIONS
 ======================================
+
+---------------------------
+SETUP
+---------------------------
+-- SET AUDIT SYS OPERATIONS = TRUE
+alter system set audit_sys_operations = TRUE scope=spfile sid='*';
+
+-- And, one of the following to set audit location/detail
+-- audit_trail, must be from among extended, xml, db_extended, false, true, none, os, db
+
+alter system set AUDIT_TRAIL = 'db_extended' scope=spfile sid='*';
+alter system set AUDIT_TRAIL = 'os' scope=spfile sid='*';
+alter system set AUDIT_TRAIL = 'xml' scope=spfile sid='*';
+...
+...
 
 - SET/CONFIRM AUDIT PARAMETERS
 SQL> show parameter audit
@@ -79,6 +94,41 @@ audit_file_dest                      string      /u01/app/oracle/admin/DB_UNIQUE
 audit_sys_operations                 boolean     TRUE
 audit_syslog_level                   string
 audit_trail                          string      XML, EXTENDED
+
+--------------------------------------
+AUDITING SYS ACTIONS - XML FORMAT
+--------------------------------------
+NOTE: With sqlplus / as sysdba - DB-user gets listed in audit file as as '/' --> <DB_User>/</DB_User>
+
+$ sqlplus / as sysdba
+$ drop table x1.x123;
+$ cd /u01/app/oracle/admin/DB_UNIQUE_NAME/adump
+$ grep "drop table x1.x123" *
+
+Find the file and list the content:
+
+<?xml version="1.0" encoding="UTF-8"?>
+  <Audit xmlns="http://xmlns.oracle.com/oracleas/schema/dbserver_audittrail-11_2.xsd"
+   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xsi:schemaLocation="http://xmlns.oracle.com/oracleas/schema/dbserver_audittrail-11_2.xsd">
+   <Version>11.2</Version>
+<AuditRecord><Audit_Type>8</Audit_Type><EntryId>1</EntryId><Extended_Timestamp>2017-02-03T05:25:48.639727Z</Extended_Timestamp><DB_User>/</DB_User><OS_User>oracle</OS_User><Userhost>hostname.loggedOn</Userhost><OS_Process>20493</OS_Process><Terminal>pts/1</Terminal><Instance_Number>1</Instance_Number><Returncode>0</Returncode><OSPrivilege>SYSDBA</OSPrivilege><DBID>2948204820</DBID>
+<Sql_Text>CONNECT</Sql_Text>
+</AuditRecord>
+<AuditRecord><Audit_Type>4</Audit_Type><Session_Id>4294967295</Session_Id><StatementId>0</StatementId><EntryId>2</EntryId><Extended_Timestamp>2017-02-03T05:25:48.643280Z</Extended_Timestamp><DB_User>/</DB_User><Ext_Name>oracle</Ext_Name><OS_User>oracle</OS_User><Userhost>hostname.loggedOn</Userhost><OS_Process>20493</OS_Process><Terminal>pts/1</Terminal><Instance_Number>1</Instance_Number><Returncode>0</Returncode><OSPrivilege>SYSDBA</OSPrivilege><DBID>2948204820</DBID>
+<Sql_Text>COMMIT</Sql_Text>
+</AuditRecord>
+<AuditRecord><Audit_Type>4</Audit_Type><Session_Id>4294967295</Session_Id><StatementId>0</StatementId><EntryId>3</EntryId><Extended_Timestamp>2017-02-03T05:25:48.643649Z</Extended_Timestamp><DB_User>/</DB_User><Ext_Name>oracle</Ext_Name><OS_User>oracle</OS_User><Userhost>hostname.loggedOn</Userhost><OS_Process>20493</OS_Process><Terminal>pts/1</Terminal><Instance_Number>1</Instance_Number><Returncode>0</Returncode><OSPrivilege>SYSDBA</OSPrivilege><DBID>2948204820</DBID>
+<Sql_Text>COMMIT</Sql_Text>
+</AuditRecord>
+<AuditRecord><Audit_Type>4</Audit_Type><Session_Id>4294967295</Session_Id><StatementId>1</StatementId><EntryId>4</EntryId><Extended_Timestamp>2017-02-03T05:25:55.468795Z</Extended_Timestamp><DB_User>/</DB_User><Ext_Name>oracle</Ext_Name><OS_User>oracle</OS_User><Userhost>hostname.loggedOn</Userhost><OS_Process>20493</OS_Process><Terminal>pts/1</Terminal><Instance_Number>1</Instance_Number><Returncode>0</Returncode><OSPrivilege>SYSDBA</OSPrivilege><DBID>2948204820</DBID>
+<Sql_Text>drop table x1.x123</Sql_Text>
+</AuditRecord>
+</Audit>
+
+-----------------------------------------------
+AUDITING ENTERPRISE USERS - SYSDBA - XML FORMAT
+-----------------------------------------------
 
 - CONNECT TO DB USING AN ENTERPRISE USER AS SYSDBA AND CHECK IF IT IS ENTEPRISE USER
 $ sqlplus user3/oracle@ALIAS as sysdba 
