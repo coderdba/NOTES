@@ -1,0 +1,67 @@
+How To Know The DN Of The Users Authenticated Via Enterprise User Security (EUS) Using Audit Records (Doc ID 465674.1)	To BottomTo Bottom	
+
+In this Document
+  Goal
+  Solution
+  References
+
+This document is being delivered to you via Oracle Support's Rapid Visibility (RaV) process, and therefore has not been subject to an independent technical review.
+APPLIES TO:
+
+Advanced Networking Option - Version: 8.1.7.4 to 10.2.0.0
+Oracle Server - Enterprise Edition - Version: 8.1.7.4 to 10.2.0.0
+Information in this document applies to any platform.
+GOAL
+
+To audit the database users connected via Enterprise User Securiy using shared schema.
+SOLUTION
+
+Global schemas (those created with CREATE USER IDENTIFIED GLOBALLY AS '') can be owned by one enterprise user (exclusive schema) or shared among multiple enterprise users (shared schema). The mapping between a single enterprise user and his or her exclusive schema is stored in the database as an association between the user DN and the schema name. The mapping between enterprise users and a shared schema is done in the directory by means of one or more mapping objects. A mapping object is used to map the distinguished name (DN) of a user to a database schema that the user will access. 
+
+You can audit the users authenticated via shared schema using dba_audit_trail table as follows - 
+
+1.Enable the DB level auditing: 
+
+
+SQL> alter system set audit_trail='DB' scope=spfile; 
+SQL> shutdown immediate; 
+SQL> startup 
+SQL> audit session; 
+ 
+
+The audit records will be generated in dba_audit_trail from the next log on as shown below
+2. To check global user - 
+
+
+SQL> select username, comment_text from dba_audit_trail where username='<shared 
+schema name>'; 
+
+Above query will return the DN of global (EUS) user connected to the database. For e.g 
+
+For example, 
+
+If a user "test" created in LDAP directory is mapped to a shared schema name "TESTOID" then to know the DN of the users connected to the shared schema - 
+
+SQL> select username, comment_text from dba_audit_trail where username='TESTOID'; 
+
+USERNAME 
+------------------------------ 
+COMMENT_TEXT 
+----------------------------------------------------------------------------
+TESTOID 
+Authenticated by: DIRECTORY PASSWORD;EXTERNAL NAME: cn=test,cn=users,dc=mycompany,dc=com 
+The query output shows the full DN of the Enterprise User connected to the database.
+
+The full DN is populated in the COMMENT_TEXT column only for LOGON and LOGOFF. 
+3. For a given EUS user, the global_uid remains same. Hence, we can extract the dn for other operations from the LOGON/ LOGOFF entries. For eg: 
+
+We can run the following query to extract this information: 
+
+
+SELECT a.comment_text, b.username, b.action_name 
+FROM sys.dba_audit_trail a, sys.dba_audit_trail b 
+WHERE a.global_uid=b.global_uid 
+AND a.action_name='LOGON'; 
+ 
+
+Global_uid is the global user ID from Oracle Internet Directory for Enterprise User Security (EUS) login.
