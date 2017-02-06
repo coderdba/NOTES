@@ -1,0 +1,42 @@
+=====================================================
+ADDING A CENTRIFY ZONE/AD USER TO A LOCAL UNIX GROUP
+=====================================================
+
+https://linuxcluster.wordpress.com/2014/07/29/mapping-ad-account-to-local-linux-group-with-centrify-express/
+http://community.centrify.com/t5/Centrify-Express/How-to-Add-AD-user-local-group/td-p/2183
+
+This becomes essential in cases where explicit membership to a local group is necessary.
+Example - a Unix user (ldap user also) MUST belong to a LOCAL GROUP 
+          - though they may belong to the same named AD/Centrify group.
+          
+Mapping Ad account to Local Linux Group with Centrify Express on CentOS 6
+      2 Votes
+
+Step 1. In order to add the AD User to the local User Group
+
+adduser command is not nsswitch aware and do not recognize a user not locally defined when adding someone to a group.
+
+# vim /etc/group
+.....
+.....
+users:x:100:user1,user2
+Step 2: Edit /etc/centrifydc/centrifydc.conf
+Edit /etc/centrifydc/centrifydc.conf, uncomment and change the following parameter to true
+
+# Merge local group membership from /etc/group into the Centrify group
+# response for groups with the same name and gid.  This violates the NSS
+# interface behavior and may have unexpected side effects, so it is
+# disabled by default. You must run adreload to detect changes
+# in the local group file.
+#
+adclient.local.group.merge:true
+Step 3: Centrify Load and Flush
+
+# adreload && adflush
+Step 4: Check and verify.
+
+Logon as user1
+
+$ id -a
+uid=.........gid=.......... 100(users) .....................
+
