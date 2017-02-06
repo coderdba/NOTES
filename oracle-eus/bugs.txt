@@ -1,0 +1,61 @@
+------------------------------------------------------
+-- Logon with SYSDBA enteprise users getting ORA-01017
+------------------------------------------------------
+11g - Apply bug fix patch 18523482
+12c - should be fixed - yet to test
+
+NOTE1:
+
+Upon fix, logon works fine, but 'show user' shows SYS instead of global-schema-user.
+That is NOT AN ERROR.
+
+To test fully, do this:
+SQL>show user 
+SQL>select SYS_CONTEXT('USERENV','ENTERPRISE_IDENTITY') from dual; 
+SQL>SQL> select sys_context('userenv','authenticated_identity') from dual; 
+
+Output:
+SQL> show user 
+USER is "SYS" 
+
+SQL> select SYS_CONTEXT('USERENV','ENTERPRISE_IDENTITY') from dual; 
+
+SYS_CONTEXT('USERENV','ENTERPRISE_IDENTITY') 
+-------------------------------------------------------------------------------- 
+cn=user1,ou=people,dc=example,dc=com 
+
+SQL> select sys_context('userenv','authenticated_identity') from dual; 
+
+SYS_CONTEXT('USERENV','AUTHENTICATED_IDENTITY') 
+-------------------------------------------------------------------------------- 
+oracle
+
+-------------------------------------------------
+12c DB EUS logons getting ORA-28030
+-------------------------------------------------
+TBD - UNRESOLVED
+Workaround (not working) - Create link $ORACLE_HOME/admin to $ORACLE_BASE/admin
+Also, ensure setting TNS_ADMIN, ORACLE_BASE and ORACLE_HOME environment variables 
+  (in o/s if using sqlplus to startup - OR - using setenv for the DB if using srvctl for startup)
+
+--------------------------------------------------------
+EUSM commands of 12c erroring with authentication error
+--------------------------------------------------------
+TBD - UNRESOLVED
+Set root user password to use AES password storage - seems to not work - do again
+
+------------------------------------------------------------------------------------
+ORA-01017 in JDBC-thin Java programs when using ldap:// URL, principal and password
+------------------------------------------------------------------------------------
+TBD - UNRESOLVED
+
+------------------------------------------------------------------------------------
+ORA-<something> in JDBC-thin Java programs when using enterprise user and password - with usual conventions and not ldap://
+------------------------------------------------------------------------------------
+TBD - UNRESOLVED
+
+JDBC programs are expected to work just with enterprise user and password - without any changes to URL, or connect string.
+That is, enterprise users for programs and end-users should behave same as logging in with local DB user/pass.
+(that worked in Oracle SQL Developer)
+
+However, JDBC thin java program is giving ORA-
