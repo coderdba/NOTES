@@ -78,7 +78,6 @@ USER AND GROUPS
 # groupadd -g 1001 oinstall
 # useradd -g 1001 -u 501 -d /export/home/oracle oracle
 
-
 ===============================
 PREREQUISTE CHECKS AND INSTALLS
 ===============================
@@ -107,6 +106,8 @@ glibc-devel 2.17-55 (i686) (This is a 32-bit package)
 glibc-devel 2.17-55 (x86_64) (This is a 64-bit package)
 libXtst-1.2.2-2 (x86_64)
 
+Also, glibc-2.17
+
 - ON TARGETS FOR AGENT (INCLUDING REPO DB SERVER)
 
 Oracle Linux 7.x
@@ -120,6 +121,7 @@ libaio-0.3.109-12
 glibc-common-2.17-55
 libstdc++-4.8.2-16
 sysstat-10.1.5-4
+
 
 --------------------------------
 KERNEL PARAMETERS 
@@ -137,3 +139,26 @@ net.ipv4.ip_local_port_range = 11000 65500
 
 And, restart network:
 # /etc/rc.d/init.d/network restart
+
+- SHMMAX
+
+If OMS and repo DB are different hosts, on OMS host set the following as below.
+If they are same host, then follow the guidelines in DB Install documentation.
+
+4GB minus 1byte is recommended - 4294967295
+But, a large number like the one below should be good too??
+
+$ cat /proc/sys/kernel/shmmax
+18446744073692774399
+
+To set/reset, edit /etc/sysctl.conf (that file says, other files)
+Set the kernel.shmmax parameter to 4294967295
+
+-- persist upon restart
+# /sbin/chkconfig boot.sysctl on
+
+-- change in the current environment
+# /sbin/sysctl -p
+
+-- verify
+# /sbin/sysctl -a
