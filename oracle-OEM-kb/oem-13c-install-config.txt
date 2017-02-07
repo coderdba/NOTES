@@ -70,3 +70,70 @@ RAM 10gb
 Hard disk 24gb
 Temporary directory hard disk space 10gb
 Oracle WebLogic Server JVM Heap Size 1gb
+
+=============================
+USER AND GROUPS
+=============================
+
+# groupadd -g 1001 oinstall
+# useradd -g 1001 -u 501 -d /export/home/oracle oracle
+
+
+===============================
+PREREQUISTE CHECKS AND INSTALLS
+===============================
+
+https://docs.oracle.com/cd/E73210_01/EMBSC/GUID-059D95F7-0326-4E0D-9470-6675C1891BA9.htm#EMBSC129
+Basic installation doc, chapter 2
+
+--------------------------------
+INSTALL PREREQUISITE PACKAGES
+--------------------------------
+
+- ON OMS SERVER
+
+Oracle Linux 7.x
+
+Red Hat Enterprise Linux 7
+
+make-3.82-21
+binutils-2.23
+gcc-4.8.2-16
+libaio-0.3.109-12
+glibc-common-2.17-55
+libstdc++-4.8.2-16
+sysstat-10.1.5-4
+glibc-devel 2.17-55 (i686) (This is a 32-bit package)
+glibc-devel 2.17-55 (x86_64) (This is a 64-bit package)
+libXtst-1.2.2-2 (x86_64)
+
+- ON TARGETS FOR AGENT (INCLUDING REPO DB SERVER)
+
+Oracle Linux 7.x
+
+Red Hat Enterprise Linux 7
+
+make-3.82-21
+binutils-2.23
+gcc-4.8.2-16
+libaio-0.3.109-12
+glibc-common-2.17-55
+libstdc++-4.8.2-16
+sysstat-10.1.5-4
+
+--------------------------------
+KERNEL PARAMETERS 
+- Verifying UDP and TCP Kernel Parameters
+--------------------------------
+
+- Ephemeral port range (keep min as above 11000 to avoid well known ports)
+
+The following looks ok (no change, as is)
+# cat /proc/sys/net/ipv4/ip_local_port_range
+32768   60999
+
+Make that permanent by adding the following line in /etc/sysctl.conf
+net.ipv4.ip_local_port_range = 11000 65500
+
+And, restart network:
+# /etc/rc.d/init.d/network restart
