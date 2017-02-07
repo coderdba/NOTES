@@ -11,15 +11,64 @@ java -cp .:/home/oracle/jars/ojdbc6.jar LdapOra1
 Run with some other directives to avoid certain LDAP errors:
 java -cp .:/home/oracle/jars/ojdbc6.jar -Doracle.jdbc.thinLogonCapability=o3 LdapOra1
 
+======================================
+EXAMPLES and CONNECT STRINGS
+======================================
+-----------------------------------
+Thin + Service Name instead of SID
+-----------------------------------
+http://stackoverflow.com/questions/4832056/java-jdbc-how-to-connect-to-oracle-using-service-name-instead-of-sid
 
-===============================================================================================
-JDBC BASIC EXAMPLE - https://docs.oracle.com/database/121/JJDBC/getsta.htm#JJDBC28058
-===============================================================================================
+- Connect string options
+jdbc:oracle:thin:@//HOSTNAME:PORT/SERVICENAME
+jdbc:oracle:thin:@//oracle.hostserver2.mydomain.ca:1522/ABCD
+jdbc:oracle:thin:@(description=(address=(host=HOSTNAME)(protocol=tcp)(port=PORT))(connect_data=(service_name=SERVICENAME)(server=SHARED)))
+jdbc:oracle:thin:@(DESCRIPTION =(ADDRESS_LIST =(ADDRESS =(PROTOCOL=TCP)(HOST=blah.example.com)(PORT=1521)))(CONNECT_DATA=(SID=BLAHSID)(GLOBAL_NAME=BLAHSID.WORLD)(SERVER=DEDICATED)))
+
+- Sample code
+import java.sql.*; 
+
+public class MyDBConnect {
+
+    public static void main(String[] args) throws SQLException {
+
+        try { 
+            String dbURL = "jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=whatEverYourHostNameIs)(PORT=1521)))(CONNECT_DATA=(SERVICE_NAME=yourServiceName)))";
+            String strUserID = "yourUserId";
+            String strPassword = "yourPassword";
+            Connection myConnection=DriverManager.getConnection(dbURL,strUserID,strPassword);
+
+            Statement sqlStatement = myConnection.createStatement();
+            String readRecordSQL = "select * from sa_work_order where WORK_ORDER_NO = '1503090' ";  
+            ResultSet myResultSet = sqlStatement.executeQuery(readRecordSQL);
+            while (myResultSet.next()) {
+                System.out.println("Record values: " + myResultSet.getString("WORK_ORDER_NO"));
+            }
+            myResultSet.close();
+            myConnection.close();
+
+        } catch (Exception e) {
+            System.out.println(e);
+        }       
+    }
+}
 
 
-===============================================================================================
-JDBC - Nice-compact-code http://www.javatpoint.com/example-to-connect-to-the-oracle-database
-===============================================================================================
+-----------------------------------
+OCI
+-----------------------------------
+https://docs.oracle.com/cd/B28359_01/java.111/b31224/instclnt.htm
+
+-----------------------------------
+JDBC BASIC EXAMPLE 
+-----------------------------------
+https://docs.oracle.com/database/121/JJDBC/getsta.htm#JJDBC28058
+
+-----------------------------------
+Thin with SID - Nice-compact-code 
+-----------------------------------
+http://www.javatpoint.com/example-to-connect-to-the-oracle-database
+
 import java.sql.*;  
 class OracleCon{  
 public static void main(String args[]){  
@@ -46,3 +95,9 @@ con.close();
   
 }  
 }  
+
+-----------------------------------
+LDAP URL WITH ENTERPRISE USERS
+-----------------------------------
+TBD - Thin
+TBD - OCI
