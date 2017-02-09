@@ -650,3 +650,67 @@ Please check /u01/app/oracle/product/OEM132_INST/em/EMGC_OMS1/sysman/log/emctl.l
 u01/app/oracle/product/OEM132_INST/user_projects/domains/GCDomain/config/fmwconfig/components/OHS/instances/ohs1/httpd.conf: exit status = 127>
 
 --> and /u01/app/oracle/product/OEM132_INST/user_projects/domains/GCDomain/servers/ohs1/logs/ohs1.log --> not found
+
+--> --> (Doc ID 2110670.1) 	
+13c EM Cloud Control: OMS Fails to Start due to Webtier Startup Failure After Install - 
+"Error while loading shared libraries: libclntsh.so.11.1: cannot open shared object file: No such file or directory"
+
+-->--> gcc is missing - do 'yum install gcc'
+
+Then, deinstall oms and reinstall
+EM 13C: How To De-Install the Enterprise Manager 13c Cloud Control OMS (Doc ID 2096092.1)
+	Also, http://docs.oracle.com/cd/E63000_01/EMADV/deinstall_em.htm#EMADV226
+
+EM 13C: How to Deinstall the Enterprise Manager 13c Cloud Control Agent (Doc ID 2095678.1)
+
+-------------------------------------------
+DEINSTALL OMS (AND AGENT ON THE OMS SERVER)
+-------------------------------------------
+Create a temporary directory /export/home/oracle/stage/oem13c/deinstall-oms
+
+Note : 
+
+For a multi-OMS environment, first de-install the additional OMS instances, and then de-install the first OMS.
+The steps outlined in this document not only de-install the OMS instances but also de-install the Management Repository.
+Once the Management Repository is de-installed from the database, you can reuse the empty database for any other purpose. Only the Enterprise Manager schema is removed from the database.
+For a fresh OMS installation, either the first OMS or an additional OMS, the steps outlined in this section automatically remove the middleware, the OMS, the OMS instance home, and the Management Agent directories, but not the contents of the shared location configured for Oracle BI Publisher. You must manually remove its contents.
+Steps to Deinstall
+
+1. Copy the deinstallation script from the Oracle home of the OMS host to a temporary or stage location:
+      $ cp <MIDDLEWARE_HOME>/sysman/install/EMDeinstall.pl <temporary_location>
+
+Sample Output:
+==========
+      [oracle@anandu install]$ cd /u03/emr5_13c_upg/middleware/sysman/install
+      [oracle@anandu install]$ cp EMDeinstall.pl /home/oracle/anandu/
+      [oracle@anandu install]$ ls -ltr /home/oracle/anandu/
+      total 24
+      -rwxr--r--. 1 oracle oinstall 22670 Jan 13 10:17 EMDeinstall.pl
+==========
+
+2. Deinstall the OMS:
+      <MIDDLEWARE_HOME>/perl/bin/perl <temporary_location>/EMDeinstall.pl -mwHome <ORACLE_HOME> -stageLoc <temporary_location used in step 1>
+
+       Note: You will be prompted for database credentials (SYS and SYSMAN) and the WebLogic Domain credentials. Enter the credentials and proceed with the deinstallation.
+
+
+Sample Output:
+==========
+[oracle@anandu bin]$ cd /home/oracle/anandu/
+[oracle@anandu anandu]$ /u03/emr5_13c_upg/middleware/perl/bin/perl /home/oracle/anandu/EMDeinstall.pl -mwHome /u03/emr5_13c_upg/middleware -stageLoc /home/oracle/anandu
+Refer to /home/oracle/anandu/deinstall_2016-01-13_10-48-28.log for deinstall log
+This is a First OMS install. So, this deinstalls the OMS and Repository. Confirm (y/n)y
+User confirmed for deinstallation.
+
+Enter the SYS Password :
+Enter the sysman Password :
+Enter the Admin Server password :
+.
+.
+
+Deleting the instance home
+Deleting the em home
+
+The deinstallation of OMS is successful.
+
+The location of the file is : /etc/oragchomelist
