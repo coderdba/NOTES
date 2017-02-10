@@ -1,0 +1,57 @@
+=======================
+PROGRAM
+=======================
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import java.sql.SQLException;
+import oracle.jdbc.pool.OracleDataSource;
+
+class JdbcTest
+{
+   public static void main (String args []) throws SQLException
+   {
+
+OracleDataSource ods = null;
+Connection conn = null;
+Statement stmt = null;
+ResultSet rset = null;
+
+      // Create DataSource and connect to the local database
+      ods = new OracleDataSource();
+      //ods.setURL("jdbc:oracle:thin:@//localhost:5221/orcl");
+      ods.setURL("jdbc:oracle:thin:/@//cluster-scan:1522/DB_SERVICE");
+      ods.setUser("user1");
+      ods.setPassword("oracle");
+      conn = ods.getConnection();
+
+      try
+      {
+      // Query the employee names
+      stmt = conn.createStatement ();
+      rset = stmt.executeQuery ("SELECT username FROM dba_users");
+
+      // Print the name out
+      while (rset.next ())
+      System.out.println (rset.getString (1));
+      }
+
+      //Close the result set, statement, and the connection
+
+      finally{
+      if(rset!=null) rset.close();
+      if(stmt!=null) stmt.close();
+      if(conn!=null) conn.close();
+      }
+      }
+   }
+
+===================
+COMPILE
+===================
+javac -classpath /tmp/ojdbc6.jar JdbcTest.java
+
+===================
+RUN
+===================
+java -cp .:/tmp/ojdbc6.jar JdbcTest
