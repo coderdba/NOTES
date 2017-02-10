@@ -1,0 +1,92 @@
+=================
+PROGRAM
+=================
+// Essential imports
+import java.util.Properties;
+
+import java.sql.*;
+import oracle.jdbc.*;
+import oracle.jdbc.pool.OracleDataSource;
+
+// Others that may be required later on
+import java.util.Hashtable;
+import javax.naming.Context;
+import javax.naming.NamingEnumeration;
+import javax.naming.NamingException;
+import javax.naming.directory.DirContext;
+import javax.naming.directory.SearchControls;
+import javax.naming.directory.SearchResult;
+import javax.naming.ldap.InitialLdapContext;
+import javax.naming.ldap.LdapContext;
+
+
+class LdapOra {
+
+public static void main(String[] args) throws SQLException {
+
+//String url = "jdbc:oracle:thin:@ldap://oud-hostname:oud-port/db_name_or_unique_name_as_registered,<the DN of the DB except DB name>";
+//String url = "jdbc:oracle:thin:@ldap://oud-hostname:1389/sales,cn=salesdept,cn=OracleContext,dc=com";
+//String url = "jdbc:oracle:thin:@ldap://oud-hostname:1636/sales,cn=salesdept,cn=OracleContext,dc=com";
+
+// Originally tried URL1:
+String url = "jdbc:oracle:thin:@ldap://oud-hostname:1389/DB_UNIQUE_NAME,cn=OracleContext,dc=example,dc=com";
+//
+// Originally tried URL2:
+//String url = "jdbc:oracle:thin:@ldap://oud-hostname:1389/cn=DB_UNIQUE_NAME,cn=OracleContext,dc=example,dc=com";
+//
+// Per Oracle Support suggestion
+//String url = "jdbc:oracle:thin:/@ldap://oud-hostname:1389/DB_UNIQUE_NAME,cn=OracleContext,dc=example,dc=com";
+
+Properties prop = new Properties();
+prop.put("java.naming.security.authentication", "simple");
+prop.put("java.naming.security.principal","cn=user1,ou=people,dc=example,dc=com"); //LDAP user DN - DB enterprise user
+prop.put("java.naming.security.credentials", "oracle"); //password for the user
+
+OracleDataSource ods = new OracleDataSource();
+ods.setURL(url);
+ods.setConnectionProperties(prop);
+
+// Per suggestion of Oracle support
+ods.setUser("user1");
+ods.setPassword("oracle");
+
+Connection conn = ods.getConnection();
+
+Statement stmt = null;
+ResultSet rset = null;
+
+//------
+//
+      try
+      {
+      // Query the employee names
+      stmt = conn.createStatement ();
+      rset = stmt.executeQuery ("SELECT username FROM dba_users");
+
+      // Print the name out
+      while (rset.next ())
+      System.out.println (rset.getString (1));
+      }
+
+      //Close the result set, statement, and the connection
+
+      finally{
+      if(rset!=null) rset.close();
+      if(stmt!=null) stmt.close();
+      if(conn!=null) conn.close();
+      }
+}
+}
+
+====================
+COMPILE
+====================
+javac -classpath "/tmp/java-testing/ojdbc6.jar"  LdapOra.java
+
+===================
+RUN
+===================
+java -cp .:/tmp/java-testing/ojdbc6.jar LdapOra
+
+NOTE: The following run with additional option did not work
+java -cp .:/tmp/java-testing/ojdbc6.jar -Doracle.jdbc.thinLogonCapability=o3 LdapOra1
