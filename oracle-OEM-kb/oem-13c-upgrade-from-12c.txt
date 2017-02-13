@@ -162,3 +162,36 @@ from installations and inventory on local storage to installations and inventory
 
 Old Install	- Upgraded Install	- Old Inventory	- Upgraded Inventory	- Old Hostname	- Upgraded Hostname	- Upgrade Mode
 Local or Replicated  - Replicated -  Local - Replicated - Physical - Alias - Upgrade and Transition to DR Readiness
+
+
+=======================================
+PREREQUISITES 
+=======================================
+https://docs.oracle.com/cd/E73210_01/EMUPG/GUID-F6CFDFAD-D742-4644-A11A-4CBB5A6E8338.htm#EMUPG409
+
+=======================================
+UPGRADE REPO DB TO 12c (and PDB if required)
+=======================================
+Follow section 3.2, 3.3 and 3.4 in https://docs.oracle.com/cd/E73210_01/EMUPG/GUID-F6CFDFAD-D742-4644-A11A-4CBB5A6E8338.htm#EMUPG411
+
+- STOP OMS
+First OMS
+All additional OMS
+
+- UPGRADE THE DB
+
+- PATCH DB TO LATEST PSU
+It is mandatory to apply the following patch before upgrading to Enterprise Manager Cloud Control 13.2.0.0:
+DATABASE PATCH SET UPDATE 12.1.0.2.160419 (or later PSU)
+
+- CHANGE DB SETTINGS
+alter system set optimizer_adaptive_features=false scope=both
+
+- CONFIGURE REPO DB CONNECT STRING (IF CHANGED - LIKE FOR PDB, PORT, HOST...)
+emctl start oms -admin_only
+emctl config oms –store_repos_details -repos_conndesc <connect descriptor> -repos_user sysman
+emctl stop oms
+emctl start oms
+
+- CONFIGURE REPO DB CONNECT STRING ON ADDITIONAL OMS
+Like it was done on first OMS
