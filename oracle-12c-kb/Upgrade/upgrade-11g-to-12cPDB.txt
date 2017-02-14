@@ -284,6 +284,69 @@ emctl stop dbcontrol
 @$ORACLE_HOME_12C/rdbms/admin/emremove.sql
 
 --------------------------------------------
+CHECK LABEL SECURITY AND DATABASE VAULT
+--------------------------------------------
+@$ORACLE_HOME_12C/rdbms/admin/olspreupgrade.sql
+   - It prepares the move of AUD$ table from SYSTEM to SYS.
+   - It processes the audit records to minimize downtime.
+   - It moves records to an Interim temporary table.
+   
+------------------------------------------------------------------
+DROP 12C ROLES AND USERS IF EXIST IN THE 11G DB
+------------------------------------------------------------------
+--> see output from pre-upgrade script run earlier
+
+--------------------------------------------
+REMOVE ANY HIDDEN PARAMETERS AND RESTART DB
+--------------------------------------------
+SELECT name, value from SYS.V$PARAMETER WHERE name LIKE '\_%' ESCAPE '\' order by name;
+
+------------------------------------------------------------------
+CHECK XDB ACL's HAVE START_DATE AND END_DATE ATTRIBUTES
+------------------------------------------------------------------
+SQL> select aclid, start_date, end_date from xds_ace where start_date is not null; 
+If this query returns rows, then follow Note 1958876.1 Upgrade to 12.1 fails with ORA-01830 date format picture ends before converting entire input string ORA-06512: at "SYS.XS_OBJECT_MIGRATION"  to avoid failure in XDB's upgrade.
+
+------------------------------------------------------------------------------------------------------------------------------------
+4.23 Check the Mitigation patch has been applied on the source Oracle home ,it disables the Java development 
+------------------------------------------------------------------------------------------------------------------------------------
+in the Database which cause error during upgrade
+
+NOTE : This step is ONLY applicable if you have applied  Mitigation Patch  on the source database
+
+Please "enable" the Java development in source database .
+
+Connect to the database as a SYSDBA user
+  SQL> exec dbms_java_dev.enable;
+  
+And then upgrade the database. 
+
+Please refer Note 1985725.1 Database Upgrade failed with Errors “ORA-02290: check constraint (SYS.JAVA_DEV_DISABLED) violated” & “ORA-04045: SYS.DBMS_ISCHED”
+
+------------------------------------------------------------------
+4.24 Changing Or Choosing the Database Character Set
+------------------------------------------------------------------
+In Oracle Database 12c with multitenant architecture, all pluggable databases (PDBs) in a container database (CDB) must have
+
+The same Database character set (NLS_CHARACTERSET) or the NLS_CHARACTERSET need to be a (Plug-in compatible) binary subset of the CDB NLS_CHARACTERSET
+The same National character set (NLS_NCHAR_CHARACTERSET) as the CDB's root container
+ If you have PDBs with Unicode characterset, its recommended to create the CDB with characterset as AL32UTF8. Please note we cannot migrate the CDB's characterset using DMU.
+
+Please see: 
+Note 1968706.1 12c Multitenant Container Databases (CDB) and Pluggable Databases (PDB) Character set restrictions / ORA-65116/65119: incompatible database/national character set ( Character set mismatch: PDB character set CDB character set )
+Note ID 225912.1 [Section E] Changing Or Choosing the Database Character Set ( NLS_CHARACTERSET )
+
+------------------------
+IF UPGRADING FROM 10G
+------------------------
+SEE MAIN MOS DOC
+
+--------------------------
+IF UPGRADING FROM 11.2.0.3
+--------------------------
+SEE MAIN MOS DOC
+
+--------------------------------------------
 DISABLE/BLACKOUT ALERTS, BACKUPS ETC
 --------------------------------------------
 Disable scripts, cron, oem etc that do backups, alerting etc.
@@ -316,33 +379,9 @@ CHECK AND STOP/COMPLETE ANY ACTIVE BACKUPS
 --------------------------------------------
 SQL> SELECT * FROM v$backup WHERE status != 'NOT ACTIVE';
 
---------------------------------------------
-REMOVE ANY HIDDEN PARAMETERS AND RESTART DB
---------------------------------------------
-SELECT name, value from SYS.V$PARAMETER WHERE name LIKE '\_%' ESCAPE '\' order by name;
-
-------------------------------------------------------------------
-CHECK XDB ACL's HAVE START_DATE AND END_DATE ATTRIBUTES
-------------------------------------------------------------------
-SQL> select aclid, start_date, end_date from xds_ace where start_date is not null; 
-If this query returns rows, then follow Note 1958876.1 Upgrade to 12.1 fails with ORA-01830 date format picture ends before converting entire input string ORA-06512: at "SYS.XS_OBJECT_MIGRATION"  to avoid failure in XDB's upgrade.
-
-------------------------------------------------------------------
-DROP 12C ROLES AND USERS IF EXIST IN THE 11G DB
-------------------------------------------------------------------
---> see output from pre-upgrade script run earlier
-
---------------------------------------------
-CHECK LABEL SECURITY AND DATABASE VAULT
---------------------------------------------
-@$ORACLE_HOME_12C/rdbms/admin/olspreupgrade.sql
-   - It prepares the move of AUD$ table from SYSTEM to SYS.
-   - It processes the audit records to minimize downtime.
-   - It moves records to an Interim temporary table.
-
----------------
-PREPARE PRIMARY:
----------------
+===============
+PREPARE PRIMARY
+===============
 
 SET CLUSTER DATABASE TO FALSE (only at spfile level now)
 SQL> alter system set cluster_database=FALSE scope=spfile;
