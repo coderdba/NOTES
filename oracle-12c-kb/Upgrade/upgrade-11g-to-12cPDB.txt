@@ -100,23 +100,34 @@ CHECK IF ANY FILES ARE IN BACKUP MODE
 ------------------------------------------------
 select * from v$backup where status != 'NOT ACTIVE';
 
+----------------------
 NOTE LOCATION OF FILES
+----------------------
 SELECT name FROM v$controlfile;
 SELECT file_name FROM dba_data_files;
 SELECT group#, member FROM v$logfile;
 
+----------------------
 BACKUP CONFIG FILES
+----------------------
+Create init.ora (pfile from spfile)
 init.ora, listener.ora, tnsnames.ora
 
+--------------------------------------------
 REMOVE DB-CONTROL OF ENTERPRISE MANAGER
+--------------------------------------------
 emctl stop dbcontrol
 @$ORACLE_HOME_12C/rdbms/admin/emremove.sql
 
+--------------------------------------------
 DISABLE/BLACKOUT ALERTS, BACKUPS ETC
+--------------------------------------------
 Disable scripts, cron, oem etc that do backups, alerting etc.
 Stop/suspend jobs using DBMS_SCHEDULER, DBMS_JOB etc.
 
+----------------------
 DATA GUARD SETUP
+----------------------
 Disable fast start failover, and configuration
 DGMGRL> DISABLE FAST_START FAILOVER;
 DGMGRL> DISABLE CONFIGURATION;
@@ -131,48 +142,71 @@ Take backup of broker configuration files in both primary and standby
     SQL> show parameter dg_broker_config_file
     ASMCMD> cp <ASM file>  <f/s file>
     
+----------------------
 BACKUP SPFILE
+----------------------
 SQL> create pfile='$ORACLE_HOME/dbs/initDBNAME.ora.preUpgrade' from spfile;
 
+----------------------
 PURGE RECYCLE BIN
+----------------------
 SQL> purge dba_recyclebin;
 
+--------------------------------------------
 COLLECT DICTIONARY STATISTICS
+--------------------------------------------
 SQL> exec dbms_stats.gather_dictionary_stats;
 
+--------------------------------------------
 PURGE PENDING TWO PHASE COMMITS
+--------------------------------------------
 SQL> SELECT local_tran_id FROM dba_2pc_pending;
 SQL> EXECUTE dbms_transaction.purge_lost_db_entry('');
 SQL> COMMIT;
 
+--------------------------------------------
 ENSURE NO MV-REFRESH IS  IN PROGRESS
+--------------------------------------------
 SQL> select s.obj#,o.obj#,s.containerobj#,lastrefreshdate,pflags,xpflags,o.name,o.owner#, bitand(s.mflags, 8) 
 from obj$ o, sum$ s
 where o.obj# = s.obj# and o.type# = 42 AND bitand(s.mflags, 8) = 8;
 Note 1442457.1 : During 11g Upgrade, Mview refresh warning.
 If any active refresh is reported, wait for its completion.
 
+------------------------------------------------------------------
 MAKE DEFAULT TABLESPACE OF SYS AND SYSTEM as SYSTEM TABLESPACE
+------------------------------------------------------------------
 
+--------------------------------------------
 CHECK AND STOP/COMPLETE ANY ACTIVE BACKUPS
+--------------------------------------------
 SQL> SELECT * FROM v$backup WHERE status != 'NOT ACTIVE';
 
+--------------------------------------------
 REMOVE ANY HIDDEN PARAMETERS AND RESTART DB
+--------------------------------------------
 SELECT name, value from SYS.V$PARAMETER WHERE name LIKE '\_%' ESCAPE '\' order by name;
 
+------------------------------------------------------------------
 CHECK XDB ACL's HAVE START_DATE AND END_DATE ATTRIBUTES
+------------------------------------------------------------------
 SQL> select aclid, start_date, end_date from xds_ace where start_date is not null; 
 If this query returns rows, then follow Note 1958876.1 Upgrade to 12.1 fails with ORA-01830 date format picture ends before converting entire input string ORA-06512: at "SYS.XS_OBJECT_MIGRATION"  to avoid failure in XDB's upgrade.
 
+------------------------------------------------------------------
 DROP 12C ROLES AND USERS IF EXIST IN THE 11G DB
+------------------------------------------------------------------
 --> see output from pre-upgrade script run earlier
 
+--------------------------------------------
 CHECK LABEL SECURITY AND DATABASE VAULT
+--------------------------------------------
 @$ORACLE_HOME_12C/rdbms/admin/olspreupgrade.sql
    - It prepares the move of AUD$ table from SYSTEM to SYS.
    - It processes the audit records to minimize downtime.
    - It moves records to an Interim temporary table.
 
+---------------
 PREPARE PRIMARY:
 ---------------
 
