@@ -4,8 +4,6 @@ UPGRADE FROM 11G to 12C PDB RAC
 Complete Checklist for Manual Upgrades to Oracle Database 12c Release 1 (12.1) 
 Based on Doc ID 1503653.1
 
-
-
 ---------------
 PRE-CHECKS (some steps below are bundled into pre-check.sql in this repository)
 ---------------
@@ -168,6 +166,36 @@ Note 1522719.1 Actions For DST Updates When Upgrading To 12.1.0.1 Base Release
 COLLECT DICTIONARY STATISTICS
 --------------------------------------------
 SQL> exec dbms_stats.gather_dictionary_stats;
+
+----------------------------------------------------------------------------------------
+4.7   Save Database Control Files and Data with the emdwgrd Utility 
+----------------------------------------------------------------------------------------
+
+After upgrading to Oracle Database 12c , if you want to downgrade Oracle Enterprise Manager Database Control you must save your Database Control files and data before upgrading your database. 
+The emdwgrd utility can be used to keep a copy of your database control files and data before upgrading your database. 
+The emdwgrd utility resides in the ORACLE_HOME/bin directory in the Oracle Database 12c home.
+
+1. Set ORACLE_HOME to your old Oracle Home
+2. Set ORACLE_SID to the SID of the database being upgraded.
+3. Set PATH, LD_LIBRARY_PATH and SHLIB_PATH to point to the Oracle home from which the database is being upgraded.
+4. Change directory to Oracle Database 12c  home.
+5. Run the emdwgrd command.
+   a. Run the following command for single instance database:
+
+$ emdwgrd -save -sid old_SID -path save_directory
+where old_SID is the SID of the database being upgraded and save_directory is the path to the storage place you have chosen for your Database Control files and data.
+
+ b. For RAC database, remote copy is required across the cluster nodes. Define an environment variable to indicate which remote copy is configured. For example: setenv EM_REMCP /usr/bin/scp
+
+$ emdwgrd -save -cluster -sid old_SID -path save_directory
+Note: If 10g Oracle Home is on a shared device, add -shared to the previous command line.
+
+The above command(s) may core dump on the HP-UX Itanium platform, which is a known issue. For more information, refer to following article:
+
+Note 562980.1 - emdwgrd core dumps : emdwgrd[228]: 10366 Memory fault(coredump)
+6. Enter the SYS password for the database to be upgraded.
+Note: On RAC databases you will be prompted to run '/tmp/racdwgrd_dbctl.sh' on each of the nodes.
+
 
 ------------------------------------------------
 CHECK IF ANY FILE NEEDS MEDIA RECOVERY
