@@ -1,0 +1,853 @@
+Complete Checklist for Manual Upgrades to Oracle Database 12c Release 1 (12.1) (Doc ID 1503653.1)	To BottomTo Bottom	
+
+In this Document
+Purpose
+Scope
+Details
+ 	Step 1: Upgrade Path for Oracle Database to Oracle 12c Release 1 (12.1)
+ 	Step 2 : Requirements and recommendations for Source  database   
+ 	Step 3 : Check for the integrity of the source database.
+ 	Step 4 : Pre-Upgrade Steps
+ 	4.1 Deprecated CONNECT Role
+ 	4.2 Update Access Control Lists and Network Utility Packages 
+ 	4.3 Dependencies on Network Utility Packages 
+ 	4.4 Database Links with Passwords from Earlier Releases
+ 	4.5 TIMESTAMP WITH TIME ZONE Data Type 
+ 	4.6 Optimizer Statistics 
+ 	4.7   Save Database Control Files and Data with the emdwgrd Utility 
+ 	4.8   Verify That Materialized View Refreshes Have Completed Before Upgrading 
+ 	4.9 Ensure That No Files Need Media Recovery Before Upgrading 
+ 	4.10 Ensure That No Files Are in Backup Mode Before Upgrading 
+ 	4.11 Resolve Outstanding Distributed Transactions Before Upgrading 
+ 	4.12 Purge the Database Recycle Bin Before Upgrading :
+ 	4.13 Synchronize the Standby Database with the Primary Database When Upgrading 
+ 	4.14 Disable all batch and cron jobs
+ 	4.15 Verify SYS and SYSTEM Default tablespace
+ 	4.16 Check whether database has any externally authenticated SSL users
+ 	4.17 Location of datafiles, redo logs and control files 
+ 	4.18 Remove Enterprise Manager  Database Control repository :
+ 	4.19 Run olspreupgrade.sql  :
+ 	4.20 Drop Oracle 12c  Release 1 supplied users and roles ,if exist in the source database 
+ 	4.21 Review and Remove any unnecessary hidden/underscore parameters
+ 	4.22 Check the XDB ACLs has start_date and end_date ACE attributes 
+ 	4.23 Check the Mitigation patch has been applied on the source Oracle home ,it disables the Java development in the Database which cause error during upgrade
+ 	4.24 Changing Or Choosing the Database Character Set
+ 	4.25 if upgrading database from 10g
+ 	4.26 if upgrading database from 11.2.0.3
+ 	Step 5 : Requirements and recommendations for target database
+ 	Step 6 : Upgrading Database to 12cR1
+ 	Step 7: Post Upgrade Steps
+ 	7.1 Environment Variables and oratab file
+ 	7.2 Initialization parameter file
+ 	7.3 Password File
+ 	7.4 COMPATIBLE Initialization Parameter
+ 	7.5 Change passwords for Oracle-Supplied Accounts.
+ 	7.6  Upgrade the Recovery Catalog After Upgrading Oracle Database
+ 	7.7  Upgrade the Time Zone File Version After Upgrading Oracle Database
+ 	7.8  Upgrade Statistics Tables Created by the DBMS_STATS Package
+ 	7.9  Upgrade Externally Authenticated SSL Users
+ 	7.10  Install Oracle Text Supplied Knowledge Bases After Upgrading Oracle Database
+ 	7.11  Update Your Oracle Application Express Configuration
+ 	7.12  Configure Fine-Grained Access to External Network Services
+ 	7.13  Enable Oracle Database Vault 
+ 	7.14  Identify Invalid Objects With the utluiobj Script
+ 	7.15 Enable all batch and cron jobs diable at step 4.14 
+References
+APPLIES TO:
+
+Oracle Database - Standard Edition - Version 10.2.0.5 and later
+Oracle Database - Enterprise Edition - Version 10.2.0.5 and later
+Information in this document applies to any platform.
+PURPOSE
+
+
+ This document is created for use as a guideline and checklist when manually upgrading from Oracle 10gR2 (10.2) , Oracle 11gR1 (11.1) or  Oracle 11gR2 (11.2) to Oracle 12c Release 1 (12.1)
+
+SCOPE
+
+ Database Administrators, Support
+
+DETAILS
+
+Step 1: Upgrade Path for Oracle Database to Oracle 12c Release 1 (12.1)
+
+Minimum version of the database that can be directly upgraded to Oracle 12c Release 1 (12.1)
+
+Source Database	Target Database
+10.2.0.5	12.1.x
+11.1.0.7	12.1.x
+11.2.0.2 or higher	12.1.x
+The following database versions will require an indirect upgrade path:
+
+Source Database	 	Intermediate Upgrade Path for Target Database	 	Target Database
+11.2.0.1	---->	11.2.0.2 or higher	---->	12.1.x
+11.1.0.6	---->	11.1.0.7 or 11.2.0.2 or higher	---->	12.1.x
+10.2.0.4 (or earlier)	---->	 10.2.0.5 or later direct upgrade version	---->	12.1.x
+10.1.0.5 (or earlier)	---->	10.2.0.5 or later direct upgrade version	---->	12.1.x
+9.2.0.8 (or earlier)	---->	  9.2.0.8 --> 11.2.0.2 or higher	---->	12.1.x
+ For example:
+
+ If you are upgrading from 11.2.0.1 or 11.1.0.6, then you must first upgrade to Oracle Database 11g Release 2 (11.2.0.2).
+ If you are upgrading from 10.2.0.2, 10.2.0.3, 10.2.0.4, or 10.1.0.5, then you must first upgrade to 10.2.0.5 or later.
+ For release 9.2.0.8, you must first upgrade to an intermediate Oracle Database release, as follows: 9.2.0.8 -> 11.2.0.2 or 11.2.0.3 -> 12.1
+Reminder:
+To locate the patchid of a patchset refer to:
+
+Note 438049.1 : How To Find RDBMS patchsets on My Oracle Support
+Note 753736.1 : Quick Reference to Patchset Patch Numbers
+
+Step 2 : Requirements and recommendations for Source  database   
+
+Either take a cold or hot backup of the source database (advisable to have cold backup).
+a) Take a backup using RMAN
+             (or)
+b)  Perform Cold Backup  ( if  your database is in NOARCHIVELOG mode)
+
+Connect to RMAN:
+
+rman "target / nocatalog"
+
+RUN
+{
+ALLOCATE CHANNEL chan_name TYPE DISK;
+BACKUP DATABASE FORMAT '<db_backup_directory>%U' TAG before_upgrade;
+BACKUP CURRENT CONTROLFILE TO '<controlfile_backup_directory>';
+}
+--> db_backup_directory >> Location of the Database backup.
+--> controlfile_backup_directory >> Location of the Controlfile backup.
+
+Ensure that all database components/objects provided by Oracle are VALID in the source database prior to starting the upgrade.
+Ensure that you do not have duplicate objects in the SYS and SYSTEM schema.
+         The following duplicate objects are permissible duplicate objects:
+
+ OBJECT_NAME                         OBJECT_TYPE
+---------------------------         ------------------
+AQ$_SCHEDULES                          TABLE
+AQ$_SCHEDULES_PRIMARY            INDEX
+DBMS_REPCAT_AUTH                    PACKAGE
+DBMS_REPCAT_AUTH                    PACKAGE BODY 
+ Disable any custom triggers that would fire before/after DDL and enable them after the upgrade is complete.
+ In 11g, Creation of ACLs with timestamp with timezone datatype does not fail but migrating the same in 12c it fails with "ORA-01830: date format picture ends before converting entire input string" error 
+Please refer Note 1958876.1 Upgrade to 12.1 fails with ORA-01830 date format picture ends before converting entire input string ORA-06512: at "SYS.XS_OBJECT_MIGRATION"
+Patch requirements BEFORE upgrade ,to avoid the ORA-7455 error while running the  datapump after the upgrade . Please see  Note 2017572.1 ORA-7445 [qcsIsColInFro] Querying After Upgrade to 12c
+ Before starting the manual upgrade  it is required change the preference for 'concurrent statistics gathering' on the current release if the current setting is not set to 'FALSE'
+
+First, while still on the 11.2. release, obtain the current setting:
+
+SQL> SELECT dbms_stats.get_prefs('CONCURRENT') from dual;
+When 'concurrent statistics gathering' is not not set to 'FALSE', change the value to 'FALSE before the upgrade. 
+
+BEGIN 
+DBMS_STATS.SET_GLOBAL_PREFS('CONCURRENT','FALSE'); 
+END; 
+/
+
+In both 11.2 as in 12.1 concurrency is disabled by default for both manual and automatic statistics gathering. If the database requires changing this value back to the original setting, do this after the upgrade.
+
+Please see  Note 2037154.1 DBMS_STATS.GATHER_DICTIONARY_STATS Fails with "ORA-06502: PL/SQL: numeric or value error: character string buffer too small"
+
+Step 3 : Check for the integrity of the source database.
+
+Check for the integrity of the source database prior to starting the upgrade by downloading and running the dbupgdiag.sql script from the My Oracle Support article below:
+
+Note 556610.1  Script to Collect DB Upgrade/Migrate Diagnostic Information (dbupgdiag.sql)
+If the dbupgdiag.sql script reports any invalid objects, run $ORACLE_HOME/rdbms/admin/utlrp.sql (multiple times) to validate the invalid objects in the database until there is no change in the number of invalid objects.
+
+$ cd $ORACLE_HOME/rdbms/admin
+$ sqlplus "/ as sysdba"
+SQL> @utlrp.sql
+If the Oracle owned objects cannot be validated then it is suggested to post a community thread or open an SR to investigate why the object/objects cannot be validated.
+After validating the invalid objects, re-run dbupgdiag.sql in the database once again and make sure that everything is fine.
+
+It is advisable to do a Health Check using "hcheck.sql" script .Please refer following article to download the script . 
+
+Note 136697.1 hcheck.sql" script to check for known problems in Oracle8i, Oracle9i, Oracle10g and Oracle 11g
+
+  
+
+Step 4 : Pre-Upgrade Steps
+
+Run the Pre-Upgrade Information Tool from the environment of the database that will be upgraded.
+You must analyze your database before upgrading it to the new release.
+Note that the database must be running in normal mode in the old release.
+In case of the INDIRECT upgrade download and use the latest  Pre-Upgrade Information Tool see the following:
+
+Note 884522.1 How to Download and Run Oracle's Database Pre-Upgrade Utility
+
+or
+
+Run the Pre-Upgrade Information Tool for Collecting Pre-Upgrade Information
+
+ Step 1:
+
+    * Log into the system as the owner of the Oracle Database 12c Release 1 (12.1) Oracle Home directory.
+    * Copy the Pre-Upgrade Information Tool script preupgrd.sql and utluppkg.sql from the Oracle Database 12c Release 1 (12.1) $ORACLE_HOME/rdbms/admin directory to  the $ORACLE_HOME/rdbms/admin directory of the source Oracle Home.
+
+  Step 2:
+
+     * Run the new Pre-Upgrade Information Tool. For example, if you copied preupgrd.sql to the /admin directory of the source Oracle Home:
+
+SQL> @$ORACLE_HOME/rdbms/admin/preupgrd.sql
+preupgrade.log, preupgrade_fixups.sql and postupgrade_fixups.sql files are created in $ORACLE_HOME/cfgtoollogs/$ORACLE_SID/preupgrade/, which is under the source database ORACLE_HOME to be upgraded.
+
+4.1 Deprecated CONNECT Role
+
+After upgrading to Oracle Database 12c Release 1 (12.1) from INDIRECT database upgrade release like  Oracle Database9i Release 2 (9.2) or Oracle Database 10g Release 1 (10.1), the CONNECT role has only the CREATE SESSION privilege; the other privileges granted to the CONNECT role in earlier releases are revoked during the upgrade. To identify which users and roles in your database are granted the CONNECT role, use the following query:
+
+SQL> SELECT grantee FROM dba_role_privs
+WHERE granted_role = 'CONNECT' and
+grantee NOT IN (
+'SYS', 'OUTLN', 'SYSTEM', 'CTXSYS', 'DBSNMP',
+'LOGSTDBY_ADMINISTRATOR', 'ORDSYS',
+'ORDPLUGINS', 'OEM_MONITOR', 'WKSYS', 'WKPROXY',
+'WK_TEST', 'WKUSER', 'MDSYS', 'LBACSYS', 'DMSYS',
+'WMSYS', 'EXFSYS', 'SYSMAN', 'MDDATA',
+'SI_INFORMTN_SCHEMA', 'XDB', 'ODM');
+If users or roles require privileges other than CREATE SESSION, then grant the specific required privileges prior to upgrade. The upgrade scripts adjust the privileges for the Oracle-supplied users.
+
+In Oracle 9.2.x and 10.1.x CONNECT role includes the following privileges:
+
+SQL> SELECT GRANTEE,PRIVILEGE
+FROM DBA_SYS_PRIVS
+WHERE GRANTEE ='CONNECT'
+
+GRANTEE PRIVILEGE
+------- ----------------------
+CONNECT CREATE VIEW
+CONNECT CREATE TABLE
+CONNECT ALTER SESSION
+CONNECT CREATE CLUSTER
+CONNECT CREATE SESSION
+CONNECT CREATE SYNONYM
+CONNECT CREATE SEQUENCE
+CONNECT CREATE DATABASE LINK
+ From Oracle 10.2, 'CONNECT' role only includes 'CREATE SESSION' privilege.
+
+4.2 Update Access Control Lists and Network Utility Packages 
+
+Starting with Oracle Database 12c, the access control of the UTL packages (UTL_TCP, UTL_SMTP, UTL_MAIL, UTL_HTTP, and UTL_INADDR) is implemented using Oracle Database Real Application Security and does not require Oracle XML DB.
+
+ See  Update Access Control Lists and Network Utility Packages
+
+4.3 Dependencies on Network Utility Packages 
+
+Execute the following query
+
+SQL> SELECT * FROM DBA_DEPENDENCIES
+WHERE referenced_name IN ('UTL_TCP','UTL_SMTP','UTL_MAIL','UTL_HTTP','UTL_
+INADDR','DBMS_LDAP')
+AND owner NOT IN ('SYS','PUBLIC','ORDPLUGINS');
+Actions are discussed in Post Upgrade tasks (Step 7.12), as the DBMS_NETWORK_ACL_ADMIN package is introduced after upgrading the database and not available in prior releases.
+
+4.4 Database Links with Passwords from Earlier Releases
+
+Create a script for DBLINKs (in case the database has to be downgraded again).
+
+During the upgrade to Oracle Database 12c any passwords in database links are encrypted. 
+To downgrade to the original release, all of the database links with encrypted passwords must be dropped prior to the downgrade. 
+Consequently, the database links do not exist in the downgraded database. 
+If you anticipate a requirement to be able to downgrade to your original release, then save the information about affected database links from the SYS.LINK$ table, so that you can re-create the database links after the downgrade.
+
+SQL> SELECT 'CREATE '||DECODE(U.NAME,'PUBLIC','public ')||'DATABASE LINK '||CHR(10)
+||DECODE(U.NAME,'PUBLIC',Null, 'SYS','',U.NAME||'.')|| L.NAME||chr(10)
+||'CONNECT TO ' || L.USERID || ' IDENTIFIED BY "'||L.PASSWORD||'" USING
+'''||L.HOST||''''
+||chr(10)||';' TEXT
+FROM SYS.LINK$ L, SYS.USER$ U
+WHERE L.OWNER# = U.USER#;
+4.5 TIMESTAMP WITH TIME ZONE Data Type 
+
+The default  time zone file shipped with the  Oracle 12c Release 1 is  version 18.
+
+To see if there is any need for the DST update during the upgrade please check the following reference one :
+
+Note 1665676.1 Actions For DST Updates When Upgrading To Or Applying The 12.1.0.2 Patchset
+or
+Note 1522719.1 Actions For DST Updates When Upgrading To 12.1.0.1 Base Release
+
+ 
+
+4.6 Optimizer Statistics 
+
+Oracle recommends collecting statistics the night before starting the upgrade to decrease the amount of downtime
+
+To decrease the amount of downtime incurred when collecting statistics, Oracle recommends to collect statistics prior to performing the actual database upgrade. 
+As of Oracle Database 10g Release 1 (10.1), Oracle recommends that you use the DBMS_STATS.GATHER_DICTIONARY_STATS procedure to gather these statistics. For example, you can enter the following:
+
+$ sqlplus "/as sysdba"
+SQL> EXEC DBMS_STATS.GATHER_DICTIONARY_STATS;
+4.7   Save Database Control Files and Data with the emdwgrd Utility 
+
+After upgrading to Oracle Database 12c , if you want to downgrade Oracle Enterprise Manager Database Control you must save your Database Control files and data before upgrading your database. 
+The emdwgrd utility can be used to keep a copy of your database control files and data before upgrading your database. 
+The emdwgrd utility resides in the ORACLE_HOME/bin directory in the Oracle Database 12c home.
+
+1. Set ORACLE_HOME to your old Oracle Home
+2. Set ORACLE_SID to the SID of the database being upgraded.
+3. Set PATH, LD_LIBRARY_PATH and SHLIB_PATH to point to the Oracle home from which the database is being upgraded.
+4. Change directory to Oracle Database 12c  home.
+5. Run the emdwgrd command.
+   a. Run the following command for single instance database:
+
+$ emdwgrd -save -sid old_SID -path save_directory
+where old_SID is the SID of the database being upgraded and save_directory is the path to the storage place you have chosen for your Database Control files and data.
+
+ b. For RAC database, remote copy is required across the cluster nodes. Define an environment variable to indicate which remote copy is configured. For example: setenv EM_REMCP /usr/bin/scp
+
+$ emdwgrd -save -cluster -sid old_SID -path save_directory
+Note: If 10g Oracle Home is on a shared device, add -shared to the previous command line.
+
+The above command(s) may core dump on the HP-UX Itanium platform, which is a known issue. For more information, refer to following article:
+
+Note 562980.1 - emdwgrd core dumps : emdwgrd[228]: 10366 Memory fault(coredump)
+6. Enter the SYS password for the database to be upgraded.
+Note: On RAC databases you will be prompted to run '/tmp/racdwgrd_dbctl.sh' on each of the nodes.
+
+4.8   Verify That Materialized View Refreshes Have Completed Before Upgrading 
+
+Before upgrading Oracle Database, you must wait until all materialized views have completed refreshing. 
+Run the following query to determine if there are any materialized view refreshes still in progress:
+
+SQL> select s.obj#,o.obj#,s.containerobj#,lastrefreshdate,pflags,xpflags,o.name,o.owner#, bitand(s.mflags, 8) from obj$ o, sum$ s
+where o.obj# = s.obj# and o.type# = 42 AND bitand(s.mflags, 8) = 8;
+
+If the above query returns any row, then use Note 1442457.1 : During 11g Upgrade, Mview refresh warning
+
+4.9 Ensure That No Files Need Media Recovery Before Upgrading 
+
+Make  ensure that there are no files requiring media recovery by executing the following query .
+
+SQL> SELECT * FROM v$recover_file;
+4.10 Ensure That No Files Are in Backup Mode Before Upgrading 
+
+Execute the following query to verify that No Files in backup mode when upgrading Oracle Database
+
+SQL> SELECT * FROM v$backup WHERE status != 'NOT ACTIVE';
+4.11 Resolve Outstanding Distributed Transactions Before Upgrading 
+
+To resolve outstanding distributed transactions:
+1. Issue the following statement:
+
+SQL> SELECT * FROM dba_2pc_pending;
+2. If the query in the previous step returns any rows, then issue the following
+statements:
+
+SQL> SELECT local_tran_id FROM dba_2pc_pending;
+SQL> EXECUTE dbms_transaction.purge_lost_db_entry('');
+SQL> COMMIT;
+4.12 Purge the Database Recycle Bin Before Upgrading :
+
+To empty the database recycle bin, issue the following command:
+
+SQL> PURGE DBA_RECYCLEBIN
+NOTE : The database recycle bin must be empty during the upgrade process to avoid possible ORA-00600 errors and to minimize the upgrade time.
+
+4.13 Synchronize the Standby Database with the Primary Database When Upgrading 
+
+To check if a standby database exists and to synchronize it:
+1. Issue the following query:
+
+SQL> SELECT SUBSTR(value,INSTR(value,'=',INSTR(UPPER(value),'SERVICE'))+1)
+FROM v$parameter
+WHERE name LIKE 'log_archive_dest%' AND UPPER(value) LIKE 'SERVICE%';
+2. If the query in the previous step returns a row, then synchronize the standby database with the primary database.
+
+ Make sure all the logs are transported to the standby server after a final log switch in the primary.
+ Start the recovery of the standby database with the NODELAY option.
+4.14 Disable all batch and cron jobs
+
+For jobs initiated by Oracle then packages DBMS_JOB, DBMS_SCHEDULER can be used. 
+For cron jobs (external jobs controlled at the OS level) then this is a task for your Unix administrator.
+
+See also: 
+Note 404238.1 : How to Disable an Entry from DBMS_SCHEDULER 
+Note 1335741.1 : How To Stop A Running Job Using DBMS_JOB 
+Note 67695.1 : PROCEDURE DBMS_JOB.BROKEN Specification
+
+4.15 Verify SYS and SYSTEM Default tablespace
+
+Ensure the users SYS and SYSTEM have 'SYSTEM' as their default tablespace. 
+You must have sufficient space in the 'SYSTEM' tablespace or set extents to unlimited.
+
+SQL> SELECT username, default_tablespace
+     FROM dba_users
+     WHERE username in ('SYS','SYSTEM');
+If DEFAULT_TABLESPACE is anything other than SYSTEM tablespace, modify the default tablespace for user SYS and SYSTEM to SYSTEM by using the command below:
+
+SQL> ALTER user SYS default tablespace SYSTEM;
+SQL> ALTER user SYSTEM default tablespace SYSTEM;
+4.16 Check whether database has any externally authenticated SSL users
+
+Execute the following query 
+
+SQL> SELECT name FROM sys.user$
+     WHERE ext_username IS NOT NULL
+     AND password = 'GLOBAL';
+If any SSL users are found then Step 7.9 has to be followed after the upgrade.
+
+4.17 Location of datafiles, redo logs and control files 
+
+Note the location of datafiles, redo logs and control files. Also take a backup of all configuration files like listener.ora, tnsnames.ora, etc. from $ORACLE_HOME.
+
+SQL> SELECT name FROM v$controlfile;
+SQL> SELECT file_name FROM dba_data_files;
+SQL> SELECT group#, member FROM v$logfile;
+4.18 Remove Enterprise Manager  Database Control repository :
+
+Enterprise Manager Database Control is superseded in 12c by Oracle Enterprise Manager Express .
+     Therefore no repository is needed anymore .
+
+     Remove  Enterprise Manager  Database Control  repository MANUALLY using the following command
+
+     Note : You will get the emremove.sql script in the Oracle 12c home .
+
+    Copy the emremove.sql script from the 12c $ORACLE_HOME/rdbms/admin to the source $ORACLE_HOME/rdbms/admin and then execute on the source database prior to upgrade.
+
+$emctl stop dbcontrol
+
+SQL> @ ?/rdbms/admin/emremove.sql
+
+  If the EM repository is not removed up front ,it will be automatically removed during the catuppst.sql post-upgrade phase.
+
+Also refer:Is it Possible to Validate Invalid Objects related to DBControl Configuration in a Database Upgraded to 12c? (Doc ID 2118740.1)
+
+Note: This step is required if EM component exists in the database .And also if using  Cloud Control then also EM does not exists and  this step is not required.
+
+4.19 Run olspreupgrade.sql  :
+
+If  OLS(Lable Security) and/or DV ( Database Vault) was already in the  database prior to the upgrade then execute the following steps on Source database prior to upgrade
+Note : You will get the olspreupgrade.sql script in the Oracle 12c home .
+Copy the olspreupgrde.sql script from the 12c $ORACLE_HOME/rdbms/admin to the source $ORACLE_HOME/rdbms/admin and then execute on the source database prior to upgrade.
+SQL> @ ?/rdbms/admin/olspreupgrade.sql
+   - It prepares the move of AUD$ table from SYSTEM to SYS.
+
+   - It processes the audit records to minimize downtime.
+
+   - It moves records to an Interim temporary table.
+
+See  Requirements for Upgrading Databases That Use Oracle Label Security and Oracle Database Vault for complete information 
+
+4.20 Drop Oracle 12c  Release 1 supplied users and roles ,if exist in the source database 
+
+There are new Oracle users and roles in Oracle 12.1.  If they exist in the source database users or roles with the same names, then they must be dropped before upgrading the database.
+
+Run the preupgrade tool to check for the existence of any users or roles in the source database that use the same names.
+
+Note: If there is a pre-existing user in the database with same name as the 12.1 oracle-supplied users or roles, then move the data of that user to a different schema before dropping the pre-existing user.
+
+Make sure to drop these pre-existing users and/or roles before doing the upgrade.  Else, the upgrade will terminate will with "ORA-01722: invalid number"  error.
+
+4.21 Review and Remove any unnecessary hidden/underscore parameters
+
+Please review and remove any unnecessary hidden/underscore parameters prior to upgrading. It is strongly recommended that these be removed before upgrade
+
+unless your application vendors and/or Oracle Support state differently.Changes will need to be made in the init.ora or spfile.
+To view existing hidden parameters execute the following command while connected AS SYSDBA:
+
+
+SQL> SELECT name, value from SYS.V$PARAMETER WHERE name LIKE '\_%' ESCAPE '\' order by name;
+
+ 
+
+4.22 Check the XDB ACLs has start_date and end_date ACE attributes 
+
+Before upgrading the database to 12c, please run the below query as SYS:
+ 
+
+SQL> select aclid, start_date, end_date from xds_ace where start_date is not null;  
+If the query returns any row, then please follow Note 1958876.1 Upgrade to 12.1 fails with ORA-01830 date format picture ends before converting entire input string ORA-06512: at "SYS.XS_OBJECT_MIGRATION"  to avoid failure in XDB's upgrade.
+
+4.23 Check the Mitigation patch has been applied on the source Oracle home ,it disables the Java development in the Database which cause error during upgrade
+
+NOTE : This step is ONLY applicable if you have applied  Mitigation Patch  on the source database
+
+Please "enable" the Java development in source database .
+
+Connect to the database as a SYSDBA user
+  SQL> exec dbms_java_dev.enable;
+  
+And then upgrade the database. 
+
+Please refer Note 1985725.1 Database Upgrade failed with Errors “ORA-02290: check constraint (SYS.JAVA_DEV_DISABLED) violated” & “ORA-04045: SYS.DBMS_ISCHED”
+
+4.24 Changing Or Choosing the Database Character Set
+
+In Oracle Database 12c with multitenant architecture, all pluggable databases (PDBs) in a container database (CDB) must have
+
+The same Database character set (NLS_CHARACTERSET) or the NLS_CHARACTERSET need to be a (Plug-in compatible) binary subset of the CDB NLS_CHARACTERSET
+The same National character set (NLS_NCHAR_CHARACTERSET) as the CDB's root container
+ If you have PDBs with Unicode characterset, its recommended to create the CDB with characterset as AL32UTF8. Please note we cannot migrate the CDB's characterset using DMU.
+
+Please see: 
+Note 1968706.1 12c Multitenant Container Databases (CDB) and Pluggable Databases (PDB) Character set restrictions / ORA-65116/65119: incompatible database/national character set ( Character set mismatch: PDB character set CDB character set )
+Note ID 225912.1 [Section E] Changing Or Choosing the Database Character Set ( NLS_CHARACTERSET )
+
+ 
+
+4.25 if upgrading database from 10g
+
+If you are upgrading database from 10g, verify following information
+
+SQL> select DBMS_STATS.GET_PARAM('METHOD_OPT') from dual;
+
+DBMS_STATS.GET_PARAM('METHOD_OPT')
+-------------------------------------------------------------
+FOR COLUMNS ID SIZE 1
+
+If it reports "FOR COLUMNS ID SIZE 1", it might create issues during upgrade.  Hence as a workaround execute
+
+SQL>exec DBMS_STATS.SET_PARAM('METHOD_OPT','FOR ALL COLUMNS SIZE AUTO');
+
+Refer: Unpublished BUG 22454765 - CARRYING METHOD_OPT = "FOR COLUMNS ID SIZE 1" FROM 10G WILL BREAK UPGRADE
+
+
+4.26 if upgrading database from 11.2.0.3
+
+It is recommended to apply the patch 21550777 on 12.1.0.2 ORACLE_HOME before starting the upgrade to Materialized views related issues.
+
+ 
+
+Step 5 : Requirements and recommendations for target database
+
+     Check the certification of Oracle 12cR1 with your Platform/Operating system before downloading and installing Oracle 12cR1.Please check Certification information on My Oracle Support (MOS) Certify.
+     Download and Install Oracle 12c Release 1 in a new Oracle Home and make sure there are no relinking errors.
+     Install the latest available Patchset from My Oracle Support (if available).
+     Install the latest opatch available for your platform and database version (if available).
+     Install the latest available Critical Patch Update (if available).
+     For an awareness of performance-related issues in 12.1.0.2 . Please refer the note: Things to Consider to Avoid Poor Performance or Wrong Results on 12.1.0.2 (Doc ID 2034610.1)
+ Copy following  configuration files from the $ORACLE_HOME of the database being upgraded to the new Oracle Home for Oracle Database 12c
+          - Parameter file (spfile or pfile)
+          - Password file  (orapwsid)
+
+ Remove or comment out obsolete and deprecated initialization parameters.
+            Comment out obsoleted parameters and change all deprecated parameters (Deprecated and Desupported Parameters).
+
+           The SEC_CASE_SENSITIVE_LOGON parameter is deprecated in 12.1,  Please refer the Behaviour Change for complete information
+
+  The DIAGNOSTIC_DEST initialization parameter replaces the USER_DUMP_DEST, BACKGROUND_DUMP_DEST.
+            According to Bug 8937877, CORE_DUMP_DEST is not deprecated.
+
+           Refer to the below article for understanding directory structure in 11g and DIAGNOSTIC_DEST.
+
+            Note 454442.1 11g Install : Understanding about Oracle Base, Oracle Home and Oracle Inventory locations
+
+ 
+
+If you are using a cluster database, set the parameter CLUSTER_DATABASE=FALSE during the upgrade and set it back to true after the upgrade. 
+If you are upgrading a cluster database, then modify the init<SID>.ora file in the same way that you modified the parameter file.
+Make sure all path names in the parameter file are fully specified.
+You should not have relative path names in the parameter file.
+ Stop the listener for the database.
+$ lsnrctl stop
+Create a new listener for Oracle Database 12c Release 1 (12.1) database
+Previous versions of the listener are not supported for use with an Oracle Database 12c Release 1 (12.1) database. 
+However, it is possible to use the new version of the listener with previous versions of Oracle Databases.
+If you are upgrading from 10.2.0.5  or upgrading manually without using DBUA, run Oracle Net Configuration Assistant before upgrading the Oracle RAC database.
+
+This is a two-step option.
+ You must first run Oracle Net Configuration Assistant from the old Oracle Home to remove the old listener.
+- Invoke the Netca
+- Choose the configuration you want to do  ==> Choose Listener Configuration
+- Select what you want to do ==> Delete 
+- Select the listener you want to delete .
+
+ Then you must run Oracle Net Configuration Assistant again from the new Oracle Database 12c Release 1 (12.1) Home to create a new listener.
+- Invoke the Netca
+- Choose the configuration you want to do ==> Choose Listener Configuration
+- Select what you want to do ==> Add
+- Provide the detail that is required to configure the listener.
+
+You must remove the old listener before creating a new one. 
+If you attempt to create a new listener from the new Oracle Home first, and use the same name and port as the old listener, then Oracle Net Configuration Assistant returns an error.
+
+Note: This is your only option if you want to upgrade your Oracle RAC database manually.
+
+Stop other executables such as dbconsole, isqlplus, etc.
+$ emctl stop dbconsole
+$ isqlplusctl stop
+ Shutdown the database.
+$ sqlplus "/as sysdba"
+SQL> shutdown immediate;
+For Windows create a new SID  ( This steps is specific to Windows)
+         If your operating system is Windows then complete the actions in this step, else skip to the next step.
+
+         Set the environment to Source/Previous version ( 10.2 /11.1)
+
+         Stop the OracleServiceSID Oracle service of the database you are upgrading, where SID is the instance name. For example, if your SID is ORCL, then enter the following at a command prompt:
+       
+ a). Stop the Oracle database service.
+
+C:\> NET STOP OracleServiceORCL
+b). Delete Oracle service using ORADIM binary from which the database is upgraded to 12.1.
+
+C:\> ORADIM -DELETE -SID ORCL
+c). Create the Oracle Database 12c Release 1 (12.1) service at a command prompt using the ORADIM command of the new Oracle Database release:
+
+C:\> ORADIM -NEW -SID SID -INTPWD PASSWORD  -STARTMODE AUTO -PFILE %ORACLE_HOME%\DATABASE\INIT<SID>.ORA
+
+For Instance,
+
+C:\> ORADIM -NEW -SID ORCL -INTPWD <PASSWORD> -STARTMODE AUTO -PFILE %ORACLE_HOME%\DATABASE\INIT<SID>.ORA
+Make sure the following environment variables point to the Oracle 12c Release 1 (12.1) directories
+               - ORACLE_BASE
+               - ORACLE_HOME
+               - PATH, LD_LIBRARY_PATH and SHLIB_PATH
+
+
+$ export ORACLE_HOME=<location of Oracle 12.1>
+$ export PATH=$ORACLE_HOME/bin:$PATH
+$ export ORACLE_BASE=<Oracle_Base set during installation>
+Note : If ORACLE_BASE is not known after setting PATH to 12cR1 Oracle Home, execute 'orabase' which will point the location of the base.
+
+$ orabase
+/uo1/app/oracle
+Update the oratab entry to set the new ORACLE_HOME pointing to ORCL and disable automatic startup.   
+Sample : cat /etc/oratab
+
+            #orcl:/opt/oracle/product/11.2/db_1:N
+            orcl:/opt/oracle/product/12.2/db_1:N
+Note: After /etc/oratab is updated to have SID and Oracle Home (12.1), you can execute oraenv (/usr/local/bin/oraenv) and set the environment. 
+The input has to be the SID which is entered in /etc/oratab against the 12cR1 home.
+For example:
+
+[oracle@localhost ~]$ . oraenv
+ORACLE_SID = [orcl] ? orcl
+The Oracle base for ORACLE_HOME=/opt/oracle/product/12.1/db_1 is /u01/app/oracle
+[oracle@localhost ~]$
+Step 6 : Upgrading Database to 12cR1
+
+At the operating system prompt, change to the $ORACLE_HOME/rdbms/admin directory of 12cR1 Oracle Home.
+
+$ cd $ORACLE_HOME/rdbms/admin
+$ sqlplus "/ as sysdba"
+SQL> startup UPGRADE
+SQL> exit
+Run the catctl.pl script from the new Oracle home.
+In this release, the new Upgrade Utility, catctl.pl, replaces catupgrd.sql.
+
+To run catctl.pl on Linux:
+
+Example: Where parallelism is 6 ( n=6)
+
+ cd $ORACLE_HOME/rdbms/admin
+ $ORACLE_HOME/perl/bin/perl catctl.pl -n  6 -l $ORACLE_HOME/diagnostics catupgrd.sql
+To run catctl.pl on Windows:
+
+Example: Where parallelism is 6 ( n=6)
+                                                             
+cd %ORACLE_HOME%\rdbms\admin
+%ORACLE_HOME%\perl\bin\perl catctl.pl -n  6 -l %ORACLE_HOME%\diagnostics catupgrd.sql
+Please refer Oracle Database 12c Release 1 (12.1) Upgrade New Features Note  1515747.1 for more information of catctl.pl options
+
+Run the Post-Upgrade Status Tool $ORACLE_HOME/rdbms/admin/utlu121s.sql which provides a summary of the upgrade at the end of the spool log.
+It displays the status of the database components in the upgraded database and the time required to complete each component upgrade.
+Any errors that occur during the upgrade are listed with each component and must be addressed.
+
+$ sqlplus "/as sysdba"
+SQL> STARTUP
+SQL> @utlu121s.sql
+Important: The catuppst.sql script is run as part of the upgrade process unless the upgrade returns errors during the process. Check the log file for "BEGIN catuppst.sql" to verify that catuppst.sql ran during the upgrade process. If catuppst.sql has not run, then proceed to run catuppst.sql as shown in this step. Warning messages are also displayed when running catctl.pl indicating that catuppst.sql was not run during the upgrade.
+
+Run catuppst.sql, located in the $ORACLE_HOME/rdbms/admin directory, to perform upgrade actions that do not require the database to be in UPGRADE mode.
+
+SQL> @catuppst.sql
+This script can be run concurrently with utlrp.sql. 
+Run utlrp.sql to recompile any remaining stored PL/SQL and Java code in another session.
+
+SQL> @utlrp.sql
+Check for the integrity of the upgraded database by running dbupgdiag.sql script from the below article:
+
+Note 556610.1  Script to Collect DB Upgrade/Migrate Diagnostic Information (dbupgdiag.sql)
+If the dbupgdiag.sql script reports any invalid objects, run $ORACLE_HOME/rdbms/admin/utlrp.sql (multiple times) to validate the invalid objects in the database, until there is no change in the number of invalid objects.
+
+After validating the invalid objects, re-run dbupgdiag.sql in the upgraded database once again and make sure that everything is fine.
+
+Exit SQL*Plus.
+
+If you are upgrading a cluster database from releases 10.2, 11.1, or 11.2, then upgrade the database configuration in Oracle Clusterware using the following command:
+
+$ srvctl upgrade database -d db-unique-name -o oraclehome
+where db-unique-name is the database name assigned to it (not the instance name), and oraclehome is the Oracle home location in which the database is being upgraded.
+
+Step 7: Post Upgrade Steps
+
+7.1 Environment Variables and oratab file
+
+Make sure the following environment variables point to the Oracle 12c Release 1 (12.1) directories             
+               - ORACLE_BASE
+               - ORACLE_HOME
+               - PATH, LD_LIBRARY_PATH and SHLIB_PATH
+
+Ensure that your oratab file and any client scripts that set the value of ORACLE_HOME point to the new Oracle home that is created for the new Oracle Database 12c release,
+7.2 Initialization parameter file
+
+Edit init.ora
+
+If you changed the CLUSTER_DATABASE parameter prior the upgrade set it back to TRUE
+Migrate your initialization parameter file to a server parameter file.
+Create a server parameter file with an initialization parameter file.
+
+SQL> create spfile from pfile;
+This will create an spfile as a copy of the init.ora file located in $ORACLE_HOME/dbs (UNIX) & %ORACLE_HOME%\database (Windows).
+
+7.3 Password File
+
+a) If the REMOTE_LOGIN_PASSWORDFILE initialization parameter is set to either exclusive or shared, create a password file with ORAPWD.
+
+b) Refer the following document to avoid ORA-28017 during post upgrade.
+ORA-28017: The password file is in the legacy format (Doc ID 2112456.1)
+
+7.4 COMPATIBLE Initialization Parameter
+
+The COMPATIBLE initialization parameter controls the compatibility level of your database. 
+When you are certain that you no longer need the ability to downgrade your database to its original release
+
+
+Perform a backup of your database before you raise the COMPATIBLE initialization parameter (optional).
+If you are using a server parameter file, then complete the following steps:
+              a. Update the server parameter file to set or change the value of the COMPATIBLE initialization parameter.
+                 For example, to set the COMPATIBLE initialization parameter to 12.0.0, enter the following statement:
+
+SQL> ALTER SYSTEM SET COMPATIBLE = '12.0.0' SCOPE=SPFILE;
+              b. Shut down and restart the instance.
+
+If you are using an initialization parameter file, then complete the following steps:
+              a. Shut down the instance if it is running:
+
+SQL> SHUTDOWN IMMEDIATE
+              b. Edit the initialization parameter file to set or change the value of the COMPATIBLE initialization parameter.
+                 For example, to set the COMPATIBLE initialization parameter to for Oracle Database release 12.1, enter the following in the initialization parameter file:
+                 COMPATIBLE = 12.1.0
+              c. Start the instance using STARTUP.
+
+7.5 Change passwords for Oracle-Supplied Accounts.
+
+Depending on the release from which you upgraded, there might be new Oracle-supplied accounts. 
+Oracle recommends that you lock all Oracle supplied accounts except for SYS and SYSTEM, and expire their passwords, thus requiring new passwords to be specified when the accounts are unlocked.
+
+You can view the status of all accounts by issuing the following SQL statement:
+
+SQL> SELECT username, account_status FROM dba_users ORDER BY username;
+To lock and expire passwords, issue the following SQL statement:
+
+SQL> ALTER USER username PASSWORD EXPIRE ACCOUNT LOCK;
+7.6  Upgrade the Recovery Catalog After Upgrading Oracle Database
+
+You can upgrade the Recovery catalog by executing the  UPGRADE CATALOG command 
+
+Please refer Upgrading the Recovery Catalog for complete information and steps
+
+7.7  Upgrade the Time Zone File Version After Upgrading Oracle Database
+
+If the Pre-Upgrade Information Tool instructed you to upgrade the time zone files after completing the database upgrade,
+then use the DBMS_DST PL/SQL package to update the RDBMS DST (timezone) version. 
+(Note 1585343.1 : Scripts to automatically update the RDBMS DST (timezone) version in an 11gR2 or 12cR1 database . )
+
+ATTENTION : Once you have updated the DST version you may still see the following warning returned by script postupgrade_fixups.sql :
+
+******************************************************************************************
+Check Tag:     OLD_TIME_ZONES_EXIST
+Check Summary: Check for use of older timezone data file
+Fix Summary:   Update the timezone using the DBMS_DST package after upgrade is complete.
+*******************************************************************************************
+  
+Just ignore this warning, it is due to published Bug 17303129 : UPGRADE DATABASE FROM 11.1.0.7 TO 12.1.0.1, "OLDER TIMEZONE IN USE" OCCURRED
+
+When such warning is returned then execute this query : 
+
+SELECT PROPERTY_NAME, SUBSTR(property_value, 1, 30) value FROM DATABASE_PROPERTIES
+WHERE PROPERTY_NAME LIKE 'DST_%' ORDER BY PROPERTY_NAME; 
+
+if not DStv18 then Oracle suggests  to upgrade DST, if DSTv18 then it is Bug  17303129 and it can be safely ignored .
+
+
+7.8  Upgrade Statistics Tables Created by the DBMS_STATS Package
+
+If you created statistics tables using the DBMS_STATS.CREATE_STAT_TABLE procedure, then upgrade these tables by executing the following procedure:
+
+EXECUTE DBMS_STATS.UPGRADE_STAT_TABLE('SYS','dictstattab');
+
+In the example, 'SYS' is the owner of the statistics table and 'dictstattab' is the name of the statistics table. 
+Execute this procedure for each statistics table.
+
+7.9  Upgrade Externally Authenticated SSL Users
+
+If you have upgraded from Oracle 9.2.0.x or 10.1.0.x, and you are using externally authenticated SSL users, then you must run the following command to upgrade those users:
+
+ORACLE_HOME/rdbms/bin/extusrupgrade --dbconnectstring
+<hostname:port_no:sid> --dbuser <db admin> --dbuserpassword
+<password> -a
+If you are upgrading from 10.2.0.x (or higher), then you are not required to run this command.
+
+7.10  Install Oracle Text Supplied Knowledge Bases After Upgrading Oracle Database
+
+The Oracle Text-supplied knowledge bases are part of the companion products for Oracle Database 12c and are not immediately available after an upgrade to Oracle Database 12c. 
+Any Oracle Text features dependent on the supplied knowledge bases which were available before the upgrade do not function after the upgrade. 
+To re-enable such features, you must install the Oracle Text supplied knowledge bases from the installation media.
+
+After an upgrade, all user extensions to the Oracle Text supplied knowledge bases must be regenerated. These changes affect all databases installed in the given Oracle home
+
+7.11  Update Your Oracle Application Express Configuration
+
+If source database originally included Application Express Version 3.2 or higher, then NO additional configuration necessary .
+
+If source database contained an earlier version of Application Express (HTML DB), then the latest version is automatically installed during the upgrade. 
+You must complete a series of post installation steps to configure Application Express for use with the new Oracle  Database 12c.
+
+7.12  Configure Fine-Grained Access to External Network Services
+
+To avoid "ORA-24247: network access denied by access control list (ACL)" when executing UTL packages (Network related packages), access has to be granted to user using these packages.
+
+The following example first looks for any ACL currently assigned to host_name.
+If one is found, then the example grants user_name the CONNECT privilege in the ACL only if that user does not already have it. 
+If no ACL exists for host_name, then the example creates a new ACL called ACL_name, grants the CONNECT privilege to user_name, and assigns the ACL to host_name.
+
+DECLARE
+acl_path VARCHAR2(4000);
+BEGIN
+SELECT acl INTO acl_path FROM dba_network_acls
+WHERE host = 'host_name' AND lower_port IS NULL AND upper_port IS NULL;
+IF DBMS_NETWORK_ACL_ADMIN.CHECK_PRIVILEGE(acl_path,'principal','privilege') IS NULL THEN
+DBMS_NETWORK_ACL_ADMIN.ADD_PRIVILEGE(acl_path,'principal', is_grant, 'privilege');
+END IF;
+EXCEPTION
+WHEN no_data_found THEN
+DBMS_NETWORK_ACL_ADMIN.CREATE_ACL('ACL_name.xml','ACL description', 'principal', is_grant, 'privilege');
+DBMS_NETWORK_ACL_ADMIN.ASSIGN_ACL('ACL_name.xml','host_name');
+END;
+
+COMMIT;
+acl_name.xml => Enter a name for the access control list XML file.
+ACL description => 'file description',
+principal => 'user_or_role',
+is_grant => TRUE|FALSE,
+privilege => 'connect|resolve',
+host_name => host name
+
+Refer to the below note on how to use DBMS_NETWORK_ACL_ADMIN package and also to avoid ORA-24247 : network access denied by access control list (ACL).
+
+Note 453786.1 ORA-24247 When Executing UTL_HTTP UTL_INADDR Packages
+7.13  Enable Oracle Database Vault 
+
+Refer to the following documents for enabling Oracle Database Vault:
+
+Note 453903.1 - Enabling and Disabling Oracle Database Vault in UNIX
+Note 453902.1 - Enabling and Disabling Oracle Database Vault in WINDOWS
+7.14  Identify Invalid Objects With the utluiobj Script
+
+Before the upgrade ,the list of invalid SYS/SYSTEM objects is written to registry$sys_inv_objs and non-SYS/SYSTEM objects was written to registry$nonsys_inv_objs by the Pre-Upgrade Information Tool
+ 
+After the upgrade, run utluiobj.sql from $ORACLE_HOME/rdbms/admin/ to identify/compare any new invalid objects due to the upgrade.
+
+7.15 Enable all batch and cron jobs diable at step 4.14 
+
+ 
+ 
+REFERENCES
+
+
+NOTE:1565816.1 - Upgrading to a higher release throws ORA-01031: insufficient privileges 
+
+BUG:17303129 - UPGRADE DATABASE FROM 11.1.0.7 TO 12.1.0.1, "OLDER TIMEZONE IN USE" OCCURRED
+
+NOTE:1585343.1 - Scripts to automatically update the RDBMS DST (timezone) version in an 11gR2 or 12cR1 database .
