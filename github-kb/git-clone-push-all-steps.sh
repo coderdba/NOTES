@@ -34,6 +34,8 @@ else
 # At this point, edit files and do the rest
 # If missed something, after 'push' again edit-add-commit-push
 
+cd ${repo}
+
 git add .
 
 git commit -m "$commitmessage"
