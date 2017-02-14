@@ -1,14 +1,19 @@
+===============================
 UPGRADE FROM 11G to 12C PDB RAC
-Complete Checklist for Manual Upgrades to Oracle Database 12c Release 1 (12.1) (Doc ID 1503653.1)
+===============================
+Complete Checklist for Manual Upgrades to Oracle Database 12c Release 1 (12.1) 
+Based on Doc ID 1503653.1
 
-PRE-CHECKS (multiple steps below are bundled into pre-check.sql in this repository)
-
+---------------
+PRE-CHECKS (some steps below are bundled into pre-check.sql in this repository)
+---------------
 Note: The pre-check run from 12c home says EM DB Control (SYSMAN) will be removed during upgrade
+	--> this is not in the script pre-check.sql yet
 
 CHECK: The 12c home pre-check can be run from its location itself
 CHECK: Check if DB Links work as they were after upgrade and conversion to PDB
 
-DUPLICATES AND INVALIDS
+DUPLICATES AND INVALIDS - pre-check.sql 
 -- Check duplicate objects between SYS and SYSTEM
 prompt
 prompt Check duplicate objects between SYS and SYSTEM
@@ -21,14 +26,14 @@ OWNER='SYSTEM' and OBJECT_NAME not in
 ('AQ$_SCHEDULES_PRIMARY', 'AQ$_SCHEDULES',
 'DBMS_REPCAT_AUTH');
 
--- Check invalid objects
+-- Check invalid objects - pre-check.sql
 prompt
 prompt Checking invalid objects in SYS and SYSTEM users
 prompt
 select substr(owner,1,6) owner, substr(object_name,1,30) object, substr(object_type,1,30)
 type, status, LAST_DDL_TIME from dba_objects where status <>'VALID' and owner like 'SYS%';
 
-RUN PRE-UPGRADE DIAGNOSTIC SQL METALINK NOTE 556610.1
+RUN PRE-UPGRADE DIAGNOSTIC SQL METALINK NOTE 556610.1 - pre-check.sql
 Run the script dbupgdiag.sql to diagnose oracle recommended items
 NOTE: The script needs to be run in SQL*Plus both before the upgrade on the source database and after the upgrade on the upgraded database as SYS user. This will help to determine the status of the database before and after upgrade.
 --> dbupgdiag.sql is in this folder in another sql file
@@ -39,12 +44,13 @@ Check logfile for errors, duplicates etc.
 Pay attention to duplicates, invalid objects etc.
 For fixing, metalink note 1030426.6
 
-FIX ISSUES
+FIX ISSUES - pre-check.sql
 @$ORACLE_HOME/rdbms/admin/utlrp.sql
 
 RUN PRE-UPGRADE SCRIPT FROM 12C HOME
 
-Run $ORACLE_HOME_12C/rdbms/admin/preupgrd.sql
+Run $ORACLE_HOME_12C/rdbms/admin/preupgrd.sql - pre-check.sql
+
 After the run, it asks to do the following:
     1. Review results of the pre-upgrade checks:
      /u01/app/oracle/cfgtoollogs/DB_UNIQUE_NAME/preupgrade/preupgrade.log
@@ -55,14 +61,17 @@ After the run, it asks to do the following:
     3. Execute in the NEW environment AFTER upgrade:
      /u01/app/oracle/cfgtoollogs/DB_UNIQUE_NAME/preupgrade/postupgrade_fixups.sql
 
-
+-----------------------
 CHECK DATAGUARD STATUS
+-----------------------
 dgmgrl /
 DGMGRL> show configuration;
 
 This should show a good configuration with no transport/apply lag
 
+---------------------------------
 GENERATE DB-LINK RE-CREATE SCRIPT
+---------------------------------
 Upon upgrade passwords in DB-links will be encrypted in 12c - unlike un-encrypted in 11g.
 Create a db-link re-creator script using the following SQL.
 NOTE: Upon upgrade AND conversion to PDB, check if DB-Links work as they were in 11g - most possibly, we may need to create them again at PDB level
@@ -75,14 +84,20 @@ NOTE: Upon upgrade AND conversion to PDB, check if DB-Links work as they were in
     FROM SYS.LINK$ L, SYS.USER$ U
     WHERE L.OWNER# = U.USER#;
 
+------------------------------------------------
 CHECK TIMEZONE FILE IF IT NEEDS UPDATE
+------------------------------------------------
 Ver 18 timezone file is supplied with 12c.
 Check note 1509653.1 to update DST using DBMS_DST.
 
+------------------------------------------------
 CHECK IF ANY FILE NEEDS MEDIA RECOVERY
+------------------------------------------------
 select * from v$recover_file;
 
+------------------------------------------------
 CHECK IF ANY FILES ARE IN BACKUP MODE
+------------------------------------------------
 select * from v$backup where status != 'NOT ACTIVE';
 
 NOTE LOCATION OF FILES
