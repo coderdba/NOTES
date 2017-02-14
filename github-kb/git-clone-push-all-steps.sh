@@ -6,8 +6,6 @@ then
   exit
 fi
 
-
-
 repo=repo-xyz
 branch=add_a_new_db
 commitmessage=$branch
