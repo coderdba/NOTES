@@ -87,6 +87,48 @@ After the run, it asks to do the following:
     
     3. Execute in the NEW environment AFTER upgrade:
      /u01/app/oracle/cfgtoollogs/DB_UNIQUE_NAME/preupgrade/postupgrade_fixups.sql
+    
+-----------------------------------------------
+DEPRECATED CONNECT ROLE
+-----------------------------------------------
+Applies to 10g and 9i only.
+CONNECT role in 9i and 10g DB's had more privileges than 'create session'.
+Users having CONNECT role and using those privileges due to that must  be made to get those privileges in some other way
+--> because 11g and 12c do not give those privileges to CONNECT role
+ 
+Asses the need using the following SQLs:
+
+ SQL> SELECT grantee FROM dba_role_privs
+WHERE granted_role = 'CONNECT' and
+grantee NOT IN (
+'SYS', 'OUTLN', 'SYSTEM', 'CTXSYS', 'DBSNMP',
+'LOGSTDBY_ADMINISTRATOR', 'ORDSYS',
+'ORDPLUGINS', 'OEM_MONITOR', 'WKSYS', 'WKPROXY',
+'WK_TEST', 'WKUSER', 'MDSYS', 'LBACSYS', 'DMSYS',
+'WMSYS', 'EXFSYS', 'SYSMAN', 'MDDATA',
+'SI_INFORMTN_SCHEMA', 'XDB', 'ODM');
+
+SQL> SELECT GRANTEE,PRIVILEGE
+FROM DBA_SYS_PRIVS
+WHERE GRANTEE ='CONNECT';
+
+------------------------------------------
+Update Access Control Lists and Network Utility Packages 
+------------------------------------------
+
+Starting with Oracle Database 12c, the access control of the UTL packages (UTL_TCP, UTL_SMTP, UTL_MAIL, UTL_HTTP, and UTL_INADDR) 
+is implemented using Oracle Database Real Application Security and does not require Oracle XML DB.
+
+-- Dependencies on Network Utility Packages 
+
+Execute the following query
+
+SQL> SELECT * FROM DBA_DEPENDENCIES
+WHERE referenced_name IN ('UTL_TCP','UTL_SMTP','UTL_MAIL','UTL_HTTP','UTL_INADDR','DBMS_LDAP')
+AND owner NOT IN ('SYS','PUBLIC','ORDPLUGINS');
+
+Actions are discussed in Post Upgrade tasks (Step 7.12), as the DBMS_NETWORK_ACL_ADMIN package 
+is introduced after upgrading the database and not available in prior releases.
      
 -----------------------
 CHECK DATAGUARD STATUS
@@ -111,11 +153,21 @@ NOTE: Upon upgrade AND conversion to PDB, check if DB-Links work as they were in
     FROM SYS.LINK$ L, SYS.USER$ U
     WHERE L.OWNER# = U.USER#;
 
-------------------------------------------------
-CHECK TIMEZONE FILE IF IT NEEDS UPDATE
-------------------------------------------------
-Ver 18 timezone file is supplied with 12c.
+---------------------------------------------------------------------------------
+CHECK TIMEZONE FILE IF IT NEEDS UPDATE - for TIMESTAMP WITH TIME ZONE Data Type 
+---------------------------------------------------------------------------------
+The default  time zone file shipped with the  Oracle 12c Release 1 is  version 18.
+
 Check note 1509653.1 to update DST using DBMS_DST.
+
+Note 1665676.1 Actions For DST Updates When Upgrading To Or Applying The 12.1.0.2 Patchset
+or
+Note 1522719.1 Actions For DST Updates When Upgrading To 12.1.0.1 Base Release
+
+--------------------------------------------
+COLLECT DICTIONARY STATISTICS
+--------------------------------------------
+SQL> exec dbms_stats.gather_dictionary_stats;
 
 ------------------------------------------------
 CHECK IF ANY FILE NEEDS MEDIA RECOVERY
@@ -178,11 +230,6 @@ SQL> create pfile='$ORACLE_HOME/dbs/initDBNAME.ora.preUpgrade' from spfile;
 PURGE RECYCLE BIN
 ----------------------
 SQL> purge dba_recyclebin;
-
---------------------------------------------
-COLLECT DICTIONARY STATISTICS
---------------------------------------------
-SQL> exec dbms_stats.gather_dictionary_stats;
 
 --------------------------------------------
 PURGE PENDING TWO PHASE COMMITS
