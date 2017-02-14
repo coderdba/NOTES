@@ -127,14 +127,6 @@ AND owner NOT IN ('SYS','PUBLIC','ORDPLUGINS');
 
 Actions are discussed in Post Upgrade tasks (Step 7.12), as the DBMS_NETWORK_ACL_ADMIN package 
 is introduced after upgrading the database and not available in prior releases.
-     
------------------------
-CHECK DATAGUARD STATUS
------------------------
-dgmgrl /
-DGMGRL> show configuration;
-
-This should show a good configuration with no transport/apply lag
 
 ---------------------------------
 GENERATE DB-LINK RE-CREATE SCRIPT
@@ -196,6 +188,14 @@ Note 562980.1 - emdwgrd core dumps : emdwgrd[228]: 10366 Memory fault(coredump)
 6. Enter the SYS password for the database to be upgraded.
 Note: On RAC databases you will be prompted to run '/tmp/racdwgrd_dbctl.sh' on each of the nodes.
 
+--------------------------------------------
+ENSURE NO MV-REFRESH IS  IN PROGRESS
+--------------------------------------------
+SQL> select s.obj#,o.obj#,s.containerobj#,lastrefreshdate,pflags,xpflags,o.name,o.owner#, bitand(s.mflags, 8) 
+from obj$ o, sum$ s
+where o.obj# = s.obj# and o.type# = 42 AND bitand(s.mflags, 8) = 8;
+Note 1442457.1 : During 11g Upgrade, Mview refresh warning.
+If any active refresh is reported, wait for its completion.
 
 ------------------------------------------------
 CHECK IF ANY FILE NEEDS MEDIA RECOVERY
@@ -206,6 +206,63 @@ select * from v$recover_file;
 CHECK IF ANY FILES ARE IN BACKUP MODE
 ------------------------------------------------
 select * from v$backup where status != 'NOT ACTIVE';
+
+--------------------------------------------
+PURGE PENDING TWO PHASE COMMITS
+--------------------------------------------
+SQL> SELECT local_tran_id FROM dba_2pc_pending;
+SQL> EXECUTE dbms_transaction.purge_lost_db_entry('');
+SQL> COMMIT;
+
+----------------------
+PURGE RECYCLE BIN
+----------------------
+SQL> purge dba_recyclebin;
+
+----------------------------------------
+SYNCH STANDBY
+----------------------------------------
+
+To check if a standby database exists and to synchronize it:
+1. Issue the following query:
+
+SQL> SELECT SUBSTR(value,INSTR(value,'=',INSTR(UPPER(value),'SERVICE'))+1)
+FROM v$parameter
+WHERE name LIKE 'log_archive_dest%' AND UPPER(value) LIKE 'SERVICE%';
+2. If the query in the previous step returns a row, then synchronize the standby database with the primary database.
+
+ Make sure all the logs are transported to the standby server after a final log switch in the primary.
+ Start the recovery of the standby database with the NODELAY option.
+
+dgmgrl /
+DGMGRL> show configuration;
+
+This should show a good configuration with no transport/apply lag
+
+-------------------------------
+Disable all batch and cron jobs
+-------------------------------
+OEM jobs
+Cron jobs
+Other batch scheduled jobs
+
+--------------------------------------------------------------
+4.15 Verify SYS and SYSTEM Default tablespace
+--------------------------------------------------------------
+
+Ensure the users SYS and SYSTEM have 'SYSTEM' as their default tablespace. 
+You must have sufficient space in the 'SYSTEM' tablespace or set extents to unlimited
+
+--------------------
+SSL USERS
+--------------------
+Execute the following query 
+
+SQL> SELECT name FROM sys.user$
+     WHERE ext_username IS NOT NULL
+     AND password = 'GLOBAL';
+     
+If any SSL users are found then Step 7.9 has to be followed after the upgrade.
 
 ----------------------
 NOTE LOCATION OF FILES
@@ -253,31 +310,6 @@ Take backup of broker configuration files in both primary and standby
 BACKUP SPFILE
 ----------------------
 SQL> create pfile='$ORACLE_HOME/dbs/initDBNAME.ora.preUpgrade' from spfile;
-
-----------------------
-PURGE RECYCLE BIN
-----------------------
-SQL> purge dba_recyclebin;
-
---------------------------------------------
-PURGE PENDING TWO PHASE COMMITS
---------------------------------------------
-SQL> SELECT local_tran_id FROM dba_2pc_pending;
-SQL> EXECUTE dbms_transaction.purge_lost_db_entry('');
-SQL> COMMIT;
-
---------------------------------------------
-ENSURE NO MV-REFRESH IS  IN PROGRESS
---------------------------------------------
-SQL> select s.obj#,o.obj#,s.containerobj#,lastrefreshdate,pflags,xpflags,o.name,o.owner#, bitand(s.mflags, 8) 
-from obj$ o, sum$ s
-where o.obj# = s.obj# and o.type# = 42 AND bitand(s.mflags, 8) = 8;
-Note 1442457.1 : During 11g Upgrade, Mview refresh warning.
-If any active refresh is reported, wait for its completion.
-
-------------------------------------------------------------------
-MAKE DEFAULT TABLESPACE OF SYS AND SYSTEM as SYSTEM TABLESPACE
-------------------------------------------------------------------
 
 --------------------------------------------
 CHECK AND STOP/COMPLETE ANY ACTIVE BACKUPS
