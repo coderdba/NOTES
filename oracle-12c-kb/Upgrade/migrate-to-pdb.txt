@@ -68,14 +68,24 @@ SQL> CREATE PLUGGABLE DATABASE PDB1 USING 'path/PDB1.xml' NOCOPY TEMPFILE REUSE;
 
 - OR - 
 SQL> CREATE PLUGGABLE DATABASE PDB1 USING 'path/PDB1.xml' COPY TEMPFILE reuse ;
---> ADD FILE_NAME_CONVERT (or is it SOURCE_FILE_NAME_CONVERT??) if disk group in ASM or directories in f/s has to change
---->>>>>>  READ MORE ABOUT SOURCE_FILE_NAME_CONVERT and FILE_NAME_CONVERT
+--> If using ASM and if using default file-locations, then WITH COPY, and WITHOUT FILE_NAME_CONVERT, 
+      --> --> datafiles of PDB will be laid out in a standard way
+--> ADD FILE_NAME_CONVERT if disk group in ASM or directories in f/s has to change
+      --> If using OMF and say, moving from non-asm to asm or vice-versa, provide only directory path given under DB_CREATE_FILE_DEST
+            in FILE_NAME_CONVERT - EXAMPLE:  FILE_NAME_CONVERT ('/oradata', '+DATA_DG01')
+      --> Provide each file's name-convert where you want to distribute files differently:
+          'file1' , 'newfile1' , 'file2' , 'newfile2' , ...
+      --->>>>>>  READ MORE ABOUT SOURCE_FILE_NAME_CONVERT and FILE_NAME_CONVERT
 
     In this example, the PDB is named PDB1. You can use any name, but the name must be unique for this CDB.
 
     This example also assumes that the data files remain in the same location as they were when the database was standalone. 
     If the data files have been copied to a different location (for example, stored with Oracle ASM), 
     then the parameter SOURCE_FILE_NAME_CONVERT must be specified. 
+      NOTE: SOURCE_FILE_NAME_CONVERT is for the location of 'source' files - not how newly created PDB files be located
+            That is, if in case original data-files were copied off elsewhere in a f/s or something then use this directive
+            This also will be helpful when source DB is now gone, and we need to use such copies
+          
     See Oracle Database Administrator's Guide for an example of using the SOURCE_FILE_NAME_CONVERT clause.
 
     TEMPFILE REUSE specifies that the existing TEMP tablespaces can be reused.
