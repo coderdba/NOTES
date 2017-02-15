@@ -1,0 +1,115 @@
+http://salmandba.blogspot.in/2015/01/converting-12c-non-cdb-database-to-pdb.html
+
+Converting a non-CDB database to a PDB
+Here I would explain how do we convert a non-CDB (non-container database) to a PDB (pluggable database) in an existing CDB (container database) on the same host as well as on a different host.  For this example, I used Oracle 12.1.0.2 software version and this example assumes that there is already a container database with name “mycdb” running on the current system and there also exists a non-container database with name “noncdb” on the same system which will be converted to a pluggable database in mycdb. ASM diskgroup +DATA is in use for both of the databases for storing the datafiles. PDB2 datafiles would be stored on a different diskgroup +NEWDATA.
+
+Steps Summary
+Shutdown non-cdb database
+Startup non-cdb in read-only mode
+Execute DBMS_PDB.DESCRIBE to describe the non-cdb database in .xml file
+Don’t open non-cdb until you have finished creation of PDB using this xml file, otherwise you may face error ORA-65139 while creating your PDB
+Create PDB out using xml file created above
+Execute noncdb_to_pdb.sql script
+Steps Details
+
+Log into the noncdb database as SYS and start it in read-only mode. 
+SQL> shutdown immediate
+SQL> startup open read only
+
+Describe this database into an .xml file by using DBMS_PDB.DESCRIBE package.
+SQL> exec DBMS_PDB.DESCRIBE (pdb_descr_file => ‘/u01/app/oracle/noncdb.xml’);
+
+Shutdown the database
+SQL>shutdown immediate
+
+Connect to mycdb and create a new PDB database using the .xml file in which noncdb database was described in step 2 above. Please note that during the creation of new pluggable database PDB2, you have three options for the datafiles location:
+1) COPY (default) the datafiles of noncdb to create PDB2 and keep original datafiles at the original location (this would mean that noncdb database would still be operational after the creation of PDB2)
+2) MOVE the datafiles of noncdb to the new location and create PDB2. noncdb database would not be available after PDB2 is created.
+3) NOCOPY the datafiles of noncdb and use them from the existing location for PDB2. noncdb database would not be available after PDB2 is created.
+
+You can use FILE_NAME_CONVERT parameter to specify the new location of the datafiles while using COPY or MOVE option. 
+Use following command to create the new PDB in mycdb database.
+
+SQL> create  pluggable database pdb2 using '/u01/app/oracle/noncdb.xml' copy  FILE_NAME_CONVERT=('+DATA','+NEWDATA');
+
+Once execution of this command completes, execute noncdb_to_pdb.sql to do the cleaning of this new PDB. You can connect to this pluggable database by using either a TNS entry in your tnsnames.ora file or by using ALTER SESSION SET CONTAINER command.
+
+SQL> alter session set container=pdb2;
+SQL>@?/rdbms/admin/noncdb_to_pdb.sql
+
+
+Check if there are any violations/errors reported during the plug-in process
+SQL> select time,name,status,message from PDB_PLUG_IN_VIOLATIONS;
+
+
+After the execution of this script completes, open the pluggable database (current container is already set to pdb2)
+SQL> alter pluggable database open;
+
+
+Some Details About FILE_NAME_CONVERT
+If you don’t want to have the files on a new location, you can omit FILE_NAME_CONVERT parameter from the command.
+
+If your source datafiles were on the file system and destination is on ASM, you would need to specify each datafile name separately in FILE_NAME_CONVERT parameter with format ('datafile1_full_name','+NEWDATA','datafile2_full_name','+NEWDATA'...)
+
+If the command fails with an error similar to the following
+ERROR at line 1:
+ORA-01276: Cannot add file
+/u02/oracle/oradata/NONCDB/datafile/o1_mf_system_bbvqy2ox_.dbf.  File has an
+Oracle Managed Files file name.
+
+It means that you are using OMF (Oracle Managed Files) on the source non-cdb database. In this case, FILE_NAME_CONVERT parameter for source should contain only the directory path which in mentioned in your DB_CREATE_FILE_DEST parameter in non-CDB database. For example 
+FILE_NAME_CONVERT=('/u02/oracle/oradata','+NEWDATA') will be used if my datafiles are are OMF and are created like "u02/oracle/oradata/NONCDB1/datafile/o1_mf_system_bd3d21ls_.dbf" format and DB_CREATE_FILE_DEST is set to /u02/oradcle/oradata
+ 
+When Container Database is on a Different Host
+If you want to plug your non-CDB in a CDB which is on a different host (we assume that OS platform and database version is same as current non-CDB), steps would be as follows.
+- Describe the non-CDB as explained above, in an xml file
+- Copy this xml file on the new host
+- Copy all datafiles of the non-CDB (while non-CDB is still shutdown, after creation of xml file) to the new host. If your non-CDB is on ASM, you can use cp command of ASM to either directly copy datafiles to the destination ASM, or you can first copy on the local file system (using same cp command of ASM), then move datafiles to the remote server. Here you should note that you would need to edit the xml file and update the file paths inside the xml file because files are on a new destination after copying to the new host (previously files were on ASM on the source). For example, you see that my non-CDB datafiles are as follows on the source system.
++DATA/NONCDB/DATAFILE/system.279.868463067
++DATA/NONCDB/DATAFILE/sysaux.278.868462893
++DATA/NONCDB/DATAFILE/undotbs1.277.868463305
++DATA/ NONCDB/DATAFILE/ system.335.869494199
++DATA/NONCDB/DATAFILE/users.280.868463303
+
+I copied files to local file system
+ASMCMD> cp SYSAUX.278.868462893 /u01
+copying +DATA/NONCDB/DATAFILE/SYSAUX.278.868462893 -> /u01/SYSAUX.278.868462893
+ASMCMD> cp SYSTEM.279.868463067 /u01
+copying +DATA/NONCDB/DATAFILE/SYSTEM.279.868463067 -> /u01/SYSTEM.279.868463067
+ASMCMD> cp SYSTEM.335.869494199 /u01
+copying +DATA/NONCDB/DATAFILE/SYSTEM.335.869494199 -> /u01/SYSTEM.335.869494199
+ASMCMD> cp UNDOTBS1.277.868463305 /u01/
+copying +DATA/NONCDB/DATAFILE/UNDOTBS1.277.868463305 -> /u01//UNDOTBS1.277.868463305
+ASMCMD> cp USERS.280.868463303 /u01
+copying +DATA/NONCDB/DATAFILE/USERS.280.868463303 -> /u01/USERS.280.868463303
+
+- Now copy these files to new host on /u01/ location. 
+- Next step would be to edit the xml file (noncdb.xml) so update the paths of datafiles where these are copied. See following how I did it for SYSTEM datafile.
+
+Actual paths/name in the xml file
+<file>
+      <path>+DATA/NONCDB/DATAFILE/system.279.868463067</path>
+      <afn>1</afn>
+      <rfn>1</rfn>
+…
+…
+
+New paths/name in the xml file
+
+<file>
+      <path>/u01/SYSTEM.279.868463067</path>
+      <afn>1</afn>
+      <rfn>1</rfn>
+…
+…
+
+- After that, you see how I executed the CREATE PLUGGABLE DATABASE, where my destination of datafiles is a diskgroup +ORADATA’
+SQL> create  pluggable database pdb1 using '/u01/oracle/noncdb.xml' copy  FILE_NAME_CONVERT=('/u01/','+ORADATA');
+
+- Last step is to execute @?/rdbms/admin/noncdb_to_pdb.sql and query PDB_PLUG_IN_VIOLATIONS to check any violations
+at 11:41 PM 
+Email This
+BlogThis!
+Share to Twitter
+Share to Facebook
+Share to Pinterest
