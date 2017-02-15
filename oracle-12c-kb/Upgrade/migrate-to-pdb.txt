@@ -1,0 +1,87 @@
+===================================
+  MIGRATE TO PDB FROM NON-CDB DB
+===================================
+
+Upgrading and plugging as PDB into a CDB: 
+https://docs.oracle.com/database/121/UPGRD/upgrade.htm#UPGRD60155 section 3.1.2
+
+Migrate non-CDB to PDB:
+http://www.oracle.com/webfolder/technetwork/tutorials/obe/db/12c/r1/pdb/pdb_migrate_noncdb/pdb_migrate_noncdb.html
+https://oracle-base.com/articles/12c/multitenant-migrate-non-cdb-to-pdb-12cr1
+https://docs.oracle.com/en/cloud/paas/database-dbaas-cloud/csdbi/mig-12c-non-cdb-12c.html (in cloud)
+
+===================================================================================
+METHOD 1 
+Upgrading and plugging as PDB into a CDB: 
+https://docs.oracle.com/database/121/UPGRD/upgrade.htm#UPGRD60155 section 3.1.2
+===================================================================================
+
+3.1.2 Upgrading an Earlier Release and Plugging a PDB into a CDB
+You can upgrade earlier releases of Oracle Database using either DBUA or the Parallel Upgrade Utility and then 
+plug the upgraded database into a multitenant container database (CDB). The upgraded release 12.1 database can be 
+plugged into an existing CDB. Be sure to follow any necessary pre-upgrade procedures described in Chapter 2, 
+"Preparing to Upgrade Oracle Database." The following procedure assumes that both databases are on the same system.
+
+See Also:
+Oracle Database Administrator's Guide for information about creating and removing PDBs with SQL*Plus, 
+and Oracle Database Administrator's Guide for examples of various scenarios with different factors.
+
+To upgrade a database and plug it into a CDB:
+--------------------------------------------
+
+- Install the new Oracle Database 12c software. See Oracle Database Installation Guide for your operating system platform.
+
+- Upgrade the database as described in this guide. See Chapter 3, "Upgrading Oracle Database."
+
+- Set the COMPATIBLE parameter to 12.0.0, if you have not already done so as part of the upgrade process. See "The COMPATIBLE Initialization Parameter in Oracle Database."
+
+- Make sure the database is in read-only mode.
+$ srvctl start database -d DB_UNIQUE_NAME -startoption mount
+- OR - 
+SQL> startup mount
+
+SQL> alter database open read only;
+
+- Ensure that the prerequisites for plugging an unplugged PDB are met. 
+See Oracle Database Administrator's Guide for information about using the 
+DBMS_PDB.CHECK_PLUG_COMPATIBILITY function to determine whether these requirements are met.
+
+- Create the XML file for the PDB. The root name for the XML file matches the name of the PDB. The path to the location can be anything you choose. This location is where the XML file will be saved.
+
+SQL> exec DBMS_PDB.DESCRIBE('path/PDB1.xml');
+
+- Shut down the database.
+
+SQL> SHUTDOWN IMMEDIATE
+
+- Plug the database into the CDB.
+
+SQL> CREATE PLUGGABLE DATABASE PDB1 USING 'path/PDB1.xml' NOCOPY TEMPFILE REUSE;
+
+    In this example, the PDB is named PDB1. You can use any name, but the name must be unique for this CDB.
+
+    This example also assumes that the data files remain in the same location as they were when the database was standalone. 
+    If the data files have been copied to a different location (for example, stored with Oracle ASM), 
+    then the parameter SOURCE_FILE_NAME_CONVERT must be specified. 
+    See Oracle Database Administrator's Guide for an example of using the SOURCE_FILE_NAME_CONVERT clause.
+
+    TEMPFILE REUSE specifies that the existing TEMP tablespaces can be reused.
+
+You should see "Pluggable database created." The upgraded database is now a PDB ready for the CDB.
+
+- Connect to the PDB using a previously configured listener. The name of the PDB in this example is PDB1.
+
+SQL> sys/oracle@PDB1 as sysdba
+You can alternatively connect to the PDB as follows:
+
+SQL> ALTER SESSION set container=PDB1;
+
+- Convert the dictionary to the PDB type. From the admin directory, run the noncdb_to_pdb.sql script. This script must be run before the PDB can be opened for the first time.
+
+@$ORACLE_HOME/rdbms/admin/noncdb_to_pdb.sql
+
+- Startup and open the new PDB in read/write mode. You must open the new PDB in read/write mode for Oracle Database to complete the integration of the new PDB into the CDB. See Oracle Database Administrator's Guide for more information about modifying the open mode of PDBs with the STARTUP SQL*Plus command.
+
+SQL> STARTUP PLUGGABLE DATABASE PDB1 OPEN;
+
+- Back up the PDB. See Oracle Database Backup and Recovery User's Guide for information about backing up a PDB.
