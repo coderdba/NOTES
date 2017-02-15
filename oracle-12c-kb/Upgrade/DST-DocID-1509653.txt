@@ -1,0 +1,958 @@
+Updating the RDBMS DST version in 12c Release 1 (12.1.0.1 and up) using DBMS_DST (Doc ID 1509653.1)	
+
+In this Document
+Purpose
+Details
+ 	1) What is changed in 12cR1 about RDBMS DST updates (when compared to 11gR1 and lower):
+ 	2) When do I need to apply RDBMS DST patches to the 12.1.0.x ORACLE_HOME before using DBMS_DST (= before going to step 3) in this note)?
+ 	3) Checks before doing the actual update of the RDBMS DST version using DBMS_DST in an 12.1.0.x database:
+ 	3a) check current RDBMS DST version and "DST UPGRADE STATUS" in your 12.1.0.x database:
+ 	3b) Check UPFRONT using DBMS_DST if there is affected data that cannot be resolved automatically in your 12.1.0.x database:
+ 	4) Do the actual RDBMS DST version update of the database using DBMS_DST in your 12.1.0.x database:
+ 	5) How long will DBMS_DST take?
+ 	5.a) Things one can check upfront:
+ 	5.b) why does DBMS_DST.FIND_AFFECTED_TABLES sometimes takes longer than the actual upgrade?
+ 	5.c) Selects useful if DBMS_DST "hangs" or takes a long time:
+ 	6) Known Issues
+ 	* if DBMS_DST.FIND_AFFECTED_TABLES fails with ORA-00904: "T"."SYS_C00001_-random number here-": invalid identifier
+ 	* EXEC DBMS_DST.BEGIN_PREPARE (or any other DBMS_DST call) fails with 'PLS-00201: identifier 'DBMS_DST.-insert name here-' must be declared':
+ 	* if DBMS_DST.BEGIN_PREPARE fail with ORA-02014: cannot select FOR UPDATE from view with DISTINCT, GROUP BY, etc.
+ 	* if DBMS_DST.BEGIN_PREPARE fails with ORA-56922: Starting a prepare window failed
+ 	7) Can the DST version be updated in 12.1.0.x without downtime? Or in a "rolling" fashion on RAC?
+ 	8) CDB /PDB (Multitenant) database and DST updates.
+References
+APPLIES TO:
+
+Oracle Database - Enterprise Edition - Version 12.1.0.1 and later
+Oracle Database - Standard Edition - Version 12.1.0.1 and later
+Information in this document applies to any platform.
+PURPOSE
+
+If the only goal is to update the RDBMS DST version to the default RDBMS DST version included in the 12.1.0.x version after an Oracle RDBMS version upgrade to 12.1.0.x 
+then simply run the scripts found in note 1585343.1 Scripts to automatically update the RDBMS DST (timezone) version in an 11gR2 or 12cR1 database.
+Those scripts do all the steps in this note.
+
+ This note provides an overview of
+
+what is changed related to RDBMS DST updates in 12cR1
+how to perform a manual RDBMS DST version update in Oracle RDBMS 12cR1 (= the steps used in the scripts of note 1585343.1).
+This note does not cover OJVM DST updates for the simple reason that OJVM DST updates do not need any action on stored data. They can be simply applied. See the readme of the OJVM patches for installation instructions.
+The RDBMS and OJVM DST versions are NOT technically related so they do not NEED to be the same.
+DETAILS
+
+For Oracle RDBMS 11gR2 please see Note 977512.1 Updating the RDBMS DST version in 11gR2 (11.2.0.1 and up) using DBMS_DST
+
+If you are upgrading from an older Oracle RDBMS version please do check before doing the Oracle RDBMS version upgrade Note 1522719.1 Actions For DST Updates When Upgrading To 12.1.0.1 Base Release  
+
+Oracle support cannot say to what DST version you need to use . See Note 412160.1 section " E) I'm on DSTv <insert current version of your db> , do I NEED to apply DST newer patches?" )
+
+1) What is changed in 12cR1 about RDBMS DST updates (when compared to 11gR1 and lower):
+
+This is background information about the changes in 11.2 and is applicable to 11.2 and higher. Skip to point 2) if this is not of interest .
+For Oracle versions 11.2 and 12.1, it's no longer necessary to use utltzuvX.sql (utltzuv2.sql, ..., utltzuv13.sql ) scripts in order to apply a RDBMS DST patch.
+
+Oracle 12.1.0.1 has by default all RDBMS DST updates from DSTv1 to DSTv18 included in the software installation.
+Oracle 12.1.0.2 has by default all RDBMS DST updates from DSTv1 to DSTv18 included in the software installation.
+These files are found in $ORACLE_HOME/oracore/zoneinfo and have a prefix indicating the DST version.
+For example timezlrg_4.dat is the DSTv4 "large" file, timezlrg_18.dat is the DSTv18 "large" file.
+
+In 11.2 and 12.1 there are no timezlrg.dat and timezone.dat, this is normal and intended.
+Do NOT make any symbolic links for timezlrg.dat and timezone.dat or copy any of the files in \oracore\zoneinfo\ and rename them to timezlrg.dat and timezone.dat
+In 11.2 and 12.1 there should be NO timezlrg.dat and timezone.dat in $ORACLE_HOME/oracore/zoneinfo/  (Unix) or %ORACLE_HOME%\oracore\zoneinfo\ (Microsoft Windows)
+By default the "Create database" statement uses the highest timezlrg_XX.dat found in the ORACLE_HOME.
+The used RDBMS DST version for the "Create database" statement can be defined by setting explicit the ORA_TZFILE variable (which is by default not set) during the "create database" command, although there is in real life little need to do so. On windows the ORA_TZFILE needs to be set in the registry.
+
+Note that when creating a new 12.1.0.1 database using the standard provided "includes datafiles" templates in step 2 of the DBCA the new database will always be using DSTv18 regardless of the to defined ORA_TZFILE variable setting or applied RDMBS DST patches to this $ORACLE_HOME seen this is a clone operation of a seed DSTv18 database, not a real "create database".
+In 11.2 and 12.1 the used RDBMS DST version is a database level configuration.
+
+After a DST patch is installed in an 11.2.0.x or 12.1.0.x $ORACLE_HOME there are steps who need to be done to change an existing database to use this newer DST version.
+Simply applying the RDBMS DST patch and restarting the database will NOT enable the new applied RDBMS DST version patch (like it did in pre-11.2 versions). 
+
+This allows several databases who are using the same $ORACLE_HOME to each use a different RDBMS DST version, something that was not possible in pre-11.2 versions.
+This also implies that if one $ORACLE_HOME is used by several databases you need check and , if needed , update each database.
+
+So it is perfectly possible (and supported) to have for example 
+* a DSTv4 (or any other RDBMS DST version) 12.1.0.x database
+* a DSTv4 12.1.0.1 database and a DSTv18 12.1.0.x using the same ORACLE_HOME. 
+We recommend in general to update 12.1.0.x databases to at least to the highest RDBMS DST version included by default in the Oracle 12cR1 version. 
+This is for 12.1.0.1 and 12.1.0.2 RDBMS DSTv18.
+
+There is in general no technical reason to NOT use the latest DST version seen all DST patches are always cumulative, which means they contain also ALL the previous DST changes / corrections. 
+This means that:
+
+ if there is a requirement to apply newer than the default included DST version (for example DSTv19) it's a good idea to apply the latest available for your Oracle RDBMS version seen the newer DST patch this will have the same fixes and more.
+ any application that works correctly with DST version x will work fine with a database using a DST version higher than DST version x
+ the database and client DST version does not need to be the same. If a client uses DSTv4 for example (and all used timezones by the application are correct in DSTv4) then there is no problem using this client against a database using a higher DST version.
+There are however situations where it may be needed to use an older RDBMS DST version for an 11.2.0.x database, one such example is when using transportable tablespaces and for one of the 2 sides the RDBMS DST version cannot be updated (for whatever reason).
+Note 1454872.1 Transportable Tablespace (TTS) Restrictions and Limitations: Details, Reference, and Version Where Applicable  / Considerations for Time Zone File Versions in Transportable Tablespace Mode
+
+It is NOT possible to have different OJVM DST patches/version in one $ORACLE_HOME, the OJVM DST version is always the same for every database using a certain $ORACLE_HOME and there can only be one OJVM DST patch applied to an $ORACLE_HOME.
+
+
+
+Oracle 12cR1 Clients will use the highest timezlrg_XX.dat found in the ORACLE_HOME. This can be overwritten by setting explicit the ORA_TZFILE variable (which is by default not set), although there is in real life little need to do so. 
+A DSTv20 12.1.0.x client can also perfectly connect to an non-DSTv20 server for example. The DST version only comes to play when actually using DST related information in SQL.
+
+2) When do I need to apply RDBMS DST patches to the 12.1.0.x ORACLE_HOME before using DBMS_DST (= before going to step 3) in this note)?
+
+To update an 12.1.0.x database to the highest RDBMS DST version included by default in that 12cR1 version there is no need to apply any "DST patch".
+This is for 12.1.0.1 or 12.1.0.2 RDBMS DSTv18. To update an Oracle 12.1.0.1 or 12.1.0.2 RDBMS to DSTv18
+
+or use the scripts in note 1585343.1 Scripts to automatically update the RDBMS DST (timezone) version in an 11gR2 or 12cR1 database .
+or go to step 3) and use 18 as <the new DST version number> in the statements.
+If you want to update the DST version of an EXISTING (= no update of the Oracle version) 12.1.0.1 or 12.1.0.2 installation/database to a higher DST version than 18 then it's not needed to install all DST patches "in between".
+For example to go from DSTv18 to DSTv20 there is no need to install RDBMS DSTv19 patch also (but it can be done if you want) only the DSTv20 RDBMS patch is needed. 
+
+Locate the latest / required RDBMS DST patch . All the RDBMS DST update notes are available in NOTE:412160.1 Updated DST transitions and new Time Zones in Oracle Time Zone File patches
+Apply the RDBMS DST patch to the ORACLE_HOME  , there is no need to shutdown the database to apply the RDBMS DST patch in 12.1.
+
+Then or use the scripts in note 1585343.1 Scripts to automatically update the RDBMS DST (timezone) version in an 11gR2 or 12cR1 database or continue in step 3) of this note.
+
+3) Checks before doing the actual update of the RDBMS DST version using DBMS_DST in an 12.1.0.x database:
+
+If needed, make sure the required RDBMS DST patch(es) is/are applied (= step 2 in this note or the relevant DST note was followed).
+
+There are now scripts available who do the steps 3) up to 6) in this note available in note 1585343.1 Scripts to automatically update the RDBMS DST (timezone) version in an 11gR2 or 12cR1 database .
+
+3a) check current RDBMS DST version and "DST UPGRADE STATUS" in your 12.1.0.x database:
+
+Note: the actual DST update itself is done in step 4) of this note.
+
+Conn / as sysdba
+-- this gives the current RDBMS DST version
+SELECT version FROM v$timezone_file;
+
+-- check also
+
+SELECT PROPERTY_NAME, SUBSTR(property_value, 1, 30) value
+FROM DATABASE_PROPERTIES
+WHERE PROPERTY_NAME LIKE 'DST_%'
+ORDER BY PROPERTY_NAME;
+
+-- the output gives
+
+-- PROPERTY_NAME VALUE
+-- ------------------------------ ------------------------------
+-- DST_PRIMARY_TT_VERSION <current DST version> <<<<------ this should match version FROM v$timezone_file if not make sure the database is open when selecting from v$timezone_file;
+-- DST_SECONDARY_TT_VERSION 0 <<<<------ this should be "0" if not then see below
+-- DST_UPGRADE_STATE NONE <<<<------ this should be "NONE" if not then see below
+
+If DST_PRIMARY_TT_VERSION is <the old DST version number>, DST_SECONDARY_TT_VERSION  is 0 and  DST_UPGRADE_STATE is NONE go to 3b)
+
+If DST_UPGRADE_STATE is UPGRADE, PREPARE or DATAPUMP then "ORA-56920: a prepare or upgrade window or an on-demand or datapump-job loading of a secondary time zone data file is in an active state" error will be seen in the next steps.
+
+Solving DST_UPGRADE_STATE in UPGRADE, PREPARE or DATAPUMP status:
+
+* if DST_UPGRADE_STATE is "PREPARE" then issue:
+
+CONN / as sysdba
+EXEC DBMS_DST.END_PREPARE;
+
+check that DST_UPGRADE_STATE is now NONE and go to 3b) 
+
+* if DST_UPGRADE_STATE is "UPGRADE" then an upgrade is already in progress, check if an other DBA is doing a upgrade, if not then issue:
+
+CONN / as sysdba
+alter session set "_with_subquery"=materialize;
+alter session set "_simple_view_merging"=TRUE;
+set serveroutput on
+VAR numfail number
+BEGIN
+DBMS_DST.UPGRADE_DATABASE(:numfail,
+parallel => TRUE,
+log_errors => TRUE,
+log_errors_table => 'SYS.DST$ERROR_TABLE',
+log_triggers_table => 'SYS.DST$TRIGGER_TABLE',
+error_on_overlap_time => FALSE,
+error_on_nonexisting_time => FALSE);
+DBMS_OUTPUT.PUT_LINE('Failures:'|| :numfail);
+END;
+/
+VAR fail number
+BEGIN
+DBMS_DST.END_UPGRADE(:fail);
+DBMS_OUTPUT.PUT_LINE('Failures:'|| :fail);
+END;
+/
+
+SELECT PROPERTY_NAME, SUBSTR(property_value, 1, 30) value
+FROM DATABASE_PROPERTIES
+WHERE PROPERTY_NAME LIKE 'DST_%'
+ORDER BY PROPERTY_NAME;
+
+ 
+check that DST_UPGRADE_STATE is now NONE and go to 3b)
+
+* if DST_UPGRADE_STATE is "DATAPUMP" then simply wait until the datapump load is done or check Note 336014.1 How To Cleanup Orphaned DataPump Jobs In DBA_DATAPUMP_JOBS ?
+
+Note: Also check that ORA_TZFILE is NOT set in the environment of your 12.1.0.x database to $ORACLE_HOME/oracore/zoneinfo/timezlrg.dat or $ORACLE_HOME/oracore/zoneinfo/timezone.dat , if it is set then remove this from your 12.1.0.x home settings and restart the database and listener.
+
+It might be also use full to check point 5) upfront to remove unneeded data to reduce the time needed for the DST upgrade
+
+3b) Check UPFRONT using DBMS_DST if there is affected data that cannot be resolved automatically in your 12.1.0.x database:
+
+Note:
+* The next steps use <the new DST version number> in the statements, simply replace it with the actual number ( 18, 21, etc) of the RDBMS DST version you want to update to.
+* This is a DATABASE operation, so it needs to be done for each database you want to update, even if they use the same ORACLE_HOME.
+* The steps in point 3b) can be done on a working, live database. There is no need for downtime to perform step 3b). Of course it might that there is data added between this session and the actual upgrade of the RDBMS DST version that is affected. This is especially plausible if the update is done close to a DST change in your timezone and this timezone is affected by this RDBMS DST update.
+* The steps in this point 3b) will NOT update any data and NOT update the DST version , it's a pure "check" faze using DBMS_DST. 
+* To upgrade the DST version you ALSO need to do step "4) Do the actual RDBMS DST version update of the database using DBMS_DST:" in this note. Step 4) DOES require downtime.
+-- 
+-- the actual commands are listed in BOLD
+-- the next steps use <the new DST version number> in the statements
+-- simply replace it with the actual number ( 11, 15 etc)
+-- of the RDBMS DST version you want to update to.
+
+conn / as sysdba
+
+-- 
+-- If there are objects containing TSTZ data in recycle bin, 
+-- please purge the bin now. 
+
+purge dba_recyclebin;
+
+--
+-- Set client_info so one can use: 
+-- select .... from V$SESSION where CLIENT_INFO = 'upg_tzv';
+
+EXEC DBMS_APPLICATION_INFO.SET_CLIENT_INFO('upg_tzv')
+
+-- 
+-- this alter session might speed up DBMS_DST on some db's
+-- see Bug 10209691 / Bug 12658443
+
+alter session set "_with_subquery"=materialize;
+
+-- 
+-- to avoid the issue in note 1407273.1
+
+alter session set "_simple_view_merging"=TRUE;
+
+-- 
+-- start prepare window
+-- these steps will NOT update any data yet.
+
+exec DBMS_DST.BEGIN_PREPARE(<the new DST version number>)
+
+--
+--Sample DBMS_DST.BEGIN_PREPARE error if the 12.1.0.x DST patch for the requested DST version is not installed:
+-- 
+-- SQL> exec DBMS_DST.BEGIN_PREPARE(19)
+-- BEGIN DBMS_DST.BEGIN_PREPARE(19); END;
+-- 
+-- *
+-- ERROR at line 1:
+-- ORA-30094: failed to find the time zone data file for version 19 in
+-- $ORACLE_HOME/oracore/zoneinfo
+-- ORA-06512: at "SYS.DBMS_DST", line 57
+-- ORA-06512: at "SYS.DBMS_DST", line 1258
+-- ORA-06512: at line 1
+-- 
+-- FIX: install the 12.1.0.x patch for the DST version you want to use. See note 412160.1
+--
+-- Sample DBMS_DST.BEGIN_PREPARE error if the requested new DST version is the current or a lower than the current timezone version:
+--
+-- SQL> exec DBMS_DST.BEGIN_PREPARE(4);
+-- BEGIN DBMS_DST.BEGIN_PREPARE(4); END;
+-- 
+-- *
+-- ERROR at line 1:
+-- ORA-56921: invalid time zone version
+-- ORA-06512: at "SYS.DBMS_SYS_ERROR", line 79
+-- ORA-06512: at "SYS.DBMS_DST", line 1252
+-- ORA-06512: at line 1
+--
+-- FIX: you cannot "downgrade" DST, there is no need to do this. The new DST version needs to be higher than the current DST_PRIMARY_TT_VERSION
+--
+
+-- 
+-- check for prepare status
+
+SELECT PROPERTY_NAME, SUBSTR(property_value, 1, 30) value
+FROM DATABASE_PROPERTIES
+WHERE PROPERTY_NAME LIKE 'DST_%'
+ORDER BY PROPERTY_NAME;
+
+-- 
+-- output should be
+-- PROPERTY_NAME VALUE
+-- ------------------------------ ------------------------------
+-- DST_PRIMARY_TT_VERSION <the old DST version number>
+-- DST_SECONDARY_TT_VERSION <the new DST version number>
+-- DST_UPGRADE_STATE PREPARE
+-- 
+
+-- 
+-- truncate logging tables if they exist.
+
+TRUNCATE TABLE SYS.DST$TRIGGER_TABLE;
+TRUNCATE TABLE sys.dst$affected_tables;
+TRUNCATE TABLE sys.dst$error_table;
+
+-- 
+-- log affected data
+
+set serveroutput on
+BEGIN
+DBMS_DST.FIND_AFFECTED_TABLES
+(affected_tables => 'sys.dst$affected_tables',
+log_errors => TRUE,
+log_errors_table => 'sys.dst$error_table');
+END;
+/
+
+--
+-- If DBMS_DST.FIND_AFFECTED_TABLES failes with
+-- ERROR at line 1:
+-- ORA-01882: timezone region not found
+-- ORA-06512: at "SYS.DBMS_DST", line 284
+-- ORA-06512: at "SYS.DBMS_DST", line 1511
+-- ORA-06512: at line 2
+-- then first of all run the Fix1882.sql script found in Note 414590.1 using the server home sqlplus and then retry DBMS_DST.FIND_AFFECTED_TABLES
+--
+
+--
+-- Now check what tables have affected data in TSTZ columns.
+-- If dst$affected_tables has no rows then there is no actual data to update by DBMS_DST
+-- If dst$affected_tables has rows it simply means those rows need 
+-- to be updated by DBM_DST during the DST upgrade (= point 4)
+-- because they contain timezones that are affected by the DST upgrade
+-- 
+
+SELECT * FROM sys.dst$affected_tables;
+
+-- 
+-- If dst$affected_tables has rows then you can see in dst$error_table
+-- if there are any rows with a "problem" and what kind of problem there are in those rows.
+-- Note that if there are rows in dst$affected_tables 
+-- this does not mean there need to be rows in dst$error_table
+-- 
+
+SELECT * FROM sys.dst$error_table;
+
+-- 
+-- error_on_overlap_time is error number ORA-1883
+-- error_on_nonexisting_time is error number ORA-1878
+-- 
+-- for an explanation of the reported data please see
+-- "Error Handling when Upgrading Time Zone File and Timestamp with Time Zone Data"
+-- For the "error_on_overlap_time" and "error_on_nonexisting_time" you do not HAVE to
+-- take action on this data to upgrade the DST version, but it is advised
+-- to at least to check the results AFTER the update.
+--
+
+-- 
+-- all "error_on_overlap_time" rows
+
+SELECT * FROM sys.dst$error_table where ERROR_NUMBER= '1883';
+
+-- 
+-- all "error_on_nonexisting_time" rows
+
+SELECT * FROM sys.dst$error_table where ERROR_NUMBER= '1878';
+
+-- 
+-- check for all other possible problems
+
+SELECT * FROM sys.dst$error_table where ERROR_NUMBER not in ('1878','1883');
+
+--
+-- 1882 errors will be resolved by DBMS_DST if the cause is the issue explained in Note 414590.1 
+-- those should be corrected during the actual update of the dst version. It is however possible some 
+-- other reasons may cause 1882 but in that case  DBMS_DST.FIND_AFFECTED_TABLES would have also errored 
+-- out with ora-1882.
+--
+
+-- 
+-- end prepare window, the rows above will stay in those tables.
+
+EXEC DBMS_DST.END_PREPARE;
+
+-- 
+-- check if this is ended
+
+SELECT PROPERTY_NAME, SUBSTR(property_value, 1, 30) value
+FROM DATABASE_PROPERTIES
+WHERE PROPERTY_NAME LIKE 'DST_%'
+ORDER BY PROPERTY_NAME;
+
+-- 
+-- output should be
+-- PROPERTY_NAME VALUE
+-- ---------------------------- ------------------------------
+-- DST_PRIMARY_TT_VERSION <the old DST version number>
+-- DST_SECONDARY_TT_VERSION 0
+-- DST_UPGRADE_STATE NONE
+
+If sys.dst$error_table has no "error_on_overlap_time" or "error_on_nonexisting_time" rows or there are rows in sys.dst$error_table but you are fine by the fact they might change one hour then go to point 4) to do the actual update.
+
+If sys.dst$error_table has "error_on_overlap_time" or "error_on_nonexisting_time" rows and you want to check things afterwards then make a note of what rows are affected and manually update the data (if needed) after doing the actual update in step 4)
+
+4) Do the actual RDBMS DST version update of the database using DBMS_DST in your 12.1.0.x database:
+
+Assuming all non-existing time and overlap times in previous step are solved or logged, so using for DBMS_DST.UPGRADE_DATABASE error_on_overlap_time => FALSE and error_on_nonexisting_time => FALSE);
+For RAC the database should be in single instance mode (cluster_database = false) , as required by the "startup UPGRADE", if not then an ORA-39701: database must be mounted EXCLUSIVE for UPGRADE or DOWNGRADE will be seen.
+Oracle stronly suggests to wait until DBMS_DST.END_UPGRADE is done to start any application that actually stores data in / accesses timestamp with timezone columns.
+This step NEED downtime.
+-- 
+-- the actual commands are listed in BOLD
+-- the next steps use <the new DST version number> in the statements
+-- simply replace it with the actual number ( 11, 15 etc)
+-- of the RDBMS DST version you want to update to.
+
+conn / as sysdba
+shutdown immediate;
+startup upgrade;
+set serveroutput on
+
+-- in a PDB startup upgrade will not work
+-- alter pluggable database open upgrade need to be used
+-- ALTER pluggable DATABASE CLOSE immediate;
+-- ALTER pluggable DATABASE OPEN upgrade;
+
+-- 
+-- check if previous prepare window is ended
+
+SELECT PROPERTY_NAME, SUBSTR(property_value, 1, 30) value
+FROM DATABASE_PROPERTIES
+WHERE PROPERTY_NAME LIKE 'DST_%'
+ORDER BY PROPERTY_NAME;
+
+-- 
+-- output should be
+-- PROPERTY_NAME VALUE
+-- ---------------------------- ------------------------------
+-- DST_PRIMARY_TT_VERSION <the old DST version number>
+-- DST_SECONDARY_TT_VERSION 0
+-- DST_UPGRADE_STATE NONE
+-- 
+-- 
+-- If DST_UPGRADE_STATE is "PREPARE" then you did not ended the prepare window in step 3)
+-- 
+-- If there are objects containing TSTZ data in recycle bin, 
+-- please purge the bin now. 
+-- Otherwise dbms_dst.begin_upgrade will report "ORA-38301: Can not perform DDL/DML over objects in Recycle Bin".
+
+purge dba_recyclebin;
+
+-- 
+-- clean used tables
+
+TRUNCATE TABLE SYS.DST$TRIGGER_TABLE;
+TRUNCATE TABLE sys.dst$affected_tables;
+TRUNCATE TABLE sys.dst$error_table;
+
+--
+-- Set client_info so one can use: 
+-- select .... from V$SESSION where CLIENT_INFO = 'upg_tzv';
+
+EXEC DBMS_APPLICATION_INFO.SET_CLIENT_INFO('upg_tzv')
+
+-- 
+-- this alter session might speed up DBMS_DST on some db's
+-- see Bug 10209691 / Bug 12658443
+
+alter session set "_with_subquery"=materialize;
+
+-- 
+-- to avoid the issue in note 1407273.1
+
+alter session set "_simple_view_merging"=TRUE;
+
+-- 
+-- start upgrade window
+
+EXEC DBMS_DST.BEGIN_UPGRADE(<the new DST version number>);
+
+-- 
+-- the message
+-- "An upgrade window has been successfully started."
+-- will be seen
+-- 
+
+-- 
+-- Sample DBMS_DST.BEGIN_UPGRADE error if a previous (prepare) window was not ended:
+-- 
+-- SQL> EXEC DBMS_DST.BEGIN_UPGRADE(19);
+-- BEGIN DBMS_DST.BEGIN_UPGRADE(19); END;
+-- 
+-- *
+-- ERROR at line 1:
+-- ORA-56920: a prepare or upgrade window or an on-demand or datapump-job loading
+-- of a secondary time zone data file is in an active state
+-- ORA-06512: at "SYS.DBMS_SYS_ERROR", line 79
+-- ORA-06512: at "SYS.DBMS_DST", line 1054
+-- ORA-06512: at line 1
+-- 
+-- FIX: You NEED to end the "PREPARE" window in the previous step BEFORE doing the UPGRADE.
+-- Or in other words, you did not do the "EXEC DBMS_DST.END_PREPARE;" step in point 3)
+-- 
+-- 
+-- Sample DBMS_DST.BEGIN_UPGRADE error if the requested DST version / patch is not installed:
+-- 
+-- SQL> EXEC DBMS_DST.BEGIN_UPGRADE(19);
+-- BEGIN DBMS_DST.BEGIN_UPGRADE(19); END;
+-- 
+-- *
+-- ERROR at line 1:
+-- ORA-30094: failed to find the time zone data file for version 19 in
+-- $ORACLE_HOME/oracore/zoneinfo
+-- ORA-06512: at "SYS.DBMS_DST", line 57
+-- ORA-06512: at "SYS.DBMS_DST", line 1076
+-- ORA-06512: at line 1
+-- 
+-- FIX: Install the 12.1.0.x patch for the DST version you want to use. See note 412160.1
+-- 
+-- Sample DBMS_DST.BEGIN_UPGRADE error if the database is not in upgrade mode:
+-- 
+-- SQL> EXEC DBMS_DST.BEGIN_UPGRADE(19);
+-- BEGIN DBMS_DST.BEGIN_UPGRADE(19); END;
+-- 
+-- *
+-- ERROR at line 1:
+-- ORA-56926: database must be in UPGRADE mode in order to start an upgrade windo
+-- ORA-06512: at "SYS.DBMS_SYS_ERROR", line 79
+-- ORA-06512: at "SYS.DBMS_DST", line 1091
+-- ORA-06512: at line 1
+-- 
+-- FIX: start the database in UPGRADE mode
+-- 
+
+--
+-- check if this select give no rows, if it does something went wrong
+
+SELECT * FROM sys.dst$error_table;
+
+--  
+-- check if this select
+
+SELECT PROPERTY_NAME, SUBSTR(property_value, 1, 30) value
+FROM DATABASE_PROPERTIES
+WHERE PROPERTY_NAME LIKE 'DST_%'
+ORDER BY PROPERTY_NAME;
+
+-- 
+-- gives this output:
+-- PROPERTY_NAME VALUE
+-- --------------------------- ------------------------------
+-- DST_PRIMARY_TT_VERSION <the new DST version number>
+-- DST_SECONDARY_TT_VERSION <the old DST version number>
+-- DST_UPGRADE_STATE UPGRADE
+-- 
+-- Optionally you can check what user tables still need to be updated using DBMS_DST.UPGRADE_DATABASE
+-- BEGIN_UPGRADE upgrades system tables that contain TSTZ data and marks user tables (containing TSTZ data) with the UPGRADE_IN_PROGRESS property. 
+-- even if this select gives no rows you still need to do to the rest of the steps
+-- it simply gives an indication of how many user objects need to processed in the later steps
+-- some oracle provided users may be listed here, that is normal
+
+SELECT OWNER, TABLE_NAME, UPGRADE_IN_PROGRESS FROM ALL_TSTZ_TABLES where UPGRADE_IN_PROGRESS='YES';
+
+-- 
+-- now restart the database - this will also work fine in a PDB
+-- NOTE: Oracle support has seen SR's where some customers stop here, the upgrade is NOT finished yet - please DO follow the next steps !!!!!
+
+shutdown immediate
+startup
+
+-- at this point the database can actually be used note however that the
+-- upgrade_database will take exclusive locks on the tables when they are actually upgraded
+-- so it might provoke issues.
+
+alter session set "_with_subquery"=materialize;
+alter session set "_simple_view_merging"=TRUE;
+
+-- 
+-- now upgrade the tables who need action
+
+set serveroutput on
+VAR numfail number
+BEGIN
+DBMS_DST.UPGRADE_DATABASE(:numfail,
+parallel => TRUE,
+log_errors => TRUE,
+log_errors_table => 'SYS.DST$ERROR_TABLE',
+log_triggers_table => 'SYS.DST$TRIGGER_TABLE',
+error_on_overlap_time => FALSE,
+error_on_nonexisting_time => FALSE);
+DBMS_OUTPUT.PUT_LINE('Failures:'|| :numfail);
+END;
+/
+
+-- 
+-- ouput of this will be a list of tables like:
+-- 
+-- Table list: "APEX_040200"."WWV_FLOW_FEEDBACK_FOLLOWUP"
+-- Number of failures: 0
+-- Table list: "APEX_040200"."WWV_FLOW_FEEDBACK"
+-- Number of failures: 0
+-- Table list: "APEX_040200"."WWV_FLOW_WORKSHEET_NOTIFY"
+-- Number of failures: 0
+-- Table list: "APEX_040200"."WWV_FLOW_DEBUG_MESSAGES2"
+-- Number of failures: 0
+-- Table list: "APEX_040200"."WWV_FLOW_DEBUG_MESSAGES"
+-- Number of failures: 0
+-- Table list: "GSMADMIN_INTERNAL"."AQ$_CHANGE_LOG_QUEUE_TABLE_S"
+-- Number of failures: 0
+-- Table list: "GSMADMIN_INTERNAL"."AQ$_CHANGE_LOG_QUEUE_TABLE_L"
+-- Number of failures: 0
+-- Failures:0
+-- 
+
+--
+-- this select should , if no errors where given also give "no rows", if it does something went wrong
+
+SELECT * FROM sys.dst$error_table;
+
+-- 
+-- if there where no failures then end the upgrade.
+
+VAR fail number
+BEGIN
+DBMS_DST.END_UPGRADE(:fail);
+DBMS_OUTPUT.PUT_LINE('Failures:'|| :fail);
+END;
+/
+-- 
+-- output that will be seen:
+-- An upgrade window has been successfully ended.
+-- Failures:0
+-- 
+
+-- 
+-- Sample DBMS_DST.END_UPGRADE error if DBMS_DST.UPGRADE_DATABASE was not issued:
+-- *
+-- ERROR at line 1:
+-- ORA-56929: Ending an upgrade window failed
+-- ORA-06512: at "SYS.DBMS_SYS_ERROR", line 79
+-- ORA-06512: at "SYS.DBMS_DST", line 1169
+-- ORA-06512: at line 2
+-- 
+-- FIX: start database normally and run DBMS_DST.UPGRADE_DATABASE 
+-- 
+
+-- 
+-- last checks
+
+SELECT PROPERTY_NAME, SUBSTR(property_value, 1, 30) value
+FROM DATABASE_PROPERTIES
+WHERE PROPERTY_NAME LIKE 'DST_%'
+ORDER BY PROPERTY_NAME;
+
+-- 
+-- needed output:
+-- PROPERTY_NAME VALUE
+-- ---------------------------- ------------------------------
+-- DST_PRIMARY_TT_VERSION <the new DST version number>
+-- DST_SECONDARY_TT_VERSION 0
+-- DST_UPGRADE_STATE NONE
+-- 
+
+SELECT * FROM v$timezone_file;
+
+-- 
+-- needed output:
+-- FILENAME VERSION
+-- ------------------ ----------
+-- timezlrg_<new version>.dat <new version>
+-- 
+
+Note: make sure to exit this session, do not use it for timezone related selects , it still uses the old timezone version
+ 
+Your database DST version is now updated to <the new DST version number>.
+
+Optionally you can also do this :
+
+-- 
+-- If registry$database exists then update this static table also with the new DST version
+-- the TZ_VERSION in registry$database is populated by Oracle's Database Pre-Upgrade Utility, 
+-- the preupgrd.sql script.
+-- This table is ONLY used during upgrade and contains the DST version from before the upgrade
+-- This update is mainly to avoid confusion when people notice registry$database has a lower DST version
+-- listed than seen in DATABASE_PROPERTIES or v$timezone_file
+-- 
+conn / as sysdba
+SELECT VERSION FROM v$timezone_file;
+select TZ_VERSION from registry$database;
+-- 
+--if they differ after an upgrade then updating registry$database can be done by
+-- 
+conn / as sysdba
+update registry$database set TZ_VERSION = (select version FROM v$timezone_file);
+commit;
+If needed, start over from step 3a) for the next database in the same ORACLE_HOME.
+
+5) How long will DBMS_DST take?
+
+5.a) Things one can check upfront:
+
+This mainly depends on the amount of TSTZ rows you have in your database - this will affect the time needed for:
+
+EXEC DBMS_DST.FIND_AFFECTED_TABLES during the check fase
+EXEC DBMS_DST.BEGIN_UPGRADE (the amount of data in sys objects like DBMS_SCHEDULER tables )
+EXEC DBMS_DST.UPGRADE_DATABASE (the amount of data in user tables)
+The countstatsTSTZ.sql will list the stats num_row of all tables that have a TSTZ column (= processed by DBMS_DST ) and have actual data according to the stats.
+If your stats are up to date then use countstatsTSTZ.sql , no need to run then countstarTSTZ.sql .
+
+The countstarTSTZ.sql will do a count(*) of all tables that have a TSTZ column (= processed by DBMS_DST ) and have actual data (= count (*) is >0 ).
+
+The scripts can be downloaded here , unzip and run it in sqlplus connected as sysdba. The location of the scripts can be any directory.
+Example output of countstatsTSTZ.sql (some output removed):
+
+SQL> CONN / as sysdba
+SQL> @countstatsTSTZ.sql
+.
+Amount of TSTZ data using num_rows stats info in DBA_TABLES.
+.
+For SYS tables first...
+Note: empty tables are not listed.
+Stat date - Owner.Tablename.Columnname - num_rows
+08/01/2015 - SYS.AQ$_ALERT_QT_S.CREATION_TIME - 5
+08/01/2015 - SYS.AQ$_ALERT_QT_S.DELETION_TIME - 5
+...
+...
+08/01/2015 - SYS.WRI$_OPTSTAT_HISTGRM_HISTORY.SAVTIME - 23519
+08/01/2015 - SYS.WRI$_OPTSTAT_HISTGRM_HISTORY.SPARE6 - 23519
+08/01/2015 - SYS.WRI$_OPTSTAT_HISTHEAD_HISTORY.SAVTIME - 21596
+08/01/2015 - SYS.WRI$_OPTSTAT_HISTHEAD_HISTORY.SPARE6 - 21596
+08/01/2015 - SYS.WRI$_OPTSTAT_IND_HISTORY.SAVTIME - 2814
+08/01/2015 - SYS.WRI$_OPTSTAT_IND_HISTORY.SPARE6 - 2814
+08/01/2015 - SYS.WRI$_OPTSTAT_OPR.END_TIME - 9
+08/01/2015 - SYS.WRI$_OPTSTAT_OPR.SPARE6 - 9
+08/01/2015 - SYS.WRI$_OPTSTAT_OPR.START_TIME - 9
+08/01/2015 - SYS.WRI$_OPTSTAT_TAB_HISTORY.SAVTIME - 2364
+08/01/2015 - SYS.WRI$_OPTSTAT_TAB_HISTORY.SPARE6 - 2364
+Total numrow of SYS TSTZ columns is : 101667
+There are in total 129 non-SYS TSTZ columns.
+.
+For non-SYS tables ...
+Note: empty tables are not listed.
+Stat date - Owner.Tablename.Columnname - num_rows
+08/01/2015 - SYSMAN.AQ$_MGMT_LOADER_QTABLE_S.CREATION_TIME - 2
+08/01/2015 - SYSMAN.AQ$_MGMT_LOADER_QTABLE_S.DELETION_TIME - 2
+08/01/2015 - SYSMAN.AQ$_MGMT_LOADER_QTABLE_S.MODIFICATION_TIME - 2
+08/01/2015 - SYSMAN.AQ$_MGMT_NOTIFY_QTABLE_S.CREATION_TIME - 2
+08/01/2015 - SYSMAN.AQ$_MGMT_NOTIFY_QTABLE_S.DELETION_TIME - 2
+08/01/2015 - SYSMAN.AQ$_MGMT_NOTIFY_QTABLE_S.MODIFICATION_TIME - 2
+08/01/2015 - WMSYS.AQ$_WM$EVENT_QUEUE_TABLE_S.CREATION_TIME - 1
+08/01/2015 - WMSYS.AQ$_WM$EVENT_QUEUE_TABLE_S.DELETION_TIME - 1
+08/01/2015 - WMSYS.AQ$_WM$EVENT_QUEUE_TABLE_S.MODIFICATION_TIME - 1
+Total numrow of non-SYS TSTZ columns is : 15
+There are in total 27 non-SYS TSTZ columns.
+Total Minutes elapsed : 0
+SQL>
+* For most databases the biggest amount of data that is affected by DST updates will be in DBMS_SCHEDULER tables. If DBMS_SCHEDULER is not used for own jobs or is used but there is no need to keep the history then it might be an idea to purge the DBMS_SCHDULER logging information using
+
+Conn / as sysdba
+exec dbms_scheduler.purge_log;
+Sometimes this purge does not work: Note 749440.1 Dbms_scheduler.Purge Not Removing Entries from dba_scheduler_job_run_details
+
+* Other often seen tables are SYS.WRI$_OPTSTAT_HISTGRM_HISTORY and SYS.WRI$_OPTSTAT_HISTHEAD_HISTORY, this can be used to remove / reduce the nr of rows if needed (if there are many rows in those tables ):
+
+Conn / as sysdba
+-- check current nr of rows in HISTHEAD / HISTGRM
+select count(*) from SYS.WRI$_OPTSTAT_HISTGRM_HISTORY;
+select count(*) from SYS.WRI$_OPTSTAT_HISTHEAD_HISTORY;
+-- check the current retention of stats
+-- the default value is 31
+select systimestamp - dbms_stats.get_stats_history_availability from dual;
+-- now disable stats retention
+exec dbms_stats.alter_stats_history_retention(0);
+-- remove all stats
+exec DBMS_STATS.PURGE_STATS(systimestamp);
+-- check result of purge
+select count(*) from SYS.WRI$_OPTSTAT_HISTGRM_HISTORY;
+select count(*) from SYS.WRI$_OPTSTAT_HISTHEAD_HISTORY;
+-- AFTER the DST update you can set the retention back to the original value
+exec dbms_stats.alter_stats_history_retention(31);
+When doing a DST update together with an Oracle RDBMS version upgrade the stats can be purged before doing the version upgrade - no downtime required.
+In 11.2.0.3 and higher DBMS_STATS.PURGE_STATS will be done in chunks of 10000 rows ( Bug 8553944 : SYSAUX TABLESPACE IS GROWING RAPIDLY )
+In 11.2.0.2 and lower  we suggest to use DBMS_STATS.PURGE_STATS in such a way it purges manually in chunks to avoid running out of undo space (ORA-1555), see note 1055547.1 SYSAUX Grows Because Optimizer Stats History is Not Purged. 
+PURGE_STATS normally does do a delete, it can use also a truncate in 11.2.0.3 and higher systems (where Bug 10279045 - ORA-12751 - CPU OR RUNTIME POLICY VIOLATION  is fixed)
+This can be done by using the SQL> exec DBMS_STATS.PURGE_STATS(DBMS_STATS.PURGE_ALL); command instead of SQL> exec DBMS_STATS.PURGE_STATS(systimestamp);
+This can be useful if there are millions of rows in the SYS.WRI$_OPTSTAT_HIST% tables.
+
+5.b) why does DBMS_DST.FIND_AFFECTED_TABLES sometimes takes longer than the actual upgrade?
+
+DBMS_DST.FIND_AFFECTED_TABLES scans the tables serially , not in parallel. Normally this is not a big issue seen DBMS_DST.FIND_AFFECTED_TABLES does not need downtime.
+
+It may however come into play with databases with a big timestamp with timezone dataset during an upgrade where reducing the downtime window is crucial. 
+One way to avoid this is then to do the DBMS_DST.FIND_AFFECTED_TABLES check upfront, for example you want to upgrade from 11.2.0.3 to 12.1.0.1 and go to DSTv18. If you apply the DSTv18 patch on the 11.2.0.3 home before the upgrade (this will NOT change the database dst version and does not need downtime) you then can run DBMS_DST.FIND_AFFECTED_TABLES before the upgrade, while still beeing on 11.2.0.3, to check the data upfront for any issue when going to DSTv18 *after* the upgrade (and after the upgrade start directly with point 4) , skipping DBMS_DST.FIND_AFFECTED_TABLES etc, seen you checked the dataset upfront)
+OR, that's also possible, you can update the 11.2.0.3 db to DSTv18 before the upgrade, but that then needs it's own downtime window before the upgrade.
+
+There is an enhancement request Bug 16904986 - ALLOW FIND_AFFECTED_TABLES TO RUN IN PARALLEL
+
+5.c) Selects useful if DBMS_DST "hangs" or takes a long time:
+
+During DBMS_DST.UPGRADE_DATABASE this count (*) should go down:
+
+CONN / as sysdba
+SELECT count(*) FROM ALL_TSTZ_TABLES where UPGRADE_IN_PROGRESS='YES';
+To see what's happening one can use:
+
+CONN / as sysdba
+-- needs EXEC DBMS_APPLICATION_INFO.SET_CLIENT_INFO('upg_tzv') been set
+set PAGES 1000
+select TARGET, TO_CHAR(START_TIME,'HH24:MI:SS - DD-MM-YY'), TIME_REMAINING, SOFAR,
+TOTALWORK, SID, SERIAL#, OPNAME from V$SESSION_LONGOPS
+where sid in
+(select SID from V$SESSION where CLIENT_INFO = 'upg_tzv')
+and SOFAR < TOTALWORK
+order by START_TIME;
+
+select S.SID, S.SERIAL#, S.SQL_ID, S.PREV_SQL_ID,
+S.EVENT#, S.EVENT, S.P1TEXT, S.P1, S.P2TEXT, S.P2, S.P3TEXT, S.P3, S.TIME_REMAINING_MICRO,
+S.SEQ#, S.BLOCKING_SESSION, BS.PROGRAM "Blocking Program",
+Q1.SQL_TEXT "Current SQL", Q2.SQL_TEXT "Previous SQL"
+from V$SESSION S, V$SQLAREA Q1, V$SQLAREA Q2, V$SESSION BS
+where S.SQL_ID = Q1.SQL_ID(+)
+and S.PREV_SQL_ID = Q2.SQL_ID(+)
+and S.BLOCKING_SESSION = BS.SID(+)
+and S.CLIENT_INFO = 'upg_tzv';
+6) Known Issues
+
+Not fixed yet:
+
+* if DBMS_DST.FIND_AFFECTED_TABLES fails with ORA-00904: "T"."SYS_C00001_-random number here-": invalid identifier
+
+DBMS_DST.FIND_AFFECTED_TABLES
+(affected_tables => 'sys.dst$affected_tables',
+log_errors => TRUE,
+log_errors_table => 'sys.dst$error_table');
+END;
+/
+
+BEGIN
+*
+ERROR at line 1:
+ORA-00904: "T"."SYS_C00001_10101608:45:57$": invalid identifier 
+ORA-06512: at "SYS.DBMS_DST", line 284 
+ORA-06512: at "SYS.DBMS_DST", line 1515 
+ORA-06512: at line 2
+Then this issue may be caused by unused timestamp with time zone columns 
+This select will give all objects that may cause this error:
+
+CONN / as sysdba
+-- this alter session will speed up the select on some dbs
+-- see Bug 10209691 / Bug 12658443
+alter session set "_with_subquery"=materialize;
+select U.OWNER, U.TABLE_NAME, U.COLUMN_NAME from dba_tab_cols u, DBA_UNUSED_COL_TABS o where u.data_type like '%WITH TIME ZONE' and u.owner=o.owner and u.table_name = o.table_name and u.HIDDEN_COLUMN = 'YES';
+If there are (=above select give rows) drop the unused columns using "alter table owner.table drop unused columns;"
+If the table is compressed see note 558630.1 Unable To Drop An Unused Column From A Compresed Table Due To ORA-12996
+Bug 14732853 - DBMS_DST DOES NOT HANDLE UNUSED TIMESTAMP WITH TIME ZONE COLUMNS
+
+Not a bug:
+
+* EXEC DBMS_DST.BEGIN_PREPARE (or any other DBMS_DST call) fails with 'PLS-00201: identifier 'DBMS_DST.-insert name here-' must be declared':
+
+
+SQL> EXEC DBMS_DST.BEGIN_PREPARE(14);
+BEGIN DBMS_DST.BEGIN_PREPARE(14); END;
+
+*
+ERROR at line 1:
+ORA-06550: line 1, column 7:
+PLS-00201: identifier 'DBMS_DST.BEGIN_PREPARE' must be declared
+ORA-06550: line 1, column 7:
+PL/SQL: Statement ignored
+You try to run DBMS_DST in a Oracle database that is NOT Version 11.2.0.1 or higher. This is typically seen when upgrading from 11gR1 or lower and often the wrong impression is that DBMS_DST need to be run before the upgrade, this is not true, DBMS_DST is used AFTER the Oracle RDBMS version upgrade is done .
+
+* if DBMS_DST.BEGIN_PREPARE fail with ORA-02014: cannot select FOR UPDATE from view with DISTINCT, GROUP BY, etc.
+
+Bug 10138792  ORA-2014 ON SEGMENT ADVISOR SELECT STMT WHEN _SIMPLE_VIEW_MERGING=FALSE, closed as not a bug. (the statements in this note use the workaround)
+note 1407273.1 DST Upgrade using DBMS_DST.BEGIN_PREPARE fail with ORA-2014
+
+* if DBMS_DST.BEGIN_PREPARE fails with ORA-56922: Starting a prepare window failed
+
+BEGIN DBMS_DST.BEGIN_PREPARE((<the new DST version number>)); END;
+
+ERROR at line 1:
+ORA-56922: Starting a prepare window failed
+ORA-06512: at "SYS.DBMS_SYS_ERROR", line 79
+ORA-06512: at "SYS.DBMS_DST", line 1366
+ORA-06512: at line 1
+then it is possible that the shared pool is unable to allocate additional storage during the execution of the DBMS_DST.BEGIN_PREPARE package. 
+Flush the shared pool or bounced the database to free up the SGA.
+
+Non non-error provoking issues:
+
+* DBMS_DST is very slow on some databases
+Bug 10209691 SLOW PERFORMANCE ON ALL_TSTZ_TAB_COLS Not fixed yet
+Workaround: use "alter session set "_with_subquery"=materialize;" in the session running DBMS_DST
+
+
+* if the database is still in DST upgrade mode then select from timestamp with timezone columns will give the data without the second fractions
+so if
+
+SELECT PROPERTY_NAME, SUBSTR(property_value, 1, 30) value
+FROM DATABASE_PROPERTIES
+WHERE PROPERTY_NAME LIKE 'DST_%'
+ORDER BY PROPERTY_NAME;
+
+-- gives this output:
+-- PROPERTY_NAME VALUE
+-- --------------------------- ------------------------------
+-- DST_PRIMARY_TT_VERSION <the new DST version number>
+-- DST_SECONDARY_TT_VERSION <the old DST version number>
+-- DST_UPGRADE_STATE UPGRADE
+then you will see missing fractions
+
+SQL> ALTER SESSION SET NLS_TIMESTAMP_TZ_FORMAT ='DD/MM/YYYY HH24:MI:SS.FF TZR TZD';
+
+Session altered.
+
+SQL> select * from scott.test1;
+
+COL1
+----------
+COL2
+---------------------------------------------------------------------------
+1
+20/01/2012 20:30:34. +05:30
+
+2
+28/06/2007 00:00:00. AUSTRALIA/MELBOURNE EST
+
+3
+20/01/2012 20:30:34. +05:30
+solution: run DBMS_DST.UPGRADE_DATABASE and then DBMS_DST.END_UPGRADE(:fail);
+
+
+7) Can the DST version be updated in 12.1.0.x without downtime? Or in a "rolling" fashion on RAC?
+
+No.
+
+* For the apply of the DST patch itself using Opatch or manually ( if needed) -> no downtime needed.
+* For the check fase of DBMS_DST ( point 3 in this note) -> no downtime needed
+* For the first part of the actual upgrade ( point 4 in this note after the "shutdown immediate/startup upgrade" ) -> downtime needed and the RAC database should be in single instance mode (cluster_database = false) , as required by the "startup UPGRADE", if not then an ORA-39701: database must be mounted EXCLUSIVE for UPGRADE or DOWNGRADE will be seen.
+* For the second part of the actual upgrade ( steps in point 4 in this note after the "shutdown/startup" ) -> no downtime is needed, note however that the DBMS_DST.UPGRADE_DATABASE will take exclusive locks on the non-SYS tables when they are actually upgraded, so this might provoke issues (deadlocks have been observed) and we suggest to NOT start any applications who use the tables processed until the complete DST update is done.
+
+8) CDB /PDB (Multitenant) database and DST updates.
+
+Make sure to use version 1.9 or higher of the upg_tzv_check.sql and upg_tzv_apply.sql scripts.
+Updating the RDBMS DST version of the CDB will not change the RDBMS_DST version of the PDB's in this CDB.
+Updating the RDBMS DST version of a PDB will not change the RDBMS_DST version of the other PDB's or the CDB.
+When creating a new PDB the RDBMS DST version of new PDB is the RDBMS DST version of PDB$SEED.
+The RDBMS DST version of PDB$SEED is the RDBMS_DST version at the CDB creation time (default is DSTv18 for 12.1.0.2 and 12.1.0.1).
+The RDBMS DST version of PDB$SEED can currently not be updated.
+The steps to update a PDB with DBMS_DST are the same as for a non-PDB with one change, in the steps of point 4) there is
+
+shutdown immediate;
+startup upgrade;
+this NEED to be changed for a PDB to
+
+ALTER pluggable DATABASE CLOSE immediate;
+ALTER pluggable DATABASE OPEN upgrade;
+.
+
+REFERENCES
+
+NOTE:977512.1 - Updating the RDBMS DST version in 11g Release 2 (11.2.0.1 and up) using DBMS_DST
+NOTE:749440.1 - DBMS_SCHEDULER.PURGE Not Removing Entries from DBA_SCHEDULER_JOB_RUN_DETAILS
+NOTE:1407273.1 - DST Upgrade using DBMS_DST.BEGIN_PREPARE fail with ORA-2014
+NOTE:412160.1 - Updated DST Transitions and New Time Zones in Oracle RDBMS and OJVM Time Zone File Patches
+BUG:13833939 - ORA-0907 WHEN PREPARING FOR DST UPGRADE.
+NOTE:414590.1 - Time Zone IDs for 7 Time Zones Changed in Time Zone Files Version 3 and Higher, Possible ORA-1882 After Upgrade
+NOTE:1255474.1 - Different Time Zone Version In Registry$Database And V$Timezone_file
+BUG:10209691 - SLOW PERFORMANCE ON ALL_TSTZ_TAB_COLS
+Didn't find what you are looking for?
+
