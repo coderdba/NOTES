@@ -170,12 +170,27 @@ NOTE: Upon upgrade AND conversion to PDB, check if DB-Links work as they were in
 CHECK TIMEZONE FILE IF IT NEEDS UPDATE - for TIMESTAMP WITH TIME ZONE Data Type 
 ---------------------------------------------------------------------------------
 The default  time zone file shipped with the  Oracle 12c Release 1 is  version 18.
-
-Check note 1509653.1 to update DST using DBMS_DST.
+--> In the case it is less than 18, then manually fix it using the note 1509653.1 to update DST using DBMS_DST.
 
 Note 1665676.1 Actions For DST Updates When Upgrading To Or Applying The 12.1.0.2 Patchset
 or
 Note 1522719.1 Actions For DST Updates When Upgrading To 12.1.0.1 Base Release
+
+To check:
+--------
+SQL> conn / as sysdba
+Connected.
+SQL>SELECT version FROM v$timezone_file;
+
+VERSION
+----------
+14
+
+SQL> select TZ_VERSION from registry$database;
+
+TZ_VERSION
+----------
+        14
 
 --------------------------------------------
 COLLECT DICTIONARY STATISTICS
@@ -720,6 +735,9 @@ EXECUTE DBMS_STATS.UPGRADE_STAT_TABLE('SYS','dictstattab');
 
 In the example, 'SYS' is the owner of the statistics table and 'dictstattab' is the name of the statistics table. 
 Execute this procedure for each statistics table.
+
+7.8a Additionally, ran the following as prescribed by postupgrade_fixups.sql which was created by preupgrade.sql earlier
+EXECUTE DBMS_STATS.GATHER_FIXED_OBJECTS_STATS;
 
 7.9  Upgrade Externally Authenticated SSL Users
 
