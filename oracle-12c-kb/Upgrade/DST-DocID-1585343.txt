@@ -1,0 +1,529 @@
+	Scripts to automatically update the RDBMS DST (timezone) version in an 11gR2 or 12cR1 database . (Doc ID 1585343.1)	
+
+In this Document
+Purpose
+Requirements
+Configuring
+Instructions
+ 	 1) (optional) run countstatsTSTZ.sql or countstarTSTZ.sql and removed uneeded TSTZ data to reduce the time needed to run upg_tzv_check.sql and upg_tzv_apply.sql
+ 	2) run upg_tzv_check.sql using SQL*PLUS from the database home
+ 	3) if upg_tzv_check.sql has run sucessfully , run upg_tzv_apply.sql using SQL*PLUS from the database home
+ 	4) Selects to see what is happening / what do if the scripts "hang":
+ 	5) Can the RDBMS DST version be updated without downtime? Or in a "rolling" fashion on RAC?
+ 	6) CDB /PDB (Multitenant) database and DST updates.
+Sample Code
+Sample Output
+ 	 1) countstatsTSTZ.sql output
+ 	2) upg_tzv_check.sql output
+ 	3) upg_tzv_apply.sql output
+References
+APPLIES TO:
+
+Oracle Database - Standard Edition - Version 11.2.0.1 and later
+Oracle Database - Enterprise Edition - Version 11.2.0.1 and later
+Information in this document applies to any platform.
+PURPOSE
+
+
+These scripts prepare and then upgrade an Oracle RDBMS 11.2.0.1 or higher database to the latest RDBMS DST version installed in the Oracle_Home.
+
+Current version of the upg_tzv_check.sql and upg_tzv_apply.sql scripts is v1.9 released on 22 AUG 2014.
+The DBMS_DST_SCRIPTSV1.9 zip file was re-uploaded on 8 JAN 2015 to include the (optional) countstatsTSTZ.sql and countstarTSTZ.sql scripts who replace the previous included countTSTZdata.sql script
+
+The RDBMS DST version is the value seen in
+
+Conn / as sysdba
+-- this gives the current RDBMS DST version
+SELECT version FROM v$timezone_file;
+
+-- check also
+
+SELECT PROPERTY_NAME, SUBSTR(property_value, 1, 30) value
+FROM DATABASE_PROPERTIES
+WHERE PROPERTY_NAME LIKE 'DST_%'
+ORDER BY PROPERTY_NAME;
+
+-- the output gives
+
+-- PROPERTY_NAME VALUE
+-- ------------------------------ ------------------------------
+-- DST_PRIMARY_TT_VERSION <current DST version> <<<<------ this should match version FROM v$timezone_file if not make sure the database is open when selecting from v$timezone_file;
+-- DST_SECONDARY_TT_VERSION 0 <<<<------ this should be "0" if not then see point 3a) in note 977512.1 (for 11gR2) or note 1509653.1 (for 12c)
+-- DST_UPGRADE_STATE NONE <<<<------ this should be "NONE" if not then see point 3a) in note 977512.1 (for 11gR2) or note 1509653.1 (for 12c)
+
+The scripts do all the actions in step 3) , 4) , 5) and 6) in note 1509653.1 Updating the RDBMS DST version in 12c Release 1 (12.1.0.1 and up) using DBMS_DST or Note 977512.1 Updating the RDBMS DST version in 11gR2 (11.2.0.1 and up) using DBMS_DST.
+
+* The (optional) countstatsTSTZ.sql or countstarTSTZ.sql will give an idea about the amount of TSTZ rows and may be used to reduce the needed time for the DST update (= point 5) in above notes).
+* The upg_tzv_check.sql script will
+
+check for all known issues ( = point 6) in above notes) provoking problems during the DST update and report these, before any DST update is done, if any are found.
+find the highest installed DST version in this $ORACLE_HOME and do all the pre checks on the data (= point 3) in above notes)
+* The upg_tzv_apply.sql will do the actual DST update ( = point 4) in above notes) and need a succesful run of upg_tzv_check.sql to work.
+
+Unless an error is raised all required information is in this note.
+
+These scripts are provided "as is", feedback or enhancements are welcome (please use the feedback button) but please DO note that they are maintained on a "best effort" basis by Oracle support.
+
+To avoid confusion:
+
+To update an 11gR2 or 12cR1 database to the highest RDBMS DST version included by default in that 11gR2 or 12cR1 version (most likely after an Oracle RDBMS version upgrade to 11gR2 or 12cR1) there is no need to apply any "DST patch" , you can simply run the scripts in this note.
+The highest RDBMS DST version included by default is for 11.2.0.1 DSTv11 , for 11.2.0.2, 11.2.0.3 and 11.2.0.4 DSTv14, for 12.1.0.1 and 12.1.0.2 DSTv18.
+
+The scripts can also be used if you have applied a newer RDBMS DST patch than the highest RDBMS DST version included by default in that 11gR2 or 12cR1 version (= followed one of the "Applying the DSTvXX update for the Oracle Database" notes in NOTE 412160.1 Updated DST transitions and new Time Zones in Oracle Time Zone File patches).
+The upg_tzv_check.sql and upg_tzv_apply.sql scripts then need to be run AFTER the newer Oracle RDBMs DST patch is applied to the oracle_home, as indicated in the "Applying the DSTvXX update for the Oracle Database" notes.
+
+
+Used abbreviations:
+TSTZ: Time Stamp with Time Zone
+
+REQUIREMENTS
+
+upg_tzv_check.sql and upg_tzv_apply.sql only work on an 11gR2 (11.2.0.1 and up) or 12cR1 (12.1.0.1 and up) database
+script specific information is found at the beginning of each script, it has been copied here :
+Rem    NAME
+Rem     upg_tzv_check.sql - time zone update check script for 11gR2 (and higher)
+Rem  Version 1.9
+Rem     published in note 1585343.1 Scripts to automatically update the RDBMS DST (timezone) version in an 11gR2 or 12cR1 database .
+Rem
+Rem    NOTES
+Rem      * This script must be run using SQL*PLUS from the database home.
+Rem      * This script must be connected AS SYSDBA to run.
+Rem      * The database need to be 11.2.0.1 or higher.
+Rem      * The database will NOT be restarted .
+Rem      * NO downtime is needed for this script.
+Rem        * This script takes no arguments.
+Rem      * This script WILL exit SQL*PLUS when an error is detected
+Rem      * The dba_recyclebin WILL be purged.
+Rem      * This script will check for all known issues at time of last update.
+Rem      * An UPG_TZV table will be created.
+Rem      * TZ_VERSION in Registry$database will be updated with current version.
+Rem      * The upg_tzv_apply.sql script depends on this script.
+Rem      * The script will write a line into the alert.log when ending succesfully.
+
+ 
+
+Rem    NAME
+Rem     upg_tzv_apply.sql - time zone update apply script for 11gR2 (and higher)
+Rem  Version 1.9
+Rem     published in note 1585343.1 Scripts to automatically update the RDBMS DST (timezone) version in an 11gR2 or 12cR1 database .
+Rem
+Rem    NOTES
+Rem      * The upg_tzv_check.sql script must be run before this script.
+Rem      * This script must be run using SQL*PLUS from the database home.
+Rem      * This script must be connected AS SYSDBA to run.
+Rem      * The database need to be 11.2.0.1 or higher.
+Rem      * The database need to be single instance ( cluster_database = FALSE ).
+Rem      * The database will be restarted 2 times without asking any confirmation.
+Rem      * This script takes no arguments.
+Rem      * This script WILL exit SQL*PLUS when an error is detected
+Rem      * The dba_recyclebin WILL be purged.
+Rem      * TZ_VERSION in Registry$database will be updated with new DST version after the DST upgrade.
+Rem      * The UPG_TZV table will be dropped.
+Rem      * the script will write a line into the alert.log before restarting the db and when ending succesfully.
+ * countstatsTSTZ.sql or countstarTSTZ.sql is optional, it's a simple script to estimate how much TSTZ data the database has stored.
+
+CONFIGURING
+
+Download the DBMS_DST_scriptsV1.9.zip file and unzip, it contains 4 files: upg_tzv_check.sql and upg_tzv_apply.sql , countstatsTSTZ.sql and countstarTSTZ.sql . 
+Copy the 4 files to your database server, the location of the scripts can be any directory on the server.
+
+INSTRUCTIONS
+
+ 1) (optional) run countstatsTSTZ.sql or countstarTSTZ.sql and removed uneeded TSTZ data to reduce the time needed to run upg_tzv_check.sql and upg_tzv_apply.sql
+
+The countstatsTSTZ.sql will list the stats num_row of all tables that have a TSTZ column (= processed by DBMS_DST ) and have actual data according to the stats.
+If your stats are up to date then use countstatsTSTZ.sql , no need to run then countstarTSTZ.sql .
+
+The countstarTSTZ.sql will do a count(*) of all tables that have a TSTZ column (= processed by DBMS_DST ) and have actual data (= count (*) is >0 ).
+A count(*) will be of course a lot slower than checking the stats as done by countstatsTSTZ.sql and may give a give different result than countstatsTSTZ.sql .
+
+There is no added value in having the EXACT nr of rows, these countstatsTSTZ.sql or countstarTSTZ.sql scripts are pure to give an indication of what tables have a lot of TSTZ data.
+And again, countstatsTSTZ.sql or countstarTSTZ.sql are OPTIONAL.
+The countstatsTSTZ.sql (or countstarTSTZ.sql) script is NOT required for upg_tzv_check.sql and upg_tzv_apply.sql.
+It's an (simple) optional script to give some idea about how much data need to be processed and if there is data that can be removed.
+
+Conn / as sysdba
+spool countstatsTSTZ.log
+@countstatsTSTZ.sql
+spool off
+For most databases the biggest amount of data that is affected by DST updates will be in DBMS_SCHEDULER tables. 
+If DBMS_SCHEDULER is not used for own jobs or is used but there is no need to keep the history then it might be an idea to purge the DBMS_SCHEDULER logging information using
+
+Conn / as sysdba
+exec dbms_scheduler.purge_log;
+Sometimes this purge does not work: Note 749440.1 Dbms_scheduler.Purge Not Removing Entries from dba_scheduler_job_run_details
+
+Other often seen tables are SYS.WRI$_OPTSTAT_HISTGRM_HISTORY and SYS.WRI$_OPTSTAT_HISTHEAD_HISTORY, this can be used to remove / reduce the nr of rows if needed (if there are many rows in those tables ):
+
+Conn / as sysdba
+-- check current nr of rows in HISTHEAD / HISTGRM
+select count(*) from SYS.WRI$_OPTSTAT_HISTGRM_HISTORY;
+select count(*) from SYS.WRI$_OPTSTAT_HISTHEAD_HISTORY;
+-- check the current retention of stats
+-- the default value is 31
+select systimestamp - dbms_stats.get_stats_history_availability from dual;
+-- now disable stats retention
+exec dbms_stats.alter_stats_history_retention(0);
+-- remove all stats 
+exec DBMS_STATS.PURGE_STATS(systimestamp);
+-- check result of purge
+select count(*) from SYS.WRI$_OPTSTAT_HISTGRM_HISTORY;
+select count(*) from SYS.WRI$_OPTSTAT_HISTHEAD_HISTORY;
+-- AFTER the DST update you can set the retention back to the original value
+exec dbms_stats.alter_stats_history_retention(31);
+
+When doing a DST update together with an Oracle RDBMS version upgrade the stats can be purged before doing the version upgrade - no downtime required.
+In 11.2.0.3 and higher DBMS_STATS.PURGE_STATS will be done in chunks of 10000 rows ( Bug 8553944 : SYSAUX TABLESPACE IS GROWING RAPIDLY )
+In 11.2.0.2 and lower  we suggest to use DBMS_STATS.PURGE_STATS in such a way it purges manually in chunks to avoid running out of undo space (ORA-1555), see note 1055547.1 SYSAUX Grows Because Optimizer Stats History is Not Purged. 
+PURGE_STATS normally does do a delete, it can use also a truncate in 11.2.0.3 and higher systems (where Bug 10279045 - ORA-12751 - CPU OR RUNTIME POLICY VIOLATION  is fixed)
+This can be done by using the SQL> exec DBMS_STATS.PURGE_STATS(DBMS_STATS.PURGE_ALL); command instead of SQL> exec DBMS_STATS.PURGE_STATS(systimestamp);
+This can be useful if there are millions of rows in the SYS.WRI$_OPTSTAT_HIST% tables.
+
+2) run upg_tzv_check.sql using SQL*PLUS from the database home
+
+Note that upg_tzv_check.sql takes no arguments, it will detect the highest installed DST patch automatically and needs no downtime, this can be executed on a live production database but it WILL purge the dba_recyclebin.
+
+Conn / as sysdba
+spool upg_tzv_check.log
+@upg_tzv_check.sql
+spool off
+A succesfull run will show at the end:
+
+ INFO: A newer RDBMS DST version than the one currently used is found. 
+ INFO: Note that NO DST update was yet done. 
+ INFO: Now run upg_tzv_apply.sql to do the actual RDBMS DST update. 
+ INFO: Note that the upg_tzv_apply.sql script will  
+ INFO: restart the database 2 times WITHOUT any confirmation or prompt.
+If above is seen upg_tzv_apply.sql can be run.
+
+upg_tzv_check.sql will after a succesfull run also write "upg_tzv_check sucessfully found newer RDBMS DSTv -new version- and took -time- minutes to run." to the alert.log
+
+If upg_tzv_check.sql errors out and exits SQL*PLUS with "ORA-200xx: Stopping script - see previous message ....." check the last messages why this happend and what to do.... 
+
+3) if upg_tzv_check.sql has run sucessfully , run upg_tzv_apply.sql using SQL*PLUS from the database home
+
+Note:
+
+ For RAC databases make sure the database is started as single instance
+ Make sure any application accessing or storing TSTZ data is stopped
+ upg_tzv_apply.sql will restart the database 2 times without asking any confirmation
+ Typically upg_tzv_apply.sql will take less time than upg_tzv_check.sql
+ When executed against the CDB of a Multitenant db all PDB will be closed
+Conn / as sysdba
+spool upg_tzv_apply.log
+@upg_tzv_apply.sql
+spool off
+A succesfull run will show at the end:
+
+ INFO: The RDBMS DST update is successfully finished.
+ INFO: Make sure to exit this sqlplus session.
+ INFO: Do not use it for timezone related selects.
+If upg_tzv_apply.sql errors out and exits SQL*PLUS with "ORA-200xx: Stopping script - see previous message ....." check the last messages why this happend and what to do....
+
+
+
+upg_tzv_apply.sql will during a succesfull run also write :
+"upg_tzv_apply is ready to update to RDBMS DSTv -new version- and will now restart the database in UPGRADE mode." 
+"upg_tzv_apply has processed all SYS TSTZ data and will now restart the database to update all non SYS TSTZ data."
+"upg_tzv_apply sucessfully updated this database to RDBMS DSTv -new version- and took  -time- minutes to run."
+to the alert.log
+
+4) Selects to see what is happening / what do if the scripts "hang":
+
+upg_tzv_check.sql :
+
+The time needed for upg_tzv_check.sql after "INFO: Next step is checking all TSTZ data. INFO: It might take a while before any further output is seen ..." depends on the amount of TSTZ data and might take considerable time when there is a large amount of TSTZ data.
+If there is no user TSTZ data in this database then leave upg_tzv_check.sql running but before running upg_tzv_apply.sql check the output of countstatsTSTZ.sql or countstarTSTZ.sql and follow the suggestions to remove uneeded TSTZ data.
+
+If upg_tzv_check.sql "hangs" a long time on "INFO: Doing checks for known issues ..." then first of all check if you are using the version 1.7 (or higher) of the upg_tzv_check.sql or upg_tzv_apply.sql scripts, if not then use the version 1.7 (or higher) scripts.
+if you are using  the version 1.7 (or higher) of the scripts then collect the output of "To see what's happening during upg_tzv_check.sql or upg_tzv_apply.sql " selects below and log a sr .
+
+
+
+upg_tzv_apply.sql :
+
+After the "INFO: Upgrading all non-SYS TSTZ data." message during upg_tzv_apply.sql one can connect with a second session and this count (*) should go down:
+
+CONN / as sysdba
+SELECT count(*) FROM ALL_TSTZ_TABLES where UPGRADE_IN_PROGRESS='YES';
+as long as the count(*) goes down upg_tzv_apply.sql is working it's way trough the dataset , simply wait until it's done. 
+If there is no user TSTZ data in this database then for the next update check the output of countstatsTSTZ.sql or countstarTSTZ.sql and follow the suggestions to remove uneeded TSTZ data.
+If it does not go down use below selects and check for locking issues who may be caused by an application that acesses TSTZ columns connecting. In that case stop the application.
+
+To see what's happening during upg_tzv_check.sql or upg_tzv_apply.sql one can use:
+
+CONN / as sysdba
+ 
+set PAGES 1000
+select TARGET, TO_CHAR(START_TIME,'HH24:MI:SS - DD-MM-YY'), TIME_REMAINING, SOFAR,
+TOTALWORK, SID, SERIAL#, OPNAME from V$SESSION_LONGOPS
+where sid in
+(select SID from V$SESSION where CLIENT_INFO = 'upg_tzv')
+and SOFAR < TOTALWORK
+order by START_TIME;
+
+select S.SID, S.SERIAL#, S.SQL_ID, S.PREV_SQL_ID,
+S.EVENT#, S.EVENT, S.P1TEXT, S.P1, S.P2TEXT, S.P2, S.P3TEXT, S.P3, S.TIME_REMAINING_MICRO,
+S.SEQ#, S.BLOCKING_SESSION, BS.PROGRAM "Blocking Program",
+Q1.SQL_TEXT "Current SQL", Q2.SQL_TEXT "Previous SQL"
+from V$SESSION S, V$SQLAREA Q1, V$SQLAREA Q2, V$SESSION BS
+where S.SQL_ID = Q1.SQL_ID(+)
+and S.PREV_SQL_ID = Q2.SQL_ID(+)
+and S.BLOCKING_SESSION = BS.SID(+)
+and S.CLIENT_INFO = 'upg_tzv';
+5) Can the RDBMS DST version be updated without downtime? Or in a "rolling" fashion on RAC?
+
+Short answer: no.
+Detailed answer:
+
+* ( if needed) For the apply of an RDBMS DST patch itself using Opatch or manually  -> no downtime needed even if the readme of the patch may state otherwise.
+* For the run of upg_tzv_check.sql -> no downtime needed.
+* For the first part of upg_tzv_apply.sql after the "INFO: Restarting the database in UPGRADE mode to start the DST upgrade." message -> downtime needed and a RAC database need to be in single instance mode (cluster_database = false) , as required by the "startup UPGRADE" . upg_tzv_apply.sql will refuse to run if the database is started with cluster_database = true.
+* For the second part of upg_tzv_apply.sql after the "INFO: Upgrading all non-SYS TSTZ data." message -> the DBMS_DST.UPGRADE_DATABASE used by upg_tzv_apply.sql will take exclusive locks on the non-SYS tables when they are actually upgraded, so this might provoke issues (deadlocks have been observed) and we strongly suggest to NOT start any applications who use the tables processed until the complete DST update is done. Other applications may already be restarted if needed.
+
+6) CDB /PDB (Multitenant) database and DST updates.
+
+Make sure to use version 1.9 or higher of the upg_tzv_check.sql and upg_tzv_apply.sql scripts.
+Updating the RDBMS DST version of the CDB will not change the RDBMS_DST version of the PDB's in this CDB.
+Updating the RDBMS DST version of a PDB will not change the RDBMS_DST version of the other PDB's or the CDB.
+When creating a new PDB the RDBMS DST version of new PDB is the RDBMS DST version of PDB$SEED.
+The RDBMS DST version of PDB$SEED is the RDBMS_DST version at the CDB creation time (default is DSTv18 for 12.1.0.2 and 12.1.0.1).
+The RDBMS DST version of PDB$SEED can currently not be updated.
+
+
+CAUTION
+
+This sample code is provided for educational purposes only, and is not supported by Oracle Support. It has been tested internally, however, we do not guarantee that it will work for you. Ensure that you run it in your test environment before using.
+SAMPLE CODE
+
+ See the DBMS_DST_SCRIPTSV1.9 zip file for the scripts
+
+SAMPLE OUTPUT
+
+ 1) countstatsTSTZ.sql output
+
+Example output of countstatsTSTZ.sql (some output removed):
+
+SQL> CONN / as sysdba
+SQL> @countstatsTSTZ.sql
+.
+Amount of TSTZ data using num_rows stats info in DBA_TABLES.
+.
+For SYS tables first...
+Note: empty tables are not listed.
+Stat date  - Owner.Tablename.Columnname - num_rows
+08/01/2015 - SYS.AQ$_ALERT_QT_S.CREATION_TIME - 5
+08/01/2015 - SYS.AQ$_ALERT_QT_S.DELETION_TIME - 5
+...
+...
+08/01/2015 - SYS.WRI$_OPTSTAT_HISTGRM_HISTORY.SAVTIME - 23519
+08/01/2015 - SYS.WRI$_OPTSTAT_HISTGRM_HISTORY.SPARE6 - 23519
+08/01/2015 - SYS.WRI$_OPTSTAT_HISTHEAD_HISTORY.SAVTIME - 21596
+08/01/2015 - SYS.WRI$_OPTSTAT_HISTHEAD_HISTORY.SPARE6 - 21596
+08/01/2015 - SYS.WRI$_OPTSTAT_IND_HISTORY.SAVTIME - 2814
+08/01/2015 - SYS.WRI$_OPTSTAT_IND_HISTORY.SPARE6 - 2814
+08/01/2015 - SYS.WRI$_OPTSTAT_OPR.END_TIME - 9
+08/01/2015 - SYS.WRI$_OPTSTAT_OPR.SPARE6 - 9
+08/01/2015 - SYS.WRI$_OPTSTAT_OPR.START_TIME - 9
+08/01/2015 - SYS.WRI$_OPTSTAT_TAB_HISTORY.SAVTIME - 2364
+08/01/2015 - SYS.WRI$_OPTSTAT_TAB_HISTORY.SPARE6 - 2364
+Total numrow of SYS TSTZ columns is : 101667
+There are in total 129 non-SYS TSTZ columns.
+.
+For non-SYS tables ...
+Note: empty tables are not listed.
+Stat date  - Owner.Tablename.Columnname - num_rows
+08/01/2015 - SYSMAN.AQ$_MGMT_LOADER_QTABLE_S.CREATION_TIME - 2
+08/01/2015 - SYSMAN.AQ$_MGMT_LOADER_QTABLE_S.DELETION_TIME - 2
+08/01/2015 - SYSMAN.AQ$_MGMT_LOADER_QTABLE_S.MODIFICATION_TIME - 2
+08/01/2015 - SYSMAN.AQ$_MGMT_NOTIFY_QTABLE_S.CREATION_TIME - 2
+08/01/2015 - SYSMAN.AQ$_MGMT_NOTIFY_QTABLE_S.DELETION_TIME - 2
+08/01/2015 - SYSMAN.AQ$_MGMT_NOTIFY_QTABLE_S.MODIFICATION_TIME - 2
+08/01/2015 - WMSYS.AQ$_WM$EVENT_QUEUE_TABLE_S.CREATION_TIME - 1
+08/01/2015 - WMSYS.AQ$_WM$EVENT_QUEUE_TABLE_S.DELETION_TIME - 1
+08/01/2015 - WMSYS.AQ$_WM$EVENT_QUEUE_TABLE_S.MODIFICATION_TIME - 1
+Total numrow of non-SYS TSTZ columns is : 15
+There are in total 27 non-SYS TSTZ columns.
+Total Minutes elapsed : 0
+SQL>
+2) upg_tzv_check.sql output
+
+Example output of a successful run of upg_tzv_check.sql :
+
+SQL> CONN / as sysdba
+SQL> @upg_tzv_check.sql
+INFO: Starting with RDBMS DST update preparation.
+INFO: NO actual RDBMS DST update will be done by this script.
+INFO: If an ERROR occurs the script will EXIT sqlplus.
+INFO: Doing checks for known issues ...
+INFO: Database version is 11.2.0.3 .
+INFO: Database RDBMS DST version is DSTv17 .
+INFO: No known issues detected.
+INFO: Now detecting new RDBMS DST version.
+A prepare window has been successfully started.
+INFO: Newest RDBMS DST version detected is DSTv18 .
+INFO: Next step is checking all TSTZ data.
+INFO: It might take a while before any further output is seen ...
+A prepare window has been successfully ended.
+INFO: A newer RDBMS DST version than the one currently used is found.
+INFO: Note that NO DST update was yet done.
+INFO: Now run upg_tzv_apply.sql to do the actual RDBMS DST update.
+INFO: Note that the upg_tzv_apply.sql script will
+INFO: restart the database 2 times WITHOUT any confirmation or prompt.
+SQL>
+ Example output of a successful run of upg_tzv_check.sql but with a warning ( = non fatal issue) :
+
+SQL> CONN / as sysdba
+SQL> @upg_tzv_check.sql
+INFO: Starting with RDBMS DST update preparation.
+INFO: NO actual RDBMS DST update will be done by this script.
+INFO: If an ERROR occurs the script will EXIT sqlplus.
+INFO: Doing checks for known issues ...
+INFO: Database version is 12.1.0.1 .
+INFO: This database is a Multitenant database.
+INFO: Current container is CDB$ROOT .
+INFO: Updating the RDBMS DST version of the CDB / CDB$ROOT database
+INFO: will NOT update the RDBMS DST version of PDB databases in this CDB.
+WARNING: There are 1 open PDBs .
+WARNING: They will be closed when running upg_tzv_apply.sql .
+INFO: Database RDBMS DST version is DSTv21 .
+INFO: No known issues detected.
+INFO: Now detecting new RDBMS DST version.
+A prepare window has been successfully started.
+INFO: Newest RDBMS DST version detected is DSTv22 .
+INFO: Next step is checking all TSTZ data.
+INFO: It might take a while before any further output is seen ...
+A prepare window has been successfully ended.
+INFO: A newer RDBMS DST version than the one currently used is found.
+INFO: Note that NO DST update was yet done.
+INFO: Now run upg_tzv_apply.sql to do the actual RDBMS DST update.
+INFO: Note that the upg_tzv_apply.sql script will
+INFO: restart the database 2 times WITHOUT any confirmation or prompt.
+SQL>
+Example output of an unsuccessful run of upg_tzv_check.sql due known issue :
+
+SQL> CONN / as sysdba
+SQL> @upg_tzv_check.sql
+INFO: Starting with RDBMS DST update preparation.
+INFO: NO actual RDBMS DST update will be done by this script.
+INFO: If an ERROR occurs the script will EXIT sqlplus.
+INFO: Database version is 11.2.0.3 .
+INFO: Database RDBMS DST version is DSTv14 .
+INFO: Doing checks for known issues ...
+ERROR: Unused TSTZ columns exist.
+ERROR: ORA-00904 will be seen during DBMS_DST.
+ERROR: See the known issues section of
+ERROR: note 977512.1 for 11gR2 or note 1509653.1 for 12c .
+ERROR: for bug 14732853 .
+declare
+*
+ERROR at line 1:
+ORA-20060: Stopping script - see previous message .....
+ORA-06512: at line 241
+
+
+Disconnected from Oracle Database 11g Enterprise Edition Release 11.2.0.3.0 - Production
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+Example output of an unsuccessful run of upg_tzv_check.sql seen no newer dst patch has been found:
+
+SQL> CONN / as sysdba
+SQL> @upg_tzv_check.sql
+INFO: Starting with RDBMS DST update preparation.
+INFO: NO actual RDBMS DST update will be done by this script.
+INFO: If an ERROR occurs the script will EXIT sqlplus.
+INFO: Doing checks for known issues ...
+INFO: Database version is 12.1.0.1 .
+INFO: This database is a Multitenant database.
+INFO: Current container is CDB$ROOT .
+INFO: Updating the RDBMS DST version of the CDB / CDB$ROOT database
+INFO: will NOT update the RDBMS DST version of PDB databases in this CDB.
+INFO: There are no open PDBs .
+INFO: Database RDBMS DST version is DSTv22 .
+INFO: No known issues detected.
+INFO: Now detecting new RDBMS DST version.
+ERROR: No newer RDBMS DST patch has been detected.
+ERROR: Check if a newer RDBMS DST patch is actually installed.
+DECLARE
+*
+ERROR at line 1:
+ORA-20070: Stopping script - see previous message .....
+ORA-06512: at line 36
+
+
+Disconnected from Oracle Database 12c Enterprise Edition Release 12.1.0.1.0 - 64bit Production
+With the Partitioning, OLAP, Advanced Analytics and Real Application Testing options
+
+3) upg_tzv_apply.sql output
+
+Example output of a successful run of upg_tzv_apply.sql :
+
+SQL> sys/oracle@pdb1db as sysdba
+SQL> @upg_tzv_apply.sql
+INFO: If an ERROR occurs the script will EXIT sqlplus.
+INFO: The database RDBMS DST version will be updated to DSTv21 .
+INFO: This database is a Multitenant database.
+INFO: This database is a PDB.
+INFO: Current PDB is PDB1DB .
+WARNING: This script will restart the database 2 times
+WARNING: WITHOUT asking ANY confirmation.
+WARNING: Hit control-c NOW if this is not intended.
+INFO: Restarting the database in UPGRADE mode to start the DST upgrade.
+Pluggable Database closed.
+Pluggable Database opened.
+INFO: Starting the RDBMS DST upgrade.
+INFO: Upgrading all SYS owned TSTZ data.
+INFO: It might take time before any further output is seen ...
+An upgrade window has been successfully started.
+INFO: Restarting the database in NORMAL mode to upgrade non-SYS TSTZ data.
+Pluggable Database closed.
+Pluggable Database opened.
+INFO: Upgrading all non-SYS TSTZ data.
+INFO: It might take time before any further output is seen ...
+INFO: Do NOT start any application yet that uses TSTZ data!
+INFO: Next is a list of all upgraded tables:
+Table list: "GSMADMIN_INTERNAL"."AQ$_CHANGE_LOG_QUEUE_TABLE_S"
+Number of failures: 0
+Table list: "GSMADMIN_INTERNAL"."AQ$_CHANGE_LOG_QUEUE_TABLE_L"
+Number of failures: 0
+Table list: "DVSYS"."AUDIT_TRAIL$"
+Number of failures: 0
+Table list: "APEX_040200"."WWV_FLOW_FEEDBACK_FOLLOWUP"
+Number of failures: 0
+Table list: "APEX_040200"."WWV_FLOW_FEEDBACK"
+Number of failures: 0
+Table list: "APEX_040200"."WWV_FLOW_WORKSHEET_NOTIFY"
+Number of failures: 0
+Table list: "APEX_040200"."WWV_FLOW_DEBUG_MESSAGES2"
+Number of failures: 0
+Table list: "APEX_040200"."WWV_FLOW_DEBUG_MESSAGES"
+Number of failures: 0
+INFO: Total failures during update of TSTZ data: 0 .
+An upgrade window has been successfully ended.
+INFO: Your new Server RDBMS DST version is DSTv21 .
+INFO: The RDBMS DST update is successfully finished.
+INFO: Make sure to exit this sqlplus session.
+INFO: Do not use it for timezone related selects.
+SQL>
+Example output of an unsuccessful run of upg_tzv_apply.sql seen upg_tzv_check.sql was not executed:
+
+SQL> CONN / as sysdba
+SQL> @upg_tzv_apply.sql
+INFO: If an ERROR occurs the script will EXIT sqlplus.
+ERROR: UPG_TZV does not exist.
+ERROR: You need to run upg_tzv_check.sql BEFORE upg_tzv_apply.sql .
+ERROR: NO update of the DST version was done !
+DECLARE
+*
+ERROR at line 1:
+ORA-20215: Stopping script - see previous message .....
+ORA-06512: at line 33
+
+
+Disconnected from Oracle Database 12c Enterprise Edition Release 12.1.0.1.0 - 64bit Production
+With the Partitioning, OLAP, Advanced Analytics and Real Application Testing options
+REFERENCES
+
+NOTE:1509653.1 - Updating the RDBMS DST version in 12c Release 1 (12.1.0.1 and up) using DBMS_DST
+NOTE:412160.1 - Updated DST Transitions and New Time Zones in Oracle RDBMS and OJVM Time Zone File Patches
+NOTE:977512.1 - Updating the RDBMS DST version in 11g Release 2 (11.2.0.1 and up) using DBMS_DST
+Didn't find what you are looking for?
