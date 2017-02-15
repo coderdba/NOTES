@@ -742,6 +742,45 @@ WHERE PROPERTY_NAME LIKE 'DST_%' ORDER BY PROPERTY_NAME;
 
 if not DStv18 then Oracle suggests  to upgrade DST, if DSTv18 then it is Bug  17303129 and it can be safely ignored .
 
+-- FIXING DST VERSION automatically using upg_tzv... sqls (Doc ID 1585343.1)
+
+Run the check sql
+SQL> @ upg_tzv_check
+
+INFO: Starting with RDBMS DST update preparation.
+INFO: NO actual RDBMS DST update will be done by this script.
+INFO: If an ERROR occurs the script will EXIT sqlplus.
+INFO: Doing checks for known issues ...
+INFO: Database version is 12.1.0.2 .
+INFO: Database RDBMS DST version is DSTv14 .
+INFO: No known issues detected.
+INFO: Now detecting new RDBMS DST version.
+A prepare window has been successfully started.
+INFO: Newest RDBMS DST version detected is DSTv18 .
+INFO: Next step is checking all TSTZ data.
+INFO: It might take a while before any further output is seen ...
+A prepare window has been successfully ended.
+INFO: A newer RDBMS DST version than the one currently used is found.
+INFO: Note that NO DST update was yet done.
+INFO: Now run upg_tzv_apply.sql to do the actual RDBMS DST update.
+INFO: Note that the upg_tzv_apply.sql script will
+INFO: restart the database 2 times WITHOUT any confirmation or prompt.
+WARNING: This RAC database is not started in single instance mode.
+WARNING: Set cluster_database = false and start as single instance
+WARNING: BEFORE running upg_tzv_apply(_cbd).sql !
+WARNING: This is REQUIRED !
+
+SQL> alter system set cluster_database=false scope=spfile;
+
+$ srvctl stop database -d DB_UNIQUE_NAME
+
+SQL> startup
+
+SQL> @upg_tzv_check
+
+SQL> shutdown
+
+$ srvctl start database -d DB_UNIQUE_NAME
 
 7.8  Upgrade Statistics Tables Created by the DBMS_STATS Package
 
