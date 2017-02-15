@@ -87,6 +87,8 @@ WARNING: Pluggable Database PPROD with pdb id – 4 is
 
 PDB_PLUG_IN_VIOLATIONS view output:
 
+SQL> select * from PDB_PLUG_IN_VIOLATIONS;
+
 TIME
 ---------------------------------------------------------------------------
 NAME
@@ -138,10 +140,35 @@ SQL> ALTER SESSION set container=PDB1;
 
 @$ORACLE_HOME/rdbms/admin/noncdb_to_pdb.sql
 
+---- Script error:
+      Elapsed: 00:00:26.30
+      DECLARE
+      *
+      ERROR at line 1:
+      ORA-04045: errors during recompilation/revalidation of SYS.DBMS_QOPATCH
+      ORA-00600: internal error code, arguments: [kql_tab_diana:new dep],
+      [0x079CA2F98], [0x7F0307F070D0], [1], [2], [], [], [], [], [], [], []
+      ORA-06512: at "SYS.DBMS_UTILITY", line 1294
+      ORA-06512: at line 1
+
+This probably was because CDB and PDB patches were different (see sections before on that)
 -- Check for errors in alert.log and view PDB_PLUG_IN_VIOLATIONS
 
 - Startup and open the new PDB in read/write mode. You must open the new PDB in read/write mode for Oracle Database to complete the integration of the new PDB into the CDB. See Oracle Database Administrator's Guide for more information about modifying the open mode of PDBs with the STARTUP SQL*Plus command.
 
 SQL> STARTUP PLUGGABLE DATABASE PDB1 OPEN;
+- OR - 
+$ srvctl start database -d DB_UNIQUE_NAME
+$ sqlplus / as sysdba
+SQL> show pdbs
+    CON_ID CON_NAME                       OPEN MODE  RESTRICTED
+---------- ------------------------------ ---------- ----------
+         2 PDB$SEED                       READ ONLY  NO
+         4 PDB1                           MOUNTED
+
+SQL> alter pluggable database pdb1 open read write instances=all;
+
+Warning: PDB altered with errors.
+
 
 - Back up the PDB. See Oracle Database Backup and Recovery User's Guide for information about backing up a PDB.
