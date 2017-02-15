@@ -1,5 +1,6 @@
 ===============================
-UPGRADE FROM 11G to 12C PDB RAC
+UPGRADE FROM 11G to 12C RAC
+(convert to PDB is not in this doc - should be added or made another doc)
 ===============================
 Complete Checklist for Manual Upgrades to Oracle Database 12c Release 1 (12.1) 
 Based on Doc ID 1503653.1
@@ -614,3 +615,190 @@ If pre upgrade info tool output needed you to update the time zone files, then f
 UPDATE ORATAB, INIT and PASSWORD FILES
 Ensure Oratab is updated in all nodes with new oracle home.
 Ensure init.ora and password files are same in all nodes for this DB and its instances.
+
+===================================================================================
+Step 7: Post Upgrade Steps
+===================================================================================
+7.1 Environment Variables and oratab file
+
+Make sure the following environment variables point to the Oracle 12c Release 1 (12.1) directories             
+               - ORACLE_BASE
+               - ORACLE_HOME
+               - PATH, LD_LIBRARY_PATH and SHLIB_PATH
+
+Ensure that your oratab file and any client scripts that set the value of ORACLE_HOME point to the new Oracle home that is created for the new Oracle Database 12c release,
+
+7.2 Initialization parameter file
+
+Edit init.ora  (if used init.ora instead of spfile itself)
+
+If you changed the CLUSTER_DATABASE parameter prior the upgrade set it back to TRUE
+Migrate your initialization parameter file to a server parameter file.
+Create a server parameter file with an initialization parameter file.
+
+-- If used init.ora instead of spfile itself
+SQL> create spfile from pfile;
+This will create an spfile as a copy of the init.ora file located in $ORACLE_HOME/dbs (UNIX) & %ORACLE_HOME%\database (Windows).
+
+7.3 Password File (re-create)
+
+a) If the REMOTE_LOGIN_PASSWORDFILE initialization parameter is set to either exclusive or shared, 
+   create a password file with ORAPWD.
+
+b) Refer the following document to avoid ORA-28017 during post upgrade.
+ORA-28017: The password file is in the legacy format (Doc ID 2112456.1)
+
+7.4 COMPATIBLE Initialization Parameter
+
+The COMPATIBLE initialization parameter controls the compatibility level of your database. 
+When you are certain that you no longer need the ability to downgrade your database to its original release
+
+Perform a backup of your database before you raise the COMPATIBLE initialization parameter (optional).
+If you are using a server parameter file, then complete the following steps:
+              a. Update the server parameter file to set or change the value of the COMPATIBLE initialization parameter.
+                 For example, to set the COMPATIBLE initialization parameter to 12.0.0, enter the following statement:
+
+SQL> ALTER SYSTEM SET COMPATIBLE = '12.0.0' SCOPE=SPFILE;
+              b. Shut down and restart the instance.
+
+If you are using an initialization parameter file, then complete the following steps:
+              a. Shut down the instance if it is running:
+
+SQL> SHUTDOWN IMMEDIATE
+              b. Edit the initialization parameter file to set or change the value of the COMPATIBLE initialization parameter.
+                 For example, to set the COMPATIBLE initialization parameter to for Oracle Database release 12.1, enter the following in the initialization parameter file:
+                 COMPATIBLE = 12.1.0
+              c. Start the instance using STARTUP.
+
+7.5 Change passwords for Oracle-Supplied Accounts.
+
+Depending on the release from which you upgraded, there might be new Oracle-supplied accounts. 
+Oracle recommends that you lock all Oracle supplied accounts except for SYS and SYSTEM, and expire their passwords, thus requiring new passwords to be specified when the accounts are unlocked.
+
+You can view the status of all accounts by issuing the following SQL statement:
+
+SQL> SELECT username, account_status FROM dba_users ORDER BY username;
+To lock and expire passwords, issue the following SQL statement:
+
+SQL> ALTER USER username PASSWORD EXPIRE ACCOUNT LOCK;
+
+7.6  Upgrade the Recovery Catalog After Upgrading Oracle Database
+
+You can upgrade the Recovery catalog by executing the  UPGRADE CATALOG command 
+Please refer Upgrading the Recovery Catalog for complete information and steps
+
+7.7  Upgrade the Time Zone File Version After Upgrading Oracle Database
+
+If the Pre-Upgrade Information Tool instructed you to upgrade the time zone files after completing the database upgrade,
+then use the DBMS_DST PL/SQL package to update the RDBMS DST (timezone) version. 
+(Note 1585343.1 : Scripts to automatically update the RDBMS DST (timezone) version in an 11gR2 or 12cR1 database . )
+
+ATTENTION : Once you have updated the DST version you may still see the following warning returned by script postupgrade_fixups.sql :
+
+******************************************************************************************
+Check Tag:     OLD_TIME_ZONES_EXIST
+Check Summary: Check for use of older timezone data file
+Fix Summary:   Update the timezone using the DBMS_DST package after upgrade is complete.
+*******************************************************************************************
+  
+Just ignore this warning, it is due to published Bug 17303129 : UPGRADE DATABASE FROM 11.1.0.7 TO 12.1.0.1, 
+"OLDER TIMEZONE IN USE" OCCURRED
+
+When such warning is returned then execute this query : 
+
+SELECT PROPERTY_NAME, SUBSTR(property_value, 1, 30) value FROM DATABASE_PROPERTIES
+WHERE PROPERTY_NAME LIKE 'DST_%' ORDER BY PROPERTY_NAME; 
+
+if not DStv18 then Oracle suggests  to upgrade DST, if DSTv18 then it is Bug  17303129 and it can be safely ignored .
+
+
+7.8  Upgrade Statistics Tables Created by the DBMS_STATS Package
+
+If you created statistics tables using the DBMS_STATS.CREATE_STAT_TABLE procedure, then upgrade these tables by executing the following procedure:
+
+EXECUTE DBMS_STATS.UPGRADE_STAT_TABLE('SYS','dictstattab');
+
+In the example, 'SYS' is the owner of the statistics table and 'dictstattab' is the name of the statistics table. 
+Execute this procedure for each statistics table.
+
+7.9  Upgrade Externally Authenticated SSL Users
+
+If you have upgraded from Oracle 9.2.0.x or 10.1.0.x, and you are using externally authenticated SSL users, then you must run the following command to upgrade those users:
+
+ORACLE_HOME/rdbms/bin/extusrupgrade --dbconnectstring
+<hostname:port_no:sid> --dbuser <db admin> --dbuserpassword
+<password> -a
+If you are upgrading from 10.2.0.x (or higher), then you are not required to run this command.
+
+7.10  Install Oracle Text Supplied Knowledge Bases After Upgrading Oracle Database
+
+The Oracle Text-supplied knowledge bases are part of the companion products for Oracle Database 12c and are not immediately available after an upgrade to Oracle Database 12c. 
+Any Oracle Text features dependent on the supplied knowledge bases which were available before the upgrade do not function after the upgrade. 
+To re-enable such features, you must install the Oracle Text supplied knowledge bases from the installation media.
+
+After an upgrade, all user extensions to the Oracle Text supplied knowledge bases must be regenerated. These changes affect all databases installed in the given Oracle home
+
+7.11  Update Your Oracle Application Express Configuration
+
+If source database originally included Application Express Version 3.2 or higher, then NO additional configuration necessary .
+
+If source database contained an earlier version of Application Express (HTML DB), then the latest version is automatically installed during the upgrade. 
+You must complete a series of post installation steps to configure Application Express for use with the new Oracle  Database 12c.
+
+7.12  Configure Fine-Grained Access to External Network Services
+
+To avoid "ORA-24247: network access denied by access control list (ACL)" when executing UTL packages (Network related packages), access has to be granted to user using these packages.
+
+The following example first looks for any ACL currently assigned to host_name.
+If one is found, then the example grants user_name the CONNECT privilege in the ACL only if that user does not already have it. 
+If no ACL exists for host_name, then the example creates a new ACL called ACL_name, grants the CONNECT privilege to user_name, and assigns the ACL to host_name.
+
+DECLARE
+acl_path VARCHAR2(4000);
+BEGIN
+SELECT acl INTO acl_path FROM dba_network_acls
+WHERE host = 'host_name' AND lower_port IS NULL AND upper_port IS NULL;
+IF DBMS_NETWORK_ACL_ADMIN.CHECK_PRIVILEGE(acl_path,'principal','privilege') IS NULL THEN
+DBMS_NETWORK_ACL_ADMIN.ADD_PRIVILEGE(acl_path,'principal', is_grant, 'privilege');
+END IF;
+EXCEPTION
+WHEN no_data_found THEN
+DBMS_NETWORK_ACL_ADMIN.CREATE_ACL('ACL_name.xml','ACL description', 'principal', is_grant, 'privilege');
+DBMS_NETWORK_ACL_ADMIN.ASSIGN_ACL('ACL_name.xml','host_name');
+END;
+
+COMMIT;
+acl_name.xml => Enter a name for the access control list XML file.
+ACL description => 'file description',
+principal => 'user_or_role',
+is_grant => TRUE|FALSE,
+privilege => 'connect|resolve',
+host_name => host name
+
+Refer to the below note on how to use DBMS_NETWORK_ACL_ADMIN package and also to avoid ORA-24247 : network access denied by access control list (ACL).
+
+Note 453786.1 ORA-24247 When Executing UTL_HTTP UTL_INADDR Packages
+7.13  Enable Oracle Database Vault 
+
+Refer to the following documents for enabling Oracle Database Vault:
+
+Note 453903.1 - Enabling and Disabling Oracle Database Vault in UNIX
+Note 453902.1 - Enabling and Disabling Oracle Database Vault in WINDOWS
+7.14  Identify Invalid Objects With the utluiobj Script
+
+Before the upgrade ,the list of invalid SYS/SYSTEM objects is written to registry$sys_inv_objs and non-SYS/SYSTEM objects was written to registry$nonsys_inv_objs by the Pre-Upgrade Information Tool
+ 
+After the upgrade, run utluiobj.sql from $ORACLE_HOME/rdbms/admin/ to identify/compare any new invalid objects due to the upgrade.
+
+7.15 Enable all batch and cron jobs diable at step 4.14 
+
+ 
+ 
+REFERENCES
+
+
+NOTE:1565816.1 - Upgrading to a higher release throws ORA-01031: insufficient privileges 
+
+BUG:17303129 - UPGRADE DATABASE FROM 11.1.0.7 TO 12.1.0.1, "OLDER TIMEZONE IN USE" OCCURRED
+
+NOTE:1585343.1 - Scripts to automatically update the RDBMS DST (timezone) version in an 11gR2 or 12cR1 database .
