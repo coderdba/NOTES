@@ -1,0 +1,344 @@
+Actions For DST Updates When Upgrading To Or Applying The 12.1.0.2 Patchset	(Doc ID 1665676.1)	
+
+In this Document
+Purpose
+Scope
+Details
+ 	Things good to know:
+ 	A) When Upgrading to 12.1.0.2 choose the relevant older Oracle RDBMS version:
+ 	A.1) When upgrading from 10.2.0.5, 11.1.0.7, 11.2.0.2, 11.2.0.3, 11.2.0.4 or 12.1.0.1 to 12.1.0.2
+ 	A.2) When upgrading from 11.2.0.1 to 12.1.0.2:
+ 	A.3) When upgrading from 11.1.0.6 to 12.1.0.2:
+ 	A.4) When upgrading from 10.2.0.1, 10.2.0.2, 10.2.0.3 or 10.2.0.4 to 12.1.0.2:
+ 	A.5) When upgrading from 10gR1 (10.1.0.x) to 12.1.0.2:
+ 	A.6) When upgrading from 9i (9.0.x or 9.2.0.x) to 12.1.0.2:
+ 	A.7) When upgrading from 8.1.7 to 12.1.0.2:
+ 	B) If your current timezone version is higher than DSTv18 when upgrading from 10.2.0.5, 11.1.0.7, 11.2.0.2, 11.2.0.3 , 11.2.0.4 or 12.1.0.1 to 12.1.0.2 :
+ 	C) If your current timezone version is lower than 18 (typically 4, 11 or 14) when upgrading from 10.2.0.5, 11.1.0.7, 11.2.0.2, 11.2.0.3 , 11.2.0.4 or 12.1.0.1 to 12.1.0.2 :
+ 	D) Do I also need to patch clients?
+ 	E) What about TIMESTAMP WITH LOCAL TIME ZONE data?
+ 	F) What if I want to go to a higher DST version than DSTv18 during the upgrade?
+ 	G) Why is the DST version seen in registry$database sometimes different than from v$timezone_file ?
+ 	H) When should I NOT update the DST version to DSTv18 after upgrading to 12.1.0.2?
+ 	I) Do I NEED to update to DSTv18 after upgrading to 12.1.0.2?
+References
+APPLIES TO:
+
+Oracle Database - Enterprise Edition - Version 8.1.7.4 to 12.1.0.2 [Release 8.1.7 to 12.1]
+Oracle Database - Standard Edition - Version 8.1.7.4 to 12.1.0.2 [Release 8.1.7 to 12.1]
+Information in this document applies to any platform.
+PURPOSE
+
+To provide a step by step flow to determine if there are DST version implications when upgrading to 12.1.0.2 .
+
+The Oracle Java Virtual Machine (OJVM) also has DST information, but has no internal datatypes which store that information, hence this can be updated by simply applying the latest/newest OJVM DST patch available.
+
+SCOPE
+
+These steps should be followed before upgrading from 12.1.0.1, 11.2.0.x, 11.1.0.x , 10.2.0.x, 10.1.0.x , 9.2.0.x or 9.0.1.x version to 12.1.0.2 release. 
+The goal is to see what actions are needed on DST information before or after upgrading to 12.1.0.2
+Used abbreviations:
+
+TZ: TimeZone
+TSTZ: TimeStamp with Time Zone
+TSLTZ: TimeStamp with Local Time Zone
+OJVM: Oracle Java Virtual Machine
+
+DETAILS
+
+Things good to know:
+
+* If you are planning to upgrade to 12.1.0.2 please check if there is an updated 12c pre-upgrade script in Note 884522.1 How to Download and Run Oracle's Database Pre-Upgrade Utility. 
+* Summary of this note in a nutshell: After an upgrade from an older RDBMS version to 12.1.0.2 the RDBMS DST version (SELECT version FROM v$timezone_file;) will be simply the same as the RDBMS DST version that was used in the older RDBMS version.
+This also implies that:
+
+There is no need to apply "DST patches" to the OLD RDBMS version (12.1.0.1 , 11.2.0.x ,11.1.0.x, 10.2.0.x. etc) home before doing the Oracle RDBMS version upgrade to 12.1.0.2.
+If you want to upgrade to Oracle RDBMS 12.1.0.2 and the older Oracle RDBMS version (12.1.0.1, 11.2.0.x ,11.1.0.x, 10.2.0.x. etc) is using a RDBMS DST version higher than DSTv18 you need to install the SAME RDBMS DST patch as the old (12.1.0.1, 11.2.0.x ,11.1.0.x, 10.2.0.x. etc) DST version on the 12.1.0.2 ORACLE_HOME before the Oracle RDBMS version upgrade.
+After the Oracle RDBMS version upgrade to 12.1.0.2 DBMS_DST can then be used to do an upgrade of the RDBMS DST version of the 12.1.0.2 database.
+
+A) When Upgrading to 12.1.0.2 choose the relevant older Oracle RDBMS version:
+
+A.1) When upgrading from 10.2.0.5, 11.1.0.7, 11.2.0.2, 11.2.0.3, 11.2.0.4 or 12.1.0.1 to 12.1.0.2
+
+check your current DST version on 10.2.0.5 , 11.1.0.7, 11.2.0.2, 11.2.0.3, 11.2.0.4 or 12.1.0.1.
+
+SQL> conn / as sysdba
+Connected.
+SQL>SELECT version FROM v$timezone_file;
+
+VERSION
+----------
+14
+
+-- ONLY for 11.2.0.2, 11.2.0.3, 11.2.0.4 or 12.1.0.1 check also
+SELECT PROPERTY_NAME, SUBSTR(property_value, 1, 30) value
+FROM DATABASE_PROPERTIES
+WHERE PROPERTY_NAME LIKE 'DST_%'
+ORDER BY PROPERTY_NAME;
+
+
+-- the output gives
+
+-- PROPERTY_NAME VALUE
+-- ------------------------------ ------------------------------
+-- DST_PRIMARY_TT_VERSION <current DST version> <<<<------ this should match version FROM v$timezone_file if not make sure the database is open when selecting from v$timezone_file;
+-- DST_SECONDARY_TT_VERSION 0 <<<<------ this should be "0" if not then see point 3a) in note 977512.1 (for 11gR2) or note 1509653.1 (for 12c)
+-- DST_UPGRADE_STATE NONE <<<<------ this should be "NONE" if not then see point 3a) in note 977512.1 (for 11gR2) or note 1509653.1 (for 12c)
+There are 3 possible outcomes:
+
+* If this select reports version 18 then there is no action to take for the Oracle time zone definitions, you can upgrade from 10.2.0.5 , 11.1.0.7, 11.2.0.2, 11.2.0.3 11.2.0.4 or 12.1.0.1 to 12.1.0.2 without any action on TSLTZ or TSTZ data.
+Follow the upgrade instructions, you can skip any DST related sections. The 12.1.0.2 RDBMS DST version after the upgrade to 12.1.0.2 will be DSTv18. 
+After the upgrade update to a higher DST than DSTv18 if this is needed. The latest DST patch is found in Note 412160.1 Updated DST transitions and new Time Zones in Oracle Time Zone File patches
+
+* If this select reports a timezone version higher than 18 please see point B) in this document
+
+* If this select reports a timezone version lower than 18 please see point C) in this document.
+
+A.2) When upgrading from 11.2.0.1 to 12.1.0.2:
+
+You cannot upgrade directly from 11.2.0.1 to 12.1.0.2. 
+Upgrade first to 11.2.0.2 (= install 11.2.0.2 ( Patch 10098816 ) and upgrade to 11.2.0.2) and then upgrade from 11.2.0.2 to 12.1.0.2.
+When upgrading to from 11.2.0.1 to 11.2.0.2 follow Note 1201253.1 Actions For DST Updates When Upgrading To Or Applying The 11.2.0.2 Patchset
+Once on 11.2.0.2 upgrade to 12.1.0.2, this means once on 11.2.0.2 check point A.1) in this note.
+(The 12.1.0.2 RDBMS DST version after the upgrade to 12.1.0.2 will be the DST version of 11.2.0.2, in most cases this will be DSTv14.)
+
+A.3) When upgrading from 11.1.0.6 to 12.1.0.2:
+
+You cannot upgrade directly from 11.1.0.6 to 12.1.0.2. 
+Upgrade first to 11.1.0.7 (= apply 11.1.0.7 patchset ( Patch 6890831 )), upgrade to 11.1.0.7 and then from 11.1.0.7 to 12.1.0.2.
+When upgrading to 11.1.0.7 follow Note 568125.1 Actions for the DSTv4 update in the 11.1.0.7 patchset
+Once on 11.1.0.7 upgrade to 12.1.0.2, this means once on 11.1.0.7 check point A.1) in this note.
+(The 12.1.0.2 RDBMS DST version after the upgrade to 12.1.0.2 will be the DST version of 11.1.0.7, in most cases this will be DSTv4.)
+
+A.4) When upgrading from 10.2.0.1, 10.2.0.2, 10.2.0.3 or 10.2.0.4 to 12.1.0.2:
+
+You cannot upgrade directly from 10gR2 (10.2.0.1, 10.2.0.2, 10.2.0.3 or 10.2.0.4) to 12.1.0.2. 
+Upgrade first to 10.2.0.5 (= apply 10.2.0.5 patchset ( Patch 8202632 )), upgrade to 10.2.0.5 and then from 10.2.0.5 to 12.1.0.2.
+When upgrading to 10.2.0.5 follow Note 1086400.1 Actions for the DSTv4 update in the 10.2.0.5 patchset
+Once on 10.2.0.5 upgrade to 12.1.0.2, this means once on 10.2.0.5 check point A.1) in this note.
+(The 12.1.0.2 RDBMS DST version after the upgrade to 12.1.0.2 will be the DST version of 10.2.0.5, in most cases this will be DSTv4.)
+
+A.5) When upgrading from 10gR1 (10.1.0.x) to 12.1.0.2:
+
+You cannot upgrade directly from 10gR1 (10.1.0.x) to 12.1.0.2. 
+Upgrade first to 10.2.0.5 (= install 10.2.0.1 and apply 10.2.0.5 patchset ( Patch 8202632 )), upgrade to 10.2.0.5 and then from 10.2.0.5 to 12.1.0.2.
+When upgrading from 10gR1 to 10.2.0.5 follow Note 1086400.1 Actions for the DSTv4 update in the 10.2.0.5 patchset
+Once on 10.2.0.5 upgrade to 12.1.0.2, this means once on 10.2.0.5 check point A.1) in this note.
+(The 12.1.0.2 RDBMS DST version after the upgrade to 12.1.0.2 will be the DST version of 10.2.0.5, in most cases this will be DSTv4.)
+
+A.6) When upgrading from 9i (9.0.x or 9.2.0.x) to 12.1.0.2:
+
+You cannot upgrade directly from 9i (9.0.x or 9.2.0.x) to 12.1.0.2. 
+Upgrade first to 10.2.0.5 (= install 10.2.0.1 and apply 10.2.0.5 patchset ( Patch 8202632 )), upgrade to 10.2.0.5 and then from 10.2.0.5 to 12.1.0.2.
+When upgrading from 9i to 10.2.0.5 follow Note 1086400.1 Actions for the DSTv4 update in the 10.2.0.5 patchset
+Once on 10.2.0.5 upgrade to 12.1.0.2, this means once on 10.2.0.5 check point A.1) in this note.
+(The 12.1.0.2 RDBMS DST version after the upgrade to 12.1.0.2 will be the DST version of 10.2.0.5, in most cases this will be DSTv4.)
+
+A.7) When upgrading from 8.1.7 to 12.1.0.2:
+
+You cannot upgrade directly from 8.1.7 to 12.1.0.2. 
+Upgrade first to 10.2.0.5 (= install 10.2.0.1 and apply 10.2.0.5 patchset ( Patch 8202632 )) and then from 10.2.0.5 to 12.1.0.2. 
+Seen 8.1.7 has no timezone data stored  there is no action to take for the Oracle time zone definitions when upgrading from 8.1.7.x to 10.2.0.5 and then to 12.1.0.2.
+You can skip any DST related sections in the upgrade documentation , there is no need to apply DST patches or check for DST issues for the upgrade to 10.2.0.5 and then to 12.1.0.2.
+The 12.1.0.2 RDBMS DST version after the upgrade to 12.1.0.2 will be DSTv4, so check point C) in this note.
+
+B) If your current timezone version is higher than DSTv18 when upgrading from 10.2.0.5, 11.1.0.7, 11.2.0.2, 11.2.0.3 , 11.2.0.4 or 12.1.0.1 to 12.1.0.2 :
+
+If the source database is using a timezone file greater than version 18 then the preupgrd.sql (Pre-Upgrade Information Tool) will generate the following warning in the preupgrd.log (this is normal)
+Example output:
+ERROR: --> New Timezone File in use
+
+     Database is using a time zone file newer than version 18.
+     BEFORE upgrading the database, patch the new 
+     ORACLE_HOME/oracore/zoneinfo/ with a time zone data file of the
+     same version as the one used in the 11.2.0.3.0 release database.
+ 
+If your current time timezone version is higher than 18, you need to re-apply the same RDBMS DST version as found in step A.1a) after installing the 12.1.0.2 software. 
+Or in other words, you need to apply the 12.1.0.2 RDBMS DST patch for the same DST version before opening the database in the new 12.1.0.2 software home.
+
+We suggest to apply the 12.1.0.2 RDBMS DST patch after installing the 12.1.0.2 software with the Oracle Universal installer.
+
+If you also need to patch the OJVM then we suggest to apply the latest DST OJVM fix for 12.1.0.2, even if your current RDBMS DST patch is lower. 
+This is best done right after installing the RDBMS DST patch, no need to follow the OJVM DST patch readme instructions as there is no database yet. 
+
+For the actual OJVM and RDBMS DST patch numbers please see Note 412160.1 Updated Time Zones in Oracle Time Zone File patches / H) Overview of what DST version is by default used / included in what Oracle RDBMS version and all DST patch numbers
+
+If the required 12.1.0.2 RDBMS DST patch is not available then one can also :
+
+* apply the 12.1.0.1 RDBMS DST patch manually to the 12.1.0.2 home.
+** Download the 12.1.0.1 DST Patch you need for your 12.1.0.2 platform/OS.
+** Unzip the 12.1.0.1 RDBMS DST patch
+** Copy the 2 *.dat files and the readme_xx.txt from the unzipped patch -patchnr-/files/oracore/zoneinfo directory to the 12.1.0.2 $ORACLE_HOME/oracore/zoneinfo directory
+Note: unlike what the readme may say, in 11.2 and up there is no need to shut down or stop the database or other processes seen you are simply adding new files, not replacing used ones.
+** Copy the 2 dat files from the patch patchnr-/files/oracore/zoneinfo/big directory to the server $ORACLE_HOME/oracore/zoneinfo/big directory
+** Copy the 2 dat files from the patch patchnr-/files/oracore/zoneinfo/little directory to the server $ORACLE_HOME/oracore/zoneinfo/little directory
+
+OR
+
+* If an only if upgrading from 12.1.0.1 to 12.1.0.2 and 12.1.0.2 is the same platform/OS as 12.1.0.1 
+then copy the 12.1.0.1 *.dat files currently installed in the 12.1.0.1 home to the new 12.1.0.2 home and choose "do not overwrite" when asked by your OS to overwrite existing files
+** Copy the *.dat files from the 12.1.0.1 home $ORACLE_HOME/oracore/zoneinfo/ directory to the 12.1.0.2 $ORACLE_HOME/oracore/zoneinfo/ directory
+** Copy the *.dat files from the 12.1.0.1 home $ORACLE_HOME/oracore/zoneinfo/little directory to the 12.1.0.2 $ORACLE_HOME/oracore/zoneinfo/little directory
+** Copy the *.dat files from the 12.1.0.1 home $ORACLE_HOME/oracore/zoneinfo/big directory to the 12.1.0.2 $ORACLE_HOME/oracore/zoneinfo/big directory
+
+After installing the same RDBMS DST patch in the 12.1.0.2 ORACLE_HOME upgrade to 12.1.0.2 without any action on TSLTZ or TSTZ data. Follow the upgrade or patchset apply instructions, you can skip any DST related sections.
+
+Note that preupgrd.sql cannot check if the needed RDBMS patch is actually applied to the new 12.1.0.2 home, so even AFTER you have applied required patch to the new 12.1.0.2 home the warning will still be there if you re-run preupgrd.sql.
+If the needed RDBMS DST patch is not applied then the upgrade will fail with:
+
+SELECT TO_NUMBER('MUST_PATCH_TIMEZONE_FILE_VERSION_ON_NEW_ORACLE_HOME')
+  *
+ERROR at line 1:
+ORA-01722: invalid number
+The 12.1.0.2 RDBMS DST version after the upgrade to 12.1.0.2 will be the same DST version as used in the older Oracle RDBMS version.
+
+After the upgrade to 12.1.0.2 you can check if there is a newer DST version out and , if needed, update to this DST version.
+The latest available DST version is found in Note 412160.1 Updated DST transitions and new Time Zones in Oracle Time Zone File patches
+
+C) If your current timezone version is lower than 18 (typically 4, 11 or 14) when upgrading from 10.2.0.5, 11.1.0.7, 11.2.0.2, 11.2.0.3 , 11.2.0.4 or 12.1.0.1 to 12.1.0.2 :
+
+If the source database is using a timezone file older than version 18 then the preupgrd.sql (Pre-Upgrade Information Tool) will generate the following warning in the preupgrd.log (this is normal)
+Example output:
+
+     Database is using a time zone file older than version 18.
+     After the upgrade, it is recommended that DBMS_DST package
+     be used to upgrade the -db version here- database time zone version
+     to the latest version which comes with the new release.
+     Please refer to My Oracle Support note number 977512.1 for details.
+The 12.1.0.2 RDBMS DST version after the upgrade to 12.1.0.2 will be the same DST version as used in 10.2.0.5 , 11.1.0.7, 11.2.0.2, 11.2.0.3 ,11.2.0.4 or 12.1.0.2.
+
+After the upgrade to 12.1.0.2 you can:
+* (recommended) update the 12.1.0.2 database(s) to DSTv18 (standard DST version of 12.1.0.2) by :
+
+or using the upg_tzv_check.sql and upg_tzv_apply.sql scripts in note 1585343.1 Scripts to automatically update the RDBMS DST (timezone) version in an 11gR2 or 12cR1 database .
+or following note 1509653.1 Updating the RDBMS DST version in 12c Release 1 (12.1.0.1 and up) using DBMS_DST from step 3a) using "18" as (<the new DST version number>) in that note.
+* (optional) update to a higher DST than 18 version if this is needed.
+The latest DST patch and related note on how to apply this is found in Note 412160.1 Updated Time Zones in Oracle Time Zone File patches under "C) Notes covering the current DST available updates". 
+Simply follow the note for the latest DST update
+
+Please note that you cannot "downgrade" a DST version.
+If you want to be able to do a Oracle *version* downgrade FROM 12.1.0.2 to the previous Oracle version *and* original DST (!!) version then there is only one solution: do not upgrade the DST version during the Oracle *version* upgrade to 12.1.0.2.
+One can always, if required upgrade the *dst* version of the 12.1.0.2 db later , once is established that there is no need for an Oracle *version* downgrade anymore and yes, it is perfectly possible (and supported) to have an DSTv14 (or any other RDBMS DST version) 12.1.0.2 database.
+
+DST version updates are an application requirement (although we suggest *in general* to use the latest included - DSTv18 for 12.1.0.2), not database .
+Any application that works correctly with DST version x will work fine with a database using a DST version higher than DST version x .
+The database and client DST version does not need to be the same. If a client uses DSTv14 for example (and all used timezones by the application are correct in DSTv14) then there is no problem using this client against a database using a higher DST version.
+
+If you have upgraded the DST version during the Oracle *version* upgrade to 12.1.0.2 then, before doing an Oracle *version* downgrade FROM 12.1.0.2 you need to apply the same DST version/patch as used on 12.1.0.2 (normally DSTv18 patch 13417321) on the OLD version home BEFORE doing the Oracle *version* downgrade otherwise @catrelod.sql will fail during the downgrade with SELECT TO_NUMBER('MUST_BE_SAME_TIMEZONE_FILE_VERSION') * ERROR at line 1:ORA-01722: invalid number.
+An overview of all DST patch numbers is found in section "H) Overview of what DST version is by default used / included in what Oracle RDBMS version and all DST patch numbers" of Note 412160.1 Updated DST transitions and new Time Zones in Oracle Time Zone File patches.
+D) Do I also need to patch clients?
+
+No, not by default. An 12.1.0.2 client will use by default DSTv18 on the client side.
+As long as you are not using DST functionality (store user timezone data or use timezone functions in your application(s) using that client ) in SQL there is no need to patch older clients with an update DST version.
+An unpatched (older than 12.1.0.2) client can connect perfectly to a 12.1.0.2 server with a higher DST version (or inverse), DST version differences between client and database are only relevant when using timezone information.
+If you have no user TZ data but you plan to use the DBMS_SCHEDULER then we recommend patching DBA clients with the RDBMS DSTv18 patch for that version or to use 12.1.0.2 clients to submit/alter DBMS_SCHEDULER jobs .
+
+If you are using timezone data or use timezone functions then you need to patch clients to the DST version that has the correct definitions for the used timezones, this should however already have been done.
+In that case you have most likely already patched affected clients. If not please see the related documentation for that DST update.
+
+For links to all DST updates and what timezone is updated in what DST version please see Note 412160.1 Updated Time Zones in Oracle Time Zone File patches
+
+E) What about TIMESTAMP WITH LOCAL TIME ZONE data?
+
+Please see Note 756454.1 TSLTZ (TIMESTAMP WITH LOCAL TIME ZONE) data and DST updates
+
+F) What if I want to go to a higher DST version than DSTv18 during the upgrade?
+
+We then advice to
+
+Follow steps in this note to fully upgrade to 12.1.0.2, the 12.1.0.2 system will have the same DST version as the old system
+Apply the latest 12.1.0.2 DST update patch after the upgrade to 12.1.0.2. The latest DST patch and related note on how to apply this is found in Note 412160.1 Updated Time Zones in Oracle Time Zone File patches under "C) Notes covering the current DST available updates". simply follow the note for the latest DST update
+G) Why is the DST version seen in registry$database sometimes different than from v$timezone_file ?
+
+ On some databases registry$database gives a different result than v$timezone_file:
+
+SQL> conn / as sysdba
+Connected.
+SQL>select VERSION from v$timezone_file;
+
+VERSION
+----------
+18
+
+SQL> select TZ_VERSION from registry$database;
+
+TZ_VERSION
+----------
+       4
+The TZ_VERSION in registry$database is populated by Oracle's Database Pre-Upgrade Utility ( the preupgrd.sql script), this table is ONLY used during upgrade and contains the DST version of the old RDBMS version from before the upgrade.
+To avoid confusion when people notice registry$database has a lower DST version listed than seen in DATABASE_PROPERTIES or v$timezone_file you can update this if required.
+
+conn / as sysdba
+select VERSION from v$timezone_file;
+select TZ_VERSION from registry$database;
+--if they differ then updating registry$database can be done by
+conn / as sysdba
+update registry$database set TZ_VERSION = (select VERSION FROM v$timezone_file);
+commit;
+The upg_tzv_check.sql and upg_tzv_apply.sql scripts in note 1585343.1 Scripts to automatically update the RDBMS DST (timezone) version in an 11gR2 or 12cR1 database update registry$database , no need to do this after running them
+
+H) When should I NOT update the DST version to DSTv18 after upgrading to 12.1.0.2?
+
+When using Transportable Tablespace (TTS) you might choose to NOT update the RDBMS DST version after upgrading to 12.1.0.2:
+
+From note 1454872.1 Transportable Tablespace (TTS) Restrictions and Limitations: Details, Reference, and Version Where Applicable / "Considerations for Time Zone File Versions in Transportable Tablespace Mode"
+
+Restriction :  Jobs performed in transportable tablespace mode have the following requirements concerning time zone file versions:  If the source is Oracle Database 11g release 2 (11.2.0.2) or later and there are tables in the transportable set that use TIMESTAMP WITH TIMEZONE (TSTZ) columns, then the time zone file version on the target database must exactly match the time zone file version on the source database.
+
+If the source is earlier than Oracle Database 11g release 2 (11.2.0.2), then the time zone file version must be the same on the source and target database for all transportable jobs regardless of whether the transportable set uses TSTZ columns.
+If these requirements are not met, then the import job aborts before anything is imported. This is because if the import job were allowed to import the objects, there might be inconsistent results when tables with TSTZ columns were read.
+
+I) Do I NEED to update to DSTv18 after upgrading to 12.1.0.2?
+
+The update to DSTv18 is a recommendation not a requirement.
+
+In 12.1.0.2 the used RDBMS DST version is a database level configuration.
+
+In 12.1.0.2 there are steps who need to be done to change an existing database to use a newer DST version.
+Simply restarting the database will NOT enable the latest applied RDBMS DST version patch (like it did in pre-11.2 versions). 
+
+This allows several databases who are using the same $ORACLE_HOME to each use a different RDBMS DST version, something that was not possible in pre-11.2 versions.
+This also implies that if one $ORACLE_HOME is used by several databases you need check and , if needed , update each database.
+
+So it is perfectly possible (and supported) to have for example 
+* a DSTv4 (or any other RDBMS DST version) 12.1.0.2 database
+* a DSTv4 12.1.0.2 database and a DSTv18 12.1.0.2 using the same ORACLE_HOME. 
+We recommend in general to update 12.1.0.2 databases to at least to the highest RDBMS DST version included by default in the Oracle 12.1.0.2 version. 
+This is for 12.1.0.2 RDBMS DSTv18.
+
+There is in general no technical reason to NOT use the latest DST version seen all DST patches are always cumulative, which means they contain also ALL the previous DST changes / corrections. 
+This means that:
+
+ if there is a requirement to apply newer than the default included DST version (for example DSTv19) it's a good idea to apply the latest available for your Oracle RDBMS version seen the newer DST patch this will have the same fixes and more.
+ any application that works correctly with DST version x will work fine with a database using a DST version higher than DST version x
+ the database and client DST version does not need to be the same. If a client uses DSTv4 for example (and all used timezones by the application are correct in DSTv4) then there is no problem using this client against a database using a higher DST version.
+There are however situations where it may be useful to use an older RDBMS DST version for an 12.1.0.2 database:
+
+ when using transportable tablespaces and for one of the 2 sides the RDBMS DST version cannot be updated (for whatever reason). note 1454872.1 Transportable Tablespace (TTS) Restrictions and Limitations: Details, Reference, and Version Where Applicable / "Considerations for Time Zone File Versions in Transportable Tablespace Mode"
+ you want to be able to do a Oracle *version* downgrade FROM 12.1.0.2 to the previous Oracle version *and* original DST (!!) version.
+Oracle support cannot say to what DST version you need to use.
+See Note 412160.1 Updated DST transitions and new Time Zones in Oracle Time Zone File patches
+section " E) I'm on DSTv <insert current version of your db> , do I NEED to apply DST newer patches?" )
+
+The "impact" of not updating to DSTv18 is that for some timezones the DST start and end date will be incorrect.
+What timezones are updated in each DST version is documented in Note 412160.1 Updated DST transitions and new Time Zones in Oracle Time Zone File patches section " J) List of updated Timezones in RDBMS DST updates".
+
+Oracle 12.1.0.2 Clients will use the highest timezlrg_XX.dat found in the ORACLE_HOME. This can be overwritten by setting explicit the ORA_TZFILE variable (which is by default not set),but there is in real life little need to do so. 
+A DSTv18 12.1.0.2 client can also perfectly connect to an non-DSTv18 server for example. The DST version only comes to play when actually using DST related information in SQL.
+
+Note that by default the "Create database" statement uses the highest timezlrg_XX.dat found in the ORACLE_HOME.
+The used RDBMS DST version for the "Create database" statement can be defined by setting explicit the ORA_TZFILE variable (which is by default not set) during the "create database" command, but there is in real life little need to do so. On windows the ORA_TZFILE needs to be set in the registry.
+
+Note that when creating a new 12.1.0.2 database using the standard provided "includes datafiles" templates in step 2 of the DBCA the new database will always be using DSTv18 regardless of the to defined ORA_TZFILE variable setting or applied RDMBS DST patches to this $ORACLE_HOME seen this is a clone operation of a seed DSTv18 database, not a real "create database".
+It is NOT possible to have different OJVM DST patches/version in one $ORACLE_HOME, the OJVM DST version is always the same for every database using a certain $ORACLE_HOME and there can only be one OJVM DST patch applied to an $ORACLE_HOME.
+This is by default for 12.1.0.2 OJVM DSTv22, the RDBMS and OJVM DST versions are NOT technically related so they do not NEED to be the same.
+
+REFERENCES
+
+NOTE:1503653.1 - Complete Checklist for Manual Upgrades to Oracle Database 12c Release 1 (12.1)
+NOTE:412160.1 - Updated DST Transitions and New Time Zones in Oracle RDBMS and OJVM Time Zone File Patches
+NOTE:1585343.1 - Scripts to automatically update the RDBMS DST (timezone) version in an 11gR2 or 12cR1 database .
+NOTE:756454.1 - TSLTZ (TIMESTAMP WITH LOCAL TIME ZONE) Data and DST Updates
+NOTE:884522.1 - How to Download and Run Oracle's Database Pre-Upgrade Utility
+NOTE:1509653.1 - Updating the RDBMS DST version in 12c Release 1 (12.1.0.1 and up) using DBMS_DST
+Didn't find what you are looking for?
