@@ -505,11 +505,80 @@ Check logs in nohup.out and $ORACLE_HOME/diagnostics directory for error-free ex
 If issues, then rerun catctl.pl after fixing them. ORA-0001 in re-run can be ignored.
 Upon completion, catupgrd0.log should show all is well, components are upgrdaed and status is valid.
 
+START THE DB (USING 12C HOME)
+$ sqlplus / as sysdba 
+SQL> startup
+
+VERIFY 0
+SQL> select * from v$version;
+
+BANNER                                                                               CON_ID
+-------------------------------------------------------------------------------- ----------
+Oracle Database 12c Enterprise Edition Release 12.1.0.2.0 - 64bit Production              0
+PL/SQL Release 12.1.0.2.0 - Production                                                    0
+CORE    12.1.0.2.0      Production                                                        0
+TNS for Linux: Version 12.1.0.2.0 - Production                                            0
+NLSRTL Version 12.1.0.2.0 - Production                                                    0
+
+
 VERIFY 1
-Startup the database by sqlplus / as sysdba and then startup
 Run $ORACLE_HOME_12C/rdbms/admin/utlu121s.sql
 It reports status of RDBMS and various options in the following file and on screen:
-CATCTL REPORT = /u01/app/oracle/product/12.1.0.2.RAC/cfgtoollogs/DB_UNIQUE_NAME/upgrade/upg_summary.log
+CATCTL REPORT = /u01/app/oracle/product/12.1.0.2/cfgtoollogs/DB_UNIQUE_NAME/upgrade/upg_summary.log
+
+Screen Output:  (also content of CATCTL REPORT file)
+-------------
+SQL> @utlu121s.sql
+PL/SQL procedure successfully completed.
+PL/SQL procedure successfully completed.
+
+CATCTL REPORT = /u01/app/oracle/product/12.1.0.2/cfgtoollogs/DB_UNIQUE_NAME/upgrade/upg_summary.log
+
+PL/SQL procedure successfully completed.
+Function created.
+
+Oracle Database 12.1 Post-Upgrade Status Tool           02-14-2017 22:58:56
+
+Component                               Current         Version  Elapsed Time
+Name                                    Status          Number   HH:MM:SS
+
+Oracle Server                          UPGRADED      12.1.0.2.0  00:19:19
+JServer JAVA Virtual Machine              VALID      12.1.0.2.0  00:04:04
+Oracle Real Application Clusters          VALID      12.1.0.2.0  00:00:02
+Oracle Workspace Manager                  VALID      12.1.0.2.0  00:01:13
+OLAP Analytic Workspace                   VALID      12.1.0.2.0  00:00:36
+OLAP Catalog                         OPTION OFF      11.2.0.4.0  00:00:00
+Oracle OLAP API                           VALID      12.1.0.2.0  00:00:31
+Oracle XDK                                VALID      12.1.0.2.0  00:00:54
+Oracle Text                               VALID      12.1.0.2.0  00:01:30
+Oracle XML Database                       VALID      12.1.0.2.0  00:06:26
+Oracle Database Java Packages             VALID      12.1.0.2.0  00:00:19
+Oracle Multimedia                         VALID      12.1.0.2.0  00:02:55
+Spatial                                UPGRADED      12.1.0.2.0  00:12:57
+Oracle Application Express                VALID     4.2.5.00.08  00:39:33
+Final Actions                                                    00:02:26
+Post Upgrade                                                     00:03:25
+
+Total Upgrade Time: 01:39:33
+
+PL/SQL procedure successfully completed.
+Function dropped.
+
+SQL>
+SQL> --
+SQL> -- Update Summary Table with con_name and endtime.
+SQL> --
+SQL> UPDATE sys.registry$upg_summary SET reportname = :ReportName,
+  2                                  con_name = SYS_CONTEXT('USERENV','CON_NAME'),
+  3                                  endtime  = SYSDATE
+  4         WHERE con_id = -1;
+
+1 row updated.
+
+SQL> commit;
+
+Commit complete.
+
 
 VERIFY 2
 Check for existence of string "BEGIN catuppst.sql" in catupgrd0.log.
