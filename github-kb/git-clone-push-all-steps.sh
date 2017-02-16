@@ -12,14 +12,16 @@ commitmessage=$branch
 repolocation=all-repos
 forklocation=MyUserName
 
+exec > ${repo}.$1  2>> ${repo}.$1
+
 if [ $1 == "step1" ]
 then
 
-git clone git@git.target.com:${forklocation}/${repo}.git
+git clone git@www.gitbub.com:${forklocation}/${repo}.git
 
 cd ${repo}
 
-git remote add upstream git@git.target.com:${repolocation}/${repo}.git
+git remote add upstream git@www.gitbub.com:${repolocation}/${repo}.git
 
 git remote -v
 
