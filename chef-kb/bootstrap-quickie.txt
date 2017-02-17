@@ -1,5 +1,32 @@
-Generate key in #/root/.ssh on the server node01
-Copy the private key of it to O:\.chef on the laptop as O:\.chef\node01-root-id-rsa.pem
+======================================================
+BOOTSTRAP QUICK STEPS
+======================================================
+
+=================================================================================
+METHOD 1 - FROM WORKSTATION, USING NODE'S ROOT USER SSH KEY INSTEAD OF PASSWORD
+=================================================================================
+- Generate key in #/root/.ssh on the server node01
+- Copy the private key of it to O:\.chef on the laptop as O:\.chef\node01-root-id-rsa.pem
+
+- Ensure that the following from starter kit of the organization are in O:\.chef:
+1. chef-server-username.pem
+2. organization-name-validator.pem
+
+3. knife.rb with content as follows:
+NOTE: chef-server-username is the username the user/service-account logs on to chef-server  (example 'ramesh' or 'oraclechef')
+      organizationName is the name of the organization to which the node should belong (example 'oracleautomation')
+      
+# See https://docs.getchef.com/config_rb_knife.html for more information on knife configuration options
+current_dir = File.dirname(__FILE__)
+log_level                :info
+log_location             STDOUT
+editor  "vi"
+node_name                "chef-server-username"
+client_key               "#{current_dir}/chef-server-username.pem"
+validation_client_name   "organizationName-validator"
+validation_key           "#{current_dir}/organizationName-validator.pem"
+chef_server_url          "https://chefserver.company.com/organizations/organizationName"
+cookbook_path            ["#{current_dir}/../cookbooks"]
 
 O:\.chef>knife bootstrap node01 --ssh-user root --identity-file 'O:\.chef\node01-root-id-rsa.pem' --node-name node01
 
