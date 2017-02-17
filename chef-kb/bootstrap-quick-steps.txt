@@ -8,12 +8,15 @@ SSL ISSUES
 ============================
 NOTE: Use the option " --node-ssl-verify-mode none " in knife bootstrap if you get SSL certificate/verify errors
       Also, try other options for SSL/cert issues:
-      --[no-]host-key-verify
-      --[no-]host-key-verify to disable host key verification. Default setting: --host-key-verify.
+      --[no-]host-key-verify to disable host key verification. Default setting: --host-key-verify
+      --[no-]node-verify-api-cert
 
 =================================================================================
 METHOD - FROM CLIENT NODE ITSELF, USING CLIENT.RB instead of knife.rb
 =================================================================================
+- Remove or rename /etc/chef/client.pem if already there
+NOTE: Better, backup /etc/chef and keep it safe --> as it may be necessary to re-bootstrap to the current organization later
+
 - Create file client.rb in /etc/chef:
 chef_server_url  "https://chefserver.company.com/organizations/orgName"
 validation_client_name "orgName-validator"
@@ -41,17 +44,21 @@ Running handlers:
 Running handlers complete
 Chef Client finished, 0/0 resources updated in 14 seconds
 
+- Check if client.pem is created
 # ls -l /etc/chef
 total 16
 -rw-------. 1 root root 1679 Feb 17 16:35 client.pem
 -rw-r--r--. 1 root root  253 Feb 17 16:34 client.rb
--rwxr-xr-x. 1 root root 1674 Feb 17 16:27 gowrish-validator.pem
+-rwxr-xr-x. 1 root root 1674 Feb 17 16:27 orgName-validator.pem
+
+- Check in chef-server if the node is added
 
 =================================================================================
 METHOD - FROM CLIENT NODE ITSELF, USING NODE'S ROOT USER PASSWORD
 =================================================================================
+- Remove or rename /etc/chef/client.pem if already there
+NOTE: Better, backup /etc/chef and keep it safe --> as it may be necessary to re-bootstrap to the current organization later
 
---[no-]node-verify-api-cert
 Create in /root/chef-repo/.chef (or some other .chef)
       NOTE: orgName-validator.pem is not needed from chef client 12.1 onwards
       -rw-r--r--. 1 root root 1674 Feb 17 04:13 chef-server-login-user.pem
@@ -89,10 +96,12 @@ Following get created:
             -rw-r--r--. 1 root root  169 Feb 17 04:16 client.rb
             -rw-r--r--. 1 root root   16 Feb 17 04:16 first-boot.json
 
-
 =================================================================================
 METHOD - FROM WORKSTATION, USING NODE'S ROOT USER SSH KEY INSTEAD OF PASSWORD
 =================================================================================
+- Remove or rename /etc/chef/client.pem if already there
+NOTE: Better, backup /etc/chef and keep it safe --> as it may be necessary to re-bootstrap to the current organization later
+
 - Generate key in #/root/.ssh on the server node01
 - Copy the private key of it to O:\.chef on the laptop as O:\.chef\node01-root-id-rsa.pem
 
