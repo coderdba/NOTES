@@ -3,7 +3,48 @@ BOOTSTRAP QUICK STEPS
 ======================================================
 
 =================================================================================
-METHOD 1 - FROM WORKSTATION, USING NODE'S ROOT USER SSH KEY INSTEAD OF PASSWORD
+METHOD - FROM CLIENT NODE ITSELF, USING NODE'S ROOT USER PASSWORD
+=================================================================================
+Create in /root/chef-repo/.chef (or some other .chef)
+      NOTE: orgName-validator.pem is not needed from chef client 12.1 onwards
+      -rw-r--r--. 1 root root 1674 Feb 17 04:13 chef-server-login-user.pem
+      -rw-r--r--. 1 root root  425 Feb 17 04:13 knife.rb
+      
+Content of knife.rb:
+current_dir = File.dirname(__FILE__)
+log_level                :info
+log_location             STDOUT
+node_name                "chef-server-login-username"
+client_key               "#{current_dir}/chef-server-login-username.pem"
+chef_server_url          "https://chef001.target.com/organizations/orgName"
+cookbook_path            ["#{current_dir}/../cookbooks"]
+
+#  knife bootstrap node01.company.com –ssh-user root --ssh-password root -N node01.company.com
+Creating new client for node01.company.com
+Creating new node for node01.company.com
+Connecting to node01.company.com
+node01.company.com -----> Existing Chef installation detected
+node01.company.com Starting first Chef Client run...
+node01.company.com Starting Chef Client, version 12.4.0
+node01.company.com resolving cookbooks for run list: []
+node01.company.com Synchronizing Cookbooks:
+node01.company.com Compiling Cookbooks...
+node01.company.com [2017-02-17T04:16:07-06:00] WARN: Node node01.company.com has an empty run list.
+node01.company.com Converging 0 resources
+node01.company.com
+node01.company.com Running handlers:
+node01.company.com Running handlers complete
+node01.company.com Chef Client finished, 0/0 resources updated in 6.737290423 seconds
+
+Following get created:
+      In /etc/chef:
+            -rw-------. 1 root root 1680 Feb 17 04:16 client.pem
+            -rw-r--r--. 1 root root  169 Feb 17 04:16 client.rb
+            -rw-r--r--. 1 root root   16 Feb 17 04:16 first-boot.json
+
+
+=================================================================================
+METHOD - FROM WORKSTATION, USING NODE'S ROOT USER SSH KEY INSTEAD OF PASSWORD
 =================================================================================
 - Generate key in #/root/.ssh on the server node01
 - Copy the private key of it to O:\.chef on the laptop as O:\.chef\node01-root-id-rsa.pem
