@@ -1,6 +1,35 @@
 ==========================
 DELETE A DATABASE
 ==========================
+
+===========
+HIGH LEVEL
+===========
+srvctl stop database -d DB_UNIQUE_NAME
+srvctl remove database -d DB_UNIQUE_NAME
+
+ASMCMD> cd DATADG
+ASMCMD> rm -rf DB_UNIQUE_NAME
+ASMCMD> cd FRADG
+ASMCMD> rm -rf DB_UNIQUE_NAME
+
+Node1:
+rm -i $ORACLE_HOME/dbs/*DB_NAME*
+Remove /u02/app/oracle/diag/rdbms/DB_UNIQUE_NAME
+Remove DB_NAME1 from /etc/oratab
+Remove entry from listener.ora
+Remove entry from tnsnames.ora
+
+Node2:
+rm -i $ORACLE_HOME/dbs/*DB_NAME*
+Remove /u02/app/oracle/diag/rdbms/DB_UNIQUE_NAME
+Remove DB_NAME1 from /etc/oratab
+Remove entry from listener.ora
+Remove entry from tnsnames.ora
+
+==========================
+MORE STEPS
+==========================
 http://www.dbaexpert.com/blog/dbca-delete-database-in-silent-mode-2/
 
 -- Delete DB (removes files from ASM?)
@@ -9,10 +38,16 @@ $ dbca -silent -deleteDatabase -sourceDB DB_UNIQUE_NAME -sysDBAUsername sys -sys
 -- Stop DB and remove from cluster registry
 $ srvctl stop database -d db_unique_name
 $ srvctl remove database -d db_unique_name
-Then, remove the following manually:
+
+-- Remove the following manually:
+(Do on each node of the RAC cluster)
+
 /etc/oratab entry
 password file in $ORACLE_HOME/dbs
 init.ora file in $ORACLE_HOME/dbs
+other files in $ORACLE_HOME/dbs
+direcrory and its contents - $ORACLE_BASE/diag/rdbms/dbname
+direcrory and its contents - $ORACLE_BASE/diag/rdbms/db_unique_name
 
 -- Check and remove files in ASM for this DB
 
@@ -40,8 +75,6 @@ spool drop-stby-log.sql
 select 'alter database drop standby logfile group ' || group# || ';' from v$standby_log;
 
 spool off
-
-
 
 TBD - more steps if there...
 
