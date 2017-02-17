@@ -17,7 +17,8 @@ METHOD - FROM CLIENT NODE ITSELF, USING CLIENT.RB instead of knife.rb
 - Create file client.rb in /etc/chef:
 chef_server_url  "https://chefserver.company.com/organizations/orgName"
 validation_client_name "orgName-validator"
-log_location   STDOUT
+validation_key '/etc/chef/orgName-validator.pem'
+log_location   STDOUT or "/var/log/chef/client.log"
 node_name "client-hostname"
 ssl_verify_mode :verify_none
 trusted_certs_dir "/etc/chef/trusted_certs"
@@ -27,6 +28,23 @@ orgName-validator.pem
 
 - Run chef client once to boostrap automatically
 # chef-client --once
+Starting Chef Client, version 12.18.31
+Creating a new client identity for client-hostname using the validator key.
+resolving cookbooks for run list: []
+Synchronizing Cookbooks:
+Installing Cookbook Gems:
+Compiling Cookbooks...
+Converging 0 resources
+
+Running handlers:
+Running handlers complete
+Chef Client finished, 0/0 resources updated in 14 seconds
+
+# ls -l /etc/chef
+total 16
+-rw-------. 1 root root 1679 Feb 17 16:35 client.pem
+-rw-r--r--. 1 root root  253 Feb 17 16:34 client.rb
+-rwxr-xr-x. 1 root root 1674 Feb 17 16:27 gowrish-validator.pem
 
 =================================================================================
 METHOD - FROM CLIENT NODE ITSELF, USING NODE'S ROOT USER PASSWORD
