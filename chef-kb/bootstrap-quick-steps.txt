@@ -4,8 +4,45 @@
 https://docs.chef.io/knife_bootstrap.html
 
 ============================
-SSL ISSUES
+CERTIFICATE-SSL ISSUES
 ============================
+Cert issue fix: http://jtimberman.housepub.org/blog/2014/12/11/chef-12-fix-untrusted-self-sign-certs/
+http://stackoverflow.com/questions/28461282/bootstrapping-chef-nodes-with-custom-ssl-certificate
+
+-------------------------------
+CERTIFICATE LOCATIONS
+-------------------------------
+
+$ knife ssl check (or other knife command) lists as follows IN THE CASE OF FAILURE
+
+OpenSSL Configuration:
+* Version: OpenSSL 1.0.2j  26 Sep 2016
+* Certificate file: /opt/chef/embedded/ssl/cert.pem
+* Certificate directory: /opt/chef/embedded/ssl/certs
+Chef SSL Configuration:
+* ssl_ca_path: nil
+* ssl_ca_file: nil
+* trusted_certs_dir: "/root/chef-repo/.chef/trusted_certs"
+
+-------------------------------
+CERTIFICATES - NOT SELF-SIGNED
+-------------------------------
+If your company's chef server has been set up with a CA certificate, 
+then copy/append that certificate to /opscode/chef/embedded/ssl/certs/cacert.pem or other filename in that folder on the client node.
+Then, make a soft link /opt/chef/embedded/ssl/cert.pem to that file.
+
+-------------------------------
+CERTIFICATES - SELF-SIGNED
+-------------------------------
+If your company's chef server has been set up with a self signed certificate,
+then from ~/chef-repo/.chef or other work directory run:
+$ knife ssl fetch
+
+That fetches the certificate file to trusted_certs subdirectory under work directory.
+
+-----------------
+KNIFE OPTIONS
+-----------------
 NOTE: Use the option " --node-ssl-verify-mode none " in knife bootstrap if you get SSL certificate/verify errors
       Also, try other options for SSL/cert issues:
       --[no-]host-key-verify to disable host key verification. Default setting: --host-key-verify
@@ -218,18 +255,19 @@ drwxr-xr-x. 2 root root 4096 Feb 17 16:57 trusted_certs
 =================================================================================
 BOOTSTRAP - FROM CLIENT NODE ITSELF, USING knife.rb and NODE'S ROOT USER PASSWORD
 =================================================================================
-Cert issue fix: http://jtimberman.housepub.org/blog/2014/12/11/chef-12-fix-untrusted-self-sign-certs/
-
 - Remove or rename /etc/chef/client.pem if already there
 NOTE: Better, backup /etc/chef and keep it safe --> as it may be necessary to re-bootstrap to the current organization later
 
-      NOTE: orgName-validator.pem is not needed from chef client 12.1 onwards (per https://docs.chef.io/install_bootstrap.html)
-          HOWEVER, THIS SEEMED TO WORK AND AGAIN NOT WORK - IF IT DOES NOT WORK, THEN ADD VALIDATORS ALSO
-        Validatorless Bootstrap
-        The ORGANIZATION-validator.pem is typically added to the .chef directory on the workstation. When a node is bootstrapped 
-        from that workstation, the ORGANIZATION-validator.pem is used to authenticate the newly-created node to the Chef server 
-        during the initial chef-client run. Starting with Chef client 12.1, it is possible to bootstrap a node using the USER.pem 
-        file instead of the ORGANIZATION-validator.pem file. This is known as a “validatorless bootstrap”.
+-----------------------
+VALIDATORLESS BOOTSTRAP
+-----------------------
+NOTE: orgName-validator.pem is not needed from chef client 12.1 onwards (per https://docs.chef.io/install_bootstrap.html)
+HOWEVER, THIS SEEMED TO WORK AND AGAIN NOT WORK - IF IT DOES NOT WORK, THEN ADD VALIDATORS ALSO
+Validatorless Bootstrap
+   The ORGANIZATION-validator.pem is typically added to the .chef directory on the workstation. When a node is bootstrapped 
+   from that workstation, the ORGANIZATION-validator.pem is used to authenticate the newly-created node to the Chef server 
+   during the initial chef-client run. Starting with Chef client 12.1, it is possible to bootstrap a node using the USER.pem 
+   file instead of the ORGANIZATION-validator.pem file. This is known as a “validatorless bootstrap”.
         
 Create in /root/chef-repo/.chef (or some other .chef)
       -rw-r--r--. 1 root root 1674 Feb 17 04:13 chef-server-login-user.pem
