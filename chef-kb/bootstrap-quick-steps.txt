@@ -39,6 +39,8 @@ VALIDATION-CLIENT - this is a keypair that is used to validate initially to the 
           
       Upon bootstrapping, a client.pem will be created for the client/node - and validator.pem is not required and can be removed.
 
+
+
 ==================================
 VALIDATOR and VALIDATOR.PEM
 ==================================
@@ -76,6 +78,56 @@ In the Reset Key dialog box, confirm that the key should be regenerated and clic
 Copy or download the private key.
 
 -- DELETE THE KEY WHEN NOT NEEDED
+
+==============================================
+KNIFE OPERATIONS AND KNIFE.RB
+==============================================
+Knife needs a knife.rb with configuration infomration and paths to key files.
+NOTE: Read validator, node and client topics above 
+
+------------------
+A typical knife.rb - see notes after this content
+------------------
+current_dir = File.dirname(__FILE__)
+log_level                :info
+log_location             STDOUT
+editor  "vi"
+node_name                "nodeName"
+client_key               "#{current_dir}/nodeKey.pem"
+validation_client_name   "orgName-validator"
+validation_key           "#{current_dir}/orgName-validator.pem"
+chef_server_url          "https://chef1.company.com/organizations/build-automation"
+cookbook_path            ["#{current_dir}/../cookbooks"]
+ssl_verify_mode          :verify_none
+
+NOTE: node_name and nodeKey.pem should be sufficient to run knife commands and chef-client runs. 
+      With that, client/node/chef-server-id can work on chef_server_urls for which they have access to.
+node_name - actual node name or a client name or chef-server-id 
+nodeKey.pem - private key for the node/client/chef-server-id
+ 
+NOTE: validation client and key are necessary for first time bootstrap
+validation_client_name - in the case nodeKey.pem is not available yet (like client.pem) then bootstrap using this
+validation_key - the key for the validation client
+
+ssl_verify_none - to avoid ssl/certificate errors
+
+------------------------
+EXAMPLE with client.pem
+------------------------
+Location: /etc/chef or other convenient location like $HOME/.chef or workdir/.chef
+NOTE: This is post-bootstrap, with validator and validator.pem removed not in knife.rb
+
+current_dir = File.dirname(__FILE__)
+log_level                :info
+log_location             STDOUT
+editor  "vi"
+node_name                "node1"
+client_key               "#{current_dir}/client.pem"
+chef_server_url          "https://chef1.company.com/organizations/build-automation"
+cookbook_path            ["#{current_dir}/../cookbooks"]
+ssl_verify_mode          :verify_none
+
+
 
 
 =================================================================================
