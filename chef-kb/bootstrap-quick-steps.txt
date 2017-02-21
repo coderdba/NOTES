@@ -11,6 +11,34 @@ NOTE: Use the option " --node-ssl-verify-mode none " in knife bootstrap if you g
       --[no-]host-key-verify to disable host key verification. Default setting: --host-key-verify
       --[no-]node-verify-api-cert
 
+============================
+NODE AND CLIENT
+============================
+
+Essentially they are named key-pairs to interact with chef-server.
+Chef server keeps public key.
+Nodes use/keep private key.
+
+CLIENT - is an entity that can access chef server
+         /etc/chef/client.pem will be its key
+         Create the client.pem file manually for a node and copy to /etc/chef/client.pem
+         --> or, do 'bootstrap' to create it
+
+NODE - is a machine that is bootstrapped to chef server
+       IT IS ALSO A 'CLIENT' with a client key
+       See CLIENT above
+              
+VALIDATION-CLIENT - this is a keypair that is used to validate initially to the chef organization during bootstrap.
+      
+      An organization already would have a validator for it - orgname-validator - and its private key is the orgname-validator.pem.
+      You can create a custom validator for an organization also (see section in this doc on that)
+      
+      Usually, it is called validator.pem - to be referenced in knife.rb as follows:
+          validation_client_name "orgName-validator"
+          validation_key '/etc/chef/orgName-validator.pem
+          
+      Upon bootstrapping, a client.pem will be created for the client/node - and validator.pem is not required and can be removed.
+
 ==================================
 VALIDATOR and VALIDATOR.PEM
 ==================================
