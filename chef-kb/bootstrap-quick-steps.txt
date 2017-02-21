@@ -112,10 +112,11 @@ validation_key - the key for the validation client
 ssl_verify_none - to avoid ssl/certificate errors
 
 ------------------------
-EXAMPLE with client.pem
+knife.rb with client.pem - post bootstrap
 ------------------------
+NOTE: This is post-bootstrap, with validation_client_name and validation_key removed not in knife.rb
+
 Location: /etc/chef or other convenient location like $HOME/.chef or workdir/.chef
-NOTE: This is post-bootstrap, with validator and validator.pem removed not in knife.rb
 
 current_dir = File.dirname(__FILE__)
 log_level                :info
@@ -127,11 +128,46 @@ chef_server_url          "https://chef1.company.com/organizations/build-automati
 cookbook_path            ["#{current_dir}/../cookbooks"]
 ssl_verify_mode          :verify_none
 
+------------------------
+knife.rb with client.pem - to do bootstrap
+------------------------
+NOTE: This is before-bootstrap, with validation_client_name and validation_key added in knife.rb
+NOTE: node_name and client_key is not placed in knife.rb as the node_name is assigned and client.pem is created during bootstrap
 
+Location: /etc/chef or other convenient location like $HOME/.chef or workdir/.chef
 
+current_dir = File.dirname(__FILE__)
+log_level                :info
+log_location             STDOUT
+editor                   "vi"
+validation_client_name   "orgName-validator"
+validation_key           "#{current_dir}/orgName-validator.pem"
+chef_server_url          "https://chef1.company.com/organizations/build-automation"
+cookbook_path            ["#{current_dir}/../cookbooks"]
+ssl_verify_mode          :verify_none
+
+------------------------
+knife.rb with chef-login.pem - to do knife non-bootstrap work?
+------------------------
+NOTE: This is to do general knife work (bootstrap also??)
+NOTE: node_name is your logon-id to chef-server
+NOTE: client_key is your logon-id's private key (from your starter kit)
+NOTE: node_name, and client_key can be for a custom client also (see other sections in this doc)
+
+Location: /etc/chef or other convenient location like $HOME/.chef or workdir/.chef
+
+current_dir = File.dirname(__FILE__)
+log_level                :info
+log_location             STDOUT
+editor  "vi"
+node_name                "chef-login"
+client_key               "#{current_dir}/client.pem"
+chef_server_url          "https://chef1.company.com/organizations/build-automation"
+cookbook_path            ["#{current_dir}/../cookbooks"]
+ssl_verify_mode          :verify_none
 
 =================================================================================
-METHOD - FROM CLIENT NODE ITSELF, USING CLIENT.RB instead of knife.rb
+BOOTSTRAP - FROM CLIENT NODE ITSELF, USING CLIENT.RB instead of knife.rb
 =================================================================================
 Some info here: http://stackoverflow.com/questions/24788920/chef-clients-and-validators
 
@@ -180,7 +216,7 @@ drwxr-xr-x. 2 root root 4096 Feb 17 16:57 trusted_certs
 - Check in chef-server if the node is added
 
 =================================================================================
-METHOD - FROM CLIENT NODE ITSELF, USING NODE'S ROOT USER PASSWORD
+BOOTSTRAP - FROM CLIENT NODE ITSELF, USING NODE'S ROOT USER PASSWORD
 =================================================================================
 - Remove or rename /etc/chef/client.pem if already there
 NOTE: Better, backup /etc/chef and keep it safe --> as it may be necessary to re-bootstrap to the current organization later
