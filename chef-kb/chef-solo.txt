@@ -1,5 +1,47 @@
+================================
+            CHEF-SOLO
+================================
 https://aggarwalarpit.wordpress.com/2015/12/01/executing-cookbooks-with-chef-solo/
 https://docs.chef.io/chef_solo.html
 
 solo.rb configuration:
 https://docs.chef.io/config_rb_solo.html
+
+Chef-Solo can be used for testing cookbooks locally before finalizing and uploading to chef server.
+Its advantage is that it does not contact chef server and pull cookbooks from there 
+  - so no need to increase version and upload to chef-server etc.
+  
+======================
+SETUP AND RUN
+======================
+
+------------------
+SETUP - as 'root' or root-sudoable user
+------------------
+- Create a directory /var/chef/solo-testing (or other)
+- Create a subdirectory 'cookbooks' under it
+- Create or download a cookbook, say, oracle-client-install, under that cookbooks folder
+
+- Create a configuration file solo.rb under /var/chef/solo-testing or elsewhere.
+With content as follows:
+
+cookbook_path ['/var/chef/solo-testing/cookbooks']
+log_level :info
+
+- Create a json file defining the run-list: (under /var/chef/solo-testing or elsewhere)
+Note: This syntax of run list gave error (TBD fix the error)
+"run_list": [
+  "recipe[oracle12c-client-rhel::default]"
+]
+
+- Call a run list as follows
+# chef-solo -c ./solo.rb -j ./oracleclient.json
+[2017-02-22T01:39:37-06:00] FATAL: Could not parse the provided JSON file (./oracleclient.json): parse error: trailing garbage
+                             "run_list": [   "recipe[oracle12c-client-
+                     (right here) ------^
+
+- Call a specific recipe as follows
+chef-solo -c ./solo.rb  -o  oracle12c-client-install::os_prerequisites
+
+This shows screen messages as chef-client would log to STDOUT or logfile.
+And, it will do the actual work to be done by the cookbook (not just a dummy message-only run)
