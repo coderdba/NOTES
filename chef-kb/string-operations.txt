@@ -1,0 +1,45 @@
+-- COMPARE DIGITS IN THE INITIAL PART OF A STRING
+http://stackoverflow.com/questions/8768865/why-does-rubys-stringto-i-sometimes-return-0-when-the-string-contains-a-number
+
+if node['platform_version'].to_i == 7
+
+In this example, the platform_version is an intrinsic attribute of the node/os provided by ohai platform.rb.
+It will have strings like 7.5 etc.
+The to_i picks out the numbers from the beginning of the string until it hits a character (like the dot in 7.5).
+NOTE: If the string does not start with a number, then it returns 0
+
+-- COMPARE PART OF THE STRING WITH 'starts with'
+"#{node['platform_version']}".start_with?("7.")
+
+
+==============================================================
+EXAMPLES
+==============================================================
+
+if node['platform_version'].to_i == 6
+
+  Chef::Log.info("Platform version is 6")
+  Chef::Log.info("Installing pre-requisite linux packages ")
+
+  node['oracle12c']['packagesrhel6'].each do |pkg|
+    yum_package pkg do
+      action :install
+    end
+  end
+
+elsif "#{node['platform_version']}".start_with?("7.")
+
+  Chef::Log.info("Platform version is 7")
+  Chef::Log.info("Installing pre-requisite linux packages ")
+
+  node['oracle12c']['packagesrhel7'].each do |pkg|
+    yum_package pkg do
+      action :install
+    end
+  end
+
+else
+
+  Chef::Log.info("Platform version is not valid")
+
+end
