@@ -1,0 +1,168 @@
+=======================
+        FILE IO
+=======================
+
+===============================
+WRITE TO A FILE, READ FROM FILE
+===============================
+http://stackoverflow.com/questions/17813592/how-can-i-display-the-output-of-a-opscode-chef-bash-command-in-my-console
+
+I use Vagrant to spawn a standard "precise32" box and provision it with Chef so I can test my Node.js code on Linux when I work on a Windows machine. This works fine.
+
+I also have this bash command so it auto installs my npm modules:
+
+bash "install npm modules" do
+  code <<-EOH
+    su -l vagrant -c "cd /vagrant && npm install"
+  EOH
+end
+This also works fine except that I never see the console output if it completes successfully. But I'd like to see it so we can visually monitor what is going on. This is not specific to npm.
+
+I see this similar question with no concrete answers: Vagrant - how to print Chef's command output to stdout?
+
+I tried specifying flags but I'm a terrible linux/ruby n00b and create either errors or no output at all, so please edit my snippet with an example of your solution.
+
+bash stdout chef vagrant
+shareimprove this question
+asked Jul 23 '13 at 14:49
+
+Bartvds
+1,01411124
+add a comment
+5 Answers
+active oldest votes
+up vote
+9
+down vote
+accepted
+When you run chef - suppose we are using chef-solo, you can use -l debug to output more debug information into stdout.
+
+For example: chef-solo -c solo.rb -j node.json -l debug
+
+For example, a simple cookbook as below:
+
+$ tree 
+.
+├── cookbooks
+│   └── main
+│       └── recipes
+│           └── default.rb
+├── node.json
+└── solo.rb
+
+3 directories, 3 files
+default.rb
+
+bash "echo something" do
+   code <<-EOF
+     echo 'I am a chef!'
+   EOF
+end
+You'll see the following output like below:
+
+Compiling Cookbooks...
+[2013-07-24T15:49:26+10:00] DEBUG: Cookbooks to compile: [:main]
+[2013-07-24T15:49:26+10:00] DEBUG: Loading Recipe main via include_recipe
+[2013-07-24T15:49:26+10:00] DEBUG: Found recipe default in cookbook main
+[2013-07-24T15:49:26+10:00] DEBUG: Loading from cookbook_path: /data/DevOps/chef/cookbooks
+Converging 1 resources
+[2013-07-24T15:49:26+10:00] DEBUG: Converging node optiplex790
+Recipe: main::default
+  * bash[echo something] action run[2013-07-24T15:49:26+10:00] INFO: Processing bash[echo something] action run (main::default line 4)
+[2013-07-24T15:49:26+10:00] DEBUG: Platform ubuntu version 13.04 found
+I am a chef!
+[2013-07-24T15:49:26+10:00] INFO: bash[echo something] ran successfully
+
+    - execute "bash"  "/tmp/chef-script20130724-17175-tgkhkz"
+
+[2013-07-24T15:49:26+10:00] INFO: Chef Run complete in 0.041678909 seconds
+[2013-07-24T15:49:26+10:00] INFO: Running report handlers
+[2013-07-24T15:49:26+10:00] INFO: Report handlers complete
+Chef Client finished, 1 resources updated
+[2013-07-24T15:49:26+10:00] DEBUG: Forked child successfully reaped (pid: 17175)
+[2013-07-24T15:49:26+10:00] DEBUG: Exiting
+I think it contains the information you want. For example, output and the exit status of the shell script/command.
+
+BTW: looks like there is a limitation (prompt for password?), you won't be able to use su
+
+[2013-07-24T15:46:10+10:00] INFO: Running queued delayed notifications before re-raising exception
+[2013-07-24T15:46:10+10:00] DEBUG: Re-raising exception: Mixlib::ShellOut::ShellCommandFailed - bash[echo something] (main::default line 4) had an error: Mixlib::ShellOut::ShellCommandFailed: Expected process to exit with [0], but received '1'
+---- Begin output of "bash"  "/tmp/chef-script20130724-16938-1jhil9v" ----
+STDOUT: 
+STDERR: su: must be run from a terminal
+---- End output of "bash"  "/tmp/chef-script20130724-16938-1jhil9v" ----
+Ran "bash"  "/tmp/chef-script20130724-16938-1jhil9v" returned 1
+shareimprove this answer
+answered Jul 24 '13 at 5:53
+
+Terry Wang
+10.2k3438
+1	 	
+I'm running chef-solo 11.8.0 and I get no output using log level debug using an echo in a bash script. Has this changed? – Josh Nankin Nov 19 '13 at 23:44
+  	 	
+nvm, it was because i was running chef-solo through vagrant – Josh Nankin Nov 19 '13 at 23:46
+  	 	
+@JoshNankin how did you get vagrant to output the echo-stuff? – Philipp Kyeck Feb 24 '15 at 10:10
+add a comment
+
+up vote
+12
+down vote
+I try to use logging when possible, but I've found that in some scenarios seeing the output is important. Here's the short version of the way I do it. Substituting the execute resource for the bash resource also works fine. Both standard error and standard output go into the file.
+
+results = "/tmp/output.txt"
+file results do
+    action :delete
+end
+
+cmd = "ls  /"
+bash cmd do
+    code <<-EOH
+    #{cmd} &> #{results}
+    EOH
+end
+
+ruby_block "Results" do
+    only_if { ::File.exists?(results) }
+    block do
+        print "\n"
+        File.open(results).each do |line|
+            print line
+        end
+    end
+end
+shareimprove this answer
+answered Nov 6 '13 at 18:48
+
+Tom Weiss
+37946
+2	 	
+That works Tom. Instead of the loop you can also use print File.read(results). – max Dec 21 '13 at 9:21
+add a comment
+up vote
+1
+down vote
+I used the following:
+
+bash "install npm modules" do
+  code <<-EOH
+    su -l vagrant -c "cd /vagrant && npm install"
+  EOH
+  flags "-x"
+end
+The flags property makes the command execute like bash -x script.sh
+
+shareimprove this answer
+answered Nov 22 '16 at 12:28
+
+Shoan
+2,78411824
+add a comment
+up vote
+0
+down vote
+Kind of related... setting the log_location (-L) to a file prevents the chef logs (Chef::Log.info() or simply log) from going to standard out.
+
+You can override this to print the full log information to stdout
+
+chef-client -L /dev/stdout
