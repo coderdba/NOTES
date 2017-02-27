@@ -281,8 +281,62 @@ Output on screen:
 {"name":"user1","id":1}
 
 --------
-POST
+POST - WITH A CALLING WRAPPER PROGRAM (probably using Postman could be easier)
 --------
+
 TBD
 http://stackoverflow.com/questions/30853658/jersey-2-x-does-not-contain-webresource-and-resource-class-what-can-i-use-inste
 http://stackoverflow.com/questions/32042944/upgrade-from-jersey-client-1-9-to-jersey-client-2-8
+
+package com.gm.scratch1.rest;
+
+// Jersey 1.x
+//import com.sun.jersey.api.client.Client;
+//import com.sun.jersey.api.client.ClientResponse;
+//import com.sun.jersey.api.client.WebResource;
+
+// Jersey 2.x
+import javax.ws.rs.client.Client;
+import javax.ws.rs.client.ClientBuilder;
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.Response;
+
+public class PostExample  // unmarshals json input
+{
+    public static void main(String args[])
+    {
+        try
+        {
+            String input = "{\"name\": \"user1_POST\",\"id\": 99}";
+
+            //Jersey 1.x
+            //Client client = Client.create();
+            Client client = ClientBuilder.newClient();
+
+            //Jersey 1.x
+            //WebResource resource = client.resource("http://localhost:8080/BasicRestJJ/rest/createjson/post");
+            WebTarget target = client.target("http://localhost:8080/BasicRestJJ/rest/createjson/post");
+
+            //Jersey 1.x
+            //ClientResponse response = resource.type("application/json").post(ClientResponse.class, input);
+            Response response = target.request().post(Entity.json(input));
+            
+            
+            if (response.getStatus() != 200) {
+                throw new RuntimeException("Failed : HTTP error code : "
+                 + response.getStatus());
+             }
+      
+            //Jersey 1.x
+            //Customer customer = response.getEntity(Customer.class);
+            Customer customer = response.readEntity(Customer.class);
+            System.out.println("Customer Name : "+customer.getName());
+            System.out.println("Customer ID   : "+customer.getId());
+
+        } catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+    }
+}
