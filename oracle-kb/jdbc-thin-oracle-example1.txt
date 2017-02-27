@@ -1,0 +1,72 @@
+===============================
+JDBC-THIN-ORACLE SIMPLE EXAMPLE
+===============================
+
+- COMPILE
+javac -classpath "/u01/app/java-testing/ojdbc6.jar"  JdbcTest.java
+
+- RUN
+java -cp .:/u01/app/java-testing/ojdbc6.jar JdbcTest
+(use -Doracle.jdbc.thinLogonCapability=o3 if necessary)
+
+- CODE
+
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import java.sql.SQLException;
+import oracle.jdbc.pool.OracleDataSource;
+
+class JdbcTestRxg
+{
+   public static void main (String args []) throws SQLException
+   {
+
+OracleDataSource ods = null;
+Connection conn = null;
+Statement stmt = null;
+ResultSet rset = null;
+
+      // Create DataSource and connect to the local database
+      ods = new OracleDataSource();
+
+      //ods.setURL("jdbc:oracle:thin:@//localhost:5221/orcl");
+
+      // This works
+      //ods.setURL("jdbc:oracle:thin:/@//racClusterName-scan:1522/DB_SERVICE_NAME_OR_DB_UNIQUE_NAME");
+
+      ods.setURL("jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=racCluster-vip1)(PORT=1521))(ADDRESS=(PROTOCOL=TCP)(HOST=racClusterADG-vip1)(PORT=1521))
+
+(ADDRESS=(PROTOCOL=TCP)(HOST=racCluster-vip2)(PORT=1521))(ADDRESS=(PROTOCOL=TCP)(HOST=racClusterADG-vip2)(PORT=1521))(ADDRESS=(PROTOCOL=TCP)(HOST=racCluster-vip3)
+
+(PORT=1521))(ADDRESS=(PROTOCOL=TCP)(HOST=racClusterADG-vip3)(PORT=1521))(ADDRESS=(PROTOCOL=TCP)(HOST=racCluster-scan)(PORT=1521))(ADDRESS=(PROTOCOL=TCP)
+
+(HOST=racClusterADG-scan)(PORT=1521))(LOAD_BALANCE=true)(CONNECT_DATA=(SERVER=DEDICATED)(SERVICE_NAME=DB_SERVICE_NAME)(FAILOVER_MODE=(TYPE=SELECT)(METHOD=BASIC)
+
+(RETRIES=180)(DELAY=5))))");
+
+
+      ods.setUser("user1");
+      ods.setPassword("oracle");
+      conn = ods.getConnection();
+
+      try
+      {
+      // Query the employee names
+      stmt = conn.createStatement ();
+      rset = stmt.executeQuery ("SELECT username FROM dba_users");
+
+      // Print the name out
+      while (rset.next ())
+      System.out.println (rset.getString (1));
+      }
+
+      //Close the result set, statement, and the connection
+
+      finally{
+      if(rset!=null) rset.close();
+      if(stmt!=null) stmt.close();
+      if(conn!=null) conn.close();
+      }
+      }
+   }
