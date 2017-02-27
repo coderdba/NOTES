@@ -46,7 +46,7 @@ Choose archetype 'org.apache.maven.archetypes' --> 'maven-archetype-webapp'
 
 Group ID: com.gm.scratch1.rest
 Artifact ID: BasicRestJJ
-Package: com.gm.scratch1.webapp.BasicRestJJ (retained default auto-filled)
+Package: com.gm.scratch1.rest(webapp??).BasicRestJJ (retained default auto-filled)
 Button 'Finish'
 
 This will create the WEB-INF and web.xml --> which would not be created in simple project without archetype
@@ -82,3 +82,143 @@ NOTE: The two dependencies of jersey-container-servlet and jersey-media-json-jac
             <version>${version.jersey}</version>
         </dependency>
 
+============================================
+PROGRAMS
+============================================
+
+-------------------------
+PACKAGE
+-------------------------
+Create a new package com.gm.scratch1.rest
+--> Under the project BasicRestJJ
+
+-------------------------
+THE CUSTOMER OBJECT
+-------------------------
+package com.gm.scratch1.rest;
+
+public class Customer 
+{
+	String name;
+	int id;
+	public String getName() {
+		return name;
+	}
+	public void setName(String name) {
+		this.name = name;
+	}
+	public int getId() {
+		return id;
+	}
+	public void setId(int id) {
+		this.id = id;
+	}
+}
+
+-------------------------
+THE REST SERVICE
+CustomerService.java
+-------------------------
+
+package com.gm.scratch1.rest;
+
+import javax.ws.rs.Consumes;
+import javax.ws.rs.GET;
+import javax.ws.rs.POST;
+import javax.ws.rs.Path;
+import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.Response;
+
+@Path("/createjson")
+public class CustomerService
+{
+    @GET
+    @Path("/get")
+    @Produces("application/json")
+    public Customer getCustomerInJSON(@QueryParam("username") String name, @QueryParam("id") int id)
+    {
+        Customer cust = new Customer();
+        cust.setName(name);
+        cust.setId(id);
+        return cust;
+    }
+    
+    @POST
+    @Path("/post")
+    @Consumes("application/json")
+    public Response createCustomerJSON(Customer customer)
+    {
+        String result = "Saved Customer : " + customer;
+        System.out.println(customer.getName());
+        return Response.status(200).entity(customer).build();
+        
+    }
+    
+}
+
+-------------------------
+WEB.XML
+-------------------------
+NOTE: No need to reference POJOTransformation thing
+NOTE: Ensure the package that contains the programs appears in it 
+
+<web-app xmlns="http://xmlns.jcp.org/xml/ns/javaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee
+                             http://xmlns.jcp.org/xml/ns/javaee/web-app_3_1.xsd" version="3.1">
+
+    <servlet>
+        <servlet-name>Basic Rest with Jersey and Jackson</servlet-name>
+        <servlet-class>org.glassfish.jersey.servlet.ServletContainer</servlet-class>     
+        <init-param>
+             <param-name>jersey.config.server.provider.packages</param-name>
+             <param-value>com.gm.scratch1.rest</param-value>
+        </init-param>
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>Basic Rest with Jersey and Jackson</servlet-name>
+        <url-pattern>/rest/*</url-pattern>
+    </servlet-mapping>
+
+</web-app>
+
+========================================
+BUILD PATH
+========================================
+'Add Library' - JDK 1.8 (not JRE 1.5 or other non-JDK)
+'Add External Jar' - Tomcat/lib/javax.servlet-api-3.1.0.jar
+
+========================================
+BUILD
+========================================
+Right click project
+Run as 
+Maven install
+
+--> Find the war file C:\Data\PROGRAMMING\JAVA\Maven\workspace-scratch1\BasicRestJJ\target\BasicRestJJ.war
+
+========================================
+DEPLOY
+========================================
+Copy the above war file to C:\Opt\Tomcat\v8.0.32\webapps
+Wait for Tomcat to automatically deploy it or restart Tomcat if necessary
+
+========================================
+RUN
+========================================
+
+--------
+GET
+--------
+http://localhost:8080/BasicRestJJ/rest/createjson/get?username=user1&id=1
+
+Output on screen:
+{"name":"user1","id":1}
+
+--------
+POST
+--------
+TBD
