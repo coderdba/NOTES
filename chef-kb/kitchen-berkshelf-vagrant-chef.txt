@@ -1,0 +1,176 @@
+=================================================
+CHEF DEVELOPMENT WITH KITCHEN, BERKSHELF, VAGRANT
+=================================================
+
+http://www.davidmataro.com/chef-development-workflow-with-kitchen-berkshelf-vagrant
+
+================================
+PROJECT WORKSPACE AND REPOSITORY
+================================
+
+- WHAT IS A REPOSITORY
+A project repository with the cookbooks and other stuff.
+
+The project contains:
+  cookbooks
+  roles
+  environments
+  data_bags
+
+  A Berksfile inside the project repository.
+  A .kitchen.yml definition inside the project repository.
+
+- CREATE PROJECTS DIRECTORY
+$ mkdir projects
+$ cd projects
+
+- CREATE A REPOSITORY FOR A STACK 'MYSTACK' 
+$ chef generate app mystack
+(screen output further below)
+
+This creates the following files:
+NOTE: The cookbooks directory in it
+
+mystack/
+  |__ .git
+  |__ .gitignore
+  |__ .kitchen.yml
+  |__ README.md
+  |__ cookbooks/
+  |    |__ mystack/
+  |__ test
+
+- CREATE BERKSFILE
+NOTE: You can add into Berskfile file as many cookbooks as you wish. 
+NOTE: Each cookbook have their own metadata.rb with their dependencies.
+
+Create a Berksfile inside mystack directory and add your cookbooks.
+
+Content of 'Berksfile' file:
+source "https://supermarket.chef.io"
+cookbook "mystack", path: "cookbooks/mystack"
+
+- CREATE .kitchen.yml in mystack folder
+
+---
+driver:
+  name: vagrant
+
+provisioner:
+  name: chef_zero
+  cookbook_path: cookbooks
+  roles_path: roles
+  environments_path: environments
+  data_bags_path: data_bags
+  client_rb:
+    environment: development
+
+platforms:
+  - name: ubuntu/trusty64
+
+suites:
+  - name: default
+    driver:
+      vm_hostname: mystack.loc
+      network:
+      - ["private_network", {ip: "10.0.0.31"}]
+      customize:
+        memory: 512
+        cpus: 1
+    run_list:
+      - recipe[mystack::default]
+    attributes:
+   
+- CREATE DEVELOPMENT.JSON FILE
+
+Because I use a development environment in my .kitchen.yml file configuration, 
+I need create a environment/development.json file.
+
+{
+  "name": "development",
+  "description": "Development environment",
+  "cookbook_versions": {
+  },
+  "json_class": "Chef::Environment",
+  "chef_type": "environment",
+  "default_attributes": {
+    "authorization": {
+      "sudo": {
+        "users": [
+          "vagrant"
+        ]
+      }
+    }
+  },
+  "override_attributes": {
+  }
+}
+
+======================
+MISCELLANEOUS STUFF
+======================
+OUTPUT OF CHEF GENERATE APP MYSTACK:
+G:\projects>chef generate app mystack
+Installing Cookbook Gems:
+Compiling Cookbooks...
+Recipe: code_generator::app
+  * directory[G:/projects/mystack] action create
+    - create new directory G:/projects/mystack
+  * template[G:/projects/mystack/.kitchen.yml] action create
+    - create new file G:/projects/mystack/.kitchen.yml
+    - update content in file G:/projects/mystack/.kitchen.yml from none to dad5ad
+    (diff output suppressed by config)
+  * directory[G:/projects/mystack/test/integration/default/serverspec] action create
+    - create new directory G:/projects/mystack/test/integration/default/serverspec
+  * directory[G:/projects/mystack/test/integration/helpers/serverspec] action create
+    - create new directory G:/projects/mystack/test/integration/helpers/serverspec
+  * cookbook_file[G:/projects/mystack/test/integration/helpers/serverspec/spec_helper.rb] action create_if_missing
+    - create new file G:/projects/mystack/test/integration/helpers/serverspec/spec_helper.rb
+    - update content in file G:/projects/mystack/test/integration/helpers/serverspec/spec_helper.rb from none to d85df4
+    (diff output suppressed by config)
+  * template[G:/projects/mystack/test/integration/default/serverspec/default_spec.rb] action create_if_missing
+    - create new file G:/projects/mystack/test/integration/default/serverspec/default_spec.rb
+    - update content in file G:/projects/mystack/test/integration/default/serverspec/default_spec.rb from none to 85cbc2
+    (diff output suppressed by config)
+  * template[G:/projects/mystack/README.md] action create
+    - create new file G:/projects/mystack/README.md
+    - update content in file G:/projects/mystack/README.md from none to 7a87fb
+    (diff output suppressed by config)
+  * directory[G:/projects/mystack/cookbooks] action create
+    - create new directory G:/projects/mystack/cookbooks
+  * directory[G:/projects/mystack/cookbooks/mystack] action create
+    - create new directory G:/projects/mystack/cookbooks/mystack
+  * template[G:/projects/mystack/cookbooks/mystack/metadata.rb] action create
+    - create new file G:/projects/mystack/cookbooks/mystack/metadata.rb
+    - update content in file G:/projects/mystack/cookbooks/mystack/metadata.rb from none to c33348
+    (diff output suppressed by config)
+  * cookbook_file[G:/projects/mystack/cookbooks/mystack/chefignore] action create
+    - create new file G:/projects/mystack/cookbooks/mystack/chefignore
+    - update content in file G:/projects/mystack/cookbooks/mystack/chefignore from none to 15fac5
+    (diff output suppressed by config)
+  * cookbook_file[G:/projects/mystack/cookbooks/mystack/Berksfile] action create
+    - create new file G:/projects/mystack/cookbooks/mystack/Berksfile
+    - update content in file G:/projects/mystack/cookbooks/mystack/Berksfile from none to 9f08dc
+    (diff output suppressed by config)
+  * directory[G:/projects/mystack/cookbooks/mystack/recipes] action create
+    - create new directory G:/projects/mystack/cookbooks/mystack/recipes
+  * template[G:/projects/mystack/cookbooks/mystack/recipes/default.rb] action create
+    - create new file G:/projects/mystack/cookbooks/mystack/recipes/default.rb
+    - update content in file G:/projects/mystack/cookbooks/mystack/recipes/default.rb from none to 5296c4
+    (diff output suppressed by config)
+  * directory[G:/projects/mystack/cookbooks/mystack/spec/unit/recipes] action create
+    - create new directory G:/projects/mystack/cookbooks/mystack/spec/unit/recipes
+  * cookbook_file[G:/projects/mystack/cookbooks/mystack/spec/spec_helper.rb] action create_if_missing
+    - create new file G:/projects/mystack/cookbooks/mystack/spec/spec_helper.rb
+    - update content in file G:/projects/mystack/cookbooks/mystack/spec/spec_helper.rb from none to 587075
+    (diff output suppressed by config)
+  * template[G:/projects/mystack/cookbooks/mystack/spec/unit/recipes/default_spec.rb] action create_if_missing
+    - create new file G:/projects/mystack/cookbooks/mystack/spec/unit/recipes/default_spec.rb
+    - update content in file G:/projects/mystack/cookbooks/mystack/spec/unit/recipes/default_spec.rb from none to 2ee54c
+    (diff output suppressed by config)
+  * execute[initialize-git] action run
+    - execute git init .
+  * cookbook_file[G:/projects/mystack/.gitignore] action create
+    - create new file G:/projects/mystack/.gitignore
+    - update content in file G:/projects/mystack/.gitignore from none to 33d469
+    (diff output suppressed by config)
