@@ -499,6 +499,46 @@ Option2: In Vagrantfile:
     config.vm.box_url = "https://insecureserver.com/mybox.box"
     config.vm.box_download_insecure = true
   end
+  
+==========================
+PROXY CONFIGURATION
+==========================
+NOTE: NOT TESTED
+https://github.com/test-kitchen/kitchen-vagrant/issues/90
+http://digitaldrummerj.me/vagrant-behind-proxy-server/ (very good)
+
+--------------------------------
+Add Environment Variables in OS
+--------------------------------
+WINDOWS:
+set http_proxy=http://yourproxyserver:port
+set https_proxy=https://yourproxyserver:port
+
+-----------------------
+In Vagrantfile add this
+-----------------------
+CAUTION: WARNING: As of September 13, 2015, the vagrant-proxyconf appears to no longer work on Windows machines. 
+                  It has been throwing powershell errors on vagrant up. It still works on Linux vagrant machines.
+                  
+  if proxy_running?
+    if Vagrant.has_plugin?("vagrant-proxyconf")
+      puts http_proxy_url
+      puts "from Vagrantfile"
+      config.proxy.http     = "#{http_proxy_url}/"
+      config.proxy.https     = "#{http_proxy_url}/"
+      config.proxy.no_proxy = "localhost,127.0.0.1"
+    end
+  end
+
+Example:
+Vagrant.configure("2") do |config|
+  if Vagrant.has_plugin?("vagrant-proxyconf")
+    config.proxy.http     = "http://192.168.0.2:3128/"
+    config.proxy.https    = "http://192.168.0.2:3128/"
+    config.proxy.no_proxy = "localhost,127.0.0.1,.example.com"
+  end
+  # ... rest of the configurations
+end
 
 ================================
 ADD MORE DISKS TO VM
