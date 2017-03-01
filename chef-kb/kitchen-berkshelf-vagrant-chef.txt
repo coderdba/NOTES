@@ -6,7 +6,7 @@ BASED ON - http://www.davidmataro.com/chef-development-workflow-with-kitchen-ber
 
 https://github.com/chef/omnitruck/issues/78
 
-SSL issue:
+SSL issue: (was 'kitchen converge' ssl certificate errors due to proxy settings - as it worked well from home)
 https://groups.google.com/forum/#!topic/vagrant-up/MHmAg0DOQic
 https://github.com/chef/chef-dk/issues/106
 https://curl.haxx.se/docs/sslcerts.html
@@ -14,6 +14,8 @@ https://github.com/test-kitchen/kitchen-docker/issues/72 --> proxy settings
 http://stackoverflow.com/questions/35519389/vagrant-cannot-find-box --> says do 'vagrant box add ubuntu/trusty64' manually
 
 Proxy settings:
+https://www.kickflop.net/blog/2015/10/28/using-test-kitchen-and-kitchen-vagrant-behind-an-http-proxy/  (READ THIS)
+
 https://docs.chef.io/config_yml_kitchen.html
 https://github.com/tmatilai/vagrant-proxyconf/issues/64
 https://github.com/tmatilai/vagrant-proxyconf/pull/21
@@ -144,6 +146,61 @@ To upload all cookbooks to Chef server, you must create a knife.rb configuration
 add the validation and user keys and run:
 
 $ berks upload
+
+==================================
+PROXY SETTINGS IN KITCHEN.YML
+==================================
+https://www.kickflop.net/blog/2015/10/28/using-test-kitchen-and-kitchen-vagrant-behind-an-http-proxy/
+
+Using test-kitchen and kitchen-vagrant behind an HTTP proxy
+Here’s what got us working with test-kitchen and kitchen-vagrant behind an HTTP proxy. Comments inline.
+
+---
+driver:
+  name: vagrant
+  driver_config:
+    # Allows fetching boxes if required
+    http_proxy: http://yourproxy.example.com:80
+    https_proxy: https://yourproxy.example.com:80
+  # This vagrantfiles callout is needed because of
+  # https://github.com/test-kitchen/test-kitchen/issues/821
+  # You should check that issue to see if this is still required.
+  vagrantfiles:
+    - your-site-specific-vagrantfile-block.rb
+  network:
+    - ["private_network", {ip: "192.168.1.2"}]
+
+provisioner:
+  name: chef_zero
+  # Allows fetching Omnibus Chef installer if required
+  http_proxy: http://yourproxy.example.com:80
+  https_proxy: http://yourproxy.example.com:80
+
+platforms:
+  - name: centos-6.7
+
+suites:
+  - name: default
+    run_list:
+      - recipe[things::default]
+    attributes:
+      chef-client:
+        # Allows your Chef run to fetch stuff it requires
+        config:
+          http_proxy: "http://yourproxy.example.com:80"
+          https_proxy: "http://yourproxy.example.com:80"
+And finally your-site-specific-vagrantfile-block.rb, your custom Vagrantfile piece that is merged in via the vagrantfiles directive in your YAML file:
+
+unless Vagrant.has_plugin?("vagrant-proxyconf")
+  raise "Missing required plugin 'vagrant-proxyconf', run `vagrant plugin install vagrant-proxyconf`"
+end
+
+Vagrant.configure(2) do |config|
+  # Allows busser gem and deps to be fetched as required
+  config.proxy.http     = "#{ENV['http_proxy']}"
+  config.proxy.https    = "#{ENV['https_proxy']}"
+  config.proxy.no_proxy = "localhost,127.0.0.1"
+end
 
 ======================
 MISCELLANEOUS STUFF
