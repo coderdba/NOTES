@@ -11,8 +11,9 @@ https://github.com/test-kitchen/kitchen-vagrant/issues/90
 http://digitaldrummerj.me/vagrant-behind-proxy-server/ (very good)
 https://www.kickflop.net/blog/2015/10/28/using-test-kitchen-and-kitchen-vagrant-behind-an-http-proxy/ (very good, with kitchen)
 
+----------------------------------------------
 ENVIRONMENT OR SETTINGS THAT MAY BE REQUIRED
-
+----------------------------------------------
 http_proxy 'http://proxy.example.org:8080'
 http_proxy_user 'myself'
 http_proxy_pass 'Password1'
@@ -21,4 +22,80 @@ https_proxy 'http://proxy.example.org:8080'
 https_proxy_user 'myself'
 https_proxy_pass 'Password1'
 
+no_proxy 'test.example.com,test.example2.com,test.example3.com'
+
 NOTE: user and pass may not be required on Windows platform  (read https://docs.chef.io/proxies.html)
+
+----------------------------------------------
+WINDOWS - ON COMMAND LINE
+----------------------------------------------
+http://stackoverflow.com/questions/22059670/how-to-set-proxy-for-command-prompt
+For http/https proxy with or without authentication:
+
+Run one of the following commands in cmd.exe
+
+set http_proxy=http://your_proxy:your_port
+set http_proxy=http://username:password@your_proxy:your_port
+set https_proxy=https://your_proxy:your_port
+set https_proxy=https://username:password@your_proxy:your_port
+
+----------------------------------------------
+KNIFE.RB
+----------------------------------------------
+https://docs.chef.io/config_rb_knife.html
+NOTE: Knife may not make use of items in knife.rb if same are set in o/s environment.  Then, unset o/s environment variables.
+       --> https://github.com/chef/knife-openstack/issues/137
+       
+no_proxy '*.our.com"
+http_proxy 'http://whatever.our.com:80' 
+https_proxy 'http://whatever.our.com:80'
+http_proxy_user 'myusername'
+http_proxy_pass 'mypassword'
+
+----------------------------------------------
+CLIENT.RB & SOLO.RB
+----------------------------------------------
+http://serverfault.com/questions/352946/setting-properties-in-chef-client-rb
+
+cookbook_path File.expand_path("../cookbooks", __FILE__)
+json_attribs File.expand_path("../node.json", __FILE__)
+
+# HTTP for environment behind firewall
+# http://docs.opscode.com/config.html
+# solo.rb and client.rb can use the same http_proxy settings
+http_proxy "http://proxy.company.com:3128"
+# http_proxy_user "username"
+# http_proxy_pass "password"
+
+----------------------------------------------
+KITCHEN.YML 
+----------------------------------------------
+
+- EXAMPLE 1
+https://github.com/tom1299/misc/blob/9a45596d5f7cafbd9f503bfcca889a6b5cb212c1/nosql-examples/elasticsearch-example/cookbooks/es-server/.kitchen.yml
+
+# -*- mode: yaml-mode -*-
+---
+driver_plugin: vagrant
+driver_config:
+  require_chef_omnibus: 12.6
+
+provisioner:
+  name: chef_zero
+  http_proxy: <%= ENV['http_proxy'] %>
+  https_proxy: <%= ENV['https_proxy'] %>
+  client_rb:
+    no_proxy: localhost
+    http_proxy: <%= ENV['http_proxy'] %>
+    https_proxy: <%= ENV['https_proxy'] %>
+
+platforms:
+  - name: ubuntu-12.04
+
+suites:
+  - name: bach_repository
+    run_list:
+      - recipe[apt]
+      - recipe[bach_repository]
+    attributes:
+
