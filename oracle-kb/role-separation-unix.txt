@@ -26,7 +26,7 @@ Good clear listing: https://oracle-base.com/articles/12c/administrative-privileg
 Response file for standard edition 12c DB software: https://community.oracle.com/thread/2588433?start=0&tstart=0
 
 =============================================
-ROLE SEPARATED GROUPS - ORACLE TERMINOLOGIES
+ROLE SEPARATED GROUPS - ORACLE TERMINOLOGIES - FOR ACTUAL DESIGN TO IMPLEMENT, SEE A BIT BELOW
 =============================================
 ---------------------------------------------------------------------------------------------------------------------------------------
 Oracle Terminology and privileges                     Unix group(typical) Purpose
@@ -55,7 +55,7 @@ Database Administrator                      dba	            oracle	             
 Database Operator                           oper	      oracle	                    SYSOPER	            OSOPER
 
 ------------------------
-ROLE-SEPRATED-GROUPS 12c
+ROLE-SEPRATED-GROUPS 12c (kind of repeat of the above stuff)
 ------------------------
 https://oracle-base.com/articles/12c/administrative-privileges-and-job-role-separation-12cr1
 
@@ -77,6 +77,35 @@ OSBACKUPDBA           backupdba   SYSBACKUP         RMAN management
 OSDGDBA               dgdba       SYSDG             Data Guard management
 OSKMDBA               kmdba       SYSKM             Encryption key management
 
+=============================
+GROUPS AND USERS TO IMPLEMENT
+=============================
+---------------------
+USERS and UIDs
+---------------------
+grid   - 1001 - for clusterware
+oracle - 1002 - for database
+oem    - 1003 - for OEM
+
+---------------------
+GROUPS AND and GIDs
+---------------------
+- ALL THREE SOFTWARES (grid, oracle, oem)
+oinstall - 1001
+
+- GRID
+GROUP - GID - NOMENCLATURE
+asmadmin - 2001 - OSASM/asmadmin
+asmdba   - 2002 - OSDBA for ASM/asmdba
+asmoper  - 2003 - OSOPER for ASM/asmoper
+
+- DATABASE
+GROUP - GID - NOMENCLATURE
+oradba     - 1001  - OSDBA/dba 
+oraoper    - 1002  - OSOPER/oper 
+orabkupdba - 1003  - OSBACKUPDBA/backupdba
+oradgdba   - 1004  - OSDGDBA/dgdba
+orakmdba   - 1005  - OSKMDBA/kmdba
 
 =============================
 USERS TO CREATE 12c - MINIMAL
@@ -102,9 +131,11 @@ oem    - OEM server and agent install
 grid    - oinstall, asmadmin, asmdba
 oracle  - oinstall, oradba, asmdba, oraoper, orabkupdba, oradgdba, orakmdba
 oem     - oinstall
+
+- ADDITIONAL USERS
+NOTE: Do they need to also belong to 'oinstall' (probably not)?
 dba1    - oradba, asmdba(? asmdba may not be needed - create-tablespace seemed to work without asmdba)
             (and may also need oraoper, orabkupdba, oradgdba, orakmdba) 
-            
 oper1   - oraoper
 bkup1   - orabkupdba
 dg1     - oradgdba
