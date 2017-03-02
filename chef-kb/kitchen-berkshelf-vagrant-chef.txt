@@ -69,6 +69,7 @@ source "https://supermarket.chef.io"
 cookbook "mystack", path: "cookbooks/mystack"
 
 - CREATE .kitchen.yml in mystack folder
+NOTE: Proxy settings were not done here - they were done in os environment
 
 ---
 driver:
@@ -98,8 +99,6 @@ suites:
     run_list:
       - recipe[mystack::default]
     attributes:
-
-
    
 - CREATE DEVELOPMENT.JSON FILE
 
@@ -156,14 +155,14 @@ PROXY SETTINGS
 You may get SSL/CACERT errors if behind proxy - in the vagrant execution during 'kitchen converge' run.
 To avoid that, set proxy environnment variables - either in o/s environment or in kitchen.yml.
 
---------------
-OS ENVIRONMENT
---------------
+-----------------
+IN OS ENVIRONMENT
+-----------------
 set http_proxy=http://yourproxy.example.com:80
 set https_proxy=https://yourproxy.example.com:80
 
 --------------
-KITCHEN.YML
+IN KITCHEN.YML
 --------------
 
 NOTE: http_proxy_user and http_proxy_password (and so https_ also) may be needed for sections under provisioners
@@ -219,6 +218,13 @@ Vagrant.configure(2) do |config|
   config.proxy.https    = "#{ENV['https_proxy']}"
   config.proxy.no_proxy = "localhost,127.0.0.1"
 end
+
+==========================
+RUN KITCHEN CONVERGE
+==========================
+G:\projects\mystack> kitchen converge
+
+The run gave an error - see KITCHEN CONVERGE ERROR2 in MISCELLANEOUS STUFF section
 
 ======================
 MISCELLANEOUS STUFF
@@ -355,3 +361,137 @@ Ran vagrant up --no-provision --provider virtualbox returned 1]
 >>>>>> Please see .kitchen/logs/kitchen.log for more details                                                               
 >>>>>> Also try running `kitchen diagnose --all` for configuration                                                         
                                                                                                                            
+------------------------------------
+KITCHEN CONVERGE ERROR2
+------------------------------------
+g:\projects\mystack>kitchen converge
+-----> Starting Kitchen (v1.6.0)
+-----> Creating <default-ubuntu-trusty64>...
+       Bringing machine 'default' up with 'virtualbox' provider...
+       ==> default: Checking if box 'ubuntu/trusty64' is up to date...
+       ==> default: Fixed port collision for 22 => 2222. Now on port 2200.
+       ==> default: Clearing any previously set network interfaces...
+       ==> default: Preparing network interfaces based on configuration...
+           default: Adapter 1: nat
+           default: Adapter 2: intnet
+       ==> default: Forwarding ports...
+           default: 22 (guest) => 2200 (host) (adapter 1)
+       ==> default: Running 'pre-boot' VM customizations...
+       ==> default: Booting VM...
+       ==> default: Waiting for machine to boot. This may take a few minutes...
+           default: SSH address: 127.0.0.1:2200
+           default: SSH username: vagrant
+           default: SSH auth method: private key
+           default: Warning: Remote connection disconnect. Retrying...
+           default:
+           default: Vagrant insecure key detected. Vagrant will automatically replace
+           default: this with a newly generated keypair for better security.
+           default:
+           default: Inserting generated public key within guest...
+           default: Removing insecure key from the guest if it's present...
+           default: Key inserted! Disconnecting and reconnecting using new SSH key...
+       ==> default: Machine booted and ready!
+       ==> default: Checking for guest additions in VM...
+       ==> default: Setting hostname...
+       ==> default: Configuring and enabling network interfaces...
+       ==> default: Configuring proxy for Apt...
+       ==> default: Configuring proxy environment variables...
+       ==> default: Machine not provisioned because `--no-provision` is specified.
+       [SSH] Established
+       Vagrant instance <default-ubuntu-trusty64> created.
+       Finished creating <default-ubuntu-trusty64> (1m16.55s).
+-----> Converging <default-ubuntu-trusty64>...
+       Preparing files for transfer
+       Preparing dna.json
+       Resolving cookbook dependencies with Berkshelf 4.3.0...
+       Removing non-cookbook files before transfer
+       Preparing data_bags
+       Preparing environments
+       Preparing roles
+       Preparing validation.pem
+       Preparing client.rb
+-----> Installing Chef Omnibus (install only if missing)
+       Downloading https://www.chef.io/chef/install.sh to file /tmp/install.sh
+       Trying wget...
+       Download complete.
+       ubuntu 14.04 x86_64
+       Getting information for chef stable  for ubuntu...
+       downloading https://omnitruck-direct.chef.io/stable/chef/metadata?v=&p=ubuntu&pv=14.04&m=x86_64
+         to file /tmp/install.sh.2625/metadata.txt
+       trying wget...
+       sha1     a316f74e4a08fd4d2c535460c3aa16d30e09a08e
+       sha256   fbf44670ab5b76e4f1a1f5357885dafcc79e543ccbbe3264afd40c15d604b6dc
+       url      https://packages.chef.io/files/stable/chef/12.19.36/ubuntu/14.04/chef_12.19.36-1_amd64.deb
+       version  12.19.36
+       downloaded metadata file looks valid...
+       downloading https://packages.chef.io/files/stable/chef/12.19.36/ubuntu/14.04/chef_12.19.36-1_amd64.deb
+         to file /tmp/install.sh.2625/chef_12.19.36-1_amd64.deb
+       trying wget...
+       Comparing checksum with sha256sum...
+
+       WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING
+
+       You are installing an omnibus package without a version pin.  If you are installing
+       on production servers via an automated process this is DANGEROUS and you will
+       be upgraded without warning on new releases, even to new major releases.
+       Letting the version float is only appropriate in desktop, test, development or
+       CI/CD environments.
+
+       WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING
+
+       Installing chef
+       installing with dpkg...
+(Reading database ... 63122 files and directories currently installed.)
+       Preparing to unpack .../chef_12.19.36-1_amd64.deb ...
+        * Stopping chef-client chef-client                               [ OK ]
+       Unpacking chef (12.19.36-1) over (11.8.2-2) ...
+       dpkg: warning: unable to delete old directory '/var/log/chef': Directory not empty
+       dpkg: warning: unable to delete old directory '/etc/chef': Directory not empty
+       Setting up chef (12.19.36-1) ...
+       Thank you for installing Chef!
+       Processing triggers for man-db (2.6.7.1-1ubuntu1) ...
+       Transferring files to <default-ubuntu-trusty64>
+       Starting Chef Client, version 12.19.36
+       Creating a new client identity for default-ubuntu-trusty64 using the validator key.
+
+       ================================================================================
+       Error expanding the run_list:
+       ================================================================================
+
+       Unexpected API Request Failure:
+       -------------------------------
+       Object not found: chefzero://localhost:8889/environments/development
+
+       Platform:
+       ---------
+       x86_64-linux
+
+
+       Running handlers:
+       [2017-03-02T09:33:58+00:00] ERROR: Running exception handlers
+       Running handlers complete
+       [2017-03-02T09:33:58+00:00] ERROR: Exception handlers complete
+       Chef Client failed. 0 resources updated in 02 seconds
+       [2017-03-02T09:33:58+00:00] FATAL: Stacktrace dumped to /tmp/kitchen/cache/chef-stacktrace.out
+       [2017-03-02T09:33:58+00:00] FATAL: Please provide the contents of the stacktrace.out file if you file a bug report
+       [2017-03-02T09:33:58+00:00] ERROR: 404 "Not Found"
+       [2017-03-02T09:33:58+00:00] FATAL: Chef::Exceptions::ChildConvergeError: Chef run process exited unsuccessfully (exit code 1)
+>>>>>> Converge failed on instance <default-ubuntu-trusty64>.
+>>>>>> Please see .kitchen/logs/default-ubuntu-trusty64.log for more details
+>>>>>> ------Exception-------
+>>>>>> Class: Kitchen::ActionFailed
+>>>>>> Message: SSH exited (1) for command: [sh -c '
+http_proxy="http://sqdlx0001.hq.target.com:3128"; export http_proxy
+HTTP_PROXY="http://sqdlx0001.hq.target.com:3128"; export HTTP_PROXY
+https_proxy="http://sqdlx0001.hq.target.com:3128"; export https_proxy
+HTTPS_PROXY="http://sqdlx0001.hq.target.com:3128"; export HTTPS_PROXY
+no_proxy="127.0.0.1,localhost,target.com,corp.target.com,hq.target.com,dist.target.com,Email.target.com,stores.target.com,labs.target.com"; export no_proxy
+NO_PROXY="127.0.0.1,localhost,target.com,corp.target.com,hq.target.com,dist.target.com,Email.target.com,stores.target.com,labs.target.com"; export NO_PROXY
+sudo -E /opt/chef/bin/chef-client --local-mode --config /tmp/kitchen/client.rb --log_level warn --force-formatter --no-color --json-attributes /tmp/kitchen/dna.json --chef-zero-port 8889
+']
+>>>>>> ----------------------
+zlib(finalizer): the stream was freed prematurely.
+
+g:\projects\mystack>{virtualbox__intnet: true}
+'{virtualbox__intnet:' is not recognized as an internal or external command,
+operable program or batch file.
