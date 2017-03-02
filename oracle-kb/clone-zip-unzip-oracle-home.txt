@@ -1,0 +1,79 @@
+https://docs.oracle.com/database/121/LADBI/app_cloning.htm#LADBI7852
+
+B Cloning an Oracle Home
+Cloning an Oracle home involves creating a copy of the Oracle home and then configuring it for a new environment. If you are performing multiple Oracle Database installations, then you may want to use this method to create each Oracle home, because copying files from an existing Oracle Database installation takes less time than creating a new version of them. This method is also useful if the Oracle home that you are cloning has had patches applied to it. When you clone the Oracle home, the new Oracle home has the patch updates.
+
+This appendix includes information about the following topics:
+
+Cloning an Oracle Home
+Configuring Oracle Configuration Manager in a Cloned Oracle Home
+B.1 Cloning an Oracle Home
+Perform the following to clone an Oracle home:
+
+Verify that the installation of Oracle Database to clone is successful.
+
+You can do this by reviewing the installActionsdate_time.log file for the installation session, which is typically located in the /orainventory_location/logs directory.
+
+If you install patches, then check their status using the following:
+
+$ cd $ORACLE_HOME/OPatch
+Include $ORACLE_HOME/OPatch in $PATH
+
+$ opatch lsinventory
+Stop all processes related to the Oracle home. See "Stopping Existing Oracle Processes" for more information about stopping the processes for an Oracle home.
+
+Create a ZIP or TAR file with the Oracle home (but not the Oracle base) directory.
+
+For example, if the source Oracle installation is in the /u01/app/oracle/product/12.1.0/dbhome_1, then you zip the dbhome_1 directory by using the following command:
+
+# zip -r dbhome_1.zip /u01/app/oracle/product/12.1.0/dbhome_1
+You can also use the TAR command, for example:
+
+# tar -cvf dbhome_1.tar /u01/app/oracle/product/12.1.0/dbhome_1
+Do not include the admin, fast_recovery_area, and oradata directories that are under the Oracle base directory. These directories are created in the target installation later, when you create a new database there.
+
+Copy the ZIP or TAR file to the root directory of the target computer. If you use File Transfer Protocol (FTP), then transfer the ZIP or TAR file in binary mode only.
+
+Extract the ZIP or TAR file content using the following command:
+
+# unzip -d / dbhome_1.zip
+# tar -xvf dbhome_1.tar
+Repeat steps 4 and 5 for each computer where you want to clone the Oracle home, unless the Oracle home is on a shared storage device.
+
+On the target computer, change the directory to the unzipped Oracle home directory, and remove all the .ora (*.ora) files present in the unzipped $ORACLE_HOME/network/admin directory.
+
+From the $ORACLE_HOME/clone/bin directory, run the clone.pl file for the unzipped Oracle home. Use the following syntax:
+
+$ORACLE_HOME/perl/bin/perl $ORACLE_HOME/clone/bin/clone.pl ORACLE_BASE="target_oracle_base" ORACLE_HOME="target_oracle_home"
+OSDBA_GROUP=OSDBA_privileged_group OSOPER_GROUP=OSOPER_privileged_group -defaultHomeName
+For example:
+
+$ORACLE_HOME/perl/bin/perl $ORACLE_HOME/clone/bin/clone.pl ORACLE_BASE="/u01/app/oracle/" ORACLE_HOME="/u01/app/oracle/product/12.1.0/dbhome_1"
+OSDBA_GROUP=dba OSOPER_GROUP=oper -defaultHomeName
+Oracle Universal Installer starts, and then records the cloning actions in the cloneActionstimestamp.log file. This log file is typically located in /orainventory_location/logs directory.
+
+To configure the connection information for the new database, run Net Configuration Assistant:
+
+$ cd $ORACLE_HOME/bin
+$ ./netca
+To create a new database for the newly cloned Oracle home, run Database Configuration Assistant:
+
+$ cd $ORACLE_HOME/bin
+$ ./dbca
+See Also:
+Oracle Universal Installer User's Guide for detailed information about using Oracle Universal Installer to clone an Oracle Database home
+
+Oracle Database Administrator's Guide for information about cloning Oracle databases and cloning an Oracle Database home
+
+B.2 Configuring Oracle Configuration Manager in a Cloned Oracle Home
+Configuring Oracle Configuration Manager for a cloned Oracle home depends on its configuration in the original Oracle home.
+
+If you have already installed but not configured Oracle Configuration Manager in the original Oracle home, then run the following commands from the cloned Oracle home:
+
+$ cd $ORACLE_HOME/ccr/bin
+$ setupCCR
+If you have already configured Oracle Configuration Manager in the original Oracle home, then run the following commands from the cloned Oracle home:
+
+$ cd $ORACLE_HOME/ccr/bin
+$ ./deriveCCR
+If deriveCCR cannot find the original configuration, then the Oracle Configuration Manager command-line interface prompts for your My Oracle Support (MOS) credentials. Provide your MOS credentials to proceed.
