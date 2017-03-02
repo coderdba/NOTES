@@ -84,6 +84,25 @@ libXtst-1.2.2-1.el7.x86_64
 make-3.82-19.el7.x86_64 
 sysstat-10.1.5-1.el7.x86_64 
 
+===================================
+INVENTORY LOCATION FILE
+===================================
+http://dbinourhand.blogspot.in/2012/03/how-to-install-oracle-11g-release-2-on_07.html
+In the response file, if we mention INVENTORY_LOCATION=/u01/app/oraInventory or other directory  - AND - IF IT ALREADY EXISTS,
+then runInstaller will error saying: The central inventory location provided is not empty.
+
+To avoid it - if that folder already exists from other Oracle software installations, and you want to reuse the same:
+- Create a file /etc/oraInst.loc with the following content:
+inventory_loc=/u01/app/oraInventory
+inst_group=oinstall
+
+Alternatively, if that file exists in oraInventory locatin, then copy it to /etc.
+# cp /u01/app/oraInventory/oraInst.loc /etc/.
+
+- Change permission of oraInst.loc to 666 or at least readable by oracle installer user
+
+- DO NOT Comment out INVENTORY_LOCATION setting in the response file
+
 
 ==============================
 RESPONSE FILE
@@ -96,6 +115,7 @@ Use db_install.rsp for software installation.
 -------------------------------------------
 Create a new response file db_install-1.rsp
 -------------------------------------------
+
 ####################################################################
 ## Copyright(c) Oracle Corporation 1998,2017. All rights reserved.##
 ##                                                                ##
@@ -137,12 +157,7 @@ UNIX_GROUP_NAME=oinstall
 # This is an optional parameter if installing on
 # Windows based Operating System.
 #-------------------------------------------------------------------------------
-#
-#
-# NOTE: THIS IS COMMENTED OUT - IN THE CASE IT ALREADY EXISTS FROM A PREVIOUS INSTALL
-#       SEE DETAILS OF THIS IN THE NEXT SECTIONS
-#INVENTORY_LOCATION=/u01/app/oraInventory
-
+INVENTORY_LOCATION=/u01/app/oraInventory
 #-------------------------------------------------------------------------------
 # Specify the complete path of the Oracle Home.
 #-------------------------------------------------------------------------------
@@ -186,27 +201,27 @@ oracle.install.db.OSDBA_GROUP=oradba
 # The OSOPER_GROUP is the OS group which is to be granted SYSOPER privileges.
 # The value to be specified for OSOPER group is optional.
 #------------------------------------------------------------------------------
-oracle.install.db.OSOPER_GROUP=
+oracle.install.db.OSOPER_GROUP=oradba
 
 #------------------------------------------------------------------------------
 # The OSBACKUPDBA_GROUP is the OS group which is to be granted SYSBACKUP privileges.
 #------------------------------------------------------------------------------
-oracle.install.db.OSBACKUPDBA_GROUP=
+oracle.install.db.OSBACKUPDBA_GROUP=oradba
 
 #------------------------------------------------------------------------------
 # The OSDGDBA_GROUP is the OS group which is to be granted SYSDG privileges.
 #------------------------------------------------------------------------------
-oracle.install.db.OSDGDBA_GROUP=
+oracle.install.db.OSDGDBA_GROUP=oradba
 
 #------------------------------------------------------------------------------
 # The OSKMDBA_GROUP is the OS group which is to be granted SYSKM privileges.
 #------------------------------------------------------------------------------
-oracle.install.db.OSKMDBA_GROUP=
+oracle.install.db.OSKMDBA_GROUP=oradba
 
 #------------------------------------------------------------------------------
 # The OSRACDBA_GROUP is the OS group which is to be granted SYSRAC privileges.
 #------------------------------------------------------------------------------
-oracle.install.db.OSRACDBA_GROUP=
+oracle.install.db.OSRACDBA_GROUP=oradba
 
 ###############################################################################
 #                                                                             #
@@ -536,23 +551,6 @@ PROXY_PWD=
 # Example    : COLLECTOR_SUPPORTHUB_URL=https://orasupporthub.company.com:8080/
 #------------------------------------------------------------------------------
 COLLECTOR_SUPPORTHUB_URL=
-
-===================================
-INVENTORY LOCATION FILE
-===================================
-http://dbinourhand.blogspot.in/2012/03/how-to-install-oracle-11g-release-2-on_07.html
-In the response file, if we mention INVENTORY_LOCATION=/u01/app/oraInventory or other directory  - AND - IF IT ALREADY EXISTS,
-then runInstaller will error saying: The central inventory location provided is not empty.
-
-To avoid it - if that folder already exists from other Oracle software installations, and you want to reuse the same:
-- Create a file /etc/oraInst.loc with the following content:
-inventory_loc=/u01/app/oraInventory
-inst_group=oinstall
-
-Alternatively, if that file exists in oraInventory locatin, then copy it to /etc.
-# cp /u01/app/oraInventory/oraInst.loc /etc/.
-
-- Comment out INVENTORY_LOCATION setting in the response file
 
 ===================================
 INSTALL
