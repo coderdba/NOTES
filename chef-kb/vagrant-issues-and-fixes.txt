@@ -1,0 +1,58 @@
+=============================================================================
+ERROR IN ENV.RB UPON INSTALLING VAGRANT-BERKSHELF 5.1.1 AND DOING VAGRANT UP
+=============================================================================
+
+--------------
+ISSUE
+--------------
+G:\cookbooks\cbora12crac1rs>vagrant up
+Bringing machine 'rac1n1' up with 'virtualbox' provider...
+Bringing machine 'rac1n2' up with 'virtualbox' provider...
+
+G:/Tools/Vagrant/embedded/gems/gems/vagrant-1.8.1/lib/vagrant/util/env.rb:9:in `update': Invalid argument - ruby_setenv() (Errno::EINVAL)
+        from G:/Tools/Vagrant/embedded/gems/gems/vagrant-1.8.1/lib/vagrant/util/env.rb:9:in `with_original_env'
+        from G:/Tools/Vagrant/embedded/gems/gems/vagrant-1.8.1/lib/vagrant/util/env.rb:39:in `with_clean_env'
+        from G:/home/.vagrant.d/gems/gems/vagrant-berkshelf-5.1.1/lib/vagrant-berkshelf/helpers.rb:62:in `berks'
+        from G:/home/.vagrant.d/gems/gems/vagrant-berkshelf-5.1.1/lib/vagrant-berkshelf/action/check.rb:33:in `berkshelf_version_check!'
+        from G:/home/.vagrant.d/gems/gems/vagrant-berkshelf-5.1.1/lib/vagrant-berkshelf/action/check.rb:16:in `call'
+        from G:/Tools/Vagrant/embedded/gems/gems/vagrant-1.8.1/lib/vagrant/action/warden.rb:34:in `call'
+        from G:/Tools/Vagrant/embedded/gems/gems/vagrant-1.8.1/lib/vagrant/action/builtin/config_validate.rb:25:in `call'
+        from G:/Tools/Vagrant/embedded/gems/gems/vagrant-1.8.1/lib/vagrant/action/warden.rb:34:in `call'
+        from G:/Tools/Vagrant/embedded/gems/gems/vagrant-1.8.1/lib/vagrant/action/warden.rb:95:in `block in finalize_action'
+        from G:/Tools/Vagrant/embedded/gems/gems/vagrant-1.8.1/lib/vagrant/action/warden.rb:34:in `call'
+        from G:/Tools/Vagrant/embedded/gems/gems/vagrant-1.8.1/lib/vagrant/action/warden.rb:34:in `call'
+        from G:/Tools/Vagrant/embedded/gems/gems/vagrant-1.8.1/lib/vagrant/action/warden.rb:95:in `block in finalize_action'
+        from G:/Tools/Vagrant/embedded/gems/gems/vagrant-1.8.1/lib/vagrant/action/warden.rb:34:in `call'
+        from G:/Tools/Vagrant/embedded/gems/gems/vagrant-1.8.1/lib/vagrant/action/warden.rb:34:in `call'
+        from G:/Tools/Vagrant/embedded/gems/gems/vagrant-1.8.1/lib/vagrant/action/builder.rb:116:in `call'
+        from G:/Tools/Vagrant/embedded/gems/gems/vagrant-1.8.1/lib/vagrant/action/runner.rb:66:in `block in run'
+        from G:/Tools/Vagrant/embedded/gems/gems/vagrant-1.8.1/lib/vagrant/util/busy.rb:19:in `busy'
+        from G:/Tools/Vagrant/embedded/gems/gems/vagrant-1.8.1/lib/vagrant/action/runner.rb:66:in `run'
+        from G:/Tools/Vagrant/embedded/gems/gems/vagrant-1.8.1/lib/vagrant/action/builtin/call.rb:53:in `call'
+        from G:/Tools/Vagrant/embedded/gems/gems/vagrant-1.8.1/lib/vagrant/action/warden.rb:34:in `call'
+        from G:/Tools/Vagrant/embedded/gems/gems/vagrant-1.8.1/plugins/providers/virtualbox/action/check_virtualbox.rb:17:in `call'
+        from G:/Tools/Vagrant/embedded/gems/gems/vagrant-1.8.1/lib/vagrant/action/warden.rb:34:in `call'
+        from G:/Tools/Vagrant/embedded/gems/gems/vagrant-1.8.1/lib/vagrant/action/builder.rb:116:in `call'
+        from G:/Tools/Vagrant/embedded/gems/gems/vagrant-1.8.1/lib/vagrant/action/runner.rb:66:in `block in run'
+        from G:/Tools/Vagrant/embedded/gems/gems/vagrant-1.8.1/lib/vagrant/util/busy.rb:19:in `busy'
+        from G:/Tools/Vagrant/embedded/gems/gems/vagrant-1.8.1/lib/vagrant/action/runner.rb:66:in `run'
+        from G:/Tools/Vagrant/embedded/gems/gems/vagrant-1.8.1/lib/vagrant/machine.rb:224:in `action_raw'
+        from G:/Tools/Vagrant/embedded/gems/gems/vagrant-1.8.1/lib/vagrant/machine.rb:199:in `block in action'
+        from G:/Tools/Vagrant/embedded/gems/gems/vagrant-1.8.1/lib/vagrant/environment.rb:561:in `lock'
+        from G:/Tools/Vagrant/embedded/gems/gems/vagrant-1.8.1/lib/vagrant/machine.rb:185:in `call'
+        from G:/Tools/Vagrant/embedded/gems/gems/vagrant-1.8.1/lib/vagrant/machine.rb:185:in `action'
+        from G:/Tools/Vagrant/embedded/gems/gems/vagrant-1.8.1/lib/vagrant/batch_action.rb:82:in `block (2 levels) in run'
+        
+------
+FIX
+------
+https://github.com/mitchellh/vagrant/issues/8126
+--> https://github.com/mitchellh/vagrant/blob/master/lib/vagrant/util/env.rb#L9
+
+Replace line 9 in that env.rb with:
+# comment original line
+# ENV.update(Vagrant.original_env)
+# Add new line
+ENV.update(Vagrant.original_env.delete_if {|k,v| k.nil? || k == ""})
+
+--> CUASE- Looks like the original_env had a key with a blank value or soemthing (see site above)
