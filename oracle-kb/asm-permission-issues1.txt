@@ -1,0 +1,63 @@
+===============
+PROBLEM
+===============
+Error that disks cannot be found - during clusterware installation.
+--> under user 'grid'
+
+Further, oracleasm-discover gives error with asm_version()
+
+[grid@rac1n1 stage-grid]$ ./runInstaller -silent -responseFile /tmp/grid_install.rsp -showProgress -ignorePrereq
+Starting Oracle Universal Installer...
+
+Checking Temp space: must be greater than 415 MB.   Actual 30696 MB    Passed
+Checking swap space: must be greater than 150 MB.   Actual 1023 MB    Passed
+Preparing to launch Oracle Universal Installer from /tmp/OraInstall2017-03-05_08-13-36PM. Please wait ...[grid@rac1n1 stage-grid]$
+[grid@rac1n1 stage-grid]$ [FATAL] [INS-30508] Invalid ASM disks.
+   CAUSE: The disks [ORCL:DISK01, ORCL:DISK02, ORCL:DISK03] were not valid.
+   ACTION: Please choose or enter valid ASM disks.
+[FATAL] [INS-30515] Insufficient space available in the selected disks.
+   CAUSE: Insufficient space available in the selected Disks. At least, 5,505 MB of free space is required.
+   ACTION: Choose additional disks such that the total size should be at least 5,505 MB.
+A log of this session is currently saved as: /tmp/OraInstall2017-03-05_08-13-36PM/installActions2017-03-05_08-13-36PM.log. Oracle recommends that if you want to keep this log, you should move it from the temporary location.
+
+[grid@rac1n1 stage-grid]$ oracleasm-discover 'ORCL:*'
+Using ASMLib from /opt/oracle/extapi/64/asm/orcl/1/libasm.so
+asm_version() failed with code 2
+[grid@rac1n1 stage-grid]$ id
+uid=54323(grid) gid=54321(oinstall) groups=54321(oinstall),54333(asmadmin),54334(asmdba) context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023
+[grid@rac1n1 stage-grid]$ logout
+[vagrant@rac1n1 ~]$ oracleasm-discover 'ORCL:*'
+Using ASMLib from /opt/oracle/extapi/64/asm/orcl/1/libasm.so
+
+====
+FIX
+====
+http://blog.eriglengani.al/2013/08/solved-asmversion-failed-with-code-2.html
+https://docs.oracle.com/database/121/CWLIN/trouble.htm#BABFBCJB
+
+[root@rac1n1 oracleasm]# cd /dev/oracleasm
+
+-- See that we are using 'grid' user for installing clusterware, but these files are owned by oracle:dba
+-- That was because of non-updated cookbook that initially had oracle:dba as installer instead of grid:oinstall
+
+[root@rac1n1 oracleasm]# ls -la
+total 0
+drwxr-xr-x.  4 root   root    0 Mar  5 18:46 .
+drwxr-xr-x. 21 root   root 3980 Mar  5 20:14 ..
+-rw-rw----.  1 oracle dba     0 Mar  5 18:46 .check_iid
+drwxr-xr-x.  1 root   root    0 Mar  5 19:49 disks
+-rw-rw----.  1 oracle dba     0 Mar  5 18:46 .get_iid
+drwxrwx---.  1 oracle dba     0 Mar  5 18:46 iid
+-rw-rw----.  1 oracle dba     0 Mar  5 18:46 .query_disk
+-rw-rw----.  1 oracle dba     0 Mar  5 18:46 .query_version
+[root@rac1n1 oracleasm]# chown -R grid:oinstall  iid disks .query_version .get_iid .check_iid .query_disk
+[root@rac1n1 oracleasm]# ls -la
+total 0
+drwxr-xr-x.  4 root root        0 Mar  5 18:46 .
+drwxr-xr-x. 21 root root     3980 Mar  5 20:14 ..
+-rw-rw----.  1 grid oinstall    0 Mar  5 18:46 .check_iid
+drwxr-xr-x.  1 grid oinstall    0 Mar  5 19:49 disks
+-rw-rw----.  1 grid oinstall    0 Mar  5 18:46 .get_iid
+drwxrwx---.  1 grid oinstall    0 Mar  5 18:46 iid
+-rw-rw----.  1 grid oinstall    0 Mar  5 18:46 .query_disk
+-rw-rw----.  1 grid oinstall    0 Mar  5 18:46 .query_version
