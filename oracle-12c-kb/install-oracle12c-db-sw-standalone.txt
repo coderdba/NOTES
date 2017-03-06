@@ -37,10 +37,8 @@ $ unzip linuxx64_12201_database
 It will extract the contents to /u01/app/oracle/stage/db12c/12.2.0.1/database
 
 ==============================
-OS PREREQUISITES
+OS PREREQUISITES - PACKAGES
 ==============================
-TBD
-
 ----------------------------
 AUTOMATICALLY CONFIGURE OS
   IF USING ORACLE LINUX
@@ -83,6 +81,57 @@ libXtst-1.2.2-1.el7.i686
 libXtst-1.2.2-1.el7.x86_64 
 make-3.82-19.el7.x86_64 
 sysstat-10.1.5-1.el7.x86_64 
+
+===================================
+KERNEL SETTINGS
+===================================
+https://docs.oracle.com/database/121/LTDQI/toc.htm#BHCCADGD
+
+------------------------
+VALUES
+------------------------
+Parameter	Minimum Value	File
+semmsl 250 /proc/sys/kernel/sem
+semmns 32000
+semopm 100
+semmni 128
+
+shmall	40 percent of the size of physical memory in pages
+Note: If the server supports multiple databases, or uses a large SGA, then set this parameter to a value that is equal to the total amount of shared memory, in 4K pages, that the system can use at one time
+/proc/sys/kernel/shmall
+
+shmmax	Half the size of physical memory in bytes
+See My Oracle Support Note 567506.1 for additional information about configuring shmmax.
+/proc/sys/kernel/shmmax
+
+shmmni	4096	/proc/sys/kernel/shmmni
+panic_on_oops	1	/proc/sys/kernel/panic_on_oops
+file-max	6815744	/proc/sys/fs/file-max
+ip_local_port_range	Minimum: 9000  Maximum: 65500
+
+See the "Setting UDP and TCP Kernel Parameters Manually" section in Oracle Database Installation Guide for Linux
+
+/proc/sys/net/ipv4/ip_local_port_range
+rmem_default	262144	/proc/sys/net/core/rmem_default
+rmem_max	4194304	/proc/sys/net/core/rmem_max
+wmem_default	262144	/proc/sys/net/core/wmem_default
+wmem_max	1048576	/proc/sys/net/core/wmem_max
+aio-max-nr	1048576 /proc/sys/fs/aio-max-nr
+Note: This value limits concurrent outstanding requests and should be set to avoid I/O subsystem failures.
+
+------------------------
+HOW TO CHECK
+------------------------
+semmsl, semmns, semopm, and semmni	# /sbin/sysctl -a | grep sem
+This command displays the value of the semaphore parameters in the order listed.
+
+shmall, shmmax, and shmmni	# /sbin/sysctl -a | grep shm
+file-max	# /sbin/sysctl -a | grep file-max
+ip_local_port_range	# /sbin/sysctl -a | grep ip_local_port_range
+rmem_default	# /sbin/sysctl -a | grep rmem_default
+rmem_max	# /sbin/sysctl -a | grep rmem_max
+wmem_default	# /sbin/sysctl -a | grep wmem_default
+wmem_max	# /sbin/sysctl -a | grep wmem_max
 
 ===================================
 INVENTORY LOCATION FILE
