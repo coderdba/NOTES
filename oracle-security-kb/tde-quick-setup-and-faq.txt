@@ -1,0 +1,458 @@
+Quick TDE Setup and FAQ (Doc ID 1251597.1)	To BottomTo Bottom	
+
+In this Document
+Goal
+ 	Ask Questions, Get Help, And Share Your Experiences With This Article
+Solution
+ 	Quick TDE setup:
+ 	Where to find information about the encrypted objects?
+ 	Should the wallet be created with other tools (owm, orapki or mkstore)?
+ 	Should the TDE wallet be used for other purposes than TDE?
+ 	How to make the wallet auto login?
+ 	How to backup the wallet?
+ 	How often should be the wallet backed up?
+ 	Can the auto login wallet be made server specific?
+ 	Should the cwallet.sso file (responsible for auto-login) be moved from one server to another?
+ 	When is the wallet opened?
+ 	
+How to change the wallet password?
+ 	What are the wallet password restrictions?
+ 	Is the auto_login feature available for HSM?
+ 	Should the wallets be shared among databases?
+ 	Can the wallets be recovered, if lost or if the password is lost?
+ 	What can be done if the wallet password is lost but in auto-login mode?
+ 	How to synchronize the wallet on the RAC nodes after creating it or changing the master key?
+ 	How is the wallet opened on RAC?
+ 	What to do if the wallet password is provided without quotes in the alter system set encryption key identified by "wallet password" statement?
+ 	How to change the wallet password?
+ 	Can an encrypted tablespace be decrypted (or viceversa)?
+ 	Can the encryption key of the tablespace be rekeyed?
+ 	How to decrypt data in an encrypted tablespace?
+ 	Can the encryption key of a table be rekeyed?
+ 	What is the performance overhead of TDE encryption?
+ 	What is the storage overhead of TDE encryption?
+ 	Changing the TDE master encryption key does also change the encryption keys for tables and tablespaces?
+ 	Can TDE be used as a method of obfuscating data from users?
+ 	How to verify if the master encryption key has been changed?
+ 	How often should the TDE master key be changed? Is this limited in any way?
+ 	Does TDE impact the backup procedure?
+ 	How about the impact on the restore procedure?
+ 	Can database recovery or flashback database be used to restore the lost wallets?
+ 	What to expect in the redo logs when encrypted and non-encrypted tables are updated in the same transaction?
+ 	Is it supported to create encrypted objects and then drop them, then manually remove the wallet?
+ 	Is it supported to migrate from HSM to a wallet stored in file?
+ 	How is the TDE master key accessed on HSM? (related to caching mechanisms)
+ 	Is it recommended to use a PKI master key instead of the standard TDE master key?
+ 	Can the tablespace master encryption key be changed?
+ 	How to store TDE wallet on shared location in an Exadata system?
+ 	Instance recovery and TDE:
+ 	Is it possible to remove the PDB master key from the TDE wallet file ?
+ 	Are orapki commands to manage TDE keystores (change password,create auto login wallet) still supported in 12c?
+ 	
+ 	Notes expanding the above information:
+References
+
+APPLIES TO:
+
+Advanced Networking Option - Version 10.2.0.1 and later
+Oracle Security Service - Version 10.2.0.1 and later
+Information in this document applies to any platform.
+GOAL
+
+This note tries to answer on short some of the common TDE questions. It provides a 'fast track' to setting up TDE however is not meant as an exhaustive replacement of the official documentation.
+
+ au
+
+Ask Questions, Get Help, And Share Your Experiences With This Article
+
+Would you like to explore this topic further with other Oracle Customers, Oracle Employees, and Industry Experts?
+
+Click here to join the discussion where you can ask questions, get help from others, and share your experiences with this specific article.
+Discover discussions about other articles and helpful subjects by clicking here to access the main My Oracle Support Community page for Database Security Products.
+
+SOLUTION
+
+Quick TDE setup:
+
+#1. How to setup the wallet location and generate the Master Key:
+1.1. default, ie in $ORACLE_BASE/admin/<global_db_name>/wallet, no sqlnet.ora parameters required.
+1.2. enable it in sqlnet.ora with an entry similar to. As much as possible, create this entry with netmgr and not manually.
+
+ENCRYPTION_WALLET_LOCATION =
+   (SOURCE = (METHOD = FILE)
+     (METHOD_DATA =
+       (DIRECTORY = /etc/oracle/WALLETS/$ORACLE_SID)
+     )
+   )
+
+#2. Make sure the wallet directory exists.
+#3. Create the wallet, from sqlplus:
+
+alter system set encryption key identified by "<wallet password>";
+
+Comment: please use double quotes, otherwise the password will be stored in upper case.
+#4. Create the encrypted objects:
+
+Tablespace:
+CREATE TABLESPACE <tablespace name>
+DATAFILE <datafile specifications>
+ENCRYPTION [USING '<encryption algorithm>'][IDENTIFIED BY password][SALT|NO SALT] 
+DEFAULT STORAGE(ENCRYPT);
+
+Table:
+CREATE TABLE <table name>(
+<non encrypted column list>,...
+<encrypted column name> <type> ENCRYPT [USING '<encryption algorithm>'][IDENTIFIED BY  password][SALT|NO SALT],...
+<non encrypted column list>,...
+<encrypted column name> <type> ENCRYPT [USING '<encryption algorithm>'][IDENTIFIED BY password][SALT|NO SALT],...
+);
+ 
+
+Where to find information about the encrypted objects?
+
+Tables:
+DBA_ENCRYPTED_COLUMNS, ENC$
+Tablespaces:
+DBA_TABLESPACES, V$ENCRYPTED_TABLESPACES
+
+Should the wallet be created with other tools (owm, orapki or mkstore)?
+
+No, the wallet that is used by TDE should ONLY be created with the "alter system set encryption key" statement. orapki can be used to make the wallet auto_login. The mkstore tool can be used to list the wallet contents for diagnostic purposes, but should not be used to pre-create the TDE wallet.
+
+Should the TDE wallet be used for other purposes than TDE?
+
+No. The ENCRYPTION_WALLET_LOCATION parameter has been provided in order to be able to create a separate TDE wallet from the wallet used for other purposes (secure password store, SSL encryption and authentication etc).
+
+How to make the wallet auto login?
+
+This can be done from OWM or by using orapki with a statement similar to:
+
+orapki wallet create -wallet <wallet location> -auto_login -pwd <wallet password>
+Comments:
+
+1) this command makes the wallet auto_login enabled by creating the optional file cwallet.sso from an existing ewallet.p12, however it also creates a new wallet if no ewallet.p12 file currently exists, therefore make sure the wallet file ewallet.p12 already exists by precreating it with the "alter system set encryption key" statement before switching it to auto_login.
+
+2) Please consider that if you use the option -auto_login_local this will not only tie the auto logon wallet to the hostname but also to the username, since the oracle server process can sometimes be started as a different user (local BEQ connections, RAC environment) this would then prevent the use of the auto login wallet, please consider this if you get ORA-28365 , the added security in this case may result in some usage issues.
+
+3) If a wrong password is entered, you may get the following (misleading) error:
+
+[oracle@nlsupport03 admin]$ orapki wallet create -wallet . -auto_login -pwd bad
+Oracle PKI Tool : Version 11.2.0.2.0 - Production
+Copyright (c) 2004, 2010, Oracle and/or its affiliates. All rights reserved.
+
+PKI-02003: Unable to load the wallet at: .
+ 
+
+
+How to backup the wallet?
+
+#1. Close the wallet:
+alter system set wallet close identified by "<wallet password>"
+#2. Copy the wallet to the backup location using an appropriate OS command.
+
+How often should be the wallet backed up?
+
+As often as needed, in order to avoid losing it due to any potential failure. Store the backup in at least 2 different locations. The wallet must be backed up after each change of the master encryption key(unified master encryption key from 11gR2).
+
+Can the auto login wallet be made server specific?
+
+Yes, but only starting with 11.2, using the -auto_login_local orapki parameter.
+
+Should the cwallet.sso file (responsible for auto-login) be moved from one server to another?
+
+The cwallet.sso file is sensitive to the OS release, OS user id (wallet creator) and other factors . If any these aspects doesn't match, then after moving the cwallet.sso file, the auto-login feature would not work. It is recommended to recreate the cwallet.sso file on the new server and transport just the ewallet.p12 file.
+
+When is the wallet opened?
+
+The wallet is opened when:
+1. manually opened using "alter system set wallet open" statement.
+2. if the wallet is auto-login, it is opened when the first encrypted object is accessed.
+The auto-login wallet is not opened when the database instance is opened.
+
+
+How to change the wallet password?
+
+Use either OWM or orapki, using the statement:
+orapki wallet change_pwd -wallet wallet_location [-oldpwd password ] [-newpwd password]
+
+What are the wallet password restrictions?
+
+It should be at least 8 characters long and should have both characters and numbers.
+
+Is the auto_login feature available for HSM?
+
+The auto-login feature is available for HSM starting with release 11.2.0.3.
+For lower supported releases, the patch for: BUG 12626642 MERGE REQUEST ON TOP OF 11.2.0.2.0 FOR BUGS 11789943 11863940
+should be installed or requested, if not available.
+Besides applying the patch, one must also follow the documented procedure to enable this feature. The linked document may change address, please request the address to Oracle Support if the link is no longer functional.
+
+
+Should the wallets be shared among databases?
+
+This is not a supported option. Sharing the wallet may succeed under certain circumstances, but development does not investigate errors following wallet sharing.
+
+Can the wallets be recovered, if lost or if the password is lost?
+
+No, there is nothing to do in such scenarios. This is why the wallets should be backed up regularily, at least after regenerating the master key.
+
+What can be done if the wallet password is lost but in auto-login mode?
+
+As soon as possible, the following should be performed:
+
+1. decrypt the currently encrypted data, you can verify if data is encrypted by checking :
+  
+
+select * from DBA_ENCRYPTED_COLUMNS;
+select TABLESPACE_NAME, status from dba_tablespaces where encrypted = 'YES';
+
+  a. remove the ENCRYPT attribute of tables having column encryption
+  b. move the tables out of encrypted tablespaces
+
+2. drop the encrypted tablespaces
+3. remove the wallet
+4. perform a full log switch rotation
+5. regenerate a new wallet
+6. encrypt the previously encrypted data again
+
+How to synchronize the wallet on the RAC nodes after creating it or changing the master key?
+
+1. change the master encryption key on one of the RAC nodes.
+2. close the wallets on all nodes.
+3. copy the wallet on the node where it has been created or where the master key changed in the proper location on the other nodes.
+4. reopen the wallets.
+The wallet should not be placed on shared storage until 11.2. In 11.2 the wallet can be shared only if placed on an ACFS file system, as documented.
+
+How is the wallet opened on RAC?
+
+On RAC, if running: "alter system set wallet open" the wallet is opened on all nodes. If running the corresponding "alter system set wallet close" the wallet is opened on all nodes.
+The configurations to use are:
+1. either use a shared wallet on Oracle's ACFS file system. The ACFS wallet cannot be set to be auto_login_local.
+2. either use wallet copies on each RAC node. To make certain the wallet is opened automatically without running the "alter system set wallet open" command manually, set the wallet to be auto_login.
+
+See as well the Best Practices documentation.
+
+What to do if the wallet password is provided without quotes in the alter system set encryption key identified by "wallet password" statement?
+
+Eg: alter system set encryption key identified by test123;
+In this situation, all the characters are converted by Oracle to uppercase. In sqlplus, access the wallet with the password provided in uppercase or without quotes. In orapki or owm, provide the password in uppercase (no double quotes absolutely needed for orapki), 
+eg: orapki wallet create -wallet . -auto_login -pwd TEST123
+
+How to change the wallet password?
+
+There are 2 methods available:
+1. using owm, available in all releases (10.2-11.2)
+2. using orapki, starting release 11.2:
+
+orapki wallet change_pwd -wallet wallet_location [-oldpwd password ] [-newpwd password]
+On Windows, it is not recommended to modify the wallet with these tools, unless the patches in Chapter #3 in Note 1301365.1 are available and applied.
+
+Can an encrypted tablespace be decrypted (or viceversa)?
+
+No, this is not possible. An encrypted tablespace cannot be decrypted directly. Naturally data is decypted when accessed normally if the wallet is open, so to decrypt it you will need to move the data to a not encrypted tablespace.
+
+Can the encryption key of the tablespace be rekeyed?
+
+No, this is currently not possible. TDE works in a 2 step fashion: the master key encrypts the keys used for the tables (in case of column encryption) and tablespaces for tablespace encryption, currently tablespace keys cannot be rekeyed and you will have to create a new tablespace and move data to it. The master key can be rekeyed using the alter system command: alter system set encryption key identified by "<wallet password>"; (this is the same syntax that originally creates the wallet also).
+
+How to decrypt data in an encrypted tablespace?
+
+By moving the objects from the encrypted tablespace to a tablespace that is not encrypted. This can be done with any known Oracle procedure, among which export/import, alter table move statement or dbms_redefinition are the most well known.
+
+Can the encryption key of a table be rekeyed?
+
+Yes, by using the:
+
+alter table <table_name> rekey;
+statement or by reorganizing the table with dbms_redefinition.
+
+What is the performance overhead of TDE encryption?
+
+The overhead is related to 2 main things: 1. CPU overhead due to encrypt/decrypt operations, always being a factor; 2. operations that are not possible due to TDE.
+1. For column encryption, it depends heavily on the number of encrypted columns and the number of decrypted records. The smaller these numbers, the smaller the overhead.
+It is worth mentioning that index range scans are not possible with this type of encryption.
+2. For tablespace encryption, it depends heavily on the type if table access. Full Table Scan are severely impacted by this type of encryption, because the entire table has to be decrypted in the process, irrespective of the number of columns or records actually needed. The encryption/decryption operations are CPU bound and take more time (as high as 10x or even more) than a simple block read. 
+If table is heavily accessed with FTS plans, it is better to use column encryption. However, tablespace encryption works well with index range scans, which are possible for this encryption type.
+
+What is the storage overhead of TDE encryption?
+
+Storage overhead for TDE can be consulted on the documentation page.
+
+TDE tablespace encryption has no storage overheads. However, TDE column encryption has some associated storage overheads. Encrypted column data needs more storage space than clear text data. In addition, TDE pads out encrypted values to multiples of 16 bytes. This means that if a credit card number requires 9 bytes for storage, then an encrypted credit card value will require an additional 7 bytes.
+Each encrypted value is also associated with a 20-byte integrity check. This is not applicable if you have encrypted columns using the NOMAC parameter. Also, if data has been encrypted with salt, then each encrypted value requires an additional 16 bytes of storage.
+The maximum storage overhead for each encrypted value is 52 bytes.
+ 
+
+Changing the TDE master encryption key does also change the encryption keys for tables and tablespaces?
+
+No, changing the master encryption key of the database:
+1. decrypts and re-encrypts the encryption key of the tables with the new master key. 
+2. re-encrypts the tablespace encryption key in 11.2
+3. has no impact on the tablespace encryption key in 11.1
+
+Can TDE be used as a method of obfuscating data from users?
+
+No, TDE returns the data in clear to the users with sufficient privileges to query the data. It is not a method of protecting data from the legitimate database users. Access Control techniques should be used for this purpose, employing the Virtual Private Database or Oracle Label Security features.
+
+How to verify if the master encryption key has been changed?
+
+Check the wallet contents using the following commands:
+
+mkstore -wrl <wallet location> -list
+(to list the wallet contents)
+mkstore -wrl <wallet location> -viewEntry ORACLE.SECURITY.DB.ENCRYPTION.MASTERKEY
+(to check the last master encryption key)
+
+The output of the second command should change. The older key should be listed by the first command though.
+
+How often should the TDE master key be changed? Is this limited in any way?
+
+As documented, the master key should not be changed too often, without a good reason, ie unless the master key is compromised or too old for the company policy. The size of the wallet or the HSM is large enough to home quite a large number of master keys, but is not unlimited.
+Note for pre 10.2.0.4 releases: Bug 5220448 WALLET MANAGER LIMITS THE NUMBER OF CERTIFICATES THAT CAN BE LOADED. (65K) limited the wallet size to 64k.
+
+Does TDE impact the backup procedure?
+
+The database procedure is unaffected. Remember though to backup the wallet after any change that affects the file itself or its contents.
+
+How about the impact on the restore procedure?
+
+As well, the restore procedure is unaffected. The wallet to use for a restored database should have as active master key the master key that was in use at the time when the database recovery ends, ie the one specified by the RECOVER UNTIL <timestamp> (or the equivalent timestamp for the other until clauses: SCN etc).
+
+Can database recovery or flashback database be used to restore the lost wallets?
+
+No. Recovery and Flashback have no impact on the wallet, these operations are not touching the wallet. Even more, without the proper wallet, the database recovery may fail.
+
+What to expect in the redo logs when encrypted and non-encrypted tables are updated in the same transaction?
+
+The redo log entries are encrypted only for the encrypted tables. Despite the fact that the non-encrypted table is updated in the same transaction as the encrypted one, the redo log entries are not encrypted.
+
+Is it supported to create encrypted objects and then drop them, then manually remove the wallet?
+
+The wallet is a vital part of the database and should not be removed without a just cause. Consequently, it is never recommended to remove it. It can be done though as follows:
+1. drop all encrypted objects.
+2. perform a full redo log switch rotation.
+3. remove the wallet.
+If recreating the wallet raises errors, apply patch 11727498, if available. The issue should not appear in releases higher than 11.2.0.2, patches can be requested for 11.2.0.1 and 11.2.0.2 as long as these are supported by development.
+
+Is it supported to migrate from HSM to a wallet stored in file?
+
+No, this procedure is not supported. Once the database has used a HSM wallet, it cannot be migrated back to wallets stored in files.
+
+How is the TDE master key accessed on HSM? (related to caching mechanisms)
+
+As documented:
+
+"The master key for TDE column encryption and (from 11.1.0.7) TDE tablespace encryption can be generated and stored in a Hardware Security Module (HSM). Because master keys never leave the HSM device in clear text, it cannot be loaded into database memory; therefore, Oracle sends the encrypted table or tablespace keys to the HSM device, where they are decrypted and returned to the database to process encrypted data. Table keys are not cached in database memory; for each new access to encrypted application table columns, the table keys are decrypted by the master encryption key in the HSM; it is therefore not recommended to use TDE column encryption with Hardware Security Modules. Tablespace keys for TDE tablespace encryption are loaded into database memory when first needed and are cached there until the database is shutdown."
+ 
+
+Is it recommended to use a PKI master key instead of the standard TDE master key?
+
+This is not widely used for the following reasons: 
+1. Asymmetric cryptography (used by PKI) is significantly slower than the symmetric one. The master key would be needed every time an encrypted table is used, so it can cause a significant overhead, since it has to decrypt the encryption key of the table.
+2. Equally, this kind of master key can currently only be used with column encryption. 
+It is worth mentioning that the certificate to use for PKI key pairs must be generated the key usage field marked for encryption, as documented.
+
+As per the 12c Upgrade guide, Public Key Infrastructure (PKI) is deprecated for Transparent Data Encryption (TDE) in Oracle Database 12c.
+
+Can the tablespace master encryption key be changed?
+
+The tablespace master encryption key, which has been introduced in 11.1 and is available only in this release, cannot be changed. It is replaced in 11.2 by the unified master encryption key, which can be changed.
+
+How to store TDE wallet on shared location in an Exadata system?
+
+Starting from 12.1.0.2, storing wallet on ACFS in an Exadata machine is supported. Until 11g, it was not supported.
+But, storing TDE wallet in database file system (DBFS) in an Exadata machine is not supported.
+
+Another option in 12.1.0.2 is to store TDE wallet in ASM.
+
+Instance recovery and TDE:
+
+#1. if on single instance and the instance crashes and there are incomplete transactions involving encrypted objects:
++ the database has to open the wallet to perform the instance recovery during startup.
++ the easiest solution to this scenario is to put the wallet in auto-login mode.
++ this cannot be solved using after logon triggers, because the instance recovery is done before the database is open. 
++ if the wallet is not in auto-logon mode, it has to be manually opened in a stage before the open time, or the database would fail to open with ORA-28365 errors.
+
+#2. if on RAC and a number of instances crash but not all and there are incomplete transactions involving encrypted objects:
++ the surviving instances would recover automatically the crashed instances and incomplete transactions.
++ the wallet does not have to be in auto-login mode for the crashed instances to come back to the cluster.
++ the wallet is automatically open on the crashed databases.
+
+ 
+
+Is it possible to remove the PDB master key from the TDE wallet file ?
+
+ 
+
+There is no command to delete a key from a wallet. The basic philosophy of TDE master key management is that we never delete master keys from the keystore as they may be needed at some point in the future.
+
+ 
+
+Are orapki commands to manage TDE keystores (change password,create auto login wallet) still supported in 12c?
+
+ 
+
+They are supported but not recommended for two reasons:
+
+1. They don't add the necessary TDE metadata to wallets
+
+2. The user has to login to the machine where the wallets are located to perform orapki operations. With Administer Key Management commands the remote security officer can do these operations. There is no need to log into the  physical machine.
+
+ If we need to change the wallet directory path to different directory, then
+
+1) create new directory
+2) copy wallet files from present wallet directory to new directory
+3) update sqlnet.ora file to the new directory
+4) close and re-open the wallet in the Database
+5) query v$/gv$encryption_wallet to confirm new directory path
+How to make the wallet auto login in 12c?
+
+administer key management create auto_login keystore from keystore '<_WALLET_DISK_LOCATION>' identified by "";
+
+Common errors:
+
+1) ORA-46638 during the merge of two wallets
+
+SQL> administer  key management merge kerystore '+DATA/R12102/wallet' into existing keystore '/home/oracle/wallet' identified by "oracle" with backup;
+administer key management MERGE KEYSTORE '+DATA/R12102/wallet' INTO EXISTING KEYSTORE '/home/oracle/wallet' IDENTIFIED BY "oracle" WITH BACKUP
+*
+
+Error at line 1.
+ORA-46638 - merging of the two keystores failed.
+
+ Cause: The wallet password provided in merge statement is not correct or the wallet password has not been provided
+
+Solution: Provides both wallet passwords during the merge statement
+
+ 
+
+ 2) "ORA-46630: keystore cannot be created at the specified location"
+
+SQL> administer key management create keystore '+DATA/R12102/wallet/' identified by "oracle";
+administer key management create keystore '+DATA/R12102/wallet/' identified by "oracle"
+*
+ERROR at row 1:
+ORA-46630: keystore cannot be created at the specified location
+ 
+
+Cause: An ewallet.p12 file already exists in the location specified
+
+How to close the auto-login wallet  in 12c?
+
+We need to convert it to password based wallet , backup the cwallet.sso file and rename it from cwallet.sso to cwallet.sso_bkup and than perform to close the wallet.
+
+select * from v$encryption_wallet;
+alter system set wallet close;
+select * from v$encryption_wallet;
+
+ 
+
+Notes expanding the above information:
+
+Note 317311.1 10g R2 New Feature TDE : Transparent Data Encryption
+Note 848298.1 How To Encrypt/Rekey a Table for TDE and Avoid the Associated Performance Problems and Locks?
+Note 1240824.1 The Impact of the Sqlnet Settings on Database Security (sqlnet.ora Security Parameters and Wallet Location)
+Note 1114599.1 How To Prevent The Secure Password Store Wallet From Being Moved to Another Host
+Note 1281205.1 If TDE Encrypted and Non-Encrypted Objects Are Updated in the Same Transaction, Are Redo Log Entries Encrypted for All? 
+Note 1301365.1 Known TDE Wallet Issues
+Note 1320239.1 How to Create a Wallet to Use with TDE with PKI Key Pairs 
+Note 1327519.1 Impact of Database Recovery and Flashback Database on the TDE Wallet
