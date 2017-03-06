@@ -17,4 +17,256 @@ NOTE: AS ROOT USER
 # crsctl stop crs
 
 
+=====================
+SET 1
+=====================
+https://heliosguneserol.com/2013/01/03/how-to-stopstart-rac-components/
+How to Stop/Start RAC components
+January 3, 2013 in Oracle Database&EBS General | Tags: CRS command, rac command, START RAC db, Stop rac, stop rac db
+In this article, I am going to explain how to stop/start rac components. Here is the my system:
+
+My db version : 11.2.0.3
+My Operating System : AIX 7.1
+My servers hostname : node1-node2
+My database name : TEST01
+My instance name : TEST011-TEST012
+
+Here is the some basic  commands, for commands details&options  please review Reference docs:
+
+
+Checking CRS Status
+[oracle@node1]</home/oracle> crsctl check crs
+
+CRS-4638: Oracle High Availability Services is online
+CRS-4537: Cluster Ready Services is online
+CRS-4529: Cluster Synchronization Services is online
+CRS-4533: Event Manager is online
+
+[oracle@node2]</home/oracle> crsctl check crs
+
+CRS-4638: Oracle High Availability Services is online
+CRS-4537: Cluster Ready Services is online
+CRS-4529: Cluster Synchronization Services is online
+CRS-4533: Event Manager is online
+
+Checking Node Status
+
+[oracle@node1]</home/oracle> srvctl status nodeapps
+
+VIP node1-vip is enabled
+VIP node1-vip is running on node: node1
+VIP 192.168.100.101 is enabled
+VIP 192.168.100.101 is running on node: node2
+Network is enabled
+Network is running on node: node1
+Network is running on node: node2
+GSD is disabled
+GSD is not running on node: node1
+GSD is not running on node: node2
+ONS is enabled
+ONS daemon is running on node: node1
+ONS daemon is running on node: node2
+
+[oracle@node2]</home/oracle> srvctl status nodeapps
+
+VIP node1-vip is enabled
+VIP node1-vip is running on node: node1
+VIP 192.168.100.101 is enabled
+VIP 192.168.100.101 is running on node: node2
+Network is enabled
+Network is running on node: node1
+Network is running on node: node2
+GSD is disabled
+GSD is not running on node: node1
+GSD is not running on node: node2
+ONS is enabled
+ONS daemon is running on node: node1
+ONS daemon is running on node: node2
+
+Checking Clusterware Resource Status
+[oracle@node1]</home/oracle> crsctl status resource -t
+
+I will not paste result because output is not clear in that page
+
+You can use below command which is not recommended for 11g and which is depreciated
+
+[oracle@node1]</home/oracle> crs_stat -t
+Name Type Target State Host
+————————————————————
+ora….DATA.dg ora….up.type ONLINE ONLINE node1
+ora….ER.lsnr ora….er.type ONLINE ONLINE node1
+ora….N1.lsnr ora….er.type ONLINE ONLINE node1
+ora….N2.lsnr ora….er.type ONLINE ONLINE node2
+ora.ORADATA.dg ora….up.type ONLINE ONLINE node1
+ora.asm ora.asm.type ONLINE ONLINE node1
+ora.cvu ora.cvu.type ONLINE ONLINE node2
+ora.gsd ora.gsd.type OFFLINE OFFLINE
+ora….SM1.asm application ONLINE ONLINE node1
+ora….11.lsnr application ONLINE ONLINE node1
+ora….b11.gsd application OFFLINE OFFLINE
+ora….b11.ons application ONLINE ONLINE node1
+ora….b11.vip ora….t1.type ONLINE ONLINE node1
+ora….SM2.asm application ONLINE ONLINE node2
+ora….12.lsnr application ONLINE ONLINE node2
+ora….b12.gsd application OFFLINE OFFLINE
+ora….b12.ons application ONLINE ONLINE node2
+ora….b12.vip ora….t1.type ONLINE ONLINE node2
+ora….network ora….rk.type ONLINE ONLINE node1
+ora.oc4j ora.oc4j.type ONLINE ONLINE node2
+ora.ons ora.ons.type ONLINE ONLINE node1
+ora.test01.db ora….se.type ONLINE ONLINE node1
+ora….int.svc ora….ce.type ONLINE ONLINE node2
+ora….int.svc ora….ce.type ONLINE ONLINE node2
+ora….kis.svc ora….ce.type ONLINE ONLINE node2
+ora….est.svc ora….ce.type ONLINE ONLINE node1
+ora….ry.acfs ora….fs.type ONLINE ONLINE node1
+ora.scan1.vip ora….ip.type ONLINE ONLINE node1
+ora.scan2.vip ora….ip.type ONLINE ONLINE node2
+
+Oracle High Availability Services
+
+— disable/enable Oracle HAS.
+Use the “crsctl enable/disable has” command to disable automatic startup of the Oracle High Availability Services stack when the server boots up.
+
+To can see current settings for Oracle High Availability Services stack when the server boots up, follow:
+
+[root@node1]crsctl config has
+CRS-4622: Oracle High Availability Services autostart is enabled.
+
+or
+
+[root@node1]cat /etc/oracle/scls_scr/node1/root/ohasdstr
+enable
+
+So as you can see my current setting is enable.If your system shown disable than :
+
+For Disable:
+[root@node1]crsctl disable has
+CRS-4621: Oracle High Availability Services autostart is disabled.
+
+[root@node1] crsctl config has
+CRS-4621: Oracle High Availability Services autostart is disabled.
+
+# cat /etc/oracle/scls_scr/node1/root/ohasdstr
+disable
+
+For Enable:
+[root@node1]crsctl enable has
+CRS-4621: Oracle High Availability Services autostart is enabled.
+
+Check new setting:
+
+[root@node1] crsctl config has
+CRS-4621: Oracle High Availability Services autostart is enabled.
+
+[root@node1] cat /etc/oracle/scls_scr/node1/root/ohasdstr
+enable
+
+Stop the Oracle clusterware stack
+
+You can use below commands:
+
+With root user:
+
+crsctl stop crs or crsctl stop has
+
+[root@node1]crsctl stop has
+CRS-2791: Starting shutdown of Oracle High Availability Services-managed resources on ‘node1’
+CRS-2673: Attempting to stop ‘ora.crsd’ on ‘node1’
+CRS-2790: Starting shutdown of Cluster Ready Services-managed resources on ‘node1’
+CRS-2673: Attempting to stop ‘ora.LISTENER_SCAN2.lsnr’ on ‘node1’
+CRS-2673: Attempting to stop ‘ora.LISTENER.lsnr’ on ‘node1’
+CRS-2673: Attempting to stop ‘ora.test01.db’ on ‘node1’
+CRS-2673: Attempting to stop ‘ora.LISTENER_SCAN3.lsnr’ on ‘node1’
+CRS-2677: Stop of ‘ora.LISTENER_SCAN2.lsnr’ on ‘node1’ succeeded
+CRS-2673: Attempting to stop ‘ora.scan2.vip’ on ‘node1’
+CRS-2677: Stop of ‘ora.LISTENER.lsnr’ on ‘node1’ succeeded
+CRS-2673: Attempting to stop ‘ora.node1.vip’ on ‘node1’
+CRS-2677: Stop of ‘ora.LISTENER_SCAN3.lsnr’ on ‘node1’ succeeded
+CRS-2673: Attempting to stop ‘ora.scan3.vip’ on ‘node1’
+CRS-2677: Stop of ‘ora.node1.vip’ on ‘node1’ succeeded
+CRS-2672: Attempting to start ‘ora.node1.vip’ on ‘node2’
+CRS-2677: Stop of ‘ora.scan2.vip’ on ‘node1’ succeeded
+CRS-2672: Attempting to start ‘ora.scan2.vip’ on ‘node2’
+CRS-2677: Stop of ‘ora.scan3.vip’ on ‘node1’ succeeded
+CRS-2672: Attempting to start ‘ora.scan3.vip’ on ‘node2’
+CRS-2676: Start of ‘ora.node1.vip’ on ‘node2’ succeeded
+CRS-2677: Stop of ‘ora.test01.db’ on ‘node1’ succeeded
+CRS-2676: Start of ‘ora.scan2.vip’ on ‘node2’ succeeded
+CRS-2672: Attempting to start ‘ora.LISTENER_SCAN2.lsnr’ on ‘node2’
+CRS-2676: Start of ‘ora.scan3.vip’ on ‘node2’ succeeded
+CRS-2672: Attempting to start ‘ora.LISTENER_SCAN3.lsnr’ on ‘node2’
+CRS-2676: Start of ‘ora.LISTENER_SCAN2.lsnr’ on ‘node2’ succeeded
+CRS-2676: Start of ‘ora.LISTENER_SCAN3.lsnr’ on ‘node2’ succeeded
+CRS-2673: Attempting to stop ‘ora.ons’ on ‘node1’
+CRS-2673: Attempting to stop ‘ora.eons’ on ‘node1’
+CRS-2677: Stop of ‘ora.ons’ on ‘node1’ succeeded
+CRS-2673: Attempting to stop ‘ora.net1.network’ on ‘node1’
+CRS-2677: Stop of ‘ora.net1.network’ on ‘node1’ succeeded
+CRS-2677: Stop of ‘ora.eons’ on ‘node1’ succeeded
+CRS-2792: Shutdown of Cluster Ready Services-managed resources on ‘node1’ has completed
+CRS-2677: Stop of ‘ora.crsd’ on ‘node1’ succeeded
+CRS-2673: Attempting to stop ‘ora.mdnsd’ on ‘node1’
+CRS-2673: Attempting to stop ‘ora.gpnpd’ on ‘node1’
+CRS-2673: Attempting to stop ‘ora.cssdmonitor’ on ‘node1’
+CRS-2673: Attempting to stop ‘ora.ctssd’ on ‘node1’
+CRS-2673: Attempting to stop ‘ora.evmd’ on ‘node1’
+CRS-2677: Stop of ‘ora.cssdmonitor’ on ‘node1’ succeeded
+CRS-2677: Stop of ‘ora.mdnsd’ on ‘node1’ succeeded
+CRS-2677: Stop of ‘ora.gpnpd’ on ‘node1’ succeeded
+CRS-2677: Stop of ‘ora.evmd’ on ‘node1’ succeeded
+CRS-2677: Stop of ‘ora.ctssd’ on ‘node1’ succeeded
+CRS-2673: Attempting to stop ‘ora.cssd’ on ‘node1’
+CRS-2677: Stop of ‘ora.cssd’ on ‘node1’ succeeded
+CRS-2673: Attempting to stop ‘ora.diskmon’ on ‘node1’
+CRS-2673: Attempting to stop ‘ora.gipcd’ on ‘node1’
+CRS-2677: Stop of ‘ora.gipcd’ on ‘node1’ succeeded
+CRS-2677: Stop of ‘ora.diskmon’ on ‘node1’ succeeded
+CRS-2793: Shutdown of Oracle High Availability Services-managed resources on ‘node1’ has completed
+CRS-4133: Oracle High Availability Services has been stopped.
+
+Start the Oracle clusterware stack
+
+You can use below commands:
+
+With root user:
+crsctl start crs or crsctl start has
+
+[root@node1] crsctl start crs
+CRS-4123: Oracle High Availability Services has been started.
+
+Start the Oracle Database
+To start all Oracle RAC instances for a database:
+[oracle@node1]</home/oracle> $ORACLE_HOME/bin/srvctl start database -d db_name
+
+PS: db_name is the name of the databasethis command is starting all the instances
+
+Stop the Oracle Database
+To shut down all Oracle RAC instances for a database:
+[oracle@node1]</home/oracle> $ORACLE_HOME/bin/srvctl stop database -d db_name
+
+PS: db_name is the name of the databasethis command is starting all the instances
+
+Start the Oracle Instance:
+
+[oracle@node1]</home/oracle> $ORACLE_HOME/bin/srvctl start instance –d db_name –i instance_name
+
+Stop the Oracle Instance:
+
+[oracle@node1]</home/oracle> $ORACLE_HOME/bin/srvctl stop instance –d db_name –i instance_name
+Stop/Start Listener-SCAN_LISTENER
+–
+srvctl stop/start listener -n node1
+srvctl stop/start listener -n node2
+srvctl stop scan_listener
+
+Stop ASM
+
+srvctl stop asm [-o stop_options] [-f]
+srvctl stop asm -n node1
+
+Reference:
+10gR2, 11gR1 and 11gR2 Oracle Clusterware (CRS / Grid Infrastructure) & RAC Command (crsctl, srvctl, cluvfy etc) Syntax and Reference [ID 1332452.1]
+11gR2 Clusterware and Grid Home – What You Need to Know [ID 1053147.1]
+http://download.oracle.com/docs/cd/E11882_01/rac.112/e16795.pdf
 
