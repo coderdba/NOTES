@@ -1,0 +1,711 @@
+Master Note For Transparent Data Encryption ( TDE ) (Doc ID 1228046.1)	To BottomTo Bottom	
+
+In this Document
+Purpose
+Scope
+Details
+ 	Oracle Transparent Data Encryption Concepts and Overview
+ 	Oracle Transparent Data Encryption Installation
+ 	Oracle Transparent Data Encryption Configuration and Administration
+ 	TDE Master Key and Wallet Management
+ 	Oracle Transparent Data Encryption Storage Overhead
+ 	Oracle Transparent Data Encryption Performance Overhead
+ 	Oracle Transparent Data Encryption Frequently Asked Questions
+ 	Important Patches for TDE
+ 	Oracle Transparent Data Encryption Troubleshooting and Debugging
+ 	Oracle Transparent Data Encryption Best Practices
+ 	Oracle Transparent Data Encryption Documentation
+ 	Oracle Transparent Data Encryption Licensing
+ 	Using My Oracle Support Effectively
+References
+APPLIES TO:
+
+Advanced Networking Option - Version 10.2.0.1 and later
+Oracle Database - Enterprise Edition - Version 11.2.0.3 to 11.2.0.3 [Release 11.2]
+Information in this document applies to any platform.
+PURPOSE
+
+This Master Note is intended to provide an index and references to the most frequently used My Oracle Support Notes with respect to Oracle Transparent Data Encryption. This Master Note is subdivided into categories to allow for easy access and reference to notes that are applicable to your area of interest. 
+
+SCOPE
+
+This document is meant for use as a guide by those who are configuring or managing/troubleshooting Oracle Transparent Data Encryption. 
+
+
+This note applies to the following versions of the product:
+
+Oracle Transparent Data Encryption versions 10.2.0.1 to 12.1.0.2
+
+DETAILS
+
+Oracle Transparent Data Encryption Concepts and Overview
+
+
+Oracle Transparent Data Encryption (TDE) enables the organizations to encrypt sensitive applicationdata on storage media completely transparent to the application. TDE addresses encryption requirements associated with public and private privacy and security regulations such as PCI DSS. TDE column encryption was introduced in Oracle Database 10g Release 2, enabling encryption of table columns containing sensitive information. The TDE tablespace encryption and the support for hardware security modules (HSM) were introduced in Oracle Database 11gR1.
+
+TDE is protecting the data at rest. It is encrypting the data in the datafiles so that in case they are obtained by other parties it will not be possible to access the clear text data.  TDE cannot be used to obfuscate the data for the users who have privileges to access the tables. In the databases where TDE is configured any user who has access on an encrypted table will be able to see the data in clear text because Oracle will transparently decrypt the data for any user having the necessary privileges.
+
+
+
+TDE is using a two tier encryption key architecture consisting of:
+
+a master encryption key - this is the encryption key used to encrypt secondary keys used for column encryption and tablespace encryption
+one or more table and/or tablespace keys - these are the keys that are used to encrypt one or more specific columns or the keys used to encrypt  tablespaces. There is only one table key regardless of the number of encrypted columns in a table and it will be stored in the data dictionary. The tablespace key is stored in the header of each datafile of the encrypted tablespace.
+
+The table and tablespace keys are encrypted using the master key. The master key is stored in an external security module (ESM) that can be one of the following:
+
+an Oracle Wallet - a secure container outside of the database. It is encrypted with a password.
+a Hardware Security Module (HSM) - a device used to secure keys and perform cryptographic operations. Oracle interfaces to the device using a PKCS#11 library supplied by the HSM vendor.
+
+Currently it is possible to migrate the TDE master keys from the Oracle wallet to a HSM but it is not supported to migrate the master keys from the HSM back to the wallets. See Note 1282980.1 for details.
+
+Oracle Transparent Data Encryption Installation
+
+
+Oracle TDE is available by default in Oracle RDBMS Enteprise Edition. To be able to use this it is necessary to purchase an Oracle Advanced Security license.
+
+Oracle Transparent Data Encryption Configuration and Administration
+
+
+To start using TDE the following operations have to be performed:
+
+1) Make sure that the wallet location exists. If a non default wallet location must be used then specify it in the sqlnet.ora file :
+
+ENCRYPTION_WALLET_LOCATION =
+   (SOURCE = (METHOD = FILE)
+     (METHOD_DATA =
+      (DIRECTORY = /oracle/TDE_WALLETS/$ORACLE_SID)
+     )
+   )
+ 
+
+Note: The default encryption wallet location is $ORACLE_BASE/admin/<global_db_name>/wallet. If you want to let Oracle manage a wallet in the default location then there is no need to set the ENCRYPTION_WALLET_LOCATION parameter in sqlnet.ora.
+
+It is important to check that the location specified in sqlnet.ora or the default location exists and can be read/written by the Oracle processes. Starting with 11gR2 the wallet can be shared by all the instances of a RAC database.  See the documentation for details.
+
+2) Generate a master key:
+
+alter system set encryption key identified by "wallet_password";
+
+This command will do the following: 
+
+A) If there is no wallet currently in the wallet location then a new wallet with the password "wallet_password" will be generated. The password is enclosed in double quotes to preserve the case of the characters. If the double quotes are not used then the characters of the password will be all in upper case. This command will also cause the new wallet to be opened and ready for use.
+
+Comment: This is the only valid way of creating a new wallet for TDE, you may not use oracle wallet manager or command line tool orapki to create the TDE wallet for the first time!
+
+B) A new master key will be generated and will be written to the wallet. This newly generated master key will become the active master key. The old master keys (if there were any) will still be kept in the wallet but they will not be active. They are kept there to be used when decrypting data that was previously encrypted using them.
+
+
+To see the status of an wallet run the following query:
+
+SQL> select * from v$encryption_wallet;
+
+WRL_TYPE
+--------------------
+WRL_PARAMETER
+--------------------------------------------------------------------------------
+STATUS
+------------------
+file
+/u01/app/oracle/admin/d1v11202/wallet
+OPEN
+
+
+
+
+
+3) Enable encryption for a column or for an entire tablespace:
+
+3.1) Create a table by specifying the encrypt option:
+
+create table test(col1 number, col2 varchar2(100) encrypt using 'AES256' NO SALT);
+
+
+3.2) Encrypt the column(s) of an existing table:
+
+alter table test modify( col2 encrypt SALT);
+ 
+
+Note: If the table has many rows then this operation might take some time since all the values stored in col2 must be replaced by encrypted strings. If the access to the table during this operations is needed then use Online Table Redefinition. An worked example can be found in Note 848298.1.
+
+3.3) Create an encrypted tablespace :
+
+CREATE TABLESPACE encryptedtbs
+DATAFILE '/u01/app/oracle/oradata/d1v11201/encryptedtbs01.dbf' SIZE 100M
+ENCRYPTION USING 'AES256'
+DEFAULT STORAGE(ENCRYPT);
+ 
+
+Note: An existing  non encrypted tablespace cannot be encrypted. If you must encrypt the data from an entire tablespace then create a new encrypted tablespace and then move the data from the old tablespace to the new one
+
+
+
+
+Note 317311.1  - 10g R2 New Feature TDE Transparent Data Encryption 
+Note 432776.1  - 11g New Feature Transparent Data Encryption at Tablespace Level
+
+TDE Master Key and Wallet Management
+
+The wallet is a critical component and should be backed up in a secure location (different to the location where the database backups are stored!). If the wallet containing the master keys is lost or if its password is forgotten then the encrypted data will not be accessible anymore. 
+
+ Make sure that the wallet is backed up in the following scenarios:
+
+Immediately after creating it. 
+When regenerating the master key 
+When backing up the database. Make sure that the wallet backup is not stored in the same location with the database backup
+Before changing the wallet password 
+
+Make sure that the wallet password is complex but at the same time easy to remember. When it is possible split knowledge about wallet password ( See Note 1062413.1)
+
+If needed, the wallet password can be changed within Oracle Wallet Manager or with the following command using orapki (starting from 11.1.0.7):
+
+orapki wallet change_pwd -wallet <wallet_location>
+
+Oracle recommends that the wallet files are placed outside of the $ORACLE_BASE directory to avoid having them backed up to same location as other Oracle files. Furthermore it is recommended to restrict the access to the directory and to the wallet files to avoid accidental removals. Below is the recommended way of restricting the access to the wallet file:
+
+$ cd /etc 
+$ mkdir –pv oracle/wallets/<$ORACLE_SID>
+$ chown –R oracle:oinstall oracle
+$ chmod –R 700 oracle
+
+
+Set the ENCRYPTION_WALLET_LOCATION parameter in sqlnet.ora to the newly created directory and create the wallet with the following command:
+
+SQL> alter system set encryption key identified by “password”;
+
+After creating the wallet reduce the permissions on the wallet file
+
+$ chmod 600 ewallet.p12
+
+ The wallet can be opened and closed with the following commands:
+
+alter system set wallet open identified by "password”;
+
+alter system set wallet close identified by "password”;
+
+alter system set wallet close; -- This is used with auto_login wallets to remove the cached keys from memory after making the cwallet.sso unavailable
+
+ 
+
+ 
+
+ 
+
+ 
+
+
+Oracle Transparent Data Encryption Storage Overhead
+
+
+1) Storage overhead incured by TDE column encryption is between 1 and 52 bytes for each encrypted value. The overhead is caused by the following factors: 
+
+A) Padding to the next 16 or 8 byte. The storage overhead caused by padding depends on the algorithm used to encrypt the data. AES uses a block size of 128 bits(128/8 = 16bytes), no matter what's the size of the key ( 192, 256, etc.), so we will have a padding of maximum 16 bytes. This means that even if original value's size is a multiple of 16 bytes we will add one extra block of 16 bytes. That's the "worst" case. The same discussion applies to 3DES but in this case the block size is 8 bytes. This padding 8 or 16 bytes overhead is MANDATORY(there is no option to avoid it).
+
+B)  20 bytes overhead for integrity check. This is OPTIONAL ( to avoid it use the 'NOMAC' option)
+
+C)  16 bytes overhead if 'SALT' is used to encrypt a column. This is OPTIONAL (to avoid it use the 'NO SALT' option).  
+
+
+2) Tablespace encryption causes no storage overhead whatsoever.
+
+Oracle Transparent Data Encryption Performance Overhead
+
+The overhead of the TDE, be it column or tablespace encryption cannot be assessed without testing, it depends from statement to statement. Please test thoroughly before implementing.
+
+1) Column encryption: It is recommended to upgrade to 10.2.0.4 and then install Patch 7639262 or to upgrade to 11.1.0.7 and then install Patch 8421211. These one off patches contain fixes that are reducing the performance impact of column TDE. These known issues are permanently fixed starting with 11.2.0.1. 
+
+The overhead is obtained when the same execution plan is used as if TDE is not present. Sometimes it is not possible to have the exact same execution plan and as such the impact will be more severe. When using column TDE the index range scans are not possible and as such there are situations when the execution plans are poorer causing a more severe performance degradation. For a detailed discussion of the impact of TDE on the execution plans see Note 728292.1.
+
+2) Tablespace encryption. Starting with 11.2.0.2 Oracle is able to use the hardware crypto acceleration features of the Intel XEON 5600 processors. This is reducing the performance overhead of tablespace TDE.  See more information in Note 1365021.1.
+
+Note 848298.1 How To Encrypt/Rekey a Table for TDE and Avoid the Associated Performance Problems and Locks?
+Note 728292.1  Known Performance Issues When Using TDE and Indexes on the Encrypted Columns
+Note 1303412.1 Performance Impact of TDE
+
+Oracle Transparent Data Encryption Frequently Asked Questions
+
+The following TDE FAQ document is maintained by TDE product management: 
+
+http://www.oracle.com/technetwork/database/security/tde-faq-093689.html
+
+The following TDE FAQ note is maintained by Oracle Support:
+
+Note 1251597.1 - TDE Frequently Asked Questions
+
+ 
+
+1) How can one verify if the tablespace encryption master key in v$encrypted_tablespaces is contained in the wallet?
+
+ 
+
+The MASTERKEYID in v$encrypted_tablespaces is stored in the base64 format. To get the ID in the format used within the wallet we have to run the following query:
+
+ 
+
+select  utl_raw.cast_to_varchar2( utl_encode.base64_encode('01'||substr(masterkeyid,1,4))) || utl_raw.cast_to_varchar2( utl_encode.base64_encode(substr(masterkeyid,5,length(masterkeyid)))) 
+
+FROM v$encrypted_tablespaces;
+
+ 
+
+We have to compare the string obtained with this query to the value of  wallet's ORACLE.SECURITY.DB.ENCRYPTION.MASTERKEY.
+
+Example:
+
+ 
+
+ 
+
+SQL> select ts#, masterkeyid,  utl_raw.cast_to_varchar2( utl_encode.base64_encode('01'||substr(masterkeyid,1,4))) || utl_raw.cast_to_varchar2( utl_encode.base64_encode(substr(masterkeyid,5,length(masterkeyid)))) masterkeyid_base64  FROM v$encrypted_tablespaces;
+
+TS#         MASTERKEYID                                     MASTERKEYID_BASE64
+---------- --------------------------------------------    ------------------------------------------------------------------------------------------
+         6 554AC2698D894FA7BFA4122E7CB89DA0                AVVKwmmNiU+nv6QSLny4naA=      <================  This is the key of the tablespace !!!
+
+        10 554AC2698D894FA7BFA4122E7CB89DA0                AVVKwmmNiU+nv6QSLny4naA=
+
+        11 554AC2698D894FA7BFA4122E7CB89DA0                AVVKwmmNiU+nv6QSLny4naA=
+
+[oracle@seclin4 wallet]$ mkstore -wrl . -list
+Oracle Secret Store Tool : Version 11.2.0.2.0 - Production
+Copyright (c) 2004, 2010, Oracle and/or its affiliates. All rights reserved.
+
+Enter wallet password:
+
+Oracle Secret Store entries:
+ORACLE.SECURITY.DB.ENCRYPTION.Aa1OJt/0y08jv+11RSrnUp0AAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+ORACLE.SECURITY.DB.ENCRYPTION.AaVsjXyoX08Yv0dkeFt3KcwAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+ORACLE.SECURITY.DB.ENCRYPTION.ASBpJwuzJU8dv999rkIdzw0AAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+ORACLE.SECURITY.DB.ENCRYPTION.ATGG1egssU+uv3cXljgh33MAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+ORACLE.SECURITY.DB.ENCRYPTION.AVRoTL09PU+pvxAC6L7hzmcAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+ORACLE.SECURITY.DB.ENCRYPTION.AVVKwmmNiU+nv6QSLny4naAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+ORACLE.SECURITY.DB.ENCRYPTION.AWc5cImuaU9KvzvAJ9yNhRIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+ORACLE.SECURITY.DB.ENCRYPTION.AYZd52iJek+7v0OQlyCobr8AAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+ORACLE.SECURITY.DB.ENCRYPTION.AZiMFYAabU8Zv46UzkGrQoYAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+ORACLE.SECURITY.DB.ENCRYPTION.MASTERKEY
+ORACLE.SECURITY.DN
+ORACLE.SECURITY.PASSWORD
+ORACLE.SECURITY.TS.ENCRYPTION.BTJ9EEoIi7O8MokUyaU1SmMCAwAAAAAAAAAAAAAAAAAAAAAAAAAA
+[oracle@seclin4 wallet]$ mkstore -wrl . -viewEntry ORACLE.SECURITY.DB.ENCRYPTION.MASTERKEY
+Oracle Secret Store Tool : Version 11.2.0.2.0 - Production
+Copyright (c) 2004, 2010, Oracle and/or its affiliates. All rights reserved.
+
+Enter wallet password:
+
+ORACLE.SECURITY.DB.ENCRYPTION.MASTERKEY = AVVKwmmNiU+nv6QSLny4naAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA <======================== This is the current master key !!!
+[oracle@seclin4 wallet]$
+
+ 
+
+ 
+
+ 
+
+Note : The above query that transforms the ID of the key from the HEX format to the BASE64 format will work for 11gR2. For 11gR1 one must replace the '01' string with '05':
+
+ 
+
+select ts#, masterkeyid,  utl_raw.cast_to_varchar2( utl_encode.base64_encode('05'||substr(masterkeyid,1,4))) || utl_raw.cast_to_varchar2( utl_encode.base64_encode(substr(masterkeyid,5,length(masterkeyid)))) masterkeyid_base64  FROM v$encrypted_tablespaces;
+
+ 
+
+ 
+
+ 
+
+The tablespapce keys can be also obtained with the following query:
+
+ 
+
+SQL> select t.name, RAWTOHEX(x.mkid) from v$tablespace t, x$kcbtek x where t.ts#=x.ts#;
+
+NAME                           RAWTOHEX(X.MKID)
+------------------------------ --------------------------------
+SYSTEM                         4072FDF269FC4F90BF29E02FEDEDD9C2   <================= This is the key ID in the HEX format.
+SYSAUX                         00000000000000000000000000000000
+UNDOTBS1                       00000000000000000000000000000000
+UNDOTBS2                       00000000000000000000000000000000
+ 
+
+The HEX string "4072FDF269FC4F90BF29E02FEDEDD9C2" can be also transformed to a BASE64 string to be able to compare with the contents of the wallet:
+
+ 
+
+SQL> select  utl_raw.cast_to_varchar2( utl_encode.base64_encode('01'||substr('4072FDF269FC4F90BF29E02FEDEDD9C2',1,4))) || utl_raw.cast_to_varchar2( utl_encode.base64_encode(substr('4072FDF269FC4F90BF29E02FEDEDD9C2',5,length('4072FDF269FC4F90BF29E02FEDEDD9C2')))) masterkeyid_base64  FROM dual;
+
+
+MASTERKEYID_BASE64
+--------------------------------------------------------------------------------
+AUBy/fJp/E+QvyngL+3t2cI=                                                    < ================ This is the key ID in the BASE64 format !!!
+ 
+
+2) How can one verify if the  master key used to encrypt a column is present in the wallet?
+
+ 
+
+select mkeyid from enc$ where obj# in (select object_id from dba_objects where object_type='TABLE' and object_name='<your table's name>' and owner = '<owner>');
+
+MKEYID
+
+--------
+
+AZiMFYAabU8Zv46UzkGrQoYAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+
+ 
+
+ 
+
+Then check whether that master key ID is present in the wallet:
+
+ 
+
+mkstore -wrl . -list
+Oracle Secret Store Tool : Version 11.2.0.2.0 - Production
+Copyright (c) 2004, 2010, Oracle and/or its affiliates. All rights reserved.
+
+Enter wallet password:
+
+Oracle Secret Store entries:
+ORACLE.SECURITY.DB.ENCRYPTION.AZiMFYAabU8Zv46UzkGrQoYAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+ORACLE.SECURITY.DB.ENCRYPTION.MASTERKEY
+ 
+
+ 
+
+ 
+
+ 
+
+3) Is it possible to recreate the TDE wallet ?
+
+It is possible, but such an operation should be done in extreme circumstances only, because it can result in data loss or corruptions.
+
+Note 1541818.1 Step by Step Troubleshooting Guide for TDE Error ORA-28374
+
+ 
+
+ 
+
+ 
+
+All the versions up to 11.2.0.3.PSU2
+
+=========================
+
+When generating a new master key the old master key is kept in the wallet ( i.e. it is not erased ).  The key associated with the  SYSTEM tablespace is also regenerated. The problem appears when for some reason the original wallet is removed. As soon as you do that, the  key associated with the SYSTEM tablespace will not change ( The SYSTEM tablepace will continue to be linked to the original key):  
+
+
+SQL> select t.name, RAWTOHEX(x.mkid) from v$tablespace t, x$kcbtek x where t.ts#=x.ts#;
+
+NAME                           RAWTOHEX(X.MKID)
+------------------------------ --------------------------------
+SYSTEM                         1BA883F5A72A4F99BF193DB9B96349B4   ====================> This is the original SYSTEM key !!!
+SYSAUX                         00000000000000000000000000000000
+USERS                          00000000000000000000000000000000
+PROT_DATA_TS                   00000000000000000000000000000000
+PROT_INDEX_TS                  00000000000000000000000000000000
+BATCH_DATA_TS                  00000000000000000000000000000000
+TESTBIG                        00000000000000000000000000000000
+TESTSMALL                      00000000000000000000000000000000
+UNDOTBS_02                     00000000000000000000000000000000
+TEMP                           00000000000000000000000000000000
+
+10 rows selected.
+
+SQL> alter system set encryption key identified by "welcome1";  =======================> I generate a new master key !!!
+
+System altered.
+
+SQL> select t.name, RAWTOHEX(x.mkid) from v$tablespace t, x$kcbtek x where t.ts#=x.ts#;
+
+NAME                           RAWTOHEX(X.MKID)
+------------------------------ --------------------------------
+SYSTEM                         0155133316F94F29BF32D21A65AF9A52   ======================> The system key is changed !!! 
+SYSAUX                         00000000000000000000000000000000
+USERS                          00000000000000000000000000000000
+PROT_DATA_TS                   00000000000000000000000000000000
+PROT_INDEX_TS                  00000000000000000000000000000000
+BATCH_DATA_TS                  00000000000000000000000000000000
+TESTBIG                        00000000000000000000000000000000
+TESTSMALL                      00000000000000000000000000000000
+UNDOTBS_02                     00000000000000000000000000000000
+TEMP                           00000000000000000000000000000000
+
+10 rows selected.
+ 
+
+
+
+[oracle@seclin4 wallet]$ ls -ltr
+total 40
+-rw-r--r-- 1 oracle oinstall 1573 Oct 29 11:14 ewallet.p12
+-rw------- 1 oracle oinstall 1651 Oct 29 11:18 cwallet.sso
+
+[oracle@seclin4 wallet]$ mv ewallet.p12 ewallet.p12.good     =========== > "Losing" the wallets !!!
+[oracle@seclin4 wallet]$ mv cwallet.sso cwallet.sso.good
+ 
+
+
+
+
+
+
+SQL> alter system set encryption key identified by "welcome1";
+alter system set encryption key identified by "welcome1"
+*
+ERROR at line 1:
+ORA-28362: master key not found       ================================================> This is a first sign that there was a problem !!! The wallet will be generated anyway but THERE ARE ISSUES ALREADY !!!
+
+
+SQL> select t.name, RAWTOHEX(x.mkid) from v$tablespace t, x$kcbtek x where t.ts#=x.ts#;
+
+NAME                           RAWTOHEX(X.MKID)
+------------------------------ --------------------------------
+SYSTEM                         0155133316F94F29BF32D21A65AF9A52      ==========================> The system key remains unchanged !!! 
+SYSAUX                         00000000000000000000000000000000
+USERS                          00000000000000000000000000000000
+PROT_DATA_TS                   00000000000000000000000000000000
+PROT_INDEX_TS                  00000000000000000000000000000000
+BATCH_DATA_TS                  00000000000000000000000000000000
+TESTBIG                        00000000000000000000000000000000
+TESTSMALL                      00000000000000000000000000000000
+UNDOTBS_02                     00000000000000000000000000000000
+TEMP                           00000000000000000000000000000000
+
+10 rows selected.
+ 
+
+The key associated with the SYSTEM tablespace is used to encrypt the data in the TEMP tablespace. After removing the original wallet this key will not be available anymore and as such you will get ORA-28374 errors when running an operation that requires large sorts(creating a large index, running a query with ORDER BY on a large table, etc.). The system will not be able to encrypt the data that is written to the TEMP tablespace.
+
+This problem can be avoided by setting the hidden parameter "_db_disable_temp_encryption" to true but the recommended solution is to recreate the database and make sure that the initial wallet is  ALWAYS AVAILABLE.
+
+All the versions after 11.2.0.3.2
+
+======================
+
+Starting with 11.2.0.3.2 it is possible to regenerate the master key but one should be very cautious when doing this. See Note 1541818.1 for details
+
+ 
+
+All the versions after 12.1.0.2
+
+=====================
+
+ As of 12.1.0.2 If the key associated with the SYSTEM, SYSAUX or UNDO tablespaces is not present in the wallet you cannot associate a new master key with the database (i.e. you cannot activate that master key for the database) unless you set a hidden parameter : 
+
+ 
+
+SQL> administer key management use key 'AUQukK/ZR0/iv26nuN9vIqcAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' identified by "welcome1" with backup;
+administer key management use key 'AUQukK/ZR0/iv26nuN9vIqcAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' identified by "welcome1" with backup
+*
+ERROR at line 1:
+ORA-28374: typed master key not found in wallet
+
+alter system set "_db_discard_lost_masterkey"=true;
+
+SQL> administer key management use key 'AUQukK/ZR0/iv26nuN9vIqcAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' identified by "welcome1" with backup;
+
+ 
+
+4) How to create an auto login (auto open) HSM wallet when the TDE master key was already generated into the HSM?
+
+For Oracle RDBMS 11gR2 do this :
+
+
+A. Add the following to your $ORACLE_HOME\network\admin\sqlnet.ora file : 
+
+ ENCRYPTION_WALLET_LOCATION = (SOURCE = (METHOD = HSM) (METHOD_DATA =
+     (DIRECTORY = <path to the oracle wallet directory>)))
+
+B. Create an auto-login wallet in the directory specified in sqlnet.ora:
+
+cd <path to the oracle wallet directory>
+orapki wallet create -wallet . -auto_login
+
+When you are prompted for the password just type "<hsm_partition_pwd>|<slot_name>"
+
+C. Add the following entry in the wallet you have just created: 
+
+mkstore -wrl . -createEntry ORACLE.TDE.HSM.AUTOLOGIN <any_non_empty_string>
+
+ 
+
+Note: Usually the <any_non_empty_string> is <hsm_partition_pwd>|<slot_name>. This will help the database administrator to keep track of the HSM partition that is being used for this particular database.  
+
+
+For Oracle RDBMS 12.1.0.1 or newer use the documentation : Configuring Auto-Login Hardware Security Modules
+
+5) How to deal with ORA-28376: cannot find PKCS11 library errors seen while using a SafeNet HSM ?
+
+
+SafeNet / Ingrian HSM libraries need to be able to locate the HSM's device properties file. One has to point to that file using the NAE_Properties_Conf_Filename environment variable. When using a GI home make sure that this environment variable is set in OCR too :
+
+ 
+
+srvctl setenv database -d <dbname> -T  "NAE_Properties_Conf_Filename=/opt/oracle/extapi/64/hsm/safenet/6.1.0/IngrianNAE.properties"
+
+
+Important Patches for TDE
+
+- Mandatory patch for TDE in 11.2.0.2 with HSM:
+
+  Patch 12626642 (superceded by Patch 13893640 on some platforms) fixes failure in heartbeat signal sent to HSM and provides auto-open HSM functionality on Unix / Linux systems.
+
+  Windows users: install patch bundle 15 : patch 13413154 (32-bit) or patch 13413155 (64-bit) or higher on top of version 11.2.0.2, this bundle includes both
+
+  base bug 11789943 and bug 11863940 that make up equivalent merge patch 12626642 on Unix / Linux systems.
+
+- Patches for bug 7002207 and bug 7298987 are available for 10.2.0.4 (patch 7639262) and 11.1.0.7 (patch 8421211). It is highly recommended to install these patches.
+
+- HSM multi-token support:
+
+Patch 9453959 (11.1.0.7); patch 9229896 (11.2.0.1)
+
+- TDE (on RAC) wallet related issues:
+
+  Database version 11.2.0.2: install patch 10431487 (fixed 11.2.0.3) and patch 14144138
+
+  Database version 11.2.0.3: install patch 14144138
+
+  Database Version 11.2.0.4 before PSU 11.2.0.4.3 install patch 16360112
+
+  Database Version 12.1.0.2: install patch 21821302
+
+- Performance improvements
+
+  Database version 11.2.0.3: install patch 14468919 for better block checking efficiency
+
+ 
+
+Oracle Transparent Data Encryption Troubleshooting and Debugging
+
+ 
+Note 317317.1   - 10gR2 How to Export/Import with Data Encrypted with Transparent Data Encryption (TDE)
+Note 317319.1   -  10g R2 New Feature TDE (Transparent Data Encryption) Usage with OLS
+Note.445147.1   -  How To Generate A New Master Encryption Key for the TDE 
+Note 1152787.1 - How To Change The Tablespace Encryption Key? 
+Note 1062413.1 - How to fulfill PCI-DSS requirement 3.6.6 ?
+Note 1517187.1 - How are the requirements of 3.6.7 of PCIDSSv2.0 satisfied by TDE?
+Note 602280.1   - Column Level VPD on Indexed Columns Can Lead to Slow Execution Plan (Full Table Scan Instead of Index Access) 
+Note 785600.1   - ORA-00600 [Ztsmstore Failed] When Valid Wallets are Opened or Master Keys for TDE Are Created or Reset
+Note 843949.1   - Ora-00600 Internal Error Code, Arguments [Ztsmd Failed] After Migrating to 11.1.0.6 
+Note 790476.1   - Sql*loader Table Load With Tde Encryption Takes a Very Long Time 
+Note 1118558.1 - Query on TDE Encrypted Tables Fails with Ora-00600 [Ztsmdwl Failed] 
+Note 988022.1   - Deleting and Recreating the Wallet in 11.2 Results in ORA-28374 
+Note 1197943.1 - Wallet Status in TDE Recovery Scenarios (Including Data Guard/Standby Configuration) 
+Note 958729.1   - ORA-07445 [kzthsmgmkid ] Error Thrown On Encrypting Columns Using A Hsm Wallet 
+Note 394539.1   - ORA-28353 - Cannot set the encryption key password for TDE 
+Note 880574.1   - 404 Not found Error When Using Tablespace Encryption Page In Gridcontrol 
+Note 1073237.1 - Database With Encrypted Tablespaces Cannot Be Opened If The TDE Wallet Is Not Accessible 
+Note 984700.1   - Error Logging For DMLs Executed On Encrypted Tables Fails With ORA-38906 
+Note 975357.1   - ORA-960 When Running A Query Against A Table Protected By TDE 
+
+
+
+Note 757936.1   - Ora-28374 Typed Master Key Not Found In Wallet 
+Note 459801.1   - Getting Ora-28336 When Doing a DATAPUMP Export as User SYS With TDE Encrypted Tables 
+Note 415247.1   - DBA_ENCRYPTED_COLUMNS Show Columns That Do Not Exist In The Table
+
+Note 454980.1   - Best Practices For Having Indexes On Encrypted Columns Using TDE in 10gR2 
+Note 389958.1   - Using Transparent Data Encryption In An Oracle Dataguard Config in 10gR2 
+Note 416526.1   - How to Avoid Performance Overhead Associated With Certificate Based TDE Encryption 
+Note 387091.1   - How To Configure X509.3 Certificate As Encryption Key To Use With Tde 
+Note 1058930.1  - Integration Oracle 11gR1 on Sun Solaris 10 SPARC 64-bit with Safenet Luna SA HSM
+Note 1302664.1  - TDE Operations Are Failing With Ora-28367 / Ora-28367 After Manipulating The Wallet With OWM or orapki
+Note 1301365.1  - Known TDE Wallet Issues
+Note 1240824.1 - The Impact of the Sqlnet Settings on Database Security (sqlnet.ora Security Parameters and Wallet Location)
+Note 1320239.1 How to Create a Wallet to Use with TDE with PKI Key Pairs 
+Note 1365021.1 - How To Benefit From Hardware Acceleration for Tablespace Encryption?
+Note 2148746.1 - Enable Transparent Data Encryption (TDE) Using Fast Offline Conversion in 11.2.0.4 and 12.1.0.2
+
+Note 1964158.1 - Getting Started With Transparent Data Encryption in Oracle 12c (non pluggable database)
+Note 2193264.1 - How To Manage A TDE Wallet Created In ASM
+
+ 
+
+ 
+
+Oracle Transparent Data Encryption Best Practices
+
+The following document will make you aware of Oracle TDE Best Practices:
+
+http://www.oracle.com/technetwork/database/focus-areas/security/twp-transparent-data-encryption-bes-130696.pdf
+
+
+The following applications are certified with TDE: 
+
+E-Business Suite
+JD Edwards
+PeopleSoft 
+Siebel
+SAP - See SAP Note 974876
+
+Oracle Transparent Data Encryption Documentation
+
+
+The Oracle Transparent Data Encryption documentation can be accessed from the following URLs:
+
+Oracle TDE 10gR2
+Oracle TDE 11gR1
+Oracle TDE 11gR2
+
+Oracle Transparent Data Encryption Licensing
+
+
+The Oracle Advanced Security Option license covers the usage of TDE. Oracle Advanced Security Option is available for Oracle RDBMS Enterprise Edition.
+
+Using My Oracle Support Effectively
+
+Note 868955.1 - My Oracle Support Health Checks Catalog 
+Note 166650.1 - Working Effectively With Global Customer Support 
+Note 199389.1 - Escalating Service Requests with Oracle Support Services
+
+REFERENCES
+
+NOTE:389958.1 - Using Transparent Data Encryption In An Oracle Dataguard Config in 10gR2
+NOTE:785600.1 - ORA-00600 [Ztsmstore Failed] When Valid Wallets are Opened or Master Keys for TDE Are Created or Reset
+NOTE:848298.1 - How To Encrypt/Rekey a Table for TDE and Avoid the Associated Performance Problems and Locks?
+NOTE:317319.1 - 10g R2 New Feature TDE (Transparent Data Encryption) Usage with OLS
+NOTE:1282980.1 - Is It Possible To Migrate The Master Keys From A Software Wallet To A HSM And Viceversa ?
+NOTE:1152787.1 - How To Change The Tablespace Encryption Key?
+NOTE:317317.1 - How to Export/Import with Data Encrypted with Transparent Data Encryption (TDE)
+
+NOTE:1058930.1 - Integration Oracle 11gR1 on Sun Solaris 10 SPARC 64-bit with Safenet Luna SA HSM
+
+
+NOTE:1301365.1 - Known TDE Wallet Issues
+NOTE:166650.1 - Working Effectively With Oracle Support - Best Practices
+NOTE:1365021.1 - How To Benefit From Hardware Acceleration for Tablespace Encryption?
+NOTE:436876.1 - IMPDP Fails With ORA-39180: "Unable To Encrypt ENCRYPTION_PASSWORD" After Switching TDE Wallet
+NOTE:1320239.1 - How to Create a Wallet to Use with TDE with PKI Key Pairs
+NOTE:317311.1 - Transparent Data Encryption (TDE)
+NOTE:602280.1 - Column Level VPD on Indexed Columns Can Lead to Slow Execution Plan (Full Table Scan Instead of Index Access)
+NOTE:445147.1 - How To Generate A New Master Encryption Key for the TDE
+NOTE:1062413.1 - How to fulfill PCI-DSS requirement 3.6.6 ?
+
+NOTE:394539.1 - ORA-28353 - Cannot Set The Encryption Key Password for TDE
+
+NOTE:415247.1 - DBA_ENCRYPTED_COLUMNS Show Columns That Do Not Exist In The Table
+NOTE:790476.1 - Sql*loader Table Load With Tde Encryption Takes a Very Long Time
+NOTE:757936.1 - Ora-28374: Typed Master Key Not Found In Wallet
+NOTE:728292.1 - Known Performance Issues When Using TDE and Indexes on the Encrypted Columns
+NOTE:1251597.1 - Quick TDE Setup and FAQ
+NOTE:1118558.1 - Query on TDE Encrypted Tables Fails with Ora-00600 [Ztsmdwl Failed]
+NOTE:975357.1 - ORA-960 When Running A Query Against A Table Protected By TDE
+NOTE:1584144.1 - Master Note for Oracle Advanced Security TDE "OneCommand"
+
+NOTE:416526.1 - How to Avoid Performance Overhead Associated With Certificate Based TDE Encryption
+NOTE:958729.1 - ORA-07445 [kzthsmgmkid ] Error Thrown On Encrypting Columns Using A Hsm Wallet
+NOTE:984700.1 - Error Logging For DMLs Executed On Encrypted Tables Fails With ORA-38906
+
+NOTE:1240824.1 - The Impact of the Sqlnet Settings on Database Security (sqlnet.ora Security Parameters and Wallet Location)
+NOTE:1073237.1 - Database With Encrypted Tablespaces Cannot Be Opened If The TDE Wallet Is Not Accessible
+NOTE:843949.1 - Ora-00600: Internal Error Code, Arguments: [Ztsmd Failed] After Migrating to 11.1.0.6
+NOTE:454980.1 - Best Practices For Having Indexes On Encrypted Columns Using TDE Column encryption.
+NOTE:988022.1 - Deleting and Recreating the Wallet in 11.2 Results in ORA-28374
+NOTE:1197943.1 - Wallet Status in TDE Recovery Scenarios (Including Data Guard/Standby Configuration)
+NOTE:868955.1 - Get Proactive - Oracle Health Checks - Installation, troubleshooting, catalog and more.
+NOTE:387091.1 - How To Configure X509.3 Certificate As Encryption Key To Use With Tde
+NOTE:880574.1 - 404 Not found Error When Using Tablespace Encryption Page In Gridcontrol
+NOTE:432776.1 - 11g New Feature : Transparent Data Encryption at Tablespace Level
+NOTE:459801.1 - Getting Ora-28336 When Doing a DATAPUMP Export as User SYS With TDE Encrypted Tables
