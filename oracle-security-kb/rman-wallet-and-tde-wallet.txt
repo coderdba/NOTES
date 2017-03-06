@@ -1,0 +1,299 @@
+http://www.oradba.ch/2014/07/secure-external-password-store-for-rman/
+
+WALLETS FOR RMAN AUTOLOGON AND TDE - TWO SEPARATE WALLETS
+NOTE: Copy-pasted from site http://www.oradba.ch/2014/07/secure-external-password-store-for-rman/
+
+Secure External Password Store for RMAN
+The draft version of this blog post is lying around for some time in my inbox. I’ve never found time to finish it. But due to a task in a project it’s about time to finish my notes on Oracle’s Secure External Password Store. Ludovico, a work colleague has already written a blog post about Removing passwords from Oracle scripts earlier this year. I would like to complement the topic and discuss a few points specifically in connection with RMAN Backup’s and a central RMAN catalog. The goal remains the same, getting rid of passwords with a minimal operational effort. The key element is the Oracle Wallet and the Secure External Password Store functionality.
+
+Oracle Wallet
+
+The Oracle Wallet is a PKCS#12 container used to store different kinds authentication and encryption keys. The wallet can thereby be used to store one or multiple of the following information:
+
+Credentials for PKI authentication to the Oracle Database
+Certificates for network encryption (SSL/TLS)
+Oracle Advanced Security transparent data encryption (TDE) master encryption keys
+Passwords for Oracle Database Secure External Password Store
+Depending on the application there is one or more wallet. A wallet for an oracle client, a global wallet on the server, one wallet per database instance, a wallet for a database instance acting as a client or a wallet containing all information at once. It doesn’t really get easier when everyone is talking about Oracle Wallets without specifying what they are used for. For this reason, it is advisable to use different Oracle wallets for the various application cases. But more on that later. Oracle Secure External Password Store uses a client-side Oracle Wallet to store the password credentials.
+
+The Secure External Password Store
+
+Concept
+
+With Secure External Password Store, Oracle stores the database credentials, ie username and password, securely in an Oracle Wallet. When initiating a database connection Oracle accesses the wallet and reads the credentials depending on the connect string. Since auto login is configured, no password is required to open the wallet and read the credentials. A password is only required to add, change, or delete credentials in the wallet.
+
+The connect string is unique in the Wallet. Only one credential can be stored per connect string. Different credentials for the same database must be distinct by a different connect string.
+
+Configuration
+
+Create some directories for the SQLNet configuration and the wallet:
+
+mkdir -p /u00/app/oracle/admin/$ORACLE_SID/network
+mkdir -p /u00/app/oracle/admin/$ORACLE_SID/network/admin
+mkdir -p /u00/app/oracle/admin/$ORACLE_SID/network/wallet
+Define a TNS Alias in tnsnames.ora file for the catalog conection:
+
+vi /u00/app/oracle/admin/$ORACLE_SID/network/admin/tnsnames.ora
+
+CATALOG =
+ (DESCRIPTION =
+   (ADDRESS = (PROTOCOL = TCP)(HOST = urania1)(PORT = 1521))
+     (CONNECT_DATA =
+       (SERVER = DEDICATED)
+    (SERVICE_NAME = TCAT01)
+  )
+ )
+Create a wallet for Secure External Password Store:
+
+mkstore -wrl /u00/app/oracle/admin/$ORACLE_SID/network/wallet -create
+Enter password:         Manager01
+Enter password again:   Manager01
+Create database connection credentials in the wallet:
+
+mkstore -wrl /u00/app/oracle/admin/$ORACLE_SID/network/wallet -createCredential catalog rman manager
+Oracle Secret Store Tool : Version 11.2.0.3.0 - Production
+Copyright (c) 2004, 2011, Oracle and/or its affiliates. All rights reserved.
+
+Enter wallet password:            
+   
+Create credential oracle.security.client.connect_string1
+Modify the sqlnet.ora and add the WALLET_LOCATION and SQLNET.WALLET_OVERRIDE parameter to start using the Secure External Password Store:
+
+vi /u00/app/oracle/admin/$ORACLE_SID/network/admin/sqlnet.ora
+
+WALLET_LOCATION = 
+   (SOURCE = 
+      (METHOD = FILE) 
+      (METHOD_DATA = (DIRECTORY = /u00/app/oracle/admin/$ORACLE_SID/network/wallet))
+)
+SQLNET.WALLET_OVERRIDE = TRUE
+Use
+
+Since we put the tnsnames.ora, sqlnet.ora and the wallet in an alternativ directories we have to set TNS_ADMIN before being able to use it.
+
+export TNS_ADMIN=/u00/app/oracle/admin/$ORACLE_SID/network/admin
+
+oracle@urania:~/ [TDB11] sqlplus /@catalog
+
+SQL*Plus: Release 11.2.0.3.0 Production on Mon Jul 14 22:13:30 2014
+
+Copyright (c) 1982, 2011, Oracle.  All rights reserved.
+
+Connected to:
+Oracle Database 11g Enterprise Edition Release 11.2.0.3.0 - 64bit Production
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+
+SQL> show user
+USER is "RMAN"
+
+oracle@urania:~/ [TDB11] rman
+
+Recovery Manager: Release 11.2.0.3.0 - Production on Mon Jul 14 22:13:09 2014
+
+Copyright (c) 1982, 2011, Oracle and/or its affiliates.  All rights reserved.
+
+RMAN> connect catalog /@catalog
+
+connected to recovery catalog database
+
+RMAN>
+Maintenance
+
+The mkstore utility provide a bunch of commands to maintain the credentials within a wallet. Below you find some examples. More are available in MOS Note 340559.1.
+
+Liste the contents of the external password store:
+
+oracle@urania:~/ [TDB11] mkstore -wrl /u00/app/oracle/admin/$ORACLE_SID/network/wallet -listCredential
+Oracle Secret Store Tool : Version 11.2.0.3.0 - Production
+Copyright (c) 2004, 2011, Oracle and/or its affiliates. All rights reserved.
+
+Enter wallet password:            
+
+List credential (index: connect_string username)
+1: catalog rman
+Modifying database login credentials in a wallet :
+
+oracle@urania:~/ [TDB11] mkstore -wrl /u00/app/oracle/admin/$ORACLE_SID/network/wallet -modifyCredential CATALOG rman manager
+Oracle Secret Store Tool : Version 11.2.0.3.0 - Production
+Copyright (c) 2004, 2011, Oracle and/or its affiliates. All rights reserved.
+
+Enter wallet password:            
+
+Modify credential 
+Modify 1
+A few use and special cases
+
+There are a whole lot of cases where you can not save or share passwords. A few examples:
+
+General applications where you want to authenticate “password free”, without setting up a PKI infrastructure.
+Avoid RMAN Catalog passwords in backup scripts.
+Avoid SYSDBA / SYSDG account passwords in an Oracle DataGuard environment.
+Regular DBA batch jobs scheduled by cron. Remove passwords in shell and SQL scripts.
+Simplify end-user experience. Use Secure External Password Store to save passwords instead of saving them in TOAD or SQL Developer.
+Configure Application and Web server to use Secure External Password Store rather than save and maintain database credentials in the Application.
+Application batch jobs scheduled by cron. Remove passwords in shell and SQL scripts.
+Multiple RMAN Catalog Schemas
+
+In my example above I did use the user RMAN to connect to the catalog. To be honest this user does only have a CREATE SESSION privilege. There are two RMAN Catalog Schema in my Catalog Database, RMAN11203 for 11.2.0.3.0 respectively RMAN12101 for 12.1.0.1.0.
+
+SQL> SELECT * FROM RMAN11203.RCVER;
+
+VERSION
+------------
+11.02.00.03
+
+SQL> SELECT * FROM RMAN12101.RCVER;
+
+VERSION
+------------
+12.01.00.01
+Instead of adding each credential for any RMAN Catalog to the wallet one can use the proxy authentication. In this case you just have to grant the appropriate privileges to the user RMAN. Instead of distributing all RMAN catalog credentials in each Oracle Wallet, you need to maintain only one account and additionally a few proxy privileges in the RMAN catalog. This does of course also work for other applications.
+
+SQL> ALTER USER RMAN11203 GRANT CONNECT through RMAN;
+
+USER altered.
+
+SQL> ALTER USER RMAN12101 GRANT CONNECT through RMAN;
+
+USER altered.
+As you can see below, it is now possible to specify the user or schema in the connect string. The authentication is done as user RMAN. Credentials are read from the Secure External Password Store.
+
+export TNS_ADMIN=/u00/app/oracle/admin/$ORACLE_SID/network/admin
+
+oracle@urania:~/ [TDB11] sqlplus [RMAN12101]/@catalog
+
+SQL*Plus: Release 11.2.0.3.0 Production on Mon Jul 14 22:13:30 2014
+
+Copyright (c) 1982, 2011, Oracle.  All rights reserved.
+
+Connected to:
+
+Oracle Database 11g Enterprise Edition Release 11.2.0.3.0 - 64bit Production
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+
+SQL> show user
+USER is "RMAN12101"
+
+SQL> SELECT SYS_CONTEXT ('USERENV','SESSION_USER') FROM DUAL;
+
+SYS_CONTEXT('USERENV','SESSION_USER')
+------------------------------------------------
+RMAN12101
+
+SQL> SELECT SYS_CONTEXT ('USERENV','PROXY_USER') FROM DUAL;
+
+SYS_CONTEXT('USERENV','PROXY_USER')
+-------------------------------------------------
+RMAN
+
+oracle@urania:~/ [TDB11] rman
+
+Recovery Manager: Release 11.2.0.3.0 - Production on Mon Jul 14 22:13:09 2014
+
+Copyright (c) 1982, 2011, Oracle and/or its affiliates.  All rights reserved.
+
+RMAN> connect catalog ¨[RMAN12101]/@catalog
+
+connected to recovery catalog database
+
+RMAN>
+Data dictionary view about all proxy connections.
+
+col proxy FOR a6
+col client FOR a10
+col ROLE FOR a5
+SET linesize 120
+SELECT * FROM DBA_PROXIES;
+
+PROXY CLIENT    AUT AUTHORIZATION_CONSTRAINT            ROLE PROXY_AUT
+----- --------- --- ----------------------------------- ---- ---------
+RMAN  RMAN11203 NO  PROXY MAY ACTIVATE ALL CLIENT ROLES      DATABASE
+RMAN  RMAN12101 NO  PROXY MAY ACTIVATE ALL CLIENT ROLES      DATABASE
+Oracle Transparent Data Encryption
+
+Oracle Transparent Data Encryption use as well an Oracle Wallet to store the TDE master keys. Unlike the Oracle wallet used for SSL for encryption or Secure External Password Store, this wallet is defined in the sqlnet.ora with the parameters ENCRYPTION_WALLET_LOCATION. But if the parameter ENCRYPTION_WALLET_LOCATION is not set Oracle will use WALLET_LOCATION to locate the wallet used for TDE. If both parameter are omitted Oracle will fallback to the default location. If the $ORACLE_BASE is set, this is “$ORACLE_BASE/admin/DB_UNIQUE_NAME/wallet”, otherwise it is “$ORACLE_HOME/admin/DB_UNIQUE_NAME/wallet”. In general it is a good practice to set both parameters in sqlnet.ora.
+
+ENCRYPTION_WALLET_LOCATION = 
+   (SOURCE = 
+      (METHOD = FILE) 
+      (METHOD_DATA = (DIRECTORY = /u00/app/oracle/admin/$ORACLE_SID/wallet))
+)
+
+WALLET_LOCATION = 
+   (SOURCE = 
+      (METHOD = FILE) 
+      (METHOD_DATA = (DIRECTORY = /u00/app/oracle/local/tvdbackup/network/wallet))
+)
+SQLNET.WALLET_OVERRIDE = TRUE
+There are the following combinations depending on how you use TDE together with the External Password Store.:
+
+If TDE is not used you only have to set WALLET_LOCATION in sqlnet.ora used by RMAN.
+If TDE is used for tablespace or column encryption, you have to set at least ENCRYPTION_WALLET_LOCATION in sqlnet.ora used by the database. The parameter WALLET_LOCATION is only required in sqlnet.ora used by RMAN. But if RMAN is used to open the database (eg. offline backup, restore etc), it will also require a correct ENCRYPTION_WALLET_LOCATION parameter. Otherwise the database respectively the encrypted tablespaces cannot be opened.
+If TDE is used for transparent backup encryption, you will need in any case a correct setting of ENCRYPTION_WALLET_LOCATION and WALLET_LOCATION in sqlnet.ora used by RMAN.
+See also MOS Note 1228046.1 Master Note For Transparent Data Encryption ( TDE ) and 1504783.1 Setting ENCRYPTION_WALLET_LOCATION For Wallets Of Multiple Instances Sharing The Same Oracle Home
+
+Oracle SSL Authentication
+
+A further special case is when an application uses SSL for encryption. Setting the sqlnet.ora parameter, SQLNET.AUTHENTICATION_SERVICES, specifies SSL and an SSL wallet is created. If this application wants to use secret store credentials to authenticate to databases (instead of the SSL certificate), then those credentials must be stored in the SSL wallet. After SSL authentication, if SQLNET.WALLET_OVERRIDE = TRUE, then the user names and passwords from the wallet are used to authenticate. If SQLNET.WALLET_OVERRIDE = FALSE the SSL certificate is used.
+
+Possible solutions or workarounds:
+
+Store the credentials in the SSL wallet and set SQLNET.WALLET_OVERRIDE accordingly.
+Define a separate TNS_ADMIN and a sqlnet.ora for the user, application respectively OS environment, which wants to use secret store credentials.
+See also MOS Note 340559.1 Using The Secure External Password Store.
+
+Oracle Instant Client
+
+Although the Oracle Instant Client does not contain tools to create or modify Oracle Wallets, it is able to access the wallet and read the required credentials. The wallet can be prepared on the database server and copied to the instant client. Thus no credential have to be stored in an application. But be aware, anybody who can access the wallet can also log into the database. The access to the wallet must be limited with the corresponding OS access privileges. See as well MOS Note 1441745.1 Using a Secure External Password Store with the JDBC Thin Driver.
+
+Wallet deploy option
+
+Depending on the use of the Oracle wallets, there are different ways to deploy them. In general it is a good practice to define a wallet for each database, regardless of whether TDE is used or not. The wallet location is defined with the sqlnet.ora parameter ENCRYPTION_WALLET_LOCATION. In addition, a generic wallet can be defined for Secure External Password Store with sqlnet.ora parameter WALLET_LOCATION. Alternatively you can create a specific wallet, which is only used by RMAN to lookup database credentials. This specific wallet is part of the RMAN backup scripts and will be activeted by setting an alternative TNS_ADMIN when executing the backup scripts. Such a wallet could be distributed with the backup scripts on all servers. Various RMAN catalog schema can easily be accessed by using proxy privileges.
+
+A possible scenario with Trivadis TVD-Backup™:
+
+Configure default sqlnet.ora. eg. set ENCRYPTION_WALLET_LOCATION to /u00/app/oracle/admin/$ORACLE_SID/wallet and WALLET_LOCATION to /u00/app/oracle/network/wallet
+Use the instance specific wallet in /u00/app/oracle/admin/$ORACLE_SID/wallet for TDE
+Use the generic wallet in /u00/app/oracle/network/wallet for SSL, Password Store etc
+Configure your backup scripts eg. TVDBACKUP_BASE=/u00/app/oracle/local/tvdbackup
+Create a dedicated network and wallet directory for your backup tool eg. $TVDBACKUP_BASE/network/admin respectively $TVDBACKUP_BASE/network/wallet
+Set RMAN specific TNS_ADMIN before executing the backup script eg. export TNS_ADMIN=$TVDBACKUP_BASE/network; rman_exec.ksh -t TDB11 -s bck_inc0
+Deploy your backup script.
+Licensing
+
+The licensing of Oracle Secure External Password Store is at first sight somewhat obscure. Depending on which version of Oracle Documentation or Metalink Notes you’re reading, different kind of information are available. According to old documentation or Metalink Notes like 465460.1, 1084132.1 or 1628809.1 Oracle Secure External Password Store is limited to Oracle Enterprise Edition. This limitation has been removed from all available online Oracle documentation. Secure External Password Store can be used on all production editions. Therefore do not hesitate to use it. 🙂
+
+Quote from MOS Note 340559.1 Using The Secure External Password Store:
+
+The feature Secure External Password Store can be used without any restriction in all product editions, you do not require a license for the Advanced Security Option (ASO).
+Conclusion
+
+Oracle Secure External Password Store is a simple and secure solution to increase database security and to avoid clear text password in any kind of scripts or applications. Although Secure External Password Store is available for several Oracle releases, it is actually far too little used. The biggest challenge in connection with Oracle Secure external password store is the uniform distribution and configuration of sqlnet.ora. This blog post should give some ideas how Oracle Secure External Password Store could be used in conjunction with RMAN. Whether on the database server, application server or Oracle client, saving passwords is a thing of the past.
+
+References
+
+Although I haven’t seen many customers using Oracle Secure External Password Store, there are a lot of information, white papers and Metalink notes on this topic available.
+
+Using The Secure External Password Store [340559.1]
+Using a Secure External Password Store with the JDBC Thin Driver [1441745.1]
+How To Configure The Secure External Password Store To Allow The Connection To RMAN Catalog? [1383938.1]
+How To Hide Usernames And Passwords In RMAN Logfile [246192.1]
+Oracle White Paper November 2008 Secure External Password Store
+How To Change The Wallet Password For A Secure External Password Store? [557382.1]
+How to Use an External Password Store with the OCI JDBC Driver [403744.1]
+The Impact of the Sqlnet Settings on Database Security (sqlnet.ora Security Parameters and Wallet Location) [1240824.1]
+Ora-12534 With Secure External Password Store (Wallet) [1189272.1]
+Setting ENCRYPTION_WALLET_LOCATION For Wallets Of Multiple Instances Sharing The Same Oracle Home [1504783.1]
+Master Note For Transparent Data Encryption ( TDE ) [1228046.1]
+Oracle® Database Security Guide 10g Release 2 (10.2) 
+Secure External Password Store
+Oracle® Database Security Guide 11g Release 2 (11.2) 
+Managing the Secure External Password Store for Password Credentials
+Oracle® Database Security Guide 12c Release 1 (12.1) 
+Managing the Secure External Password Store for Password Credentials
+Oracle® Database Licensing Information 12c Release 1 (12.1) Oracle Wallet
+Differences Between Enterprise, Standard and Standard One Editions on Oracle 11.2 [1084132.1]
+ORACLE-BASE Article Secure External Password Store
+DBA survival BLOG Removing passwords from Oracle scripts: Wallets and Proxy Users
+Trivadis AG Unsichtbare Passwörter – Oracle Wallet sei Dank
+Oracle Deutschsprachige DBA Community Sicher einloggen ohne Benutzername und Passwort
