@@ -1,0 +1,88 @@
+Ora-28374: Typed Master Key Not Found In Wallet (Doc ID 757936.1)	To BottomTo Bottom	
+
+In this Document
+Symptoms
+Changes
+Cause
+Solution
+References
+APPLIES TO:
+
+Oracle Database - Enterprise Edition - Version 11.1.0.7 to 11.1.0.7 [Release 11.1]
+Information in this document applies to any platform.
+Checked for relevance on 14-Feb-2014
+
+
+SYMPTOMS
+
+You are trying to create an encrypted tablespace and you get the following error:
+
+CREATE TABLESPACE Tablespace_Name DATAFILE
+*
+ERROR at line 1:
+ORA-28374: typed master key not found in wallet
+ 
+
+CHANGES
+
+- A previously encrypted tablespace was dropped.
+- A previously existing encryption wallet was also removed.
+- A new encryption wallet was created.
+
+To verify this situation use the following query:
+
+select ts#, name, decode(online$,1,'online',2,'offline',3,'dropped') status,
+decode(bitand(flags,16384),16384,'YES') encrypted from ts$;
+
+Check if you have dropped tablespaces that were also encrypted.
+
+CAUSE
+
+This is the particular scenario that will cause an encryption wallet to be created without the master key for tablespace encryption, typically the size of the associated wallet file ewallet.p12 will be smaller than the original wallet.
+
+The reason for the issue with this particular sequence of events is as follows:
+
+- When the encrypted tablespace is dropped, its entry remains in TS$.
+- The TS$ table has a flags column that has a bit for TS encryption (16384).
+- If the bit is set for any tablespace, removed or not, and you create a new wallet it will not generate the TS master key inside the wallet.
+
+SOLUTION
+
+ONLY apply the following solution when the above scenario matches the history of the problem, basically what it allows you to do is to start all over again. Also it is very important that when you already have specified column encryption for some tables in other tablespaces using the bad wallet, you will first have to decrypt that data because we will need to (re)move the current encryption wallet.
+
+1.) Check for any encrypted columns using the current wallet:
+
+select owner,table_name, column_name from dba_encrypted_columns;
+
+Only move to step 2 when no rows are returned, otherwise decrypt the data first.
+
+2.) Close the encryption wallet:
+
+alter system set wallet close;
+
+3.) Backup the wallet file ewallet.p12 to a secure location and remove it from the current location specified in sqlnet.ora
+
+4.) Clear the encryption flags of the already removed tablespaces as follows:
+
+update TS$ set flags = flags - 16384 where online$ = 3 and bitand(flags,16384) = 16384 ;
+commit;
+
+5.) Create a new encryption wallet :
+
+ALTER SYSTEM SET ENCRYPTION KEY IDENTIFIED BY "&wallet_password";
+
+6.) You should now be able to create your encrypted tablespace, for example:
+
+CREATE TABLESPACE &tablespace_name DATAFILE SIZE 200M
+ENCRYPTION DEFAULT STORAGE (ENCRYPT);
+
+Comment: please note the scope of this document is 11gR1 (11.1.0.7) only, if you delete the
+wallet in 11gR2 you can get the same error ORA-28374 and you may be hitting bug 8682102.
+
+REFERENCES
+
+BUG:5407584 - TABLESPACES STILL EXIST IN TABLE SYS.TS$ EVEN AFTER THEY ARE DROPPED
+BUG:7582126 - CREATE ENCRYPTED TABLESPACE FAILS WITH:ORA-28374
+NOTE:207959.1 - All About Security: User, Privilege, Role, SYSDBA, O/S Authentication, Audit, Encryption, OLS, Database Vault, Audit Vault
+NOTE:317311.1 - Transparent Data Encryption (TDE)
+NOTE:432776.1 - 11g New Feature : Transparent Data Encryption at Tablespace Level
