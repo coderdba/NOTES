@@ -1,0 +1,289 @@
+11g New Feature : Transparent Data Encryption at Tablespace Level (Doc ID 432776.1)	To BottomTo Bottom	
+
+In this Document
+Purpose
+Scope
+Details
+References
+APPLIES TO:
+
+Advanced Networking Option - Version 11.1.0.6 to 11.2.0.3 [Release 11.1 to 11.2]
+Information in this document applies to any platform.
+Checked for relevance on 03-Jan-2014
+
+
+PURPOSE
+
+In 10gR2 version, Transparent Data Encryption was first introduced at the table column level.
+
+The 11g version introduces an enhancement to the 10gR2 TDE :  Transparent Data Encryption is now available at Tablespace level. You can encrypt any permanent tablespace to protect sensitive data.
+
+This means that creating a segment in an encrypted tablespace encrypts all data of the segments stored in the tablespace: all segment types are supported for encryption, including tables, clusters, indexes, LOBs, table and index partitions, and so on.
+
+Tablespace encryption is completely transparent to applications, so no application modification is necessary.
+
+SCOPE
+
+This bulletin explains this new feature for all DBAs and developers requesting greater user usability of encryption. This document assumes familiarity with 10gR2 TDE as discussed in note 317311.1 .
+
+Please also check the Transparent Data Encryption Frequently Asked Questions for more information about tablespace level Encryption such as working with an HSM device etc.
+
+DETAILS
+
+ 1. To be able to create an encrypted tablespace, the wallet needs to be created 
+    and opened:      
+SQL> alter system set wallet open identified by "welcome1"; 
+System altered.
+ 2. Create an encrypted tablespace :
+
+SQL> create tablespace tde_tbs  ENCRYPTION 
+default storage (ENCRYPT) 
+datafile '&path/tde01.dbf' size 2M; 
+
+Tablespace created.
+The keyword ENCRYPTION specifies the encryption property of the tablespace 
+by using the 'USING encryption_algorithm' but not actually encrypting the 
+tablespace. Only the keyword ENCRYPT in the storage clause would actually encrypt 
+the tablespace.
+
+
+AES128 is the default encryption algorithm when none is specified.        
+3. Create an encrypted tablespace using another encryption algorithm than the default one:
+
+ 
+SQL> create tablespace tde_tbs2 ENCRYPTION  USING '3DES168' 
+default storage (ENCRYPT) 
+datafile '&path/tde02.dbf' size 2M; 
+
+Tablespace created.
+AES128, AES192, AES256 and 3DES168 are the 4 available algorithms.
+4. To check that a tablespace is an encrypted one:
+
+SQL> select tablespace_name, encrypted from dba_tablespaces  
+where tablespace_name like 'TDE%'; 
+
+TABLESPACE_NAME ENC 
+------------------------------   --- 
+TDE_TBS                        YES 
+TDE_TBS2                       YES
+To know which encryption algorithm each of them use:
+
+ 
+SQL> select * from V$ENCRYPTED_TABLESPACES; 
+
+TS# ENCRYPT ENC 
+---------- ------- --- 
+7 AES128 YES 
+8 3DES168 YES
+5. Create segments in the encrypted tablespace :
+SQL> create table tde1 (c number) tablespace tde_tbs; 
+Table created. 
+
+SQL> insert into tde1 (c) values(1);
+1 row created.
+
+
+SQL> select * from tde1; 
+
+C 
+---------- 
+1
+6. Moving segments in and out of encrypted tablespaces :
+
+6.1 Move the table to an non-encrypted tablespace:
+SQL> alter table tde1 move tablespace users; 
+Table altered. 
+
+SQL> select * from tde1; 
+
+C 
+---------- 
+1
+  
+6.2  Close the wallet :
+SQL> alter system set wallet close; 
+System altered. 
+
+SQL> select * from tde1; 
+
+C 
+---------- 
+1
+ 
+As the table is now in a non-encrypted tablespace, the table data is decrypted 
+and hence readable, even with the wallet being closed.
+
+6.3 Try to move the table back to an encrypted tablespace: 
+SQL> alter table tde1 move tablespace TDE_TBS; 
+alter table tde1 move tablespace TDE_TBS 
+* 
+ERROR at line 1: 
+ORA-28365: wallet is not open
+  
+The wallet needs to be opened to reencrypt the data of the table in order to be 
+stored in an encrypted type tablespace:
+
+
+6.4 Reopen the wallet :
+ 
+SQL> alter system set wallet open identified by "welcome1";  
+System altered. 
+
+
+SQL> alter table tde1 move tablespace TDE_TBS; 
+Table altered.
+7. SYSTEM, SYSAUX, UNDO, TEMP tablespaces  cannot use tablespace encryption :   
+The following are examples of typical error messages when you try it anyway:
+ 
+SQL> create undo tablespace TDE_UNDO ENCRYPTION USING '3DES168' 
+default storage (ENCRYPT) 
+datafile '/amer/rdbms/32bit/app/oracle/oradata/AMa111U4/tdeundo01.dbf' 
+size 2M; 
+
+ERROR at line 1: 
+ORA-30024: Invalid specification for CREATE UNDO TABLESPACE
+ 
+SQL> create temporary tablespace TDE_TEMP ENCRYPTION USING '3DES168' 
+default storage (ENCRYPT) 
+tempfile '/amer/rdbms/32bit/app/oracle/oradata/AMa111U4/tdetemp01.dbf' 
+size 2M; 
+
+create temporary tablespace TDE_TEMP ENCRYPTION USING '3DES168' 
+* 
+ERROR at line 1: 
+ORA-25139: invalid option for CREATE TEMPORARY TABLESPACE
+8. Export / import encrypted tablespaces' segments :
+
+8.1 Exp and imp utilities
+
+8.1.1 Exp utility is not supported with encryption (as it was already the case in 10gR2)   
+ 
+$ exp system/manager tables='SCOTT.TDE1'
+
+Export: Release 11.1.0.6.0 - Production on Fri Sep 21 17:10:16 2007
+
+Copyright (c) 1982, 2007, Oracle.  All rights reserved.
+
+
+Connected to: Oracle Database 11g Enterprise Edition Release 11.1.0.6.0 - Production
+With the Partitioning, Oracle Label Security and Real Application Testing options
+Export done in US7ASCII character set and AL16UTF16 NCHAR character set
+server uses AL32UTF8 character set (possible charset conversion)
+
+About to export specified tables via Conventional Path ...
+Current user changed to SCOTT
+EXP-00111: Table TDE1 resides in an Encrypted Tablespace TDE_TBS and will not be exported
+Export terminated successfully with warnings.
+ 
+8.1.2 Imp utility is supported with encryption.
+
+   1) export (with exp utility) from non-encrypted tablespace of a database 
+      version 10g release 2 (10.2) or earlier.
+   2) import (with imp utility) into encrypted tablespace of 11g.
+
+
+8.2  Expdp and impdp utilities are supported with encryption (as it was already 
+the case in 10gR2) 
+$ expdp system/manager ENCRYPTION_MODE=password \
+> ENCRYPTION_PASSWORD=reencryptionpassword tablespaces=TDE_TBS
+
+Export: Release 11.1.0.6.0 - Production on Friday, 21 September, 2007 17:11:39
+
+Copyright (c) 2003, 2007, Oracle. All rights reserved.
+
+Connected to: Oracle Database 11g Enterprise Edition Release 11.1.0.6.0 - Production
+With the Partitioning, Oracle Label Security and Real Application Testing options
+Starting "SYSTEM"."SYS_EXPORT_TABLESPACE_01": system/******** ENCRYPTION_MODE=password encryption_password=******** tablespaces=TDE_TBS
+Estimate in progress using BLOCKS method...
+Processing object type TABLE_EXPORT/TABLE/TABLE_DATA
+Total estimation using BLOCKS method: 64 KB
+Processing object type TABLE_EXPORT/TABLE/TABLE
+. . exported "SCOTT"."TDE1" 5.015 KB 1 rows
+Master table "SYSTEM"."SYS_EXPORT_TABLESPACE_01" successfully loaded/unloaded
+******************************************************************************
+Dump file set for SYSTEM.SYS_EXPORT_TABLESPACE_01 is:
+/u01/app/oracle/admin/v1110/dpdump/expdat.dmp
+Job "SYSTEM"."SYS_EXPORT_TABLESPACE_01" successfully completed at 17:12:25
+9. Bitmap indexes become possible:
+
+SQL> create bitmap index scott.i_tde on scott.tde1(c); 
+Index created
+10. Range scan on indexes is now possible:
+
+SQL> create index scott.i_tde2 on scott.tde1(c); 
+Index created.
+
+SQL> select * from scott.tde1 where c between 1 and 3;
+1  ...
+
+3
+
+768 rows selected.
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 1398846556
+--------------------------------------------------------------------------
+| Id  | Operation        | Name  | Rows  | Bytes | Cost (%CPU)| Time     |
+--------------------------------------------------------------------------
+|   0 | SELECT STATEMENT |       |   768 |  9984 |     3   (0)| 00:00:01 |
+|*  1 |  INDEX RANGE SCAN| I_TDE |   768 |  9984 |     3   (0)| 00:00:01 |
+--------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+ 
+   1 - access("C">=1 AND "C"<=3)
+
+11. LOB datatype is now supported:
+
+SQL> create table scott.tde_lob  (c clob) tablespace tde_tbs;
+12. Transportable tablespaces is supported , but not cross-endianism.
+
+ 
+
+ 
+
+WARNING !!!
+
+This will work if and only if the target database is not using TDE already ( i.e. does not have it's own wallet ). The reason is that the keys stored in a wallet cannot be migrated to another wallet and at any given moment we can use only one wallet; if we use the wallet of the source will not have access to the keys needed for the encrypted data of the target and if we use the wallet of the target we will not be able to decrypt the data moved from the source.
+
+ 
+
+
+
+Before transporting an encrypted tablespace, copy the Oracle wallet manually to the destination database, unless the master encryption key is stored in a Hardware Security Module (HSM) device instead of an Oracle wallet. When copying the wallet, the wallet password remains the same in the destination database. However, it is recommended to change the password on the destination database so that each database has its own wallet password, this can be done using Oracle Wallet Manager.
+
+You cannot transport an encrypted tablespace to a database that already has an Oracle wallet for transparent data encryption. In this case, use Oracle Data Pump to export the tablespace’s schema objects and then import them to the destination database using expdp with ENCRYPTION_MODE=password and specify and encryption_password for reencryption in the dump file as in the example above.
+
+SQL> conn / as sysdba
+Connected.
+SQL> alter tablespace tde_tbs read only;
+Tablespace altered.
+$ expdp system/manager transport_tablespaces=TDE_TBS
+
+Export: Release 11.1.0.6.0 - Production on Friday, 21 September, 2007 17:17:56
+
+Copyright (c) 2003, 2007, Oracle. All rights reserved.
+
+Connected to: Oracle Database 11g Enterprise Edition Release 11.1.0.6.0 - Production
+With the Partitioning, Oracle Label Security and Real Application Testing options
+Starting "SYSTEM"."SYS_EXPORT_TRANSPORTABLE_01": system/******** transport_tablespaces=TDE_TBS
+Processing object type TRANSPORTABLE_EXPORT/PLUGTS_BLK
+Processing object type TRANSPORTABLE_EXPORT/TABLE
+Processing object type TRANSPORTABLE_EXPORT/POST_INSTANCE/PLUGTS_BLK
+Master table "SYSTEM"."SYS_EXPORT_TRANSPORTABLE_01" successfully loaded/unloaded
+******************************************************************************
+Dump file set for SYSTEM.SYS_EXPORT_TRANSPORTABLE_01 is:
+/u01/app/oracle/admin/v1110/dpdump/expdat.dmp
+******************************************************************************
+Datafiles required for transportable tablespace TDE_TBS:
++DG1/v1110/datafile/tde_tbs.268.633891853
+Job "SYSTEM"."SYS_EXPORT_TRANSPORTABLE_01" successfully completed at 17:18:25
+
+REFERENCES
+
+NOTE:317311.1 - Transparent Data Encryption (TDE)
+NOTE:317317.1 - 10gR2: How to Export/Import with Data Encrypted with Transparent Data Encryption (TDE)
+BUG:6379258 - 11G TABLESPACE ENCRYPTION ALLOWS ACCESS WITHOUT WALLET BEING OPEN
+BUG:7582126 - CREATE ENCRYPTED TABLESPACE FAILS WITH:ORA-28374
