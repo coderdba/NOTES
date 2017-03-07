@@ -46,9 +46,9 @@ ASMCMD> ls -l
 Type      Redund  Striped  Time             Sys  Name
 TEMPFILE  UNPROT  COARSE   JUN 16 22:00:00  Y    TEMP.554.881900747
 
-======================================
-CREATE PDB DESCRIPTION XML FILE
-======================================
+==================================================================
+CREATE PDB DESCRIPTION XML FILE - in the NON-CDB DATABASE
+==================================================================
 - Stop the non-cdb database
 $ srvctl stop database -d DB_UNIQUE_NAME
 
@@ -111,19 +111,12 @@ SQL> show pdbs
          3 CDB1PDB0                       READ WRITE NO
          4 PDB1                           MOUNTED    YES
 
-===============================================
-COMPLETE THE MIGRATION OF THE PDB
-===============================================
+==========================================================
+COMPLETE THE MIGRATION OF THE PDB - in the DESTINATION CDB
+==========================================================
 Run the sql noncdb_to_pdb.sql -- see script below
 
-NOTE: During the noncdb_to_pdb.sql run, status of PDB1 will show up as 'MIGRATE'
-SQL> show pdbs
-    CON_ID CON_NAME                       OPEN MODE  RESTRICTED
----------- ------------------------------ ---------- ----------
-         2 PDB$SEED                       READ ONLY  NO
-         3 CDB1PDB0                       READ WRITE NO
-         4 PDB1                           MIGRATE    YES
-         
+   
 #!/bin/ksh -x
 
 #exec > noncdb-to-pdb.out 2>> noncdb-to-pdb.out
@@ -148,7 +141,17 @@ select to_char(sysdate, 'DD-MON-YYYY HH24:MI:SS') from dual;
 
 EOF
 
-- PDB STATUS AT THE END
+- PDB STATUS DURING PROCESSING (in destination CDB)
+
+During the noncdb_to_pdb.sql run, status of PDB1 will show up as 'MIGRATE' and RESTRICTED-YES
+SQL> show pdbs
+    CON_ID CON_NAME                       OPEN MODE  RESTRICTED
+---------- ------------------------------ ---------- ----------
+         2 PDB$SEED                       READ ONLY  NO
+         3 CDB1PDB0                       READ WRITE NO
+         4 PDB1                           MIGRATE    YES
+
+- PDB STATUS IN-BETWEEN PROCESSING CHANGES A BIT (in destination CDB)
 SQL> show pdbs
     CON_ID CON_NAME                       OPEN MODE  RESTRICTED
 ---------- ------------------------------ ---------- ----------
