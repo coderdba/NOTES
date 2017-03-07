@@ -23,7 +23,11 @@ EOF
 # Create PDB in a CDB using the description file of remote DB
 sqlplus / as sysdba <<EOF
 
-  CREATE PLUGGABLE DATABASE pdb1 USING '/tmp/db12c.xml' COPY;
+-- TBD - WHAT IS TEMPFILE REUSE?
+  CREATE PLUGGABLE DATABASE pdb1 USING '/tmp/db12c.xml' COPY TEMPFILE REUSE;
+  -- CREATE PLUGGABLE DATABASE pdb1 USING '/tmp/db12c.xml' NOCOPY TEMPFILE REUSE;
+  -- CREATE PLUGGABLE DATABASE pdb1 USING '/tmp/db12c.xml' MOVE TEMPFILE REUSE;
+  
   -- The following may not be needed for ASM based DB's
   -- CREATE PLUGGABLE DATABASE pdb1 USING '/tmp/db12c.xml' COPY FILE_NAME_CONVERT = ('/u01/app/oracle/oradata/db12c/', '/u01/app/oracle/oradata/cdb1/pdb1/');
   
