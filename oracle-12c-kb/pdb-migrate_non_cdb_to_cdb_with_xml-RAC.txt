@@ -1,12 +1,15 @@
 CONVERT A 12C NON-CDB TO A CDB-PDB DATABASE
 http://blog.yannickjaquier.com/oracle/multitenant-standalone-to-pluggable-migration.html
+https://oracle-base.com/articles/12c/multitenant-migrate-non-cdb-to-pdb-12cr1
 
 This scenario arises when we upgrade a 11g DB in-place to 12c.  
 Then, the upgraded DB will be non-CDB.  
 Oracle is going to deprecate non-CDB in 12c.
 We therefore need to convert non-CDB 12c DB's to CDB with at least one PDB.
 
+======================================
 LIST DATAFILES IN THE NON-CDB DATABASE
+======================================
 asmcmd
 ASMCMD> cd +DATA_DG01
 ASMCMD> cd DB_UNIQUE_NAME
@@ -34,7 +37,119 @@ ASMCMD> ls -l
 Type      Redund  Striped  Time             Sys  Name
 TEMPFILE  UNPROT  COARSE   JUN 16 22:00:00  Y    TEMP.554.881900747
 
-CREATE THE XML FILE
+======================================
+CREATE PDB DESCRIPTION XML FILE
+======================================
+- Stop the non-cdb database
+$ srvctl stop database -d DB_UNIQUE_NAME
+
+- Startup open read only
+$  srvctl start database -d DB_UNIQUE_NAME -o 'read only'
+
+- Create the description xml file (PDB1 is just a filename - you can give a different PDB name when creating pdb)
+EXEC DBMS_PDB.DESCRIBE(pdb_descr_file => '/home/oracle/wip/upgrade12c/pdb-convert/PDB1.xml');
+
+- Shutdown the non-cdb database
+$ srvctl stop database -d DB_UNIQUE_NAME
+
+===============================================
+CREATE THE PDB - IN A DIFFERENT 'CDB' DATABASE
+===============================================
+NOTE: Create the PDB in a DIFFERENT DATABASE - using the files of the non-CDB database
+OPTIONS: COPY, NOCOPY, MOVE
+
+#!/bin/ksh -x
+
+#exec > create-pdb-using.out 2>> create-pdb-using.out
+
+export ORACLE_SID=CDB11
+export ORACLE_HOME=/u01/app/oracle/product/12.1.0.2
+export LD_LIBRARY_PATH=/u01/app/oracle/product/12.1.0.2/lib
+export PATH=/bin:/usr/bin:/etc:/usr/etc:/usr/local/bin:/usr/lib:/usr/sbin:/usr/ccs/bin:/usr/ucb:/home/oracle/bin:/u01/app/oracle/product/12.1.0.2/bin:/usr/bin/X11:/sbin:/usr/lib64/qt-3.3/bin:/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:
+
+sqlplus -s '/ as sysdba' <<EOF
+
+set timing on
+set time on
+
+select to_char(sysdate, 'DD-MON-YYYY HH24:MI:SS') from dual;
+
+-- This worked
+--CREATE PLUGGABLE DATABASE PDB1 USING '/home/oracle/wip/upgrade12c/pdb-convert/PDB1.xml' NOCOPY TEMPFILE reuse;
+
+-- This worked
+--CREATE PLUGGABLE DATABASE PDB1 USING '/home/oracle/wip/upgrade12c/pdb-convert/PDB1.xml' COPY TEMPFILE reuse ;
+
+-- TBD - do this and see
+CREATE PLUGGABLE DATABASE PDB1 USING '/home/oracle/wip/upgrade12c/pdb-convert/PDB1.xml' MOVE TEMPFILE reuse ;
+
+-- WHAT ARE THESE?
+--CREATE PLUGGABLE DATABASE PDB1 USING '/home/oracle/wip/upgrade12c/pdb-convert/PDB1.xml' NOCOPY TEMPFILE reuse FILE_NAME_CONVERT = ('+DATA_DG01/rl6db2_ttc/datafile/', '+DATA_DG01');
+
+--CREATE PLUGGABLE DATABASE PDB1 USING '/home/oracle/wip/upgrade12c/pdb-convert/PDB1.xml' NOCOPY TEMPFILE reuse SOURCE_FILE_NAME_CONVERT = ('+DATA_DG01/rl6db2_ttc/datafile/', '+DATA_DG01');
+
+select to_char(sysdate, 'DD-MON-YYYY HH24:MI:SS') from dual;
+
+EOF
+
+- CHECK IF PDB IS CREATED AND ITS STATUS
+-- NOTE: Datafiles do not yet show up for this PDB in cdb_data_files
+
+SQL> show pdbs
+    CON_ID CON_NAME                       OPEN MODE  RESTRICTED
+---------- ------------------------------ ---------- ----------
+         2 PDB$SEED                       READ ONLY  NO
+         3 CDB1PDB0                       READ WRITE NO
+         4 PDB1                           MOUNTED    YES
+
+===============================================
+COMPLETE THE MIGRATION OF THE PDB
+===============================================
+Run the sql noncdb_to_pdb.sql -- see script below
+
+NOTE: During the noncdb_to_pdb.sql run, status of PDB1 will show up as 'MIGRATE'
+SQL> show pdbs
+    CON_ID CON_NAME                       OPEN MODE  RESTRICTED
+---------- ------------------------------ ---------- ----------
+         2 PDB$SEED                       READ ONLY  NO
+         3 CDB1PDB0                       READ WRITE NO
+         4 PDB1                           MIGRATE    YES
+         
+#!/bin/ksh -x
+
+#exec > noncdb-to-pdb.out 2>> noncdb-to-pdb.out
+
+export ORACLE_SID=CDB11
+export ORACLE_HOME=/u01/app/oracle/product/12.1.0.2
+export LD_LIBRARY_PATH=/u01/app/oracle/product/12.1.0.2/lib
+export PATH=/bin:/usr/bin:/etc:/usr/etc:/usr/local/bin:/usr/lib:/usr/sbin:/usr/ccs/bin:/usr/ucb:/home/oracle/bin:/u01/app/oracle/product/12.1.0.2/bin:/usr/bin/X11:/sbin:/usr/lib64/qt-3.3/bin:/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:
+
+sqlplus -s '/ as sysdba' <<EOF
+
+set timing on
+set time on
+
+select to_char(sysdate, 'DD-MON-YYYY HH24:MI:SS') from dual;
+
+ALTER SESSION set container=PDB1;
+
+@$ORACLE_HOME/rdbms/admin/noncdb_to_pdb.sql
+
+select to_char(sysdate, 'DD-MON-YYYY HH24:MI:SS') from dual;
+
+EOF
+
+- PDB STATUS AT THE END
+SQL> show pdbs
+    CON_ID CON_NAME                       OPEN MODE  RESTRICTED
+---------- ------------------------------ ---------- ----------
+         2 PDB$SEED                       READ ONLY  NO
+         3 CDB1PDB0                       READ WRITE NO
+         4 PDB1                           MOUNTED    YES
+         
+- Check datafiles
+
+ 
 
 
 
