@@ -794,9 +794,18 @@ databaseType=MULTIPURPOSE
 automaticMemoryManagement=FALSE
 totalMemory=4096
 
-============================
-RUN DBCA TO CREATE DATABASE
-============================
+=======================================================================
+CREATE DATABASE - BASIC - NO ADDITIONAL INIT PARAMETERS DURING CREATION
+=======================================================================
+This will NOT duplex redo-logs
+This will NOT set db_unique_name
+This sets db_create_file_dest as null - so though OMF is created, new tablespaces may not go to standard OMF location
+    --> you will have to set that parameter to /u01/oradata or such location for new tablespaces (see example later on)
+    --> or provide file name path explicitly for tablespaces
+
+--------------
+DBCA SILENT
+--------------
 nohup dbca -silent -ignorePreReqs -createDatabase -responseFile ./dbca-ORALNR1.rsp &
 
 This creates the following items:
@@ -865,9 +874,9 @@ total 0
 - Entry in /etc/oratab
 ORALNR1:/u01/app/oracle/product/12.2.0.1.DB:N
 
-===============================
+-----------------------------
 LOGON TO DB AND VERIFY
-===============================
+-----------------------------
 As 'oracle' unix user
 
 $ sqlplus / as sysdba
@@ -941,3 +950,79 @@ audit_file_dest /u01/app/oracle/admin/ORALNR1/adump
 diagnostic_dest /u01/app/oracle
 
 - Database is created in NOARCHIVELOG mode
+
+- Create tablespace
+SQL> create tablespace ts1;
+create tablespace ts1
+                    *
+ERROR at line 1:
+ORA-02199: missing DATAFILE/TEMPFILE clause
+
+SQL> show parameter create_file
+
+NAME                                 TYPE        VALUE
+------------------------------------ ----------- ------------------------------
+db_create_file_dest                  string
+
+SQL> alter system set db_create_file_dest='/u01/oradata';
+System altered.
+
+SQL>  create tablespace ts1;
+Tablespace created.
+
+SQL> select file_name from dba_data_files where tablespace_name = 'TS1';
+
+FILE_NAME
+--------------------------------------------------------------------------------
+/u01/oradata/ORALNR1/datafile/o1_mf_ts1_dcwlp0o2_.dbf
+
+- Create tablespace in PDB
+SQL> select * from cdb_pdbs;
+
+SQL> /
+
+    PDB_ID
+----------
+PDB_NAME
+--------------------------------------------------------------------------------
+      DBID    CON_UID GUID                             STATUS     CREATION_SCN
+---------- ---------- -------------------------------- ---------- ------------
+       VSN LOGGING   FOR FOR APP APP APP APPLICATION_ROOT_CON_ID IS_     CON_ID
+---------- --------- --- --- --- --- --- ----------------------- --- ----------
+UPGRADE_PRIORITY APP FOREIGN_CDB_DBID UNPLUG_SCN FOREIGN_PDB_ID CREATION_ REFRES
+---------------- --- ---------------- ---------- -------------- --------- ------
+REFRESH_INTERVAL
+----------------
+         3
+ORADB1PDB1
+ 401768555  401768555 4A1E21EFD3AC27AFE0535EA03F0ADCEB NORMAL          1440597
+ 203424000 LOGGING   NO  NO  NO  NO  NO                          NO           3
+                 NO        2971975402    1440592              2 06-MAR-17 NONE
+
+
+         2
+PDB$SEED
+1336652137 1336652137 4A1E15D15B541E83E0535EA03F0AF70F NORMAL          1408766
+ 203424000 LOGGING   NO  NO  NO  NO  NO                          NO           2
+               1 NO        4262971485    1405143              2 06-MAR-17 NONE
+
+
+
+SQL> alter session set container=ORADB1PDB1;
+
+Session altered.
+
+SQL> create tablespace ts1pdb;
+
+Tablespace created.
+
+SQL> select con_id, file_name from cdb_data_files where tablespace_name= 'TS1PDB';
+
+    CON_ID
+----------
+FILE_NAME
+--------------------------------------------------------------------------------
+         3
+/u01/oradata/ORADB1/4A1E21EFD3AC27AFE0535EA03F0ADCEB/datafile/o1_mf_ts1pdb_dcwl
+z376_.dbf
+
