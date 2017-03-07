@@ -803,11 +803,14 @@ databaseType=MULTIPURPOSE
 automaticMemoryManagement=FALSE
 totalMemory=4096
 
-=======================================================================
+================================================================================
 CREATE DATABASE - BASIC - NO ADDITIONAL INIT PARAMETERS DURING CREATION
-=======================================================================
+
+--> NOT VERY PREFERRED - NO OMF - USE THE PROPER OMF METHOD - NEXT MAIN SECTION
+================================================================================
 This will NOT duplex redo-logs
 This will NOT set db_unique_name
+This will NOT provide fully-OMF file structure
 This sets db_create_file_dest as null - so though OMF is created, new tablespaces may not go to standard OMF location
     --> you will have to set that parameter to /u01/oradata or such location for new tablespaces (see example later on)
     --> or provide file name path explicitly for tablespaces
@@ -1068,7 +1071,7 @@ $ORACLE_HOME/dbs
 /etc/oratab
 
 =====================================================
-CREATE DATABASE - ADVANCED 1
+CREATE DATABASE - ADVANCED 1 - OMF, DUPLEX REDO
 =====================================================
 Multiplex redo logs
 Add db_create_file_dest permanently
@@ -1144,4 +1147,82 @@ totalMemory=4096
 CREATE DATABASE - RUN DBCA WITH SOME INIT PARAMETERS
 ----------------------------------------------------
 dbca -silent -ignorePreReqs -createDatabase -responseFile ./dbca-ORADB1-adv1.rsp -initParams db_unique_name=ORADB1_SITE1,DB_CREATE_FILE_DEST=/u01/oradata,DB_CREATE_ONLINE_LOG_DEST_1=/u01/oradata,DB_CREATE_ONLINE_LOG_DEST_2=/u01/orafra
+
+----------------------------------------------------
+VERIFY - FILES OMF
+----------------------------------------------------
+/u01/oradata:
+total 4
+drwxr-x---. 7 oracle oinstall 4096 Mar  7 01:05 ORADB1_SITE1
+
+/u01/oradata/ORADB1_SITE1:
+total 20
+drwxr-x---. 3 oracle oinstall 4096 Mar  7 01:05 4A1FA3EE3A18C594E0535EA03F0A5C0F
+drwxr-x---. 2 oracle oinstall 4096 Mar  7 01:01 controlfile
+drwxr-x---. 2 oracle oinstall 4096 Mar  7 01:02 datafile
+drwxr-x---. 2 oracle oinstall 4096 Mar  7 01:01 onlinelog
+drwxr-x---. 2 oracle oinstall 4096 Mar  7 01:01 pdbseed
+
+/u01/oradata/ORADB1_SITE1/4A1FA3EE3A18C594E0535EA03F0A5C0F:
+total 4
+drwxr-x---. 2 oracle oinstall 4096 Mar  7 01:05 datafile
+
+/u01/oradata/ORADB1_SITE1/4A1FA3EE3A18C594E0535EA03F0A5C0F/datafile:
+total 722016
+-rw-r-----. 1 oracle oinstall 367009792 Mar  7 01:25 o1_mf_sysaux_dcwpy7hf_.dbf
+-rw-r-----. 1 oracle oinstall 262152192 Mar  7 01:40 o1_mf_system_dcwpy7h7_.dbf
+-rw-r-----. 1 oracle oinstall  67117056 Mar  7 01:06 o1_mf_temp_dcwpy7hg_.dbf
+-rw-r-----. 1 oracle oinstall 104865792 Mar  7 01:40 o1_mf_undotbs1_dcwpy7hf_.dbf
+-rw-r-----. 1 oracle oinstall   5251072 Mar  7 01:10 o1_mf_users_dcwpydh6_.dbf
+
+/u01/oradata/ORADB1_SITE1/controlfile:
+total 18288
+-rw-r-----. 1 oracle oinstall 18726912 Mar  7 01:46 o1_mf_dcwpp74d_.ctl
+
+/u01/oradata/ORADB1_SITE1/datafile:
+total 2064824
+-rw-r-----. 1 oracle oinstall 482353152 Mar  7 01:46 o1_mf_sysaux_dcwpndx6_.dbf
+-rw-r-----. 1 oracle oinstall 346038272 Mar  7 01:05 o1_mf_sysaux_dcwpplck_.dbf
+-rw-r-----. 1 oracle oinstall 838868992 Mar  7 01:40 o1_mf_system_dcwplzrf_.dbf
+-rw-r-----. 1 oracle oinstall 262152192 Mar  7 01:05 o1_mf_system_dcwpplcq_.dbf
+-rw-r-----. 1 oracle oinstall  34611200 Mar  7 01:03 o1_mf_temp_dcwppj7p_.tmp
+-rw-r-----. 1 oracle oinstall  73408512 Mar  7 01:46 o1_mf_undotbs1_dcwpo616_.dbf
+-rw-r-----. 1 oracle oinstall 104865792 Mar  7 01:05 o1_mf_undotbs1_dcwpplct_.dbf
+-rw-r-----. 1 oracle oinstall   5251072 Mar  7 01:05 o1_mf_users_dcwpo741_.dbf
+-rw-r-----. 1 oracle oinstall  67117056 Mar  7 01:03 temp012017-03-07_01-02-05-891-AM.dbf
+
+/u01/oradata/ORADB1_SITE1/onlinelog:
+total 614420
+-rw-r-----. 1 oracle oinstall 209715712 Mar  7 01:05 o1_mf_1_dcwpp9gl_.log
+-rw-r-----. 1 oracle oinstall 209715712 Mar  7 01:46 o1_mf_2_dcwpp9hz_.log
+-rw-r-----. 1 oracle oinstall 209715712 Mar  7 01:05 o1_mf_3_dcwpp9jl_.log
+
+/u01/oradata/ORADB1_SITE1/pdbseed:
+total 0
+/u01/orafra:
+total 4
+drwxr-x---. 5 oracle oinstall 4096 Mar  7 01:01 ORADB1_SITE1
+
+/u01/orafra/ORADB1_SITE1:
+total 12
+drwxr-x---. 3 oracle oinstall 4096 Mar  7 00:59 archivelog
+drwxr-x---. 2 oracle oinstall 4096 Mar  7 01:01 controlfile
+drwxr-x---. 2 oracle oinstall 4096 Mar  7 01:01 onlinelog
+
+/u01/orafra/ORADB1_SITE1/archivelog:
+total 4
+drwxr-x---. 2 oracle oinstall 4096 Mar  7 00:59 2017_03_07
+
+/u01/orafra/ORADB1_SITE1/archivelog/2017_03_07:
+total 0
+
+/u01/orafra/ORADB1_SITE1/controlfile:
+total 18288
+-rw-r-----. 1 oracle oinstall 18726912 Mar  7 01:46 o1_mf_dcwpp76g_.ctl
+
+/u01/orafra/ORADB1_SITE1/onlinelog:
+total 614416
+-rw-r-----. 1 oracle oinstall 209715712 Mar  7 01:05 o1_mf_1_dcwpp9n5_.log
+-rw-r-----. 1 oracle oinstall 209715712 Mar  7 01:46 o1_mf_2_dcwpp9oc_.log
+-rw-r-----. 1 oracle oinstall 209715712 Mar  7 01:05 o1_mf_3_dcwppbm2_.log
 
