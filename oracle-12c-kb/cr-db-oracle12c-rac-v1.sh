@@ -15,7 +15,7 @@
 
 export script=$0
 
-export DBNAME=DB12C1  #Can be parametrized
+export DBNAME=TEST12C1  #Can be parametrized
 export DBNAME_UNIQUE=${DBNAME}_P #Can be derived from DBNAME if standardized
 export PDBNAME=${DBNAME}PD1
 export ARCHIVELOGMODE=YES
@@ -56,7 +56,7 @@ dbca -silent -createDatabase -gdbName $DBNAME_UNIQUE -sid $DBNAME -nodelist $RAC
 #-initparams parallel_max_servers=64 \
 #-initparams pga_aggregate_target=1824522240 \
 #-initparams processes=600 \
-#-initparams sga_target=4294967296 \
+#-initparams sga_target=4096 \
 #-initparams db_recovery_file_dest=’+FRA’ \
 #-initparams db_recovery_file_dest_size=4322230272
 
