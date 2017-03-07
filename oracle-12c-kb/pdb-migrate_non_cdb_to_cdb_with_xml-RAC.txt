@@ -158,10 +158,66 @@ SQL> show pdbs
          2 PDB$SEED                       READ ONLY  NO
          3 CDB1PDB0                       READ WRITE NO
          4 PDB1                           MOUNTED    YES
-         
-- Check datafiles (in the destination CDB database)
 
- 
+- After the sql ended, PDB seemed to go back to mounted state
+SQL> show pdbs
+
+    CON_ID CON_NAME                       OPEN MODE  RESTRICTED
+---------- ------------------------------ ---------- ----------
+         2 PDB$SEED                       READ ONLY  NO
+         3 CDB1PDB0                       READ WRITE NO
+         4 PDB1                           MOUNTED
+
+SQL> SELECT name, open_mode FROM v$pdbs;
+
+NAME                           OPEN_MODE
+------------------------------ ----------
+PDB$SEED                       READ ONLY
+CDB1PDB0                       READ WRITE
+PDB1                           MOUNTED
+
+- OPEN THE PDB MANUALLY 
+SQL> alter pluggable database pdb1 open read write instances=all;
+
+Pluggable database altered.
+
+-- NOTE: RESTRICTED has become NO now
+
+SQL> show pdbs
+
+    CON_ID CON_NAME                       OPEN MODE  RESTRICTED
+---------- ------------------------------ ---------- ----------
+         2 PDB$SEED                       READ ONLY  NO
+         3 CDB1PDB0                       READ WRITE NO
+         4 PDB1                           READ WRITE NO
+         
+SQL> alter pluggable database PDB1 save state;
+
+Pluggable database altered.
+
+- Check datafiles (in the destination CDB database)
+NOTE: Now, the new PDB con-id 4 files show up
+
+SQL>  select con_id || ' ' || tablespace_name || ' ' || file_name from cdb_data_files order by 1;
+
+ CON_ID||''||TABLESPACE_NAME||''||FILE_NAME
+-------------------------------------------------------------
+1 SYSAUX +DATA_DG01/CDB1_SITE1/DATAFILE/sysaux.332.935289809
+1 SYSTEM +DATA_DG01/CDB1_SITE1/DATAFILE/system.373.935289855
+1 UNDOTBS1 +DATA_DG01/CDB1_SITE1/DATAFILE/undotbs1.337.935289911
+1 UNDOTBS2 +DATA_DG01/CDB1_SITE1/DATAFILE/undotbs2.342.935290519
+1 USERS +DATA_DG01/CDB1_SITE1/DATAFILE/users.338.935289911
+3 MGMT_AD4J_TS +DATA_DG01/CDB1_SITE1/47EE09C404981C8DE053BC88420A7CD2/DATAFILE/mgmt_ad4j_ts.433.935390955
+3 MGMT_ECM_DEPOT_TS +DATA_DG01/CDB1_SITE1/47EE09C404981C8DE053BC88420A7CD2/DATAFILE/mgmt_ecm_depot_ts.431.935390953
+3 MGMT_TABLESPACE +DATA_DG01/CDB1_SITE1/47EE09C404981C8DE053BC88420A7CD2/DATAFILE/mgmt_tablespace.432.935390953
+3 SYSAUX +DATA_DG01/CDB1_SITE1/47EE09C404981C8DE053BC88420A7CD2/DATAFILE/sysaux.368.935291083
+3 SYSTEM +DATA_DG01/CDB1_SITE1/47EE09C404981C8DE053BC88420A7CD2/DATAFILE/system.429.935291083
+3 USERS +DATA_DG01/CDB1_SITE1/47EE09C404981C8DE053BC88420A7CD2/DATAFILE/users.430.935291111
+4 appDAT01 +DATA_DG01/CDB1_SITE1/48A4E591BF5C59B9E053BC88420AEC96/DATAFILE/appdat01.470.937978901
+4 appIDX01 +DATA_DG01/CDB1_SITE1/48A4E591BF5C59B9E053BC88420AEC96/DATAFILE/appidx01.473.937978901
+4 SYSAUX +DATA_DG01/CDB1_SITE1/48A4E591BF5C59B9E053BC88420AEC96/DATAFILE/sysaux.472.937978901
+4 SYSTEM +DATA_DG01/CDB1_SITE1/48A4E591BF5C59B9E053BC88420AEC96/DATAFILE/system.471.937978901
+4 USERS +DATA_DG01/CDB1_SITE1/48A4E591BF5C59B9E053BC88420AEC96/DATAFILE/users.469.937978901
 
 
 
