@@ -1,0 +1,996 @@
+ 
+Skip Headers
+ 
+    
+
+Oracle® Database
+
+Patch 20485724 - Oracle Grid Infrastructure Patch Set Update 12.1.0.2.3 (Apr2015)
+
+Platform: Linux x86-64, Solaris SPARC, Solaris x86-64, IBM AIX, Linux on IBM System z
+
+Released: April 14, 2015
+
+In this document Oracle Database Home refers to Enterprise Edition or Standard Edition Database software. GI refers to Grid Infrastructure and PSU refers to Patch Set Update.
+
+The GI System patch includes updates for both the Clusterware home and Database home that can be applied in a rolling fashion.
+
+This patch is Data Guard Standby First Installable - See Section 2.5, "Installing Database PSU in Standby-First Mode" for more information.
+
+This patch can be applied using Oracle Enterprise Manager Cloud Control 12c version. Oracle Enterprise Manager provides complete automation to patch the cluster in zero-downtime both in In place and Out of Place modes (Out of Place is currently available for Exadata installations only. For more information, see My Oracle Support Note 1265998.1 Patch Oracle Exadata Database Machine via Oracle Enterprise Manager.)
+
+This patch is supported by OPlan. OPlan is a utility that facilitates the patch installation process by providing you with step-by-step patching instructions specific to your environment. The instructions cover both patch application and patch rollback steps. The instructions also cover multiple patching options across In place and Out of Place methodologies. Important Note: 12.1.0.1 GI and RAC Out of Place patching have a few known issues. See My Oracle Support Note 1306814.1 Oracle Software Patching with OPLAN for more detailed information.
+
+This document is accurate at the time of release. For any changes and additional information regarding GI PSU 12.1.0.2.3, see these related documents that are available at My Oracle Support (http://support.oracle.com/):
+
+•Document 854428.1 Patch Set Updates for Oracle Products
+
+
+•Document 1967551.1 Oracle Grid Infrastructure Patch Set Update 12.1.0.2.3 Known Issues
+
+
+This document includes the following sections:
+
+•Section 1, "Patch Information"
+
+
+•Section 2, "Patch Installation and Deinstallation"
+
+
+•Section 3, "Known Issues"
+
+
+•Section 4, "References"
+
+
+•Section 5, "Manual Steps for Apply/Rollback Patch"
+
+
+•Section 6, "Bugs Fixed by This Patch"
+
+
+•Section 7, "Documentation Accessibility"
+
+ 
+ 
+1 Patch Information
+
+GI System patches are cumulative and include the Database PSU and associated CPU program security content.
+
+Table 1 describes installation types and security content. For each installation type, it indicates the most recent patches, which includes new security fixes that are pertinent to that installation type. If there are no security fixes to be applied to an installation type, then "None" is indicated. If a specific patch is listed, then apply that or any later patch to be current with security fixes.
+
+ 
+Table 1 Installation Types and Security Content
+
+
+
+
+
+Installation Type
+
+Latest PSU with Security Fixes
+
+
+
+Server homes
+ 
+GI System Patch 12.1.0.2.3
+ 
+
+Grid Infrastructure home
+ 
+GI System Patch 12.1.0.2.3
+ 
+
+Client-Only Installations
+ 
+None
+ 
+
+Instant Client Installations
+ 
+None
+
+(The Instant Client installation is not the same as the client-only Installation. For additional information about Instant Client installations, see Oracle Call Interface Programmer's Guide.)
+ 
+
+ 
+Table 2 lists the various configurations and the applicable GI System Patch that should be used to patch that configuration.
+
+ 
+Table 2 Configuration and PSU Mapping
+
+
+
+
+
+
+
+
+
+Configuration
+
+GI Version
+
+Database Versions
+
+GI System Patch
+
+OPatch CommandFoot 1 
+
+Comments
+
+
+
+GI Home in conjunction with RAC, RACOne, or Single Instance home
+ 
+12.1.0.2
+ 
+12.1.0.2
+ 
+GI System Patch
+ 
+opatchauto
+ 
+GI Home and all the Database Homes will be patched
+ 
+
+GI Home in conjunction with RAC, RACOne, or Single Instance home
+ 
+12.1.0.2
+ 
+12.1.0.2 and prior versions
+ 
+GI System Patch
+ 
+opatchauto
+ 
+GI Home and Database Home at 12.1.0.2 version will be patched.
+
+For Database home with version other than 12.1.0.2, apply the appropriate Database PSU for that version. For example, apply 11.1.0.7.x PSU to Database version 11.1.0.7.0.
+ 
+
+GI Home in conjunction with RAC, RACOne, or Single Instance home
+ 
+12.1.0.2
+ 
+Versions prior to 12.1.0.2
+ 
+GI System Patch
+ 
+opatchauto
+ 
+GI Home alone is patched.
+
+For Database home, apply the appropriate Database PSU for that version. For example, apply 11.1.0.7.x PSU to Database version 11.1.0.7.0.
+ 
+
+Oracle Restart Home
+ 
+12.1.0.2
+ 
+12.1.0.2
+ 
+GI System Patch
+ 
+opatchauto
+ 
+GI Home and all the Database Homes will be patched.
+ 
+
+Database Single Instance home
+ 
+NA
+ 
+12.1.0.2
+ 
+Database PSU
+ 
+opatch apply
+ 
+None
+ 
+
+Database Client home
+ 
+NA
+ 
+12.1.0.2
+ 
+Database PSU
+ 
+opatch apply
+ 
+None
+ 
+
+ 
+Footnote 1 Opatchauto does not support patching in Data Guard environments. See Section 2.5, "Installing Database PSU in Standby-First Mode" for more information.
+
+Table 3 lists the various patches by patch number getting installed as part of this GI PSU patch.
+
+ 
+Table 3 Patch Numbers Getting Installed as Part of this GI PSU Patch
+
+
+
+
+
+
+Patch Number
+
+Description
+
+Applicable Homes
+
+
+
+20299023
+
+ 
+DB PSU 12.1.0.2.3 (APR2015)
+ 
+Both DB Homes and Grid Home
+ 
+
+20299022
+
+ 
+OCW PSU 12.1.0.2.3
+ 
+Both DB Homes and Grid Home
+ 
+
+20299018
+
+ 
+ACFS PSU 12.1.0.2.3
+ 
+Only Grid Home
+ 
+
+19872484
+
+ 
+DBWLM PSU 12.1.0.2.2
+ 
+Only Grid Home
+ 
+
+  
+ 
+2 Patch Installation and Deinstallation
+
+This section includes the following sections:
+
+•Section 2.1, "Patch Installation Prerequisites"
+
+
+•Section 2.2, "One-off Patch Conflict Detection and Resolution"
+
+
+•Section 2.3, "opatchauto for GI"
+
+
+•Section 2.4, "Patch Installation"
+
+
+•Section 2.5, "Installing Database PSU in Standby-First Mode"
+
+
+•Section 2.6, "Patch Post-Installation Instructions"
+
+
+•Section 2.7, "Patch Post-Installation Instructions for Databases Created or Upgraded after Installation of Patch in the Oracle Home"
+
+
+•Section 2.8, "Patch Deinstallation"
+
+
+•Section 2.9, "Patch Post-Deinstallation Instructions"
+
+ 
+ 
+2.1 Patch Installation Prerequisites
+
+You must satisfy the conditions in the following sections before applying the patch:
+
+•OPatch Utility Information
+
+
+•OCM Configuration
+
+
+•Validation of Oracle Inventory
+
+
+•Download and Unzip the Patch
+
+ 
+
+2.1.1 OPatch Utility Information
+
+You must use the OPatch utility version 12.1.0.1.6 or later to apply this patch. Oracle recommends that you use the latest released OPatch version for 12.1 releases, which is available for download from My Oracle Support patch 6880880 by selecting ARU link for the 12.1.0.1.0 release. It is recommended that you download the Opatch utility and the patch in a shared location to be able to access them from any node in the cluster for the patch application on each node.
+
+When patching the GI Home, a shared location on ACFS only needs to be unmounted on the node where the GI Home is being patched.
+
+The new opatch utility should be updated in all the Oracle RAC database homes and the GI home that are being patched.
+
+To update Opatch, use the following instructions:
+
+1.Download the OPatch utility to a temporary directory.
+
+
+2.For each Oracle RAC database home and the GI home that are being patched, run the following commands as the home owner to extract the OPatch utility.
+$ unzip <OPATCH-ZIP> -d <ORACLE_HOME>
+$ <ORACLE_HOME>/OPatch/opatch version
+
+
+
+The version output of the previous command should be 12.1.0.1.6 or later.
+
+For information about OPatch documentation, including any known issues, see My Oracle Support Document 293369.1 OPatch documentation list.
+  
+ 
+2.1.2 OCM Configuration
+
+The OPatch utility will prompt for your OCM (Oracle Configuration Manager) response file when it is run. You should enter a complete path of OCM response file if you already have created this in your environment. OCM response file is required and is not optional.
+
+If you do not have the OCM response file (ocm.rsp), see the following My Oracle Support Document 966023.1 How To Create An OCM Response File For Opatch Silent Installation.
+  
+ 
+2.1.3 Validation of Oracle Inventory
+
+Before beginning patch application, check the consistency of inventory information for GI home and each database home to be patched. Run the following command as respective Oracle home owner to check the consistency.
+$ <ORACLE_HOME>/OPatch/opatch lsinventory -detail -oh <ORACLE_HOME>
+
+
+If this command succeeds, it lists the Oracle components that are installed in the home. Save the output so you have the status prior to the patch apply.
+
+If this command fails, contact Oracle Support Services for assistance.
+  
+ 
+2.1.4 Download and Unzip the Patch
+
+To apply the patch, it must be accessible from all nodes in the Oracle cluster. Download the patch and unzip it to a shared location, this is called the <UNZIPPED_PATCH_LOCATION>. This directory must be empty and not be /tmp. Additionally, the directory should have read permission for the ORA_INSTALL group.
+$ cd <UNZIPPED_PATCH_LOCATION>
+
+
+Check that the directory is empty.
+$ ls
+
+
+Unzip the patch as grid home owner.
+$ unzip p20485724_121020_<platform>.zip
+
+  
+
+2.2 One-off Patch Conflict Detection and Resolution
+
+The fastest and easiest way to determine whether you have one-off patches in the Oracle home that conflict with the patch, and to get the necessary conflict resolution patches, is to use the Patch Recommendations and Patch Plans features on the Patches & Updates tab in My Oracle Support. These features work in conjunction with the My Oracle Support Configuration Manager. Recorded training sessions on these features can be found in Document 603505.1.
+
+However, if you are not using My Oracle Support Patch Plans, the My Oracle Support Conflict Checker tool enables you to upload an OPatch inventory and check the patches that you want to apply to your environment for conflicts.
+
+If no conflicts are found, you can download the patches. If conflicts are found, the tool finds an existing resolution to download. If no resolution is found, it will automatically request a resolution, which you can monitor in the Plans and Patch Requests region of the Patches & Updates tab.
+
+For more information, see Knowledge Document 1091294.1, How to use the My Oracle Support Conflict Checker Tool.
+
+Or, manually determine whether any currently installed one-off patches conflict with the PSU patch as follows:
+
+•In the unzipped directory as described in Section 2.1.4, "Download and Unzip the Patch".
+
+
+•The following commands check for conflicts in both the 12.1 GI home and the 12.1 DB homes.
+
+◦In case you are applying the patch, run this command:
+#GRID_HOME/OPatch/opatchauto apply <UNZIPPED_PATCH_LOCATION>/20485724 -analyze -ocmrf <ocm response file>
+
+
+
+◦In case you are rolling back the patch, run this command:
+#GRID_HOME/OPatch/opatchauto rollback <UNZIPPED_PATCH_LOCATION>/20485724 -analyze
+
+
+
+
+Note that Oracle proactively provides PSU one-off patches for common conflicts.
+
+See My Oracle Support Document 1061295.1 Patch Set Updates - One-off Patch Conflict Resolution to determine, for each conflicting patch, whether a conflict resolution patch is already available, and if you need to request a new conflict resolution patch or if the conflict may be ignored.
+  
+
+2.3 opatchauto for GI
+
+The Opatch utility has automated the patch application for the Oracle Grid Infrastructure (GI) home and the Oracle RAC database homes. It operates by querying existing configurations and automating the steps required for patching each Oracle RAC database home of same version and the GI home.
+
+The utility must be executed by an operating system (OS) user with root privileges, and it must be executed on each node in the cluster if the GI home or Oracle RAC database home is in non-shared storage. The utility should not be run in parallel on the cluster nodes.
+
+Depending on command line options specified, one invocation of opatchauto can patch the GI home, Oracle RAC database homes, or both GI and Oracle RAC database homes of the same Oracle release version as the patch. You can also roll back the patch with the same selectivity.
+
+Add the directory containing the opatchauto to the $PATH environment variable. For example:
+# export PATH=$PATH:<GI_HOME>/OPatch
+
+
+To patch the GI home and all Oracle RAC database homes of the same version:
+# opatchauto apply <UNZIPPED_PATCH_LOCATION>/20485724 -ocmrf <ocm response file>
+
+
+To patch only the GI home:
+# opatchauto apply <UNZIPPED_PATCH_LOCATION>/20485724 -oh <GI_HOME> -ocmrf <ocm response file>
+
+
+To patch one or more Oracle RAC database homes:
+# opatchauto apply <UNZIPPED_PATCH_LOCATION>/20485724 -oh <oracle_home1_path>,<oracle_home2_path> -ocmrf <ocm response file>
+
+
+To roll back the patch from the GI home and each Oracle RAC database home:
+# opatchauto rollback <UNZIPPED_PATCH_LOCATION>/20485724 
+
+
+To roll back the patch from the GI home:
+# opatchauto rollback <UNZIPPED_PATCH_LOCATION>/20485724 -oh <path to GI home>  
+
+
+To roll back the patch from the Oracle RAC database home:
+# opatchauto rollback <UNZIPPED_PATCH_LOCATION>/20485724 -oh <oracle_home1_path>,<oracle_home2_path> 
+
+
+For more information about opatchauto, see Oracle® OPatch User's Guide.
+
+For detailed patch installation instructions, see Section 2.4, "Patch Installation".
+  
+ 
+2.4 Patch Installation
+
+The patch instructions will differ based on the configuration of the Grid infrastructure and the Oracle RAC database homes. Patching instructions for Oracle RAC Database Homes and GI together are listed below.
+
+The most common configurations are listed as follows:
+
+•Case 1: GI Home and the Database Homes that are not shared and ACFS file system is not configured.
+
+
+•Case 2: GI Home is not shared, Database Home is shared, ACFS may be used.
+
+
+For other configurations listed below, see My Oracle Support Document 1591616.1:
+
+•GI Home is not shared, the Database Home is not shared, ACFS may be used.
+
+
+•Patching Oracle RAC Database Homes.
+
+
+•Patching GI Home alone.
+
+
+•Patching Oracle Restart Home.
+
+
+•Patching a software only GI Home installation or before the GI Home is configured.
+
+ 
+Patching Oracle RAC Database Homes and GI Together
+
+•Case 1: GI Home and the Database Homes that are not shared and ACFS file system is not configured.
+
+As root user, execute the following command on each node of the cluster:
+# <GI_HOME>/OPatch/opatchauto apply <UNZIPPED_PATCH_LOCATION>/20485724 -ocmrf <ocm response file>
+
+
+
+•Case 2: GI Home is not shared, Database Home is shared, ACFS may be used.
+
+Patching instructions:
+
+1.From the Oracle database home, make sure to stop the Oracle RAC databases running on all nodes. As the database home owner execute:
+$ <ORACLE_HOME>/bin/srvctl stop database –d <db-unique-name>
+
+
+
+2.On the 1st node, unmount the ACFS file systems. See My Oracle Support Document 1494652.1 for unmounting ACFS file systems.
+
+
+3.On the 1st node, apply the patch to the GI Home using the opatchauto command. As root user, execute the following command:
+# <GI_HOME>/OPatch/opatchauto apply <UNZIPPED_PATCH_LOCATION>/20485724 -oh <GI_HOME> -ocmrf <ocm response file>
+
+
+
+4.If the message, "A system reboot is recommended before using ACFS” is shown, then a reboot must be issued before continuing. Failure to do so will result in running with an unpatched ACFS\ADVM\OKS driver.
+
+
+5.On the 1st node, remount ACFS file systems. See My Oracle Support Document 1494652.1 for mounting ACFS file systems.
+
+
+6.On the 1st node, apply the patch to the Database home using the opatchauto command. Since the Database home is shared, this operation will patch the Database home across the cluster. Note that a USM only patch cannot be applied to a database home. As root user, execute the following command:
+# <GI_HOME>/OPatch/opatchauto apply <UNZIPPED_PATCH_LOCATION>/20485724 -oh <ORACLE_HOME> -ocmrf <ocm response file>
+
+
+
+7.On the 1st node only, restart the Oracle instance, which you have previously stopped in Step 1. As the database home owner execute:
+$ <ORACLE_HOME>/bin/srvctl start instance –d <db-unique-name> -n <nodename>
+
+
+
+8.On the 2nd (next) node, unmount the ACFS file systems. See My Oracle Support Document 1494652.1 for unmounting ACFS file systems.
+
+
+9.On the 2nd node, apply the patch to GI Home using the opatchauto command. As root user, execute the following command:
+# <GI_HOME>/OPatch/opatchauto apply <UNZIPPED_PATCH_LOCATION>/20485724 -oh <GI_HOME> -ocmrf <ocm response file>
+
+
+
+10.If the message, "A system reboot is recommended before using ACFS” is shown, then a reboot must be issued before continuing. Failure to do so will result in running with an unpatched ACFS\ADVM\OKS driver.
+
+
+11.On the 2nd node, running the opatchauto command in Step 9 will restart the stack.
+
+
+12.On the 2nd node, remount ACFS file systems. See My Oracle Support Document 1494652.1 for mounting ACFS file systems.
+
+
+13.On the 2nd node only, restart the Oracle instance, which you have previously stopped in Step 1. As the database home owner execute:
+$ <ORACLE_HOME>/bin/srvctl start instance –d <db-unique-name> -n <nodename>
+
+
+
+14.Repeat Steps 8 through 13 for all remaining nodes of the cluster.
+
+
+  
+ 
+2.5 Installing Database PSU in Standby-First Mode
+
+For Data Guard Standby-First patching, see My Oracle Support Document 1265700.1. For Standby-First patching for Oracle Database PSU 12.1 and higher, the following points need to be considered:
+
+1.The Database PSU must be applied to the Data Guard standby using Opatch.
+
+
+2.Datapatch must not be invoked on the Data Guard standby environment to apply post patch SQL actions for the Database PSU. If datapatch is run on a standby, it will error while trying to call the SYS.DBMS_QOPATCH interface. For more details about this error, see My Oracle Support Document 1599479.1.
+
+
+3.Datapatch must be invoked on the primary database after all the databases, that is primary and Data Guard, are patched and patch deployment of the Database PSU is complete for the setup.
+
+  
+ 
+2.6 Patch Post-Installation Instructions
+
+After installing the patch, perform the following actions:
+
+1.Apply conflict resolution patches as explained in Section 2.6.1.
+
+
+2.Load modified SQL files into the database, as explained in Section 2.6.2.
+
+ 
+
+2.6.1 Applying Conflict Resolution Patches
+
+Apply the patch conflict resolution one-off patches that were determined to be needed when you performed the steps in Section 2.2, "One-off Patch Conflict Detection and Resolution".
+  
+
+2.6.2 Loading Modified SQL Files into the Database
+
+The following steps load modified SQL files into the database. For a RAC environment, perform these steps on only one node.
+
+Datapatch is run to complete the post-install SQL deployment for the PSU. For further details about Datapatch, including Known Issues and workarounds to common problems, see: Database 12c Post Patch SQL Automation (Doc ID 1585822.1).
+
+1.For each database instance running on the Oracle home being patched, run the datapatch utility as described in Table 4.
+
+ 
+Table 4 Steps to Run the Datapatch Utility for Single Tenant Versus Multitenant (CDB/PDB)
+
+
+
+
+
+
+
+Steps
+
+Single Tenant (non-CDB/PDB)
+
+Steps
+
+Multitenant (CDB/PDB)
+
+
+
+1
+ 
+% sqlplus /nolog
+ 
+1
+ 
+% sqlplus /nolog
+ 
+
+2
+ 
+SQL> Connect / as sysdba
+ 
+2
+ 
+SQL> Connect / as sysdba
+ 
+
+3
+ 
+SQL> startup
+ 
+3
+ 
+SQL> startup
+ 
+
+4
+ 
+SQL> quit
+ 
+4
+ 
+SQL> alter pluggable database all open;Foot 1 
+ 
+
+5
+ 
+% cd $ORACLE_HOME/OPatch
+ 
+5
+ 
+SQL> quit
+ 
+
+6
+ 
+% ./datapatch -verbose
+ 
+6
+ 
+% cd $ORACLE_HOME/OPatch
+ 
+
+ 
+ 
+7
+ 
+% ./datapatch -verbose
+ 
+
+ 
+Footnote 1 It is recommended the Post Install step be run on all pluggable databases; however, the following command (SQL> alter pluggable database PDB_NAME open ) could be substituted to only open certain PDBs in the multitenant database. Doing so will result in the Post Install step only being run on the CDB and opened PDB's. To update a pluggable database at a later date (skipped or newly plugged in), open the database using the alter pluggable database command mentioned previously and rerun the datapatch utility.
+
+The datapatch utility will then run the necessary apply scripts to load the modified SQL files into the database. An entry will be added to the dba_registry_sqlpatch view reflecting the patch application. In the dba_registry_sqlpatch view, verify the Status for the APPLY is "SUCCESS". For any other status, refer to the following My Oracle Support note for additional information and actions: Document 1609718.1 Datapatch Known Issues.
+
+
+2.Check the following log files in $ORACLE_BASE/cfgtoollogs/sqlpatch/20299023/<unique patch ID> for errors:
+20299023_apply_<database SID>_<CDB name>_<timestamp>.log
+
+
+where database SID is the database SID, CDB name is the name of the multitenant container database, and timestamp is of the form YYYYMMMDD_HH_MM_SS.
+
+  
+
+2.7 Patch Post-Installation Instructions for Databases Created or Upgraded after Installation of Patch in the Oracle Home
+
+You must execute the steps in Section 2.6.2, "Loading Modified SQL Files into the Database" for any new or upgraded database.
+  
+ 
+2.8 Patch Deinstallation
+
+Datapatch is run to complete the post-deinstall SQL deployment for the PSU. For further details about Datapatch, including Known Issues and workarounds to common problems, see: Database 12c Post Patch SQL Automation (Doc ID 1585822.1).
+
+The patch rollback instructions will differ based on the configuration of the Grid infrastructure and the Oracle RAC database homes. Roll Back instructions for Oracle RAC Database Homes and GI are listed below.
+
+The most common configurations are listed as follows:
+
+•Case 1: GI Home and Database Homes that are not shared and ACFS file system is not configured.
+
+
+•Case 2: GI Home is not shared, Database Home is shared and ACFS may be used.
+
+
+For other configurations listed below, see My Oracle Support Document 1494646.1:
+
+•GI Home is not shared, the Database Home is not shared, ACFS may be used.
+
+
+•Rolling back from Oracle RAC Database Homes.
+
+
+•Rolling back from GI Home alone.
+
+
+•Rolling back the patch from Oracle Restart Home.
+
+
+•Rolling back the patch from a software only GI Home installation or before the GI Home is configured.
+
+ 
+Roll Back the Oracle RAC Database Homes and GI Together
+
+•Case 1: GI Home and Database Homes that are not shared and ACFS file system is not configured.
+
+As root user, execute the following command on each node of the cluster.
+# <GI_HOME>/OPatch/opatchauto rollback <UNZIPPED_PATCH_LOCATION>/20485724
+
+
+If the message, "A system reboot is recommended before using ACFS" is shown, then a reboot must be issued before continuing. Failure to do so will result in running with an unpatched ACFS\ADVM\OKS driver.
+
+
+•Case 2: GI Home is not shared, Database Home is shared and ACFS may be used.
+
+1.From the Oracle database home, make sure to stop the Oracle RAC databases running on all nodes. As the database home owner execute:
+$ <ORACLE_HOME>/bin/srvctl stop database –d <db-unique-name>
+
+
+
+2.On the 1st node, unmount the ACFS file systems. See My Oracle Support Document 1494652.1 for unmounting ACFS file systems.
+
+
+3.On the 1st node, roll back the patch from the GI Home using the opatchauto command. As root user, execute the following command:
+# <GI_HOME>/OPatch/opatchauto rollback <UNZIPPED_PATCH_LOCATION>/20485724 -oh <GI_HOME>
+
+
+
+4.If the message, "A system reboot is recommended before using ACFS” is shown, then a reboot must be issued before continuing. Failure to do so will result in running with an unpatched ACFS\ADVM\OKS driver.
+
+
+5.On the 1st node, remount ACFS file systems. See My Oracle Support Document 1494652.1 for mounting ACFS file systems.
+
+
+6.On the 1st node, roll back the patch to the Database home using the opatchauto command. This operation will rollback the patch to the Database home across the cluster given that it is a shared ACFS home. Note that a USM only patch cannot be applied to a Database home. As root user, execute the following command:
+# <GI_HOME>/OPatch/opatchauto rollback <UNZIPPED_PATCH_LOCATION>/20485724
+
+
+
+7.On the 1st node only, restart the Oracle instance, which you have previously stopped in Step 1. As the database home owner execute:
+$ <ORACLE_HOME>/bin/srvctl start instance –d <db-unique-name> -n <nodename>
+
+
+
+8.On the 2nd (next) node, unmount the ACFS file systems. See My Oracle Support Document 1494652.1 for unmounting ACFS file systems.
+
+
+9.On the 2nd node, roll back the patch to GI Home using the opatchauto command. As root user, execute the following command:
+# <GI_HOME>/OPatch/opatchauto rollback <UNZIPPED_PATCH_LOCATION>/20485724
+
+
+
+10.If the message, "A system reboot is recommended before using ACFS” is shown, then a reboot must be issued before continuing. Failure to do so will result in running with an unpatched ACFS\ADVM\OKS driver.
+
+
+11.On the 2nd node, running the opatchauto command in Step 9 will restart the stack.
+
+
+12.On the 2nd node, remount ACFS file systems. See My Oracle Support Document 1494652.1 for mounting ACFS file systems.
+
+
+13.On the 2nd node only, restart the Oracle instance, which you have previously stopped in Step 1. As the database home owner execute:
+$ <ORACLE_HOME>/bin/srvctl start instance –d <db-unique-name> -n <nodename>
+
+
+
+14.Repeat Steps 8 through 13 for all remaining nodes of the cluster.
+
+
+  
+ 
+2.9 Patch Post-Deinstallation Instructions
+
+Perform the following steps:
+
+1.For each database instance running on the Oracle home being patched, run the datapatch utility as described in Table 5. If this is Oracle RAC, run datapatch on only one instance.
+
+ 
+Table 5 Steps to Run the datapatch Utility for Single Tenant Versus Multitenant (CDB/PDB)
+
+
+
+
+
+
+
+Steps
+
+Single Tenant (non-CDB/PDB)
+
+Steps
+
+Multitenant (CDB/PDB)
+
+
+
+1
+ 
+% sqlplus /nolog
+ 
+1
+ 
+% sqlplus /nolog
+ 
+
+2
+ 
+SQL> Connect / as sysdba
+ 
+2
+ 
+SQL> Connect / as sysdba
+ 
+
+3
+ 
+SQL> startup
+ 
+3
+ 
+SQL> startup
+ 
+
+4
+ 
+SQL> quit
+ 
+4
+ 
+SQL> alter pluggable database all open;Foot 1 
+ 
+
+5
+ 
+% cd $ORACLE_HOME/OPatch
+ 
+5
+ 
+SQL> quit
+ 
+
+6
+ 
+% ./datapatch -verbose
+ 
+6
+ 
+% cd $ORACLE_HOME/OPatch
+ 
+
+ 
+ 
+7
+ 
+% ./datapatch -verbose
+ 
+
+ 
+Footnote 1 It is recommended the Post Install step be run on all pluggable databases; however, the following command (SQL> alter pluggable database PDB_NAME open ) could be substituted to only open certain PDBs in the multitenant database. Doing so will result in the Post Install step only being run on the CDB and opened PDB's. To update a pluggable database at a later date (skipped or newly plugged in), open the database using the alter pluggable database command mentioned previously and rerun the datapatch utility.
+
+The datapatch utility will then run the necessary apply scripts to load the modified SQL files into the database. An entry will be added to the dba_registry_sqlpatch view reflecting the patch application. In the dba_registry_sqlpatch view, verify the Status for the APPLY is "SUCCESS". For any other status, refer to the following My Oracle Support note for additional information and actions: Document 1609718.1 Datapatch Known Issues.
+
+
+2.Check the following log files in $ORACLE_HOME/sqlpatch/20299023/ for errors:
+20299023_rollback_<database SID>_<CDB name>_<timestamp>.log
+
+
+where database SID is the database SID, CDB name is the name of the multitenant container database, and timestamp is of the form YYYYMMMDD_HH_MM_SS.
+
+  
+ 
+3 Known Issues
+
+For issues documented after the release of this PSU, see My Oracle Support Document 1967551.1 Oracle Grid Infrastructure Patch Set Update 12.1.0.2.3 Known Issues.
+
+This section includes the following known issues:
+ Issue 1   
+Running datapatch may cause the following error: CATCONINIT FAILED, when applying a patch in a multi-database environment.
+
+Symptom:
+
+Datapatch may fail with the following error:
+/scratch/racusr/app/racusr/product/12.1.0/dbhome_1/OPatch/datapatch'
+SQL Patching tool version 12.2.0.0.0 on Thu Sep 11 11:34:22 2014
+Copyright (c) 2014, Oracle. All rights reserved.
+
+Connecting to database...OK
+Note: Datapatch will only apply or rollback SQL fixes for PDBs
+       that are in an open state, no patches will be applied to closed PDBs.
+       Please refer to Note: Datapatch: Database 12c Post Patch SQL Automation
+       (Doc ID 1585822.1)
+catcon: ALL catcon-related output will be written to
+/tmp/sqlpatch_catcon__catcon_22173.lst
+catcon: See /tmp/sqlpatch_catcon_*.log files for output generated by scripts
+catcon: See /tmp/sqlpatch_catcon__*.lst files for spool files, if any
+start_processes: failed to open STDOUT (1)
+
+catconInit failed, exiting
+
+
+See My Oracle Support Document 1609718.1 for information on how to resolve this error.
+
+Cause:
+
+Bug 19603117 - 121021gipsu:hit "catconinit failed" when apply dbbp in different user env
+
+Workaround:
+
+This problem happens because of multiple OS users having ownership of multiple databases in the environment. These OS users do not have write privileges on each other's files and as a result, datapatch fails while trying to open catcon log files. The workaround is to delete files under: /tmp/sqlpatch_* and re-run datapatch for the affected database.
+Issue 2   
+Symptom: Increasing the NPROC limit using the fix for bug 19680763 is not effective.
+
+Cause: BUG 19680763 - INCREASE DEFAULT FOR CRS_LIMIT_NPROC IN S_CRSCONFIG_<NODENAME>_ENV.TXT
+
+Workaround or Fix: It is not supported to modify this file during patching since the user can modify this file with their own settings and patching is not expected to override them. Oracle supplies defaults during install and upgrade.
+Issue 3   
+Rapid Home Provisioning (RHP) images import may fail.
+
+Symptom: RHP Import image failed in Solaris for 11204 and 11203 version
+
+Cause: Bug 19609388 - RHP IMPORT 11203/11204 IMAGE FAILED
+
+Fix: Apply the patch for bug 19609388
+  
+ 
+4 References
+
+The following documents are references for this patch.
+
+Document 1591616.1 Patch Installation and Deinstallation for 12.1.0.1.x GI PSU
+
+Document 1494652.1 Instructions for Mounting/Unmounting ACFS File Systems
+
+Document 1585822.1 Database 12c Post Patch SQL Automation
+
+Document 854428.1 Patch Set Updates for Oracle Products
+
+Document 360870.1 Impact of Java Security Vulnerabilities on Oracle Products
+
+Document 340978.1 Genclntsh: Could Not Locate $ORACLE_HOME/network/admin/shrept.lst
+
+Document 468959.1 Enterprise Manager Grid Control Known Issues
+
+Document 1967551.1 Oracle Grid Infrastructure Patch Set Update 12.1.0.2.3 Known Issues
+
+Oracle® OPatch User's Guide
+  
+ 
+5 Manual Steps for Apply/Rollback Patch
+
+See My Oracle Support Document 1591616.1 for cases where opatchauto cannot be used.
+  
+ 
+6 Bugs Fixed by This Patch
+
+See My Oracle Support Document 1928853.1.
+  
+
+7 Documentation Accessibility
+
+For information about Oracle's commitment to accessibility, visit the Oracle Accessibility Program website at http://www.oracle.com/pls/topic/lookup?ctx=acc&id=docacc.
+ 
+Access to Oracle Support
+
+Oracle customers have access to electronic support through My Oracle Support. For information, visit http://www.oracle.com/pls/topic/lookup?ctx=acc&id=info or visit http://www.oracle.com/us/corporate/accessibility/support/index.html if you are hearing impaired.
+  
+
+Patch 20485724 - Oracle Grid Infrastructure Patch Set Update 12.1.0.2.3 (Apr2015)
+
+Copyright © 2006, 2015, Oracle and/or its affiliates. All rights reserved.
+
+This software and related documentation are provided under a license agreement containing restrictions on use and disclosure and are protected by intellectual property laws. Except as expressly permitted in your license agreement or allowed by law, you may not use, copy, reproduce, translate, broadcast, modify, license, transmit, distribute, exhibit, perform, publish, or display any part, in any form, or by any means. Reverse engineering, disassembly, or decompilation of this software, unless required by law for interoperability, is prohibited.
+
+The information contained herein is subject to change without notice and is not warranted to be error-free. If you find any errors, please report them to us in writing.
+
+If this is software or related documentation that is delivered to the U.S. Government or anyone licensing it on behalf of the U.S. Government, the following notice is applicable:
+
+U.S. GOVERNMENT RIGHTS Programs, software, databases, and related documentation and technical data delivered to U.S. Government customers are "commercial computer software" or "commercial technical data" pursuant to the applicable Federal Acquisition Regulation and agency-specific supplemental regulations. As such, the use, duplication, disclosure, modification, and adaptation shall be subject to the restrictions and license terms set forth in the applicable Government contract, and, to the extent applicable by the terms of the Government contract, the additional rights set forth in FAR 52.227-19, Commercial Computer Software License (December 2007). Oracle America, Inc., 500 Oracle Parkway, Redwood City, CA 94065.
+
+This software or hardware is developed for general use in a variety of information management applications. It is not developed or intended for use in any inherently dangerous applications, including applications that may create a risk of personal injury. If you use this software or hardware in dangerous applications, then you shall be responsible to take all appropriate fail-safe, backup, redundancy, and other measures to ensure its safe use. Oracle Corporation and its affiliates disclaim any liability for any damages caused by use of this software or hardware in dangerous applications.
+
+Oracle and Java are registered trademarks of Oracle and/or its affiliates. Other names may be trademarks of their respective owners.
+
+Intel and Intel Xeon are trademarks or registered trademarks of Intel Corporation. All SPARC trademarks are used under license and are trademarks or registered trademarks of SPARC International, Inc. AMD, Opteron, the AMD logo, and the AMD Opteron logo are trademarks or registered trademarks of Advanced Micro Devices. UNIX is a registered trademark of The Open Group.
+
+This software or hardware and documentation may provide access to or information on content, products, and services from third parties. Oracle Corporation and its affiliates are not responsible for and expressly disclaim all warranties of any kind with respect to third-party content, products, and services. Oracle Corporation and its affiliates will not be responsible for any loss, costs, or damages incurred due to your access to or use of third-party content, products, or services.
+  
+
+
+ Copyright © 2006, 2015, Oracle and/or its affiliates. All rights reserved.  
+ 
