@@ -1,0 +1,185 @@
+
+How to Create an OCM Response file to Apply a Patch in Silent Mode - opatch silent (Doc ID 966023.1) To BottomTo Bottom  
+
+In this Document
+
+
+ Goal 
+
+ Solution 
+
+  1) Download and install  latest opatch tool (ignore this if already done) 
+
+  2) Create response file for  OCM   
+
+  3) Use the OCM response file for all opatch silent application 
+
+  1)  Download and install latest opatch tool (recommended) 
+
+  Refer  the options below to create a ocm response file 
+
+ References 
+
+
+
+
+Applies to: 
+ Oracle Universal Installer - Version 10.2.0.1 to 12.1.0.2 [Release 10.2 to 12.1]
+Oracle Database - Enterprise Edition - Version 10.2.0.1 to 12.1.0.2 [Release 10.2 to 12.1]
+Information in this document applies to any platform.
+
+Goal
+
+
+
+ 
+
+This Article helps in creating the OCM response file to run opatch in silent mode
+
+Scenario:
+While installing patch in silent mode, opatch tool prompts User for OCM configuration, this makes Opatch to break the silent 
+install process and park patch apply for User response. (And this violates silent install feature).
+
+However, this can be solved via creating an OCM response file and pass all the parameters via this file while silent install. 
+Opatch reads this file while installing in silent does not prompt for OCM credentials.
+
+ 
+
+What is OCM (Oracle Configuration Manager?)
+
+The Oracle Configuration Manager (OCM) is a tool which proactively monitor the customers Oracle environment and provide this information to My Oracle Support (MOS). The Data collected from the customer environment is uploaded to Oracle Customer Configuration Repository and replicates this to My Oracle Support so that customer/support can view it. Additionally MOS analyzes the Data collected and  informs respective customer about alerts and advise health checks. For more information refer Note:369619.1
+
+ 
+
+Solution
+
+Pre-requirements to use  opatch silent
+
+1) Download and install  latest opatch tool (ignore this if already done)
+
+2) Create response file for  OCM  
+
+3) Use the OCM response file for all opatch silent application
+
+However, If plan to use the ocm.rsp file with other OH - like, GRID, CRS, ORACLE_HOME, then please make sure this file is 
+placed in accessible path and have 775 file permission (i.e $chmod  775 ocm.rsp)
+
+ 
+
+========= refer below for detailed steps =============
+
+ 
+
+1)  Download and install latest opatch tool (recommended)
+
+Patch # 6880880
+Select a Release: 10.2  -OR-  11.1 -OR-  11.2 -OR-  12.1 
+
+ 
+
+2) How to create response file for OCM 
+
+Note : the location of OCM executable is  "$ORACLE_HOME/OPatch/ocm/bin/emocmrsp"
+
+ 
+
+
+syntax : 
+% export ORACLE_HOME=<my_oracle_home_path>
+% $ORACLE_HOME/OPatch/ocm/bin/emocmrsp  -no_banner -output <specify_the_location>/file.rsp
+
+* creates the response in location specified by the parameter "-output"
+* running without "-output <specify_the_location>/file.rsp"  creates the file in current directory with default name(ocm.rsp)
+
+Refer  the options below to create a ocm response file
+
+Option 1 :  Create the response file while keeping OCM turned OFF (Yes, OCM can be turned off. 
+use this  options if you are not sure about OCM )
+
+
+% export ORACLE_HOME=/u01/app/oracle/11.2/db1
+% $ORACLE_HOME/OPatch/ocm/bin/emocmrsp -no_banner -output /u02/ocm.rsp
+
+Provide your email address to be informed of security issues, install and
+initiate Oracle Configuration Manager. Easier for you if you use your My
+Oracle Support Email address/User Name.
+Visit http://www.oracle.com/support/policies.html for details.
+Email address/User Name:
+
+<<<< Press Enter/Return key and don't provide any input >>>>
+
+You have not provided an email address for notification of security issues.
+Do you wish to remain uninformed of security issues ([Y]es, [N]o) [N]: Y <<< type Y/Yes >>>
+The OCM configuration response file (/u02/ocm.rsp) was successfully created. <<
+
+Option 2  : Create the response file while keep OCM turn ON / Active (Yes, OCM can be turned ON. use this  "options 1" 
+if you are not sure about OCM )
+
+
+% export ORACLE_HOME=/u01/app/oracle/11.2/db1
+% $ORACLE_HOME/OPatch/ocm/bin/emocmrsp -no_banner -output /u02/ocm.rsp
+
+Provide your email address to be informed of security issues, install and
+initiate Oracle Configuration Manager. Easier for you if you use your My
+Oracle Support Email address/User Name.
+Visit http://www.oracle.com/support/policies.html for details.
+Email address/User Name: <Provide Oracle Metalink Email address Example: user@oracle.com >
+
+Password (optional): <Password will be verified if provided / Press return/Enter Key>
+The OCM configuration response file (/u02/ocm.rsp) was successfully created.  <<<
+
+Note 1 : we can preserve the file “/u02/ocm.rsp” ( rename if needed)  and could be used  with other similar ORACLE_HOME/setup/machine 
+Note 2 : Also applicable to Grid home patching (opatch -auto -ocmrf   instead "-silent" )
+
+However, If plan to use the ocm.rsp file with other OH - like, GRID, CRS, ORACLE_HOME, then please make sure this file is placed 
+in accessible path and have 775 file permission (i.e $chmod  775 ocm.rsp)
+
+ 
+
+ 
+
+3)  Use the OCM response file for all "opatch -silent"   operations
+
+ 
+
+
+Assume applying patch 12345
+
+
+% cd 12345
+% opatch apply -silent -ocmrf <path_to_response_file>
+
+Example: % opatch apply -silent -ocmrf /u02/ocm.rsp
+
+ Additional Examples (Showing command usage for  CPU/SPU/PSU/ "opatch auto" )
+
+1) User below for CPU/SPU apply
+% opatch napply -silent -ocmrf /u02/ocm.rsp
+
+2)Use below for  PSU apply
+% opatch apply -silent -ocmrf /u02/ocm.rsp
+
+3)GRID patching command changed sightly as below 
+% opatch auto -ocmrf /u02/ocm.rsp
+
+Note1 : File “/u02/ocm.rsp” (could be renamed as per requirement )  can be used with other opatch -silent when used with other 
+ORACLE_HOME/setup/machine, however, mention this file while invoking opatch -silent 
+Note3: Also applicable to Grid home patching (opatch -auto -ocmrf   instead "-silent" )
+
+However, If plan to use the ocm.rsp file with other OH - like, GRID, CRS, ORACLE_HOME, then please make sure this file is placed 
+in accessible path and have 775 file permission (i.e $chmod  775 ocm.rsp)
+
+
+ 
+
+Note :- Execution of opatch doesn't require ocm.rsp ,starting with OPatch version  11.2.0.3.14 , 12.1.0.2.12 and higher  .
+As OCM is not bundled with OPatch .  
+
+
+ 
+
+References
+
+NOTE:1351428.2 - Information Center: Patching and Maintaining Oracle Database Server/Client Installations
+NOTE:369619.1 - OCM ( Oracle Configuration Manager ) and My Oracle Support : FAQ and Troubleshooting
+NOTE:293369.1 - Master Note For OPatch 
