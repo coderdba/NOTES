@@ -1,0 +1,1058 @@
+=================================================================
+  ORACLE DATABASE 12C SOFTWARE INSTALL AND DB CREATE - STANDALONE 
+=================================================================
+
+SW INSTALL:
+Silent install with response files:  https://docs.oracle.com/database/121/LADBI/app_nonint.htm#LADBI7831 - installation guide
+
+DB CREATE: (standalone)
+https://docs.oracle.com/database/121/ADMIN/create.htm#ADMIN002
+https://pierreforstmanndotcom.wordpress.com/2016/12/02/how-to-create-a-dbca-template-for-a-non-container-database-with-oracle-database-12-2-0-1-in-oracle-cloud/
+https://oracle-base.com/articles/misc/database-configuration-assistant-dbca-silent-mode - DBCA SILENT, RESPONSE FILE
+
+KERNEL SETTINGS:
+https://docs.oracle.com/database/121/LTDQI/toc.htm#BHCCADGD - quick installation guide
+https://docs.oracle.com/database/121/LADBI/toc.htm - installation guide 
+https://access.redhat.com/sites/default/files/attachments/deploying-oracle-12c-on-rhel6_1.2_1.pdf
+https://access.redhat.com/sites/default/files/attachments/deploying_oracle_rac_12c_rhel7_v1.1_0.pdf
+https://docs.oracle.com/database/121/LTDQI/toc.htm - system requirements (SHMMAX etc)
+
+=============================================================================
+
+                        SOFTWARE INSTALLATION
+                        
+          (see db creation in another section in this doc)
+=============================================================================
+
+==============================
+USERS
+==============================
+See role-separation-unix.txt
+
+NOTE: oradba is the 'dba' group
+
+User - oracle
+Group  - primary - oinstall (1001)
+Groups - other   - oradba (1002)
+
+==============================
+DIRECTORIES
+==============================
+Directory - Ownership
+/u01 - root
+/u01/app/oraInventory - oracle:oinstall
+/u01/app/oracle - oracle:oinstall
+/usr/local/tns - oracle:oinstall
+
+/u01/app/oracle/stage - oracle:oinstall (for software download)
+
+==============================
+DOWNLOAD SOFTWARE AND UNZIP
+==============================
+Download the software zip file linuxx64_12201_database.zip (or other)
+to /u01/app/oracle/stage/db12c/12.2.0.1 (or other)
+
+Unzip the zip file
+$ unzip linuxx64_12201_database
+
+It will extract the contents to /u01/app/oracle/stage/db12c/12.2.0.1/database
+
+==============================
+OS PREREQUISITES - PACKAGES
+==============================
+----------------------------
+AUTOMATICALLY CONFIGURE OS
+  IF USING ORACLE LINUX
+----------------------------
+https://docs.oracle.com/database/121/LADBI/olinrpm.htm#LADBI7474
+
+ Automatically Configuring Oracle Linux with Oracle Preinstallation RPM
+ 
+Oracle recommends that you install Oracle Linux 7, Oracle Linux 6 or Oracle Linux 5 and use Oracle RPMs 
+to configure your operating systems for Oracle Database and Oracle Grid Infrastructure installations. 
+For Oracle Linux 7 and Oracle Linux 6, run the Oracle Preinstallation RPM. For Oracle Linux 5, run the Oracle Validated RPM.
+
+-------------------------------------
+MANUAL INSTALLATION - OEL/RHEL 7
+-------------------------------------
+binutils-2.23.52.0.1-12.el7.x86_64 
+compat-libcap1-1.10-3.el7.x86_64
+compat-libstdc++-33-3.2.3-71.el7.i686 
+compat-libstdc++-33-3.2.3-71.el7.x86_64
+gcc-4.8.2-3.el7.x86_64 
+gcc-c++-4.8.2-3.el7.x86_64 
+glibc-2.17-36.el7.i686 
+glibc-2.17-36.el7.x86_64 
+glibc-devel-2.17-36.el7.i686 
+glibc-devel-2.17-36.el7.x86_64 
+ksh
+libaio-0.3.109-9.el7.i686 
+libaio-0.3.109-9.el7.x86_64 
+libaio-devel-0.3.109-9.el7.i686 
+libaio-devel-0.3.109-9.el7.x86_64 
+libgcc-4.8.2-3.el7.i686 
+libgcc-4.8.2-3.el7.x86_64 
+libstdc++-4.8.2-3.el7.i686 
+libstdc++-4.8.2-3.el7.x86_64 
+libstdc++-devel-4.8.2-3.el7.i686 
+libstdc++-devel-4.8.2-3.el7.x86_64 
+libXi-1.7.2-1.el7.i686 
+libXi-1.7.2-1.el7.x86_64 
+libXtst-1.2.2-1.el7.i686 
+libXtst-1.2.2-1.el7.x86_64 
+make-3.82-19.el7.x86_64 
+sysstat-10.1.5-1.el7.x86_64 
+
+===================================
+KERNEL SETTINGS
+===================================
+https://docs.oracle.com/database/121/LTDQI/toc.htm#BHCCADGD - quick installation guide
+https://docs.oracle.com/database/121/LADBI/toc.htm - installation guide 
+
+------------------------
+VALUES
+------------------------
+Parameter	Minimum Value	File
+semmsl 250 /proc/sys/kernel/sem
+semmns 32000
+semopm 100
+semmni 128
+
+shmall	40 percent of the size of physical memory in pages
+Note: If the server supports multiple databases, or uses a large SGA, then set this parameter to a value that is equal to the total amount of shared memory, in 4K pages, that the system can use at one time
+/proc/sys/kernel/shmall
+
+shmmax	Half the size of physical memory in bytes
+See My Oracle Support Note 567506.1 for additional information about configuring shmmax.
+/proc/sys/kernel/shmmax
+
+shmmni	4096	/proc/sys/kernel/shmmni
+panic_on_oops	1	/proc/sys/kernel/panic_on_oops
+file-max	6815744	/proc/sys/fs/file-max
+
+ip_local_port_range	Minimum: 9000  Maximum: 65500
+See the "Setting UDP and TCP Kernel Parameters Manually" section in Oracle Database Installation Guide for Linux
+
+/proc/sys/net/ipv4/ip_local_port_range
+rmem_default	262144	/proc/sys/net/core/rmem_default
+rmem_max	4194304	/proc/sys/net/core/rmem_max
+wmem_default	262144	/proc/sys/net/core/wmem_default
+wmem_max	1048576	/proc/sys/net/core/wmem_max
+aio-max-nr	1048576 /proc/sys/fs/aio-max-nr
+Note: This value limits concurrent outstanding requests and should be set to avoid I/O subsystem failures.
+
+--------------------
+MORE SETTINGS - SEE REDHAT PDF
+--------------------
+kernel.panic_on_oops = 1
+net.ipv4.ip_local_port_range = 9000 65535
+net.ipv4.tcp_keepalive_time = 30
+net.ipv4.tcp_retries2 = 3
+net.ipv4.tcp_syn_retries = 2
+net.core.rmem_default = 262144
+net.core.rmem_max = 4194304
+net.core.wmem_default = 262144
+net.core.wmem_max = 1048576
+vm.nr_hugepages = 96889
+vm.hugetlb_shm_group = 2580
+vm.swappiness = 0
+vm.dirty_background_ratio = 3
+vm.dirty_ratio = 15
+vm.dirty_expire_centisecs = 500
+vm.dirty_writeback_centisecs = 100
+fs.file-max = 6815744
+fs.aio-max-nr = 10485860
+
+
+------------------------
+HOW TO CHECK
+------------------------
+semmsl, semmns, semopm, and semmni	# /sbin/sysctl -a | grep sem
+This command displays the value of the semaphore parameters in the order listed.
+
+shmall, shmmax, and shmmni	# /sbin/sysctl -a | grep shm
+file-max	# /sbin/sysctl -a | grep file-max
+ip_local_port_range	# /sbin/sysctl -a | grep ip_local_port_range
+rmem_default	# /sbin/sysctl -a | grep rmem_default
+rmem_max	# /sbin/sysctl -a | grep rmem_max
+wmem_default	# /sbin/sysctl -a | grep wmem_default
+wmem_max	# /sbin/sysctl -a | grep wmem_max
+
+-----------------------
+HOW TO SET
+-----------------------
+NOTE: The ipv4.ip_local_port_range can be also set by doing:
+# echo 9000 65500 > /proc/sys/net/ipv4/ip_local_port_range
+
+1. Edit the /etc/sysctl.conf file
+fs.aio-max-nr = 1048576
+fs.file-max = 6815744
+kernel.shmall = 2097152
+kernel.shmmax = 8589934592
+kernel.shmmni = 4096
+kernel.sem = 250 32000 100 128
+net.ipv4.ip_local_port_range = 9000 65500
+net.core.rmem_default = 262144
+net.core.rmem_max = 4194304
+net.core.wmem_default = 262144
+net.core.wmem_max = 1048586
+
+2. If SUSE, to persist
+# /sbin/chkconfig boot.sysctl on
+
+3. Apply
+# /sbin/sysctl -p
+
+4. Verify
+# /sbin/sysctl -a
+
+5. Skipping SUSE steps
+
+6. Restart if sysctl -p failed to apply the changes
+===================================
+INVENTORY LOCATION FILE
+===================================
+http://dbinourhand.blogspot.in/2012/03/how-to-install-oracle-11g-release-2-on_07.html
+In the response file, if we mention INVENTORY_LOCATION=/u01/app/oraInventory or other directory  - AND - IF IT ALREADY EXISTS,
+then runInstaller will error saying: The central inventory location provided is not empty.
+
+To avoid it - if that folder already exists from other Oracle software installations, and you want to reuse the same:
+- Create a file /etc/oraInst.loc with the following content:
+inventory_loc=/u01/app/oraInventory
+inst_group=oinstall
+
+Alternatively, if that file exists in oraInventory locatin, then copy it to /etc.
+# cp /u01/app/oraInventory/oraInst.loc /etc/.
+
+- Change permission of oraInst.loc to 666 or at least readable by oracle installer user
+
+- DO NOT Comment out INVENTORY_LOCATION setting in the response file
+
+
+==============================
+RESPONSE FILE
+==============================
+Templates for response files are in /u01/app/oracle/stage/db12c/12.2.0.1/database/response.
+Use db_install.rsp for software installation.
+
+(dbca.rsp is for db creation and netca.rsp is for network configuration)
+
+-------------------------------------------
+Create a new response file db_install-1.rsp
+-------------------------------------------
+
+####################################################################
+## Copyright(c) Oracle Corporation 1998,2017. All rights reserved.##
+##                                                                ##
+## Specify values for the variables listed below to customize     ##
+## your installation.                                             ##
+##                                                                ##
+## Each variable is associated with a comment. The comment        ##
+## can help to populate the variables with the appropriate        ##
+## values.                                                        ##
+##                                                                ##
+## IMPORTANT NOTE: This file contains plain text passwords and    ##
+## should be secured to have read permission only by oracle user  ##
+## or db administrator who owns this installation.                ##
+##                                                                ##
+####################################################################
+
+
+#-------------------------------------------------------------------------------
+# Do not change the following system generated value.
+#-------------------------------------------------------------------------------
+oracle.install.responseFileVersion=/oracle/install/rspfmt_dbinstall_response_schema_v12.2.0
+
+#-------------------------------------------------------------------------------
+# Specify the installation option.
+# It can be one of the following:
+#   - INSTALL_DB_SWONLY
+#   - INSTALL_DB_AND_CONFIG
+#   - UPGRADE_DB
+#-------------------------------------------------------------------------------
+oracle.install.option=INSTALL_DB_SWONLY
+
+#-------------------------------------------------------------------------------
+# Specify the Unix group to be set for the inventory directory.
+#-------------------------------------------------------------------------------
+UNIX_GROUP_NAME=oinstall
+
+#-------------------------------------------------------------------------------
+# Specify the location which holds the inventory files.
+# This is an optional parameter if installing on
+# Windows based Operating System.
+#-------------------------------------------------------------------------------
+INVENTORY_LOCATION=/u01/app/oraInventory
+#-------------------------------------------------------------------------------
+# Specify the complete path of the Oracle Home.
+#-------------------------------------------------------------------------------
+ORACLE_HOME=/u01/app/oracle/product/12.2.0.1.DB
+
+#-------------------------------------------------------------------------------
+# Specify the complete path of the Oracle Base.
+#-------------------------------------------------------------------------------
+ORACLE_BASE=/u01/app/oracle
+
+#-------------------------------------------------------------------------------
+# Specify the installation edition of the component.
+#
+# The value should contain only one of these choices.
+#   - EE     : Enterprise Edition
+#   - SE2     : Standard Edition 2
+
+
+#-------------------------------------------------------------------------------
+
+oracle.install.db.InstallEdition=EE
+###############################################################################
+#                                                                             #
+# PRIVILEGED OPERATING SYSTEM GROUPS                                          #
+# ------------------------------------------                                  #
+# Provide values for the OS groups to which SYSDBA and SYSOPER privileges     #
+# needs to be granted. If the install is being performed as a member of the   #
+# group "dba", then that will be used unless specified otherwise below.       #
+#                                                                             #
+# The value to be specified for OSDBA and OSOPER group is only for UNIX based #
+# Operating System.                                                           #
+#                                                                             #
+###############################################################################
+
+#------------------------------------------------------------------------------
+# The OSDBA_GROUP is the OS group which is to be granted SYSDBA privileges.
+#-------------------------------------------------------------------------------
+oracle.install.db.OSDBA_GROUP=oradba
+
+#------------------------------------------------------------------------------
+# The OSOPER_GROUP is the OS group which is to be granted SYSOPER privileges.
+# The value to be specified for OSOPER group is optional.
+#------------------------------------------------------------------------------
+oracle.install.db.OSOPER_GROUP=oradba
+
+#------------------------------------------------------------------------------
+# The OSBACKUPDBA_GROUP is the OS group which is to be granted SYSBACKUP privileges.
+#------------------------------------------------------------------------------
+oracle.install.db.OSBACKUPDBA_GROUP=oradba
+
+#------------------------------------------------------------------------------
+# The OSDGDBA_GROUP is the OS group which is to be granted SYSDG privileges.
+#------------------------------------------------------------------------------
+oracle.install.db.OSDGDBA_GROUP=oradba
+
+#------------------------------------------------------------------------------
+# The OSKMDBA_GROUP is the OS group which is to be granted SYSKM privileges.
+#------------------------------------------------------------------------------
+oracle.install.db.OSKMDBA_GROUP=oradba
+
+#------------------------------------------------------------------------------
+# The OSRACDBA_GROUP is the OS group which is to be granted SYSRAC privileges.
+#------------------------------------------------------------------------------
+oracle.install.db.OSRACDBA_GROUP=oradba
+
+###############################################################################
+#                                                                             #
+#                               Grid Options                                  #
+#                                                                             #
+###############################################################################
+#------------------------------------------------------------------------------
+# Specify the type of Real Application Cluster Database
+#
+#   - ADMIN_MANAGED: Admin-Managed
+#   - POLICY_MANAGED: Policy-Managed
+#
+# If left unspecified, default will be ADMIN_MANAGED
+#------------------------------------------------------------------------------
+oracle.install.db.rac.configurationType=ADMIN_MANAGED
+
+#------------------------------------------------------------------------------
+# Value is required only if RAC database type is ADMIN_MANAGED
+#
+# Specify the cluster node names selected during the installation.
+# Leaving it blank will result in install on local server only (Single Instance)
+#
+# Example : oracle.install.db.CLUSTER_NODES=node1,node2
+#------------------------------------------------------------------------------
+oracle.install.db.CLUSTER_NODES=
+
+#------------------------------------------------------------------------------
+# This variable is used to enable or disable RAC One Node install.
+#
+#   - true  : Value of RAC One Node service name is used.
+#   - false : Value of RAC One Node service name is not used.
+#
+# If left blank, it will be assumed to be false.
+#------------------------------------------------------------------------------
+oracle.install.db.isRACOneInstall=
+
+#------------------------------------------------------------------------------
+# Value is required only if oracle.install.db.isRACOneInstall is true.
+#
+# Specify the name for RAC One Node Service
+#------------------------------------------------------------------------------
+oracle.install.db.racOneServiceName=
+
+#------------------------------------------------------------------------------
+# Value is required only if RAC database type is POLICY_MANAGED
+#
+# Specify a name for the new Server pool that will be configured
+# Example : oracle.install.db.rac.serverpoolName=pool1
+#------------------------------------------------------------------------------
+oracle.install.db.rac.serverpoolName=
+
+#------------------------------------------------------------------------------
+# Value is required only if RAC database type is POLICY_MANAGED
+#
+# Specify a number as cardinality for the new Server pool that will be configured
+# Example : oracle.install.db.rac.serverpoolCardinality=2
+#------------------------------------------------------------------------------
+oracle.install.db.rac.serverpoolCardinality=
+
+###############################################################################
+#                                                                             #
+#                        Database Configuration Options                       #
+#                                                                             #
+###############################################################################
+
+#-------------------------------------------------------------------------------
+# Specify the type of database to create.
+# It can be one of the following:
+#   - GENERAL_PURPOSE
+#   - DATA_WAREHOUSE
+# GENERAL_PURPOSE: A starter database designed for general purpose use or transaction-heavy applications.
+# DATA_WAREHOUSE : A starter database optimized for data warehousing applications.
+#-------------------------------------------------------------------------------
+oracle.install.db.config.starterdb.type=
+
+#-------------------------------------------------------------------------------
+# Specify the Starter Database Global Database Name.
+#-------------------------------------------------------------------------------
+oracle.install.db.config.starterdb.globalDBName=
+
+#-------------------------------------------------------------------------------
+# Specify the Starter Database SID.
+#-------------------------------------------------------------------------------
+oracle.install.db.config.starterdb.SID=
+
+#-------------------------------------------------------------------------------
+# Specify whether the database should be configured as a Container database.
+# The value can be either "true" or "false". If left blank it will be assumed
+# to be "false".
+#-------------------------------------------------------------------------------
+oracle.install.db.ConfigureAsContainerDB=
+
+#-------------------------------------------------------------------------------
+# Specify the  Pluggable Database name for the pluggable database in Container Database.
+#-------------------------------------------------------------------------------
+oracle.install.db.config.PDBName=
+
+#-------------------------------------------------------------------------------
+# Specify the Starter Database character set.
+#
+#  One of the following
+#  AL32UTF8, WE8ISO8859P15, WE8MSWIN1252, EE8ISO8859P2,
+#  EE8MSWIN1250, NE8ISO8859P10, NEE8ISO8859P4, BLT8MSWIN1257,
+#  BLT8ISO8859P13, CL8ISO8859P5, CL8MSWIN1251, AR8ISO8859P6,
+#  AR8MSWIN1256, EL8ISO8859P7, EL8MSWIN1253, IW8ISO8859P8,
+#  IW8MSWIN1255, JA16EUC, JA16EUCTILDE, JA16SJIS, JA16SJISTILDE,
+#  KO16MSWIN949, ZHS16GBK, TH8TISASCII, ZHT32EUC, ZHT16MSWIN950,
+#  ZHT16HKSCS, WE8ISO8859P9, TR8MSWIN1254, VN8MSWIN1258
+#-------------------------------------------------------------------------------
+oracle.install.db.config.starterdb.characterSet=
+
+#------------------------------------------------------------------------------
+# This variable should be set to true if Automatic Memory Management
+# in Database is desired.
+# If Automatic Memory Management is not desired, and memory allocation
+# is to be done manually, then set it to false.
+#------------------------------------------------------------------------------
+oracle.install.db.config.starterdb.memoryOption=
+
+#-------------------------------------------------------------------------------
+# Specify the total memory allocation for the database. Value(in MB) should be
+# at least 256 MB, and should not exceed the total physical memory available
+# on the system.
+# Example: oracle.install.db.config.starterdb.memoryLimit=512
+#-------------------------------------------------------------------------------
+oracle.install.db.config.starterdb.memoryLimit=
+
+#-------------------------------------------------------------------------------
+# This variable controls whether to load Example Schemas onto
+# the starter database or not.
+# The value can be either "true" or "false". If left blank it will be assumed
+# to be "false".
+#-------------------------------------------------------------------------------
+oracle.install.db.config.starterdb.installExampleSchemas=
+
+###############################################################################
+#                                                                             #
+# Passwords can be supplied for the following four schemas in the             #
+# starter database:                                                           #
+#   SYS                                                                       #
+#   SYSTEM                                                                    #
+#   DBSNMP (used by Enterprise Manager)                                       #
+#                                                                             #
+# Same password can be used for all accounts (not recommended)                #
+# or different passwords for each account can be provided (recommended)       #
+#                                                                             #
+###############################################################################
+
+#------------------------------------------------------------------------------
+# This variable holds the password that is to be used for all schemas in the
+# starter database.
+#-------------------------------------------------------------------------------
+oracle.install.db.config.starterdb.password.ALL=
+
+#-------------------------------------------------------------------------------
+# Specify the SYS password for the starter database.
+#-------------------------------------------------------------------------------
+oracle.install.db.config.starterdb.password.SYS=
+
+#-------------------------------------------------------------------------------
+# Specify the SYSTEM password for the starter database.
+#-------------------------------------------------------------------------------
+oracle.install.db.config.starterdb.password.SYSTEM=
+
+#-------------------------------------------------------------------------------
+# Specify the DBSNMP password for the starter database.
+# Applicable only when oracle.install.db.config.starterdb.managementOption=CLOUD_CONTROL
+#-------------------------------------------------------------------------------
+oracle.install.db.config.starterdb.password.DBSNMP=
+
+#-------------------------------------------------------------------------------
+# Specify the PDBADMIN password required for creation of Pluggable Database in the Container Database.
+#-------------------------------------------------------------------------------
+oracle.install.db.config.starterdb.password.PDBADMIN=
+
+#-------------------------------------------------------------------------------
+# Specify the management option to use for managing the database.
+# Options are:
+# 1. CLOUD_CONTROL - If you want to manage your database with Enterprise Manager Cloud Control along with Database Express.
+# 2. DEFAULT   -If you want to manage your database using the default Database Express option.
+#-------------------------------------------------------------------------------
+oracle.install.db.config.starterdb.managementOption=
+
+#-------------------------------------------------------------------------------
+# Specify the OMS host to connect to Cloud Control.
+# Applicable only when oracle.install.db.config.starterdb.managementOption=CLOUD_CONTROL
+#-------------------------------------------------------------------------------
+oracle.install.db.config.starterdb.omsHost=
+
+#-------------------------------------------------------------------------------
+# Specify the OMS port to connect to Cloud Control.
+# Applicable only when oracle.install.db.config.starterdb.managementOption=CLOUD_CONTROL
+#-------------------------------------------------------------------------------
+oracle.install.db.config.starterdb.omsPort=
+
+#-------------------------------------------------------------------------------
+# Specify the EM Admin user name to use to connect to Cloud Control.
+# Applicable only when oracle.install.db.config.starterdb.managementOption=CLOUD_CONTROL
+#-------------------------------------------------------------------------------
+oracle.install.db.config.starterdb.emAdminUser=
+
+#-------------------------------------------------------------------------------
+# Specify the EM Admin password to use to connect to Cloud Control.
+# Applicable only when oracle.install.db.config.starterdb.managementOption=CLOUD_CONTROL
+#-------------------------------------------------------------------------------
+oracle.install.db.config.starterdb.emAdminPassword=
+
+###############################################################################
+#                                                                             #
+# SPECIFY RECOVERY OPTIONS                                                    #
+# ------------------------------------                                        #
+# Recovery options for the database can be mentioned using the entries below  #
+#                                                                             #
+###############################################################################
+
+#------------------------------------------------------------------------------
+# This variable is to be set to false if database recovery is not required. Else
+# this can be set to true.
+#-------------------------------------------------------------------------------
+oracle.install.db.config.starterdb.enableRecovery=
+
+#-------------------------------------------------------------------------------
+# Specify the type of storage to use for the database.
+# It can be one of the following:
+#   - FILE_SYSTEM_STORAGE
+#   - ASM_STORAGE
+#-------------------------------------------------------------------------------
+oracle.install.db.config.starterdb.storageType=
+
+#-------------------------------------------------------------------------------
+# Specify the database file location which is a directory for datafiles, control
+# files, redo logs.
+#
+# Applicable only when oracle.install.db.config.starterdb.storage=FILE_SYSTEM_STORAGE
+#-------------------------------------------------------------------------------
+oracle.install.db.config.starterdb.fileSystemStorage.dataLocation=
+
+#-------------------------------------------------------------------------------
+# Specify the recovery location.
+#
+# Applicable only when oracle.install.db.config.starterdb.storage=FILE_SYSTEM_STORAGE
+#-------------------------------------------------------------------------------
+oracle.install.db.config.starterdb.fileSystemStorage.recoveryLocation=
+
+#-------------------------------------------------------------------------------
+# Specify the existing ASM disk groups to be used for storage.
+#
+# Applicable only when oracle.install.db.config.starterdb.storageType=ASM_STORAGE
+#-------------------------------------------------------------------------------
+oracle.install.db.config.asm.diskGroup=
+
+#-------------------------------------------------------------------------------
+# Specify the password for ASMSNMP user of the ASM instance.
+#
+# Applicable only when oracle.install.db.config.starterdb.storage=ASM_STORAGE
+#-------------------------------------------------------------------------------
+oracle.install.db.config.asm.ASMSNMPPassword=
+
+#------------------------------------------------------------------------------
+# Specify the My Oracle Support Account Username.
+#
+#  Example   : MYORACLESUPPORT_USERNAME=abc@oracle.com
+#------------------------------------------------------------------------------
+MYORACLESUPPORT_USERNAME=
+
+#------------------------------------------------------------------------------
+# Specify the My Oracle Support Account Username password.
+#
+# Example    : MYORACLESUPPORT_PASSWORD=password
+#------------------------------------------------------------------------------
+MYORACLESUPPORT_PASSWORD=
+
+#------------------------------------------------------------------------------
+# Specify whether to enable the user to set the password for
+# My Oracle Support credentials. The value can be either true or false.
+# If left blank it will be assumed to be false.
+#
+# Example    : SECURITY_UPDATES_VIA_MYORACLESUPPORT=true
+#------------------------------------------------------------------------------
+SECURITY_UPDATES_VIA_MYORACLESUPPORT=
+
+#------------------------------------------------------------------------------
+# Specify whether user doesn't want to configure Security Updates.
+# The value for this variable should be true if you don't want to configure
+# Security Updates, false otherwise.
+#
+# The value can be either true or false. If left blank it will be assumed
+# to be true.
+#
+# Example    : DECLINE_SECURITY_UPDATES=false
+#------------------------------------------------------------------------------
+DECLINE_SECURITY_UPDATES=true
+
+#------------------------------------------------------------------------------
+# Specify the Proxy server name. Length should be greater than zero.
+#
+# Example    : PROXY_HOST=proxy.domain.com
+#------------------------------------------------------------------------------
+PROXY_HOST=
+
+#------------------------------------------------------------------------------
+# Specify the proxy port number. Should be Numeric and at least 2 chars.
+#
+# Example    : PROXY_PORT=25
+#------------------------------------------------------------------------------
+PROXY_PORT=
+
+#------------------------------------------------------------------------------
+# Specify the proxy user name. Leave PROXY_USER and PROXY_PWD
+# blank if your proxy server requires no authentication.
+#
+# Example    : PROXY_USER=username
+#------------------------------------------------------------------------------
+PROXY_USER=
+
+#------------------------------------------------------------------------------
+# Specify the proxy password. Leave PROXY_USER and PROXY_PWD
+# blank if your proxy server requires no authentication.
+#
+# Example    : PROXY_PWD=password
+#------------------------------------------------------------------------------
+PROXY_PWD=
+
+#------------------------------------------------------------------------------
+# Specify the Oracle Support Hub URL.
+#
+# Example    : COLLECTOR_SUPPORTHUB_URL=https://orasupporthub.company.com:8080/
+#------------------------------------------------------------------------------
+COLLECTOR_SUPPORTHUB_URL=
+
+===================================
+INSTALL
+===================================
+SYNTAX of SILENT INSTALL:
+$ runInstaller [-silent] [-noconfig] [-ignoreSysPrereqs] [-skipPrereqs] -responseFile responsefilename
+
+NOTE: Use -skipPrereqs if you just want to install the software anyway, even when shmmax etc and other prereqs are not right
+
+/u01/app/oracle/stage/db12c/12.2.0.1/database/runInstaller -silent -ignoreSysPrereqs -responseFile response-file-name-full-path
+
+Starting Oracle Universal Installer...
+
+Checking Temp space: must be greater than 500 MB.   Actual 2186 MB    Passed
+Checking swap space: must be greater than 150 MB.   Actual 4999 MB    Passed
+Preparing to launch Oracle Universal Installer from /tmp/OraInstall2017-03-02_03-14-35AM. Please wait ...[oracle@oemlx0004 database]$ You can find the log of this install session at:
+ /u01/app/oraInventory/logs/installActions2017-03-02_03-14-35AM.log
+The installation of Oracle Database 12c was successful.
+Please check '/u01/app/oraInventory/logs/silentInstall2017-03-02_03-14-35AM.log' for more details.
+
+As a root user, execute the following script(s):
+        1. /u01/app/oracle/product/12.2.0.1.DB/root.sh
+
+Successfully Setup Software.
+timed out waiting for input: auto-logout
+
+# /u01/app/oracle/product/12.2.0.1.DB/root.sh
+Check /u01/app/oracle/product/12.2.0.1.DB/install/root_oemlx0004_2017-03-02_03-40-43-705059360.log for the output of root script
+
+=============================================================================
+
+                        CREATE DATABASE
+
+=============================================================================
+https://docs.oracle.com/database/121/ADMIN/create.htm#ADMIN002
+https://pierreforstmanndotcom.wordpress.com/2016/12/02/how-to-create-a-dbca-template-for-a-non-container-database-with-oracle-database-12-2-0-1-in-oracle-cloud/
+https://oracle-base.com/articles/misc/database-configuration-assistant-dbca-silent-mode - DBCA SILENT, RESPONSE FILE
+
+
+=========================
+CREATE DIRECTORIES
+=========================
+
+Owner oracle:oinstall, permissions 750:
+/u01/oradata
+/u01/orafra
+/usr/local/tns
+
+=========================
+CREATE DBCA RESPONSE FILE
+=========================
+Find the template dbca.rsp in /u01/app/oracle/product/12.2.0.1.DB/assistants/dbca
+Copy it to a work-area directory, or create a new one in the same directory.
+
+NOTE: automaticMemoryManagement=TRUE gave the error below. It could be a bug.
+      For now, set it to FALSE, and enable it later manually
+      
+      [FATAL] [DBT-11211] The Automatic Memory Management option is not allowed when the total physical memory is greater than 4GB.
+         CAUSE: The current total physical memory is 7,220GB.
+
+gdbName=ORADB1.domain
+sid=ORADB1
+databaseConfigType=SI
+RACOneNodeServiceName=
+policyManaged=FALSE
+createServerPool=FALSE
+serverPoolName=
+cardinality=
+force=
+pqPoolName=
+pqCardinality=
+createAsContainerDatabase=TRUE
+numberOfPDBs=1
+pdbName=ORADB1PDB1
+useLocalUndoForPDBs=TRUE
+pdbAdminPassword=PDB_admin123
+nodelist=
+templateName=General_Purpose.dbc
+sysPassword=SYS_oracle_123
+systemPassword=SYSTEM_oracle_123
+oracleHomeUserPassword=
+emConfiguration=
+emExpressPort=5500
+runCVUChecks=FALSE
+dbsnmpPassword=
+omsHost=
+omsPort=
+emUser=
+emPassword=
+dvConfiguration=
+dvUserName=
+dvUserPassword=
+dvAccountManagerName=
+dvAccountManagerPassword=
+olsConfiguration=
+datafileJarLocation=
+datafileDestination=/u01/oradata
+recoveryAreaDestination=/u01/orafra
+storageType=FS
+diskGroupName=
+asmsnmpPassword=
+recoveryGroupName=
+characterSet=AL32UTF8
+nationalCharacterSet=AL16UTF16
+registerWithDirService=
+dirServiceUserName=
+dirServicePassword=
+walletPassword=
+listeners=
+variablesFile=
+variables=
+initParams=
+sampleSchema=FALSE
+memoryPercentage=
+databaseType=MULTIPURPOSE
+automaticMemoryManagement=FALSE
+totalMemory=4096
+
+=======================================================================
+CREATE DATABASE - BASIC - NO ADDITIONAL INIT PARAMETERS DURING CREATION
+=======================================================================
+This will NOT duplex redo-logs
+This will NOT set db_unique_name
+This sets db_create_file_dest as null - so though OMF is created, new tablespaces may not go to standard OMF location
+    --> you will have to set that parameter to /u01/oradata or such location for new tablespaces (see example later on)
+    --> or provide file name path explicitly for tablespaces
+
+--------------
+DBCA SILENT
+--------------
+nohup dbca -silent -ignorePreReqs -createDatabase -responseFile ./dbca-ORADB1.rsp &
+
+This creates the following items:
+
+- $ORACLE_HOME/dbs
+-rw-rw----. 1 oracle oinstall 1544 Mar  6 23:17 hc_ORADB1.dat
+-rw-r--r--. 1 oracle oinstall 3079 May 15  2015 init.ora
+-rw-r-----. 1 oracle oinstall   24 Mar  6 23:12 lkORADB1
+-rw-r-----. 1 oracle oinstall 3584 Mar  6 23:16 orapwORADB1
+-rw-r-----. 1 oracle oinstall 3584 Mar  6 23:17 spfileORADB1.ora
+
+- /u01/oradata
+total 4
+drwxr-x---. 4 oracle oinstall 4096 Mar  6 23:13 ORADB1
+[oracle@oemlx0004 oradata]$ ls -lR
+.:
+total 4
+drwxr-x---. 4 oracle oinstall 4096 Mar  6 23:13 ORADB1
+
+./ORADB1:
+total 1995704
+-rw-r-----. 1 oracle oinstall  18726912 Mar  6 23:23 control01.ctl
+drwxr-x---. 2 oracle oinstall      4096 Mar  6 23:17 ORADB1PDB1
+drwxr-x---. 2 oracle oinstall      4096 Mar  6 23:14 pdbseed
+-rw-r-----. 1 oracle oinstall 209715712 Mar  6 23:17 redo01.log
+-rw-r-----. 1 oracle oinstall 209715712 Mar  6 23:23 redo02.log
+-rw-r-----. 1 oracle oinstall 209715712 Mar  6 23:17 redo03.log
+-rw-r-----. 1 oracle oinstall 482353152 Mar  6 23:22 sysaux01.dbf
+-rw-r-----. 1 oracle oinstall 838868992 Mar  6 23:22 system01.dbf
+-rw-r-----. 1 oracle oinstall  34611200 Mar  6 23:15 temp01.dbf
+-rw-r-----. 1 oracle oinstall  68165632 Mar  6 23:22 undotbs01.dbf
+-rw-r-----. 1 oracle oinstall   5251072 Mar  6 23:17 users01.dbf
+
+./ORADB1/ORADB1PDB1:
+total 701536
+-rw-r-----. 1 oracle oinstall 346038272 Mar  6 23:23 sysaux01.dbf
+-rw-r-----. 1 oracle oinstall 262152192 Mar  6 23:23 system01.dbf
+-rw-r-----. 1 oracle oinstall  67117056 Mar  6 23:18 temp01.dbf
+-rw-r-----. 1 oracle oinstall 104865792 Mar  6 23:23 undotbs01.dbf
+-rw-r-----. 1 oracle oinstall   5251072 Mar  6 23:22 users01.dbf
+
+./ORADB1/pdbseed:
+total 696716
+-rw-r-----. 1 oracle oinstall 346038272 Mar  6 23:17 sysaux01.dbf
+-rw-r-----. 1 oracle oinstall 262152192 Mar  6 23:17 system01.dbf
+-rw-r-----. 1 oracle oinstall  67117056 Mar  6 23:15 temp012017-03-06_23-14-24-040-PM.dbf
+-rw-r-----. 1 oracle oinstall 104865792 Mar  6 23:17 undotbs01.dbf
+
+- /u01/orafra
+./ORADB1:
+total 18296
+drwxr-x---. 3 oracle oinstall     4096 Mar  6 23:12 archivelog
+-rw-r-----. 1 oracle oinstall 18726912 Mar  6 23:24 control02.ctl
+drwxr-x---. 2 oracle oinstall     4096 Mar  6 23:13 onlinelog
+
+./ORADB1/archivelog:
+total 4
+drwxr-x---. 2 oracle oinstall 4096 Mar  6 23:12 2017_03_06
+
+./ORADB1/archivelog/2017_03_06:
+total 0
+
+./ORADB1/onlinelog:
+total 0
+
+- Entry in /etc/oratab
+ORADB1:/u01/app/oracle/product/12.2.0.1.DB:N
+
+-----------------------------
+LOGON TO DB AND VERIFY
+-----------------------------
+As 'oracle' unix user
+
+$ sqlplus / as sysdba
+
+You may get ORA-12162 "TNS:net service name is incorrectly specified"
+--> Then use 'oraenv' and set the right SID and other environment variables like ORACLE_HOME, LD_LIBRARY_PATH
+
+$ oraenv
+ORACLE_SID = [oracle] ? ORADB1
+
+$ echo $ORACLE_SID
+ORADB1
+
+$ echo $ORACLE_HOME
+/u01/app/oracle/product/12.2.0.1.DB
+
+$ echo $LD_LIBRARY_PATH
+/u01/app/oracle/product/12.2.0.1.DB/lib
+
+------------------
+LOGON
+------------------
+$ sqlplus / as sysdba
+
+SQL*Plus: Release 11.2.0.3.0 Production on Mon Mar 6 23:27:15 2017
+
+Copyright (c) 1982, 2011, Oracle.  All rights reserved.
+
+
+Connected to:
+Oracle Database 12c Enterprise Edition Release 12.2.0.1.0 - 64bit Production
+
+SQL>
+
+NOTE: DB_NAME and DB_UNIQUE_NAME both are same as we did not provide different names for them in dbca
+
+SQL> select name, value from v$parameter where name in ('db_name', 'db_unique_name');
+db_name  ORADB1
+db_unique_name ORADB1
+
+SQL> show sga
+
+Total System Global Area 3221225472 bytes
+Fixed Size                  8797928 bytes
+Variable Size             654311704 bytes
+Database Buffers         2550136832 bytes
+Redo Buffers                7979008 bytes
+
+NOTE: Redologs are created non-duplexed, and in /u01/oradata and not /u01/orafra
+
+SQL> select GROUP#, TYPE, STATUS, MEMBER from v$logfile
+    GROUP# TYPE    STATUS  MEMBER
+---------- ------- ------- ------------------------------------
+         3 ONLINE          /u01/oradata/ORADB1/redo03.log
+         2 ONLINE          /u01/oradata/ORADB1/redo02.log
+         1 ONLINE          /u01/oradata/ORADB1/redo01.log
+
+Other parameters of interest:
+NOTE: db_create_file_dest is blank
+
+db_create_file_dest                  string
+
+db_recovery_file_dest /u01/orafra
+db_recovery_file_dest_size 13400801280
+
+background_dump_dest /u01/app/oracle/product/12.2.0.1.DB/rdbms/log
+user_dump_dest /u01/app/oracle/product/12.2.0.1.DB/rdbms/log
+core_dump_dest /u01/app/oracle/diag/rdbms/ORADB1/ORADB1/cdump
+audit_file_dest /u01/app/oracle/admin/ORADB1/adump
+
+diagnostic_dest /u01/app/oracle
+
+- Database is created in NOARCHIVELOG mode
+
+- Create tablespace
+SQL> create tablespace ts1;
+create tablespace ts1
+                    *
+ERROR at line 1:
+ORA-02199: missing DATAFILE/TEMPFILE clause
+
+SQL> show parameter create_file
+
+NAME                                 TYPE        VALUE
+------------------------------------ ----------- ------------------------------
+db_create_file_dest                  string
+
+SQL> alter system set db_create_file_dest='/u01/oradata';
+System altered.
+
+SQL>  create tablespace ts1;
+Tablespace created.
+
+SQL> select file_name from dba_data_files where tablespace_name = 'TS1';
+
+FILE_NAME
+--------------------------------------------------------------------------------
+/u01/oradata/ORADB1/datafile/o1_mf_ts1_dcwlp0o2_.dbf
+
+- Create tablespace in PDB
+SQL> select * from cdb_pdbs;
+
+SQL> /
+
+    PDB_ID
+----------
+PDB_NAME
+--------------------------------------------------------------------------------
+      DBID    CON_UID GUID                             STATUS     CREATION_SCN
+---------- ---------- -------------------------------- ---------- ------------
+       VSN LOGGING   FOR FOR APP APP APP APPLICATION_ROOT_CON_ID IS_     CON_ID
+---------- --------- --- --- --- --- --- ----------------------- --- ----------
+UPGRADE_PRIORITY APP FOREIGN_CDB_DBID UNPLUG_SCN FOREIGN_PDB_ID CREATION_ REFRES
+---------------- --- ---------------- ---------- -------------- --------- ------
+REFRESH_INTERVAL
+----------------
+         3
+ORADB1PDB1
+ 401768555  401768555 4A1E21EFD3AC27AFE0535EA03F0ADCEB NORMAL          1440597
+ 203424000 LOGGING   NO  NO  NO  NO  NO                          NO           3
+                 NO        2971975402    1440592              2 06-MAR-17 NONE
+
+
+         2
+PDB$SEED
+1336652137 1336652137 4A1E15D15B541E83E0535EA03F0AF70F NORMAL          1408766
+ 203424000 LOGGING   NO  NO  NO  NO  NO                          NO           2
+               1 NO        4262971485    1405143              2 06-MAR-17 NONE
+
+
+
+SQL> alter session set container=ORADB1PDB1;
+
+Session altered.
+
+SQL> create tablespace ts1pdb;
+
+Tablespace created.
+
+SQL> select con_id, file_name from cdb_data_files where tablespace_name= 'TS1PDB';
+
+    CON_ID
+----------
+FILE_NAME
+--------------------------------------------------------------------------------
+         3
+/u01/oradata/ORADB1/4A1E21EFD3AC27AFE0535EA03F0ADCEB/datafile/o1_mf_ts1pdb_dcwl
+z376_.dbf
+
+----------------------------------------------------------
+DELETE THE DATABASE - SO THAT WE CAN TRY OUT MORE OPTIONS
+----------------------------------------------------------
+
+$ dbca -silent -deleteDatabase -sourceDB ORADB1
+Enter SYS user password:
+
+Connecting to database
+4% complete
+9% complete
+14% complete
+19% complete
+23% complete
+28% complete
+47% complete
+Updating network configuration files
+52% complete
+Deleting instance and datafiles
+76% complete
+100% complete
+
+--------
+VERIFY
+--------
+Files, folders and entries in the following are removed by dbca delete database.
+
+/u01/oradata
+/u01/oradata
+$ORACLE_HOME/dbs
+/etc/oratab
