@@ -46,7 +46,7 @@ env |sort
 echo
 echo "INFO - Creating Database using DBCA command"
 echo
-dbca -silent -createDatabase -gdbName $DBNAME_UNIQUE -sid $DBNAME -nodelist $RACNODES -databaseType MULTIPURPOSE -characterSet AL32UTF8 -nationalCharacterSet AL16UTF16 -initParams db_name=$DBNAME,db_unique_name=$DBNAME_UNIQUE,db_block_size=8 -templatename General_Purpose.dbc -sysPassword sys123 -systemPassword system123 -createAsContainerDatabase true -numberOfPdbs 1 -pdbName $PDBNAME -pdbAdminUserName PDBADMIN -pdbAdminPassword pdbadmin123 -storageType ASM -diskGroupName DATA_DG01 -recoveryGroupName FRA_DG01 -redoLogFileSize 10 -emConfiguration NONE -sampleSchema false sga_target=4294967296
+dbca -silent -createDatabase -gdbName $DBNAME_UNIQUE -sid $DBNAME -nodelist $RACNODES -databaseType MULTIPURPOSE -characterSet AL32UTF8 -nationalCharacterSet AL16UTF16 -initParams db_name=$DBNAME,db_unique_name=$DBNAME_UNIQUE,db_block_size=8,sga_target=4294967296 -templatename General_Purpose.dbc -sysPassword sys123 -systemPassword system123 -createAsContainerDatabase true -numberOfPdbs 1 -pdbName $PDBNAME -pdbAdminUserName PDBADMIN -pdbAdminPassword pdbadmin123 -storageType ASM -diskGroupName DATA_DG01 -recoveryGroupName FRA_DG01 -redoLogFileSize 10 -emConfiguration NONE -sampleSchema false 
 #-initparams audit_file_dest=’/bkup/dbatools/adump’ \
 #-initparams compatible=’11.2.0.3′ \
 #-initparams db_create_file_dest=’+DATA’ \
