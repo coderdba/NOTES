@@ -1,0 +1,137 @@
+How to Reinstall CRS Without Disturbing Installed Oracle RDBMS Home(s) (Doc ID 456021.1)	To BottomTo Bottom	
+
+In this Document
+Goal
+Fix
+ 	Scalability RAC Community
+References
+APPLIES TO:
+
+Oracle Server - Enterprise Edition - Version 10.2.0.1 to 11.1.0.7 [Release 10.2 to 11.1]
+Information in this document applies to any platform.
+GOAL
+
+This note is a step-by-step approach to reinstallation of CRS without affecting existing RDBMS Oracle home and database.
+
+This note is applicable for 10gR2 and 11gR1. For similar operation on 11gR2 Grid Infrastrcuture, please refer to:
+Note 1276975.1 11gR2 RAC: How to re-install the Grid Infrastructure without disturbing the RDBMS installations.
+
+FIX
+
+- Take a backup of OCR using "ocrconfig -export <file_name>" before performing the following steps
+- Ensure that all CRS resources are offline including:  service / instances / listeners / nodeapps.
+- Ensure that CRS is shutdown on all nodes by issuing 'crsctl stop crs' command
+
+
+1. Locate and follow the appropriate Metalink note to clean/remove the old/failed CRS:
+
+Note 239998.1 How to Proceed From a Failed 10g or 11.1 Oracle Clusterware (CRS) Installation
+Note 341214.1 How To clean up after a Failed (or successful) Oracle Clusterware Installation on Windows - for 10gR2 and 11gR1
+
+2. Reinstall CRS using the appropriate 'Oracle Clusterware and Oracle Real Application Clusters Installation and Configuration Guide' for the platform.  
+- All documentation is available from http://docs.oracle.com
+- Also check the following note:
+Note 810394.1 RAC Assurance Support Team: RAC Starter Kit and Best Practices (Generic)
+
+3. If the following error message is encountered while running root.sh:
+
+"The given interface(s), "<interface_name>" is not public. Public interfaces should be used to configure virtual IPs."
+Please refer to Note 316583.1 VIPCA FAILS COMPLAINING THAT INTERFACE IS NOT PUBLIC. 
+
+4. Check CRS to ensure proper clusterware installation and nodeapps have been configured and are running:
+
+LINUX/UNIX: 
+
+$CRS_HOME/bin/crsctl check crs 
+
+$CRS_HOME/bin/crs_stat -t
+WINDOWS: 
+
+%CRS_HOME%\bin\crsctl check crs 
+
+%CRS_HOME%\bin\crs_stat -t
+- nodeapps (VIP/ONS/GSD resources) are ONLINE for both TARGET and STATE on both nodes.
+- Make sure to take backup of OCR.
+5.  Recreate the OCR listener resources
+Since there are listeners already created on this cluster, move the pre-existing listener.ora file to a different name on all nodes, such as: 
+
+mv $ORACLE_HOME/network/admin/listener.ora $ORACLE_HOME/network/admin/listener.ora.orig
+
+Run netca.  Choose 'Cluster Configuration' then select all nodes from the node list, allow the default name of LISTENER.  This will create a listener for each node with name of LISTENER_<node_name> which will run as one of your nodeapps for each cluster node.
+
+6. Repopulate the OCR file. 
+
+Import or restore OCR backup:
+
+a. Stop CRS on all nodes, as root: #crsctl stop crs
+
+b. restore from either export or OCR auto backup as root user:
+
+# $CRS_HOME/bin/ocrconfig -import <export file path/name>
+
+or
+
+# $CRS_HOME/bin/ocrconfig -restore <OCR backup file path/name>
+
+c. To verify:
+
+# $CRS_HOME/bin/ocrcheck
+ If there is no good backup, all resources can be registered manually using the following commands, be sure to add back all resources necessary (see online command line syntax help -h for all possible parameter options)
+
+srvctl add asm -n <node_name> -i <asm_inst_name> -o <asm_oracle_home>
+srvctl add database -d <database_name> -o <oracle_home>
+srvctl add instance -d <database_name> -i <inst_name> -n <nodename>
+srvctl add service -d <database_name> -s <service_name> -r "<preferred_list>"
+
+Also remember to restore the dependency of your database resources on your ASM resources:
+
+srvctl modify instance -d <database name> -i <inst_name> -s <corresponding asm>
+
+Run the appropriate commands to start the newly readded resources, examples:
+
+srvctl start asm -n <nodename>
+srvctl start database -d <database name>
+
+Example:
+
+srvctl add asm -n rst-consult07 -i ASM1 -o /u01/app/oracle/product/10.2.0/db
+
+srvctl add asm -n rst-consult08 -i ASM2 -o /u01/app/oracle/product/10.2.0/db
+
+srvctl add database -d orcl -o /u01/app/oracle/product/10.2.0/db
+
+srvctl add instance -d orcl -i orcl1 -n rst-consult07
+
+srvctl add instance -d orcl -i orcl2 -n rst-consult08
+
+srvctl modify instance -d orcl -i orcl1 -s ASM1
+
+srvctl modify instance -d orcl -i orcl2 -s ASM2
+
+srvctl start asm -n rst-consult07
+
+srvctl start asm -n rst-consult08
+
+srvctl start database -d orcl
+7. Recheck the configured CRS resources and their status: 
+
+LINUX/UNIX: 
+
+$CRS_HOME/bin/crs_stat -t
+WINDOWS: 
+
+%CRS_HOME%\bin\crs_stat -t
+All resources should be ONLINE for both TARGET and STATE for all cluster nodes.
+
+Scalability RAC Community
+
+To discuss this topic further with Oracle experts and industry peers, we encourage you to review, join or start a discussion in the My Oracle Support Scalability RAC Community.
+
+REFERENCES
+
+NOTE:239998.1 - How to Proceed From a Failed 10g or 11.1 Oracle Clusterware (CRS) Installation
+NOTE:316583.1 - VIPCA Fails Complaining That Interface Is Not Public
+NOTE:341214.1 - How To Clean up After a Failed (or successful) Oracle Clusterware Installation on Windows
+NOTE:443418.1 - How to Debug root.sh Problems when Installing CRS 10.2 and 11.1 Release
+NOTE:810394.1 - RAC and Oracle Clusterware Best Practices and Starter Kit (Platform Independent)
+NOTE:1276975.1 - 11gR2 RAC: How to re-install the Grid Infrastructure without disturbing the RDBMS installations.
