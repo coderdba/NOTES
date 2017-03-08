@@ -396,7 +396,7 @@ depends "tomcat6"
 depends "tomcat8"
 
 ==================================
-MULTIPLE SUPERMARKETS
+MULTIPLE SUPERMARKETS - whereby 'depends' clause can directly fetch cookbooks
 ==================================
 Mention the mutliple 'sources' in Berksfile.
 -> place in Berksfile of both project and individual cookbooks (so that if the cookbook is run standalone elsewhere, it has the source)
@@ -427,6 +427,45 @@ depends "apache2"
 
 # These available in https://supermarket.company.com
 depends "centrify"
+
+==================================
+NON-SUPERMARKET SOURCES - and 'depends' cannot fetch from them
+==================================
+Fetch a cookbook from a non-supermarket source like 'git'
+Add specific version dependency as well in a cookbook.
+
+/projects/mystack/Berksfile: (add it here as berks install at project level does not recognize entries in cookbook Berksfile)
+source 'https://supermarket.chef.io'
+source 'https://supermarket.company.com'
+#metadata
+cookbook "mystack", path: "cookbooks/mystack"
+cookbook "somecookbook1", git: "git@github.com:coderdba/somecookbook1.git"
+
+/projects/mystack/cookbooks/mystack/Berksfile: (add it here also so that this cookbook can run standalone)
+NOTE: Place metadata after cookbook if depends cribs - https://github.com/berkshelf/berkshelf/issues/892)
+source 'https://supermarket.chef.io'
+source 'https://supermarket.target.com'
+cookbook "cbora12crac1rs", git: "git@github.com:coderdba/cbora12crac1rs.git"
+metadata
+
+/projects/mystack/cookbooks/mystack/metadata.rb:
+name 'mystack'
+maintainer 'The Authors'
+maintainer_email 'you@example.com'
+license 'all_rights'
+description 'Installs/Configures mystack'
+long_description 'Installs/Configures mystack'
+version '0.1.0'
+
+depends "tomcat"
+depends "apache2"
+
+depends "centrify"
+depends "somecookbook1", "<= 0.2.1"
+
+Install:
+$ cd /projects/mystack
+$ berks install
 
 ==================================
 PROXY SETTINGS 
