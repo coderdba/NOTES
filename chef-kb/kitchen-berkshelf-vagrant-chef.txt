@@ -191,6 +191,143 @@ add the validation and user keys and run:
 $ berks upload
 
 ========================================================
+                      FULL EXAMPLE
+========================================================
+$ mkdir projects
+$ cd projects
+$ chef generate app mystack
+$ cd mystack
+
+---------------------------
+/projects/mystack/Berksfile
+---------------------------
+source 'https://supermarket.chef.io'
+#metadata
+cookbook "mystack", path: "cookbooks/mystack"
+
+------------------------------
+/projects/mystack/.kitchen.yml
+------------------------------
+---
+driver:
+  name: vagrant
+
+provisioner:
+  name: chef_zero
+  cookbook_path: cookbooks
+  roles_path: roles
+  environments_path: environments
+  data_bags_path: data_bags
+  client_rb:
+    environment: development
+
+platforms:
+  - name: ubuntu/trusty64
+
+suites:
+  - name: default
+    driver:
+      vm_hostname: mystack.loc
+      network:
+      - ["private_network", {ip: "10.0.0.31",virtualbox__intnet: true}]
+      customize:
+        memory: 512
+        cpus: 1
+    run_list:
+      - recipe[mystack::default]
+    attributes:
+
+-----------------------------------------------
+/projects/mystack/environments/development.json
+-----------------------------------------------
+{                                                  
+  "name": "development",                           
+  "description": "Development environment",        
+  "cookbook_versions": {                           
+  },                                               
+  "json_class": "Chef::Environment",               
+  "chef_type": "environment",                      
+  "default_attributes": {                          
+    "authorization": {                             
+      "sudo": {                                    
+        "users": [                                 
+          "vagrant"                                
+        ]                                          
+      }                                            
+    }                                              
+  },                                               
+  "override_attributes": {                         
+  }                                                
+}                                                  
+
+-----------------------------------------------
+/projects/mystack/cookbooks/mystack/Berksfile
+-----------------------------------------------
+source 'https://supermarket.chef.io'
+metadata
+
+-----------------------------------------------
+/projects/mystack/cookbooks/mystack/metadata.rb
+-----------------------------------------------
+name 'mystack'
+maintainer 'The Authors'
+maintainer_email 'you@example.com'
+license 'all_rights'
+description 'Installs/Configures mystack'
+long_description 'Installs/Configures mystack'
+version '0.1.0'
+
+depends "tomcat"
+depends "apache2"
+
+------------------------------------------------------
+/projects/mystack/cookbooks/mystack/recipes/default.rb
+------------------------------------------------------
+#
+# Cookbook Name:: mystack
+# Recipe:: default
+#
+# Copyright (c) 2017 The Authors, All Rights Reserved.
+
+execute 'echo date to /tmp/mystack.out' do
+  command 'date >> /tmp/mystack.out'
+end
+
+# This is a 'definition' called from apache2 cookbook
+# For details refer to http://gettingstartedwithchef.com/first-steps-with-chef.html
+apache_site "default" do
+  enable true
+end
+
+------------------------------------------------------
+RUN
+------------------------------------------------------
+$ cd /projects/mystack
+$ kitchen converge
+
+------------------------------------------------------
+VERIFY
+------------------------------------------------------
+$ cd /projects/mystack
+$ kitchen login
+
+- In the VM
+$ id
+vagrant
+
+$ curl localhost:80
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+<html><head>
+<title>403 Forbidden</title>
+</head><body>
+<h1>Forbidden</h1>
+<p>You don't have permission to access /
+on this server.</p>
+<hr>
+<address>Apache Server at localhost Port 80</address>
+</body></html>
+
+========================================================
                     DETAILED TOPICS
 ========================================================
 
