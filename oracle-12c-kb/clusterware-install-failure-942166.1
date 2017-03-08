@@ -1,0 +1,153 @@
+How to Proceed from Failed 11gR2 Grid Infrastructure (CRS) Installation (Doc ID 942166.1)	To BottomTo Bottom	
+
+In this Document
+Purpose
+Scope
+Details
+ 	A. OUI Failure
+ 	B. GI Standalone Deconfigure and Reconfigure (Oracle Restart):
+ 	C. GI Cluster Deconfigure and Reconfigure
+ 	D. Grid Infrastructure Deinstall
+ 	E. OUI Plug-in Failure or OUI Window Closed While Running root.sh
+ 	Community Discussions
+References
+APPLIES TO:
+
+Oracle Database - Enterprise Edition - Version 11.2.0.1 to 11.2.0.4 [Release 11.2]
+Generic UNIX
+Generic Linux
+PURPOSE
+
+This note provides steps to proceed from failed 11gR2 Grid Infrastructure installation.
+
+Similar procedure for 10gR1, 10gR2 or 11gR1 available in note 239998.1 and note 399482.1 
+
+If upgrade to 11.2 GI fails, refer to note 969254.1for details.
+
+If 11.2 GI has been up and running and need to be deconfigured/deinstalled/reconfigured/reinstalled, refer to note 1377349.1 and note 1354258.1 
+
+
+SCOPE
+
+This document is intended for Oracle Clusterware/Oracle RAC Database Administrators and Oracle support engineers. 
+
+DETAILS
+
+ 
+
+A. OUI Failure
+
+Case applies here is when runInstaller fails before user is prompted to execute rootupgrade.sh.
+
+Refer to note 1056322.1 for solution details.
+
+
+
+B. GI Standalone Deconfigure and Reconfigure (Oracle Restart):
+
+
+  To deconfigure:
+
+    As root, execute "$GRID_HOME/crs/install/roothas.pl -deconfig -force -verbose"
+
+    If it fails, please disable GI, reboot the node and try the same command:
+
+      As root, execute "$GRID_HOME/bin/crsctl disable has"
+      As root, reboot the node; once the node comes backup, execute above deconfigure command again.
+
+  To reconfigure:
+
+    As root, execute "$GRID_HOME/root.sh"      
+
+
+
+
+C. GI Cluster Deconfigure and Reconfigure
+
+Identify cause of root.sh failure by reviewing logs in $GRID_HOME/cfgtoollogs/crsconfig and $GRID_HOME/log, once cause is identified and problem is fixed, deconfigure and reconfigure with steps below - keep in mind that you will need wait till each step finishes successfully before move to next one:
+
+Step 0: For 11.2.0.2 and above, root.sh is restartable.
+
+Once cause is identified and the problem is fixed, root.sh can be executed again on the failed node. If it succeeds, continue with your planned installation procedure; otherwise as root sequentially execute "$GRID_HOME/crs/install/rootcrs.pl -verbose -deconfig -force" and $GRID_HOME/root.sh on local node, if it succeeds, continue with your planned installation procedure, otherwise proceed to next step (Step 1) of the note.
+
+Step 1: As root, run "$GRID_HOME/crs/install/rootcrs.pl -verbose -deconfig -force" on all nodes, except the last one.
+
+Step 2: As root, run "$GRID_HOME/crs/install/rootcrs.pl -verbose -deconfig -force -lastnode" on last node. This command will zero out OCR, Voting Disk and the ASM diskgroup for OCR and Voting Disk
+
+
+    Note:
+
+    a. Step1 and 2 can be skipped on node(s) where root.sh haven't been executed this time.
+
+    b. Step1 and 2 should remove checkpoint file. To verify:
+
+          ls -l $ORACLE_BASE/Clusterware/ckptGridHA_.xml
+
+    If it's still there, please remove it manually with "rm" command on all nodes
+
+    c. If GPNP profile is different between nodes/setup, clean it up on all nodes as grid user
+
+          $ find <GRID_HOME>/gpnp/* -type f -exec rm -rf {} \;          
+
+    The profile needs to be cleaned up:
+
+        c1. If root.sh is executed concurrently - one should not execute root.sh on any other nodes before it finishes on first node.
+
+        c2. If network info, location of OCR or Voting Disk etc changed after Grid is installed - rare
+
+
+Step 3: As root, run $GRID_HOME/root.sh on first node
+
+Step 4: As root, run $GRID_HOME/root.sh on all other node(s), except last one.
+
+Step 5: As root, run $GRID_HOME/root.sh on last node.
+
+
+
+D. Grid Infrastructure Deinstall
+
+As grid user, execute "$GRID_HOME/deinstall/deinstall" and follow the instructions, for details, refer to the following documentation for your platform:
+
+Oracle Grid Infrastructure
+Installation Guide
+
+How to Modify or Deinstall Oracle Grid Infrastructure
+
+If there's any error, deconfig the failed GI with steps in Section B or C, and deinstall manually with note 1364419.1 
+
+
+
+E. OUI Plug-in Failure or OUI Window Closed While Running root.sh
+
+Case applies here is OUI plug-in failure after root.sh has been executed successfully on all nodes or OUI window closed while running root.sh
+
+Identify the cause of failed plug-in. Once root cause is identified and the issue is resolved, refer to note 1360798.1
+
+
+
+
+
+
+
+Community Discussions
+
+
+Still have questions? Use the communities window below to search for similar discussions or start a new discussion on this subject.
+
+Note: Window is the LIVE community not a screenshot.
+
+Click here to open in main browser window.
+
+
+
+REFERENCES
+
+NOTE:1360798.1 - How to Complete Grid Infrastructure Configuration Assistant(Plug-in) if OUI is not Available
+NOTE:239998.1 - How to Proceed From a Failed 10g or 11.1 Oracle Clusterware (CRS) Installation
+NOTE:399482.1 - Pre-11.2: How to Recreate OCR/Voting Disk Accidentally Deleted
+NOTE:969254.1 - How to Proceed from Failed Upgrade to 11gR2 Grid Infrastructure on Linux/Unix
+NOTE:1050908.1 - Troubleshoot Grid Infrastructure Startup Issues
+NOTE:1056322.1 - Troubleshoot Grid Infrastructure/RAC Database installer/runInstaller Issues
+NOTE:1364419.1 - How to Deinstall Oracle Clusterware Home Manually
+NOTE:1377349.1 - How to Deconfigure/Reconfigure(Rebuild OCR) or Deinstall Grid Infrastructure
+NOTE:1354258.1 - How to Configure or Re-configure Grid Infrastructure With config.sh/config.bat
