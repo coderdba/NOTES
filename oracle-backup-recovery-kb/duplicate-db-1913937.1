@@ -1,0 +1,1071 @@
+STEP BY STEP RMAN DUPLICATE Database From RAC ASM To RAC ASM (Doc ID 1913937.1)	To BottomTo Bottom	
+
+In this Document
+Goal
+ 	Outline Steps
+ 	Example Setup
+ 	Source Database PROD (which is to be DUPLICATEd)
+ 	Clone Database UAT to achieve 
+Solution
+ 	A) Setup Oracle Clusterware / Grid Infrastructure (GI)
+ 	1) Install/Configure Oracle Clusterware (aka Grid Infrastructure in 11g onwards) and ASM
+ 	2) Install Oracle RDBMS Software Oracle Home
+ 	3) Create required ASM diskgroups
+ 	B) Clone using RMAN DUPLICATE
+ 	1) Add Static Listener Entry in UAT
+ 	2) Add TNS entry for UAT in PROD
+ 	3) Copy Password File from PROD to UAT
+ 	4) Verify TNS Connectivity to UAT from PROD
+ 	5) Create Directory Structures for UAT
+ 	6) Start UAT (auxiliary) instance in NOMOUNT mode
+ 	7) Connect RMAN to Target (PROD) and Auxiliary (UAT) using TNS
+ 	8) DUPLICATE Command Execution
+ 	C) Convert UAT from Single Instance to RAC
+ 	1) Copy ConvertToRAC_AdminManaged.xml to UAT_ConvertToRAC.xml (or any desired name)
+ 	2) Modify xml file UAT_ConvertToRAC.xml to convert UAT  to 2 Node RAC in ASM
+ 	3) Run RCONFIG to convert UAT to 2 Node RAC using modified xml file
+ 	4) Verify that database UAT is converted to 2 Node RAC using srvctl
+ 	5) Verify RAC database conversion using SQL queries
+References
+APPLIES TO:
+
+Oracle Database - Enterprise Edition - Version 10.2.0.1 and later
+Enterprise Manager for Oracle Database - Version 11.2.0.3 to 11.2.0.3 [Release 11.2]
+Information in this document applies to any platform.
+GOAL
+
+Creating a RAC duplicate (clone) database from an existing RAC Database.
+
+Outline Steps
+
+Install/Prepare Oracle Clusterware (aka Grid infrastructure in 11g onwards) in clone Nodes
+Install Oracle RDBMS software Home in clone Nodes
+Make sure that all required pre-requisites / setup for Clusterware / Grid Infrastructure / RAC Oracle Home are executed and verified.
+In case of ASM storage, create required ASM diskgroups accessible to all clone Nodes.
+Use RMAN DUPLICATE to create a non-RAC database (cluster_database=FALSE) in any one of the clone nodes. In our example we will use RMAN ACTIVE DUPLICATE method introduced in 11g.
+
+References:
+
+RMAN 'Duplicate From Active Database' Feature in 11G (Doc ID 452868.1)
+
+Oracle10G RMAN Database Duplication (Doc ID 259694.1)
+
+RMAN 'Duplicate Database' Feature in Oracle9i / 10G and 11.1 (Doc ID 228257.1)
+  
+
+Convert the non-RAC clone (duplicate) database to RAC Database using tools like rconfig, Oracle Enterprise Manager, etc.
+
+For 10gR2:
+
+Converting with rconfig and Oracle Enterprise Manager
+
+
+For 11gR2:
+
+Converting to Oracle RAC and Oracle RAC One Node from Single-Instance Oracle Databases
+ 
+Example Setup
+
+The steps are illustrated with example having below setup:
+
+
+Source Database (PROD) is a  3 Node RAC having version 11.2.0.3 for  both Grid Infrastructure (GI) and Oracle RDBMS Home.
+
+Clone Database (UAT) needs to be a 2 Node RAC having version 11.2.0.3 for  both Grid Infrastructure (GI) and Oracle RDBMS Home.
+Source Database PROD (which is to be DUPLICATEd)
+
+Database Name: PROD
+
+Number of RAC Nodes: 3
+
+Node Names: prod01, prod02, prod03
+
+Instance Names: PROD1, PROD2, PROD3
+
+Grid Infrastructure Version: 11.2.0.3
+
+Oracle RDBMS Version: 11.2.0.3
+
+ASM Diskgroups: +PROD1, +PROD2
+
+$ srvctl config database -d PROD
+Database unique name: PROD
+Database name: PROD
+Oracle home: /u01/app/oracle/product/11.2.0/dbhome_1
+Oracle user: oracle
+Spfile: +PROD1/PROD/spfilePROD.ora
+Domain:
+Start options: open
+Stop options: immediate
+Database role: PRIMARY
+Management policy: AUTOMATIC
+Server pools: PROD
+Database instances: PROD1,PROD2,PROD3
+Disk Groups: PROD1,PROD2
+Mount point paths:
+Services:
+Type: RAC
+Database is administrator managed
+
+
+$ srvctl status database -d prod
+Instance PROD1 is running on node prod01
+Instance PROD2 is running on node prod01
+Clone Database UAT to achieve 
+
+Database Name: UAT
+
+Number of RAC Nodes: 2
+
+Node Names: uat01, uat02
+
+Instance Names: UAT1, UAT2
+
+Grid Infrastructure Version: 11.2.0.3
+
+Oracle RDBMS Version: 11.2.0.3
+
+ASM Diskgroups: +UAT1, +UAT2
+
+$ srvctl config database -d uat
+Database unique name: UAT
+Database name: UAT
+Oracle home: /u01/app/oracle/product/11.2.0/dbhome_1
+Oracle user: oracle
+Spfile: +UAT1/UAT/spfileUAT.ora
+Domain:
+Start options: open
+Stop options: immediate
+Database role: PRIMARY
+Management policy: AUTOMATIC
+Server pools: UAT
+Database instances: UAT1,UAT2
+Disk Groups: UAT1,UAT2
+Mount point paths:
+Services:
+Type: RAC
+Database is administrator managed
+
+
+$ srvctl status database -d uat
+Instance UAT1 is running on node uat01
+Instance UAT2 is running on node uat02
+
+ 
+
+SOLUTION
+
+A) Setup Oracle Clusterware / Grid Infrastructure (GI)
+
+1) Install/Configure Oracle Clusterware (aka Grid Infrastructure in 11g onwards) and ASM
+
+Install/Configure Oracle Clusterware (aka Grid Infrastructure in 11g onwards) and ASM on designated clone nodes, i.e. UAT Cluster. You can follow Platform specific Installation Guides in Oracle Documentation.
+
+2) Install Oracle RDBMS Software Oracle Home
+
+Install Oracle RDBMS Software Oracle Home in all clone nodes of UAT cluster.
+
+3) Create required ASM diskgroups
+
+For ASM storage, create required ASM diskgroups to store UAT  RAC database files.
+
+B) Clone using RMAN DUPLICATE
+
+There are various methods to perform RMAN DUPLICATE, mainly categorized in Backup based DUPLICATE and ACTIVE DUPLICATE (11g onwards). For this illustration, we will use ACTIVE DUPLICATE as this is one of the most popular DUPLICATE method in use since it's introduced in 11g. Refer Doc ID 452868.1 for details.
+
+1) Add Static Listener Entry in UAT
+
+In Node 1 of UAT cluster, from grid user, add static listener entry for "UAT" database in GRID_HOME/network/admin/listener.ora and reload the listener to show up the static service UAT:
+
+
+[grid@uat01 ~]$ . oraenv
+ORACLE_SID = [grid] ? +ASM1
+The Oracle base has been set to /u01/app/oracle
+
+Add below:
+
+SID_LIST_LISTENER =
+ (SID_LIST =
+  (SID_DESC =
+    (GLOBAL_DBNAME = UAT)
+    (ORACLE_HOME = /u01/app/oracle/product/11.2.0/dbhome_1)
+    (SID_NAME = UAT)
+   )
+ )
+
+[grid@uat01 ~]$ lsnrctl reload
+
+LSNRCTL for Linux: Version 11.2.0.3.0 - Production on 04-AUG-2014 06:24:12
+
+Copyright (c) 1991, 2011, Oracle.  All rights reserved.
+
+Connecting to (DESCRIPTION=(ADDRESS=(PROTOCOL=IPC)(KEY=LISTENER)))
+The command completed successfully
+[grid@uat01 ~]$ lsnrctl services
+
+LSNRCTL for Linux: Version 11.2.0.3.0 - Production on 04-AUG-2014 06:24:23
+
+Copyright (c) 1991, 2011, Oracle.  All rights reserved.
+
+Connecting to (DESCRIPTION=(ADDRESS=(PROTOCOL=IPC)(KEY=LISTENER)))
+Services Summary...
+Service "UAT" has 1 instance(s).
+  Instance "UAT", status UNKNOWN, has 1 handler(s) for this service...
+    Handler(s):
+      "DEDICATED" established:0 refused:0
+         LOCAL SERVER
+The command completed successfully
+[grid@uat01 ~]$
+2) Add TNS entry for UAT in PROD
+
+In All nodes of PROD cluster, from oracle user, add TNS entry for "UAT" in Oracle RDBMS Home $ORACLE_HOME/network/admin/tnsnames.ora :
+
+
+UAT =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = uat01)(PORT = 1521))
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = UAT)
+    )
+  )
+3) Copy Password File from PROD to UAT
+
+Copy Password file from PROD database Node 1 location $ORACLE_HOME/dbs/orapwPROD1 to UAT Node1 location $ORACLE_HOME/dbs/orapwUAT:
+
+
+[oracle@prod01 ~]$ scp $ORACLE_HOME/dbs/orapwPROD1 uat01:/u01/app/oracle/product/11.2.0/dbhome_1/dbs/orapwUAT
+
+4) Verify TNS Connectivity to UAT from PROD
+
+Make sure that connection from Prod Node 1 to UAT Node 1 is working via TNS and instance shows Idle instance:
+
+
+[oracle@prod01 ~]$ sqlplus sys/oracle@uat as sysdba
+
+SQL*Plus: Release 11.2.0.3.0 Production on Mon Aug 4 07:12:32 2014
+
+Copyright (c) 1982, 2011, Oracle.  All rights reserved.
+
+Connected to an idle instance.
+
+SQL>
+5) Create Directory Structures for UAT
+
+Make sure that directory structure to support various parameters (e.g. audit_file_dest, etc.) for UAT database is pre-created with valid permissions. For example:
+
+[oracle@uat01 ~]$ mkdir -p /u01/app/oracle/admin/UAT/adump
+
+You need to carefully review the parameters of PROD database and pre-create the directory structures for UAT as needed.
+
+
+6) Start UAT (auxiliary) instance in NOMOUNT mode
+
+On Node 1 of UAT cluster, from oracle user, create parameter file initUAT.ora in $ORACLE_HOME/dbs directory with just below parameters:
+
+initUAT.ora
+-------------
+
+db_name='UAT'
+memory_max_target=10G
+memory_target=8G
+
+ 
+
+NOTE: memory_target is added due to issue reported in:
+ORA-00371: not enough shared pool memory during instance startup with default shared_pool_size (Note 1560386.1)
+
+The values listed are an example, and in most cases should be sufficient. However, if you still get an ORA-00371 error consider setting the parameters to those identical to the target. Alternatively you may set SHARED_POOL_SIZE and SHARED_POOL_RESERVED_SIZE parameters to the same value as target. The occurance of this error and the necessary value of these parameters are very specific to the environment and target database.
+
+ Then, from SQL*Plus, start the instance in NOMOUNT mode:
+
+[oracle@prod01]$ sqlplus sys/oracle@uat as sysdba
+
+SQL*Plus: Release 11.2.0.3.0 Production on Mon Aug 4 08:03:22 2014
+
+Copyright (c) 1982, 2011, Oracle.  All rights reserved.
+
+Connected to an idle instance.
+
+SQL> startup nomount
+ORACLE instance started.
+
+Total System Global Area  250560512 bytes
+Fixed Size                  2227256 bytes
+Variable Size             192938952 bytes
+Database Buffers           50331648 bytes
+Redo Buffers                5062656 bytes
+SQL>
+ 
+
+Note: If STARTUP fails with error ORA-00304: requested INSTANCE_NUMBER is busy, then add below parameter in initUAT.ora with some odd instance number which possibly not in use:
+
+instance_number=11
+
+Now, restart again in NOMOUNT and it should succeed.
+7) Connect RMAN to Target (PROD) and Auxiliary (UAT) using TNS
+
+On Node 1 of Prod Cluster, from oracle user, connect RMAN to PROD as target and UAT as auxiliary:
+
+
+[oracle@uat01]$ export NLS_DATE_FORMAT="DD-MON-YYYY HH24:MI:SS"
+[oracle@uat01]$ rman target sys/oracle@prod auxiliary sys/oracle@uat | tee /tmp/rmanDUPLICATE.log
+
+Recovery Manager: Release 11.2.0.3.0 - Production on Mon Aug 4 10:43:13 2014
+
+Copyright (c) 1982, 2011, Oracle and/or its affiliates.  All rights reserved.
+
+connected to target database: PROD (DBID=2126157328)
+connected to auxiliary database: UAT (not mounted)
+
+
+RMAN>
+8) DUPLICATE Command Execution
+
+Execute below RMAN DUPLICATE run block. You can set / reset as many parameters (e.g. UNDO_TABLESPACE, REMOTE_LISTENER, etc...) for UAT as needed for your environment. However, make sure that CLUSTER_DATABASE is set to FALSE.
+
+Also, carefully determine the value for parameters DB_FILE_NAME_CONVERT / LOG_FILE_NAME_CONVERT.
+
+Reference:
+
+RMAN DUPLICATE / RESTORE including Standby in ASM with OMF / non-OMF / Mixed Name for Datafile / Online Log / Controlfile (Doc ID 1910175.1)
+
+ 
+
+ 
+
+set echo on
+run
+{
+ allocate channel tgt1 device type disk ;
+ allocate channel tgt2 device type disk ;
+ allocate auxiliary channel aux1 device type disk ;
+ duplicate target database to UAT from active database
+  spfile
+      parameter_value_convert 'prod', 'uat', 'PROD', 'UAT'
+   set control_files='+UAT1', '+UAT2'
+   set db_file_name_convert='+PROD1', '+UAT1', '+PROD2', '+UAT2' 
+   set log_file_name_convert='+PROD1', '+UAT1', '+PROD2', '+UAT2'
+   set cluster_database='false'
+  logfile
+    group 1 ('+UAT1', '+UAT2') size 10m,
+    group 2 ('+UAT1', '+UAT2') size 10m,
+    group 3 ('+UAT1', '+UAT2') size 10m
+ ;
+}
+ 
+
+Example Output:
+
+ 
+
+Recovery Manager: Release 11.2.0.3.0 - Production on Mon Aug 4 10:54:53 2014
+
+Copyright (c) 1982, 2011, Oracle and/or its affiliates.  All rights reserved.
+
+connected to target database: PROD (DBID=2126157328)
+connected to auxiliary database: UAT (not mounted)
+
+RMAN>
+echo set on
+
+RMAN> run
+2> {
+3>  allocate channel tgt1 device type disk ;
+4>  allocate channel tgt2 device type disk ;
+5>  allocate auxiliary channel aux1 device type disk ;
+6>  duplicate target database to UAT from active database
+7>   spfile
+8>       parameter_value_convert 'prod', 'uat', 'PROD', 'UAT'
+9>     set control_files='+UAT1', '+UAT2'
+10>    set db_file_name_convert='+PROD1', '+UAT1', '+PROD2', '+UAT2'
+11>    set log_file_name_convert='+PROD1', '+UAT1', '+PROD2', '+UAT2'
+12>    set cluster_database='false'
+13>   logfile
+14>     group 1 ('+UAT1', '+UAT2') size 10m,
+15>     group 2 ('+UAT1', '+UAT2') size 10m,
+16>     group 3 ('+UAT1', '+UAT2') size 10m
+17>  ;
+18> }
+using target database control file instead of recovery catalog
+allocated channel: tgt1
+channel tgt1: SID=23 instance=PROD1 device type=DISK
+
+allocated channel: tgt2
+channel tgt2: SID=25 instance=PROD2 device type=DISK
+
+allocated channel: aux1
+channel aux1: SID=13 device type=DISK
+
+Starting Duplicate Db at 04-AUG-2014 10:55:08
+
+contents of Memory Script:
+{
+   backup as copy reuse
+   targetfile  '+PROD1/prod/spfileprod.ora' auxiliary format
+ '/u01/app/oracle/product/11.2.0/dbhome_1/dbs/spfileUAT.ora'   ;
+   sql clone "alter system set spfile= ''/u01/app/oracle/product/11.2.0/dbhome_1/dbs/spfileUAT.ora''";
+}
+executing Memory Script
+
+Starting backup at 04-AUG-2014 10:55:09
+Finished backup at 04-AUG-2014 10:55:10
+
+sql statement: alter system set spfile= ''/u01/app/oracle/product/11.2.0/dbhome_1/dbs/spfileUAT.ora''
+
+contents of Memory Script:
+{
+   sql clone "alter system set  db_name =
+ ''UAT'' comment=
+ ''duplicate'' scope=spfile";
+   sql clone "alter system set  audit_file_dest =
+ ''/u01/app/oracle/admin/UAT/adump'' comment=
+ '''' scope=spfile";
+   sql clone "alter system set  dispatchers =
+ ''(PROTOCOL=TCP) (SERVICE=UATXDB)'' comment=
+ '''' scope=spfile";
+   sql clone "alter system set  log_archive_dest_1 =
+ ''location=/uat_ocfs2/arch/uat/'' comment=
+ '''' scope=spfile";
+   sql clone "alter system set  control_files =
+ ''+UAT1'', ''+UAT2'' comment=
+ '''' scope=spfile";
+   sql clone "alter system set  db_file_name_convert =
+ ''+PROD1'', ''+UAT1'', ''+PROD2'', ''+UAT2'' comment=
+ '''' scope=spfile";
+   sql clone "alter system set  log_file_name_convert =
+ ''+PROD1'', ''+UAT1'', ''+PROD2'', ''+UAT2'' comment=
+ '''' scope=spfile";
+   sql clone "alter system set  cluster_database =
+ false comment=
+ '''' scope=spfile";
+   shutdown clone immediate;
+   startup clone nomount;
+}
+executing Memory Script
+
+sql statement: alter system set  db_name =  ''UAT'' comment= ''duplicate'' scope=spfile
+
+sql statement: alter system set  audit_file_dest =  ''/u01/app/oracle/admin/UAT/adump'' comment= '''' scope=spfile
+
+sql statement: alter system set  dispatchers =  ''(PROTOCOL=TCP) (SERVICE=UATXDB)'' comment= '''' scope=spfile
+
+sql statement: alter system set  log_archive_dest_1 =  ''location=/uat_ocfs2/arch/uat/'' comment= '''' scope=spfile
+
+sql statement: alter system set  control_files =  ''+UAT1'', ''+UAT2'' comment= '''' scope=spfile
+
+sql statement: alter system set  db_file_name_convert =  ''+PROD1'', ''+UAT1'', ''+PROD2'', ''+UAT2'' comment= '''' scope=spfile
+
+sql statement: alter system set  log_file_name_convert =  ''+PROD1'', ''+UAT1'', ''+PROD2'', ''+UAT2'' comment= '''' scope=spfile
+
+sql statement: alter system set  cluster_database =  false comment= '''' scope=spfile
+
+Oracle instance shut down
+
+connected to auxiliary database (not started)
+Oracle instance started
+
+Total System Global Area     784998400 bytes
+
+Fixed Size                     2232472 bytes
+Variable Size                218107752 bytes
+Database Buffers             557842432 bytes
+Redo Buffers                   6815744 bytes
+allocated channel: aux1
+channel aux1: SID=125 device type=DISK
+
+contents of Memory Script:
+{
+   sql clone "alter system set  control_files =
+  ''+UAT1/uat/controlfile/current.260.854708131'', ''+UAT2/uat/controlfile/current.282.854708131'' comment=
+ ''Set by RMAN'' scope=spfile";
+   sql clone "alter system set  db_name =
+ ''PROD'' comment=
+ ''Modified by RMAN duplicate'' scope=spfile";
+   sql clone "alter system set  db_unique_name =
+ ''UAT'' comment=
+ ''Modified by RMAN duplicate'' scope=spfile";
+   shutdown clone immediate;
+   startup clone force nomount
+   backup as copy current controlfile auxiliary format  '+UAT1/uat/controlfile/current.259.854708133';
+   restore clone controlfile to  '+UAT2/uat/controlfile/current.281.854708133' from
+ '+UAT1/uat/controlfile/current.259.854708133';
+   sql clone "alter system set  control_files =
+  ''+UAT1/uat/controlfile/current.259.854708133'', ''+UAT2/uat/controlfile/current.281.854708133'' comment=
+ ''Set by RMAN'' scope=spfile";
+   shutdown clone immediate;
+   startup clone nomount;
+   alter clone database mount;
+}
+executing Memory Script
+
+sql statement: alter system set  control_files =   ''+UAT1/uat/controlfile/current.260.854708131'', ''+UAT2/uat/controlfile/current.2
+82.854708131'' comment= ''Set by RMAN'' scope=spfile
+
+sql statement: alter system set  db_name =  ''PROD'' comment= ''Modified by RMAN duplicate'' scope=spfile
+
+sql statement: alter system set  db_unique_name =  ''UAT'' comment= ''Modified by RMAN duplicate'' scope=spfile
+
+Oracle instance shut down
+
+Oracle instance started
+
+Total System Global Area     784998400 bytes
+
+Fixed Size                     2232472 bytes
+Variable Size                218107752 bytes
+Database Buffers             557842432 bytes
+Redo Buffers                   6815744 bytes
+allocated channel: aux1
+channel aux1: SID=139 device type=DISK
+
+Starting backup at 04-AUG-2014 10:56:13
+channel tgt1: starting datafile copy
+copying current control file
+output file name=+UAT1/uat/snapcf_uat.f tag=TAG20140804T102432 RECID=12 STAMP=854709556
+channel tgt1: datafile copy complete, elapsed time: 00:00:03
+Finished backup at 04-AUG-2014 10:56:16
+
+Starting restore at 04-AUG-2014 10:56:16
+
+channel aux1: copied control file copy
+Finished restore at 04-AUG-2014 10:56:17
+
+sql statement: alter system set  control_files =   ''+UAT1/uat/controlfile/current.259.854708133'', ''+UAT2/uat/controlfile/current.2
+81.854708133'' comment= ''Set by RMAN'' scope=spfile
+
+Oracle instance shut down
+
+connected to auxiliary database (not started)
+Oracle instance started
+
+Total System Global Area     784998400 bytes
+
+Fixed Size                     2232472 bytes
+Variable Size                218107752 bytes
+Database Buffers             557842432 bytes
+Redo Buffers                   6815744 bytes
+allocated channel: aux1
+channel aux1: SID=16 device type=DISK
+
+database mounted
+RMAN-05529: WARNING: DB_FILE_NAME_CONVERT resulted in invalid ASM names; names changed to disk group only.
+
+contents of Memory Script:
+{
+   set newname for datafile  1 to
+ "+uat1";
+   set newname for datafile  2 to
+ "+uat1";
+   set newname for datafile  3 to
+ "+uat1";
+   set newname for datafile  4 to
+ "+uat2";
+   set newname for datafile  5 to
+ "+uat2";
+   set newname for datafile  6 to
+ "+uat2";
+   set newname for datafile  7 to
+ "+uat2";
+   backup as copy reuse
+   datafile  1 auxiliary format
+ "+uat1"   datafile
+ 2 auxiliary format
+ "+uat1"   datafile
+ 3 auxiliary format
+ "+uat1"   datafile
+ 4 auxiliary format
+ "+uat2"   datafile
+ 5 auxiliary format
+ "+uat2"   datafile
+ 6 auxiliary format
+ "+uat2"   datafile
+ 7 auxiliary format
+ "+uat2"   ;
+   sql 'alter system archive log current';
+}
+executing Memory Script
+
+executing command: SET NEWNAME
+
+executing command: SET NEWNAME
+
+executing command: SET NEWNAME
+
+executing command: SET NEWNAME
+
+executing command: SET NEWNAME
+
+executing command: SET NEWNAME
+
+executing command: SET NEWNAME
+
+Starting backup at 04-AUG-2014 10:57:00
+channel tgt1: starting datafile copy
+input datafile file number=00002 name=+PROD1/prod/datafile/sysaux.257.854120125
+channel tgt2: starting datafile copy
+input datafile file number=00001 name=+PROD1/prod/datafile/system.256.854120125
+output file name=+UAT1/uat/datafile/sysaux.276.854708221 tag=TAG20140804T102520
+channel tgt1: datafile copy complete, elapsed time: 00:00:27
+channel tgt1: starting datafile copy
+input datafile file number=00003 name=+PROD1/prod/datafile/undotbs1.258.854120125
+output file name=+UAT1/uat/datafile/system.277.854708221 tag=TAG20140804T102520
+channel tgt2: datafile copy complete, elapsed time: 00:00:26
+channel tgt2: starting datafile copy
+input datafile file number=00005 name=+PROD2/prod/datafile/example.264.854120221
+output file name=+UAT1/uat/datafile/undotbs1.280.854708247 tag=TAG20140804T102520
+channel tgt1: datafile copy complete, elapsed time: 00:00:16
+channel tgt1: starting datafile copy
+input datafile file number=00006 name=+PROD2/prod/datafile/undotbs2.265.854120369
+output file name=+UAT2/uat/datafile/example.279.854708249 tag=TAG20140804T102520
+channel tgt2: datafile copy complete, elapsed time: 00:00:16
+channel tgt2: starting datafile copy
+input datafile file number=00007 name=+PROD2/prod/datafile/undotbs3.266.854120369
+output file name=+UAT2/uat/datafile/undotbs2.278.854708263 tag=TAG20140804T102520
+channel tgt1: datafile copy complete, elapsed time: 00:00:01
+channel tgt1: starting datafile copy
+input datafile file number=00004 name=+PROD2/prod/datafile/users.259.854120125
+output file name=+UAT2/uat/datafile/undotbs3.272.854708263 tag=TAG20140804T102520
+channel tgt2: datafile copy complete, elapsed time: 00:00:01
+output file name=+UAT2/uat/datafile/users.273.854708265 tag=TAG20140804T102520
+channel tgt1: datafile copy complete, elapsed time: 00:00:01
+Finished backup at 04-AUG-2014 10:57:45
+
+sql statement: alter system archive log current
+
+contents of Memory Script:
+{
+   backup as copy reuse
+   archivelog like  "/prod_ocfs2/arch/prod/1_43_854120210.dbf" auxiliary format
+ "/uat_ocfs2/arch/uat/1_43_854120210.dbf"   archivelog like
+ "/prod_ocfs2/arch/prod/3_15_854120210.dbf" auxiliary format
+ "/uat_ocfs2/arch/uat/3_15_854120210.dbf"   archivelog like
+ "/prod_ocfs2/arch/prod/1_44_854120210.dbf" auxiliary format
+ "/uat_ocfs2/arch/uat/1_44_854120210.dbf"   archivelog like
+ "/prod_ocfs2/arch/prod/2_13_854120210.dbf" auxiliary format
+ "/uat_ocfs2/arch/uat/2_13_854120210.dbf"   archivelog like
+ "/prod_ocfs2/arch/prod/3_16_854120210.dbf" auxiliary format
+ "/uat_ocfs2/arch/uat/3_16_854120210.dbf"   ;
+   catalog clone archivelog  "/uat_ocfs2/arch/uat/1_43_854120210.dbf";
+   catalog clone archivelog  "/uat_ocfs2/arch/uat/3_15_854120210.dbf";
+   catalog clone archivelog  "/uat_ocfs2/arch/uat/1_44_854120210.dbf";
+   catalog clone archivelog  "/uat_ocfs2/arch/uat/2_13_854120210.dbf";
+   catalog clone archivelog  "/uat_ocfs2/arch/uat/3_16_854120210.dbf";
+   switch clone datafile all;
+}
+executing Memory Script
+
+Starting backup at 04-AUG-2014 10:57:50
+channel tgt1: starting archived log copy
+input archived log thread=1 sequence=43 RECID=12 STAMP=854707488
+channel tgt2: starting archived log copy
+input archived log thread=3 sequence=15 RECID=13 STAMP=854708864
+output file name=/uat_ocfs2/arch/uat/1_43_854120210.dbf RECID=0 STAMP=0
+channel tgt1: archived log copy complete, elapsed time: 00:00:02
+channel tgt1: starting archived log copy
+input archived log thread=1 sequence=44 RECID=14 STAMP=854708266
+output file name=/uat_ocfs2/arch/uat/3_15_854120210.dbf RECID=0 STAMP=0
+channel tgt2: archived log copy complete, elapsed time: 00:00:02
+channel tgt2: starting archived log copy
+input archived log thread=2 sequence=13 RECID=15 STAMP=854706366
+output file name=/uat_ocfs2/arch/uat/1_44_854120210.dbf RECID=0 STAMP=0
+channel tgt1: archived log copy complete, elapsed time: 00:00:00
+channel tgt1: starting archived log copy
+input archived log thread=3 sequence=16 RECID=16 STAMP=854709653
+output file name=/uat_ocfs2/arch/uat/3_16_854120210.dbf RECID=0 STAMP=0
+channel tgt1: archived log copy complete, elapsed time: 00:00:01
+output file name=/uat_ocfs2/arch/uat/2_13_854120210.dbf RECID=0 STAMP=0
+channel tgt2: archived log copy complete, elapsed time: 00:00:01
+Finished backup at 04-AUG-2014 10:57:54
+
+cataloged archived log
+archived log file name=/uat_ocfs2/arch/uat/1_43_854120210.dbf RECID=14 STAMP=854708274
+
+cataloged archived log
+archived log file name=/uat_ocfs2/arch/uat/3_15_854120210.dbf RECID=15 STAMP=854708274
+
+cataloged archived log
+archived log file name=/uat_ocfs2/arch/uat/1_44_854120210.dbf RECID=16 STAMP=854708274
+
+cataloged archived log
+archived log file name=/uat_ocfs2/arch/uat/2_13_854120210.dbf RECID=17 STAMP=854708274
+
+cataloged archived log
+archived log file name=/uat_ocfs2/arch/uat/3_16_854120210.dbf RECID=18 STAMP=854708275
+
+datafile 1 switched to datafile copy
+input datafile copy RECID=12 STAMP=854708275 file name=+UAT1/uat/datafile/system.277.854708221
+datafile 2 switched to datafile copy
+input datafile copy RECID=13 STAMP=854708276 file name=+UAT1/uat/datafile/sysaux.276.854708221
+datafile 3 switched to datafile copy
+input datafile copy RECID=14 STAMP=854708276 file name=+UAT1/uat/datafile/undotbs1.280.854708247
+datafile 4 switched to datafile copy
+input datafile copy RECID=15 STAMP=854708276 file name=+UAT2/uat/datafile/users.273.854708265
+datafile 5 switched to datafile copy
+input datafile copy RECID=16 STAMP=854708276 file name=+UAT2/uat/datafile/example.279.854708249
+datafile 6 switched to datafile copy
+input datafile copy RECID=17 STAMP=854708276 file name=+UAT2/uat/datafile/undotbs2.278.854708263
+datafile 7 switched to datafile copy
+input datafile copy RECID=18 STAMP=854708276 file name=+UAT2/uat/datafile/undotbs3.272.854708263
+
+contents of Memory Script:
+{
+   set until scn  3191863;
+   recover
+   clone database
+    delete archivelog
+   ;
+}
+executing Memory Script
+
+executing command: SET until clause
+
+Starting recover at 04-AUG-2014 10:57:57
+
+starting media recovery
+
+archived log for thread 1 with sequence 44 is already on disk as file /uat_ocfs2/arch/uat/1_44_854120210.dbf
+archived log for thread 2 with sequence 13 is already on disk as file /uat_ocfs2/arch/uat/2_13_854120210.dbf
+archived log for thread 3 with sequence 16 is already on disk as file /uat_ocfs2/arch/uat/3_16_854120210.dbf
+archived log file name=/uat_ocfs2/arch/uat/1_44_854120210.dbf thread=1 sequence=44
+archived log file name=/uat_ocfs2/arch/uat/2_13_854120210.dbf thread=2 sequence=13
+archived log file name=/uat_ocfs2/arch/uat/3_16_854120210.dbf thread=3 sequence=16
+media recovery complete, elapsed time: 00:00:01
+Finished recover at 04-AUG-2014 10:58:01
+Oracle instance started
+
+Total System Global Area     784998400 bytes
+
+Fixed Size                     2232472 bytes
+Variable Size                218107752 bytes
+Database Buffers             557842432 bytes
+Redo Buffers                   6815744 bytes
+
+contents of Memory Script:
+{
+   sql clone "alter system set  db_name =
+ ''UAT'' comment=
+ ''Reset to original value by RMAN'' scope=spfile";
+   sql clone "alter system reset  db_unique_name scope=spfile";
+   shutdown clone immediate;
+   startup clone nomount;
+}
+executing Memory Script
+
+sql statement: alter system set  db_name =  ''UAT'' comment= ''Reset to original value by RMAN'' scope=spfile
+
+sql statement: alter system reset  db_unique_name scope=spfile
+
+Oracle instance shut down
+
+connected to auxiliary database (not started)
+Oracle instance started
+
+Total System Global Area     784998400 bytes
+
+Fixed Size                     2232472 bytes
+Variable Size                218107752 bytes
+Database Buffers             557842432 bytes
+Redo Buffers                   6815744 bytes
+allocated channel: aux1
+channel aux1: SID=137 device type=DISK
+sql statement: CREATE CONTROLFILE REUSE SET DATABASE "UAT" RESETLOGS ARCHIVELOG
+  MAXLOGFILES    192
+  MAXLOGMEMBERS      3
+  MAXDATAFILES     1024
+  MAXINSTANCES    32
+  MAXLOGHISTORY      292
+ LOGFILE
+  GROUP   1 ( '+UAT1', 'UAT2' ) SIZE 10 M ,
+  GROUP   2 ( '+UAT1', 'UAT2' ) SIZE 10 M ,
+  GROUP   3 ( '+UAT1', 'UAT2' ) SIZE 10 M
+ DATAFILE
+  '+UAT1/uat/datafile/system.277.854708221'
+ CHARACTER SET AL32UTF8
+
+
+contents of Memory Script:
+{
+   set newname for tempfile  1 to
+ "+uat2";
+   switch clone tempfile all;
+   catalog clone datafilecopy  "+UAT1/uat/datafile/sysaux.276.854708221",
+ "+UAT1/uat/datafile/undotbs1.280.854708247",
+ "+UAT2/uat/datafile/users.273.854708265",
+ "+UAT2/uat/datafile/example.279.854708249",
+ "+UAT2/uat/datafile/undotbs2.278.854708263",
+ "+UAT2/uat/datafile/undotbs3.272.854708263";
+   switch clone datafile all;
+}
+executing Memory Script
+
+executing command: SET NEWNAME
+
+renamed tempfile 1 to +uat2 in control file
+
+cataloged datafile copy
+datafile copy file name=+UAT1/uat/datafile/sysaux.276.854708221 RECID=1 STAMP=854708381
+cataloged datafile copy
+datafile copy file name=+UAT1/uat/datafile/undotbs1.280.854708247 RECID=2 STAMP=854708381
+cataloged datafile copy
+datafile copy file name=+UAT2/uat/datafile/users.273.854708265 RECID=3 STAMP=854708381
+cataloged datafile copy
+datafile copy file name=+UAT2/uat/datafile/example.279.854708249 RECID=4 STAMP=854708381
+cataloged datafile copy
+datafile copy file name=+UAT2/uat/datafile/undotbs2.278.854708263 RECID=5 STAMP=854708381
+cataloged datafile copy
+datafile copy file name=+UAT2/uat/datafile/undotbs3.272.854708263 RECID=6 STAMP=854708381
+
+datafile 2 switched to datafile copy
+input datafile copy RECID=1 STAMP=854708381 file name=+UAT1/uat/datafile/sysaux.276.854708221
+datafile 3 switched to datafile copy
+input datafile copy RECID=2 STAMP=854708381 file name=+UAT1/uat/datafile/undotbs1.280.854708247
+datafile 4 switched to datafile copy
+input datafile copy RECID=3 STAMP=854708381 file name=+UAT2/uat/datafile/users.273.854708265
+datafile 5 switched to datafile copy
+input datafile copy RECID=4 STAMP=854708381 file name=+UAT2/uat/datafile/example.279.854708249
+datafile 6 switched to datafile copy
+input datafile copy RECID=5 STAMP=854708381 file name=+UAT2/uat/datafile/undotbs2.278.854708263
+datafile 7 switched to datafile copy
+input datafile copy RECID=6 STAMP=854708381 file name=+UAT2/uat/datafile/undotbs3.272.854708263
+
+contents of Memory Script:
+{
+   Alter clone database open resetlogs;
+}
+executing Memory Script
+
+database opened
+Finished Duplicate Db at 04-AUG-2014 10:59:58
+released channel: tgt1
+released channel: tgt2
+released channel: aux1
+
+RMAN>
+
+Recovery Manager complete.
+
+ 
+
+C) Convert UAT from Single Instance to RAC
+
+Please follow below Documentation Link (11gR2) to convert Single Instance Database to RAC:
+
+Converting to Oracle RAC and Oracle RAC One Node from Single-Instance Oracle Databases
+
+
+For our illustration, we will use RCONFIG method.
+
+1) Copy ConvertToRAC_AdminManaged.xml to UAT_ConvertToRAC.xml (or any desired name)
+
+[oracle@uat01 ~]$ cd $ORACLE_HOME/assistants/rconfig/sampleXMLs
+[oracle@uat01 ~]$ cp ConvertToRAC_AdminManaged.xml /tmp/UAT_ConvertToRAC.xml
+[oracle@uat01 ~]$ vi /tmp/UAT_ConvertToRAC.xml
+ 
+
+2) Modify xml file UAT_ConvertToRAC.xml to convert UAT  to 2 Node RAC in ASM
+
+Make necessary modifications. For this illustration, the contents of modified xml file are:
+
+[oracle@uat01 ~]$ cat /tmp/UAT_ConvertToRAC.xml
+
+<?xml version="1.0" encoding="UTF-8"?>
+<n:RConfig xmlns:n="http://www.oracle.com/rconfig"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://www.oracle.com/rconfig rconfig.xsd">
+    <n:ConvertToRAC>
+<!-- Verify does a precheck to ensure all pre-requisites are met, before the conversion is attempted. Allowable values are: YES|NO|ONLY -->
+        <n:Convert verify="YES">
+<!--Specify current OracleHome of non-rac database for SourceDBHome -->
+              <n:SourceDBHome>/u01/app/oracle/product/11.2.0/dbhome_1</n:SourceDBHome>
+<!--Specify OracleHome where the rac database should be configured. It can be same as SourceDBHome -->
+              <n:TargetDBHome>/u01/app/oracle/product/11.2.0/dbhome_1</n:TargetDBHome>
+<!--Specify SID of non-rac database and credential. User with sysdba role is required to perform conversion -->
+              <n:SourceDBInfo SID="UAT">
+                <n:Credentials>
+                  <n:User>sys</n:User>
+                  <n:Password>oracle</n:Password>
+                  <n:Role>sysdba</n:Role>
+                </n:Credentials>
+              </n:SourceDBInfo>
+<!--Specify the list of nodes that should have rac instances running for the Admin Managed Cluster Database. LocalNode should be the first node in this nodelist. -->
+              <n:NodeList>
+                <n:Node name="uat01"/>
+                <n:Node name="uat02"/>
+              </n:NodeList>
+<!--Specify RacOneNode along with servicename to convert database to RACOne Node -->
+              <!--n:RacOneNode  servicename="uatrac1service"/-->
+<!--Instance Prefix tag is optional starting with 11.2. If left empty, it is derived from db_unique_name.-->
+              <n:InstancePrefix>UAT</n:InstancePrefix>
+<!-- Listener details are no longer needed starting 11.2. Database is registered with default listener and SCAN listener running from Oracle Grid Infrastructure home. -->
+<!--Specify the type of storage to be used by rac database. Allowable values are CFS|ASM. The non-rac database should have same storage type. ASM credentials are no needed for conversion. -->
+              <n:SharedStorage type="ASM">
+<!--Specify Database Area Location to be configured for rac database.If this field is left empty, current storage will be used for rac database. For CFS, this field will have directory path. -->
+                <n:TargetDatabaseArea></n:TargetDatabaseArea>
+<!--Specify Fast Recovery Area to be configured for rac database. If this field is left empty, current recovery area of non-rac database will be configured for rac database. If current database is not using recovery Area, the resulting rac database will not have a recovery area. -->
+                <n:TargetFlashRecoveryArea></n:TargetFlashRecoveryArea>
+              </n:SharedStorage>
+        </n:Convert>
+    </n:ConvertToRAC>
+</n:RConfig>
+ 
+
+You may wish to first check rconfig with option Convert verify="ONLY" in xml file. Sample output is:
+
+[oracle@uat01 ~]$ rconfig /tmp/UAT_ConvertToRAC.xml
+<?xml version="1.0" ?>
+<RConfig version="1.1" >
+<ConvertToRAC>
+    <Convert>
+      <Response>
+        <Result code="0" >
+          Operation Succeeded
+        </Result>
+      </Response>
+      <ReturnValue type="object">
+There is no return value for this step     </ReturnValue>
+    </Convert>
+  </ConvertToRAC></RConfig>
+
+ 
+
+3) Run RCONFIG to convert UAT to 2 Node RAC using modified xml file
+
+Execute RCONFIG from $ORACLE_HOME/bin by using xml file UAT_ConvertToRAC.xml:
+
+Example of rconfig with final option Convert verify="YES" in xml file:
+
+[oracle@uat01 ~]$ rconfig /tmp/UAT_ConvertToRAC.xml
+Converting Database "UAT" to Cluster Database. Target Oracle Home: /u01/app/oracle/product/11.2.0/dbhome_1. Database Role: PRIMARY.
+Setting Data Files and Control Files
+Adding Database Instances
+Adding Redo Logs
+Enabling threads for all Database Instances
+Setting TEMP tablespace
+Adding UNDO tablespaces
+Adding Trace files
+Setting Fast Recovery Area
+Updating Oratab
+Creating Password file(s)
+Configuring Listeners
+Configuring related CRS resources
+Starting Cluster Database
+<?xml version="1.0" ?>
+<RConfig version="1.1" >
+<ConvertToRAC>
+    <Convert>
+      <Response>
+        <Result code="0" >
+          Operation Succeeded
+        </Result>
+      </Response>
+      <ReturnValue type="object">
+<Oracle_Home>
+         /u01/app/oracle/product/11.2.0/dbhome_1
+       </Oracle_Home>
+       <Database type="ADMIN_MANAGED"  >
+         <InstanceList>
+           <Instance SID="UAT1" Node="uat01"  >
+           </Instance>
+           <Instance SID="UAT2" Node="uat02"  >
+           </Instance>
+         </InstanceList>
+       </Database>     </ReturnValue>
+    </Convert>
+  </ConvertToRAC></RConfig>
+[oracle@uat01 ~]$
+
+ 
+
+ 
+
+4) Verify that database UAT is converted to 2 Node RAC using srvctl
+
+Using srvctl tool, verify the database configuration:
+
+[oracle@uat01 ~]$ srvctl config database -d uat
+Database unique name: UAT
+Database name: UAT
+Oracle home: /u01/app/oracle/product/11.2.0/dbhome_1
+Oracle user: oracle
+Spfile: +UAT1/UAT/spfileUAT.ora
+Domain:
+Start options: open
+Stop options: immediate
+Database role: PRIMARY
+Management policy: AUTOMATIC
+Server pools: UAT
+Database instances: UAT1,UAT2
+Disk Groups: UAT1,UAT2
+Mount point paths:
+Services:
+Type: RAC
+Database is administrator managed
+
+[oracle@uat01 ~]$ srvctl status database -d uat
+Instance UAT1 is running on node uat01
+Instance UAT2 is running on node uat02
+[oracle@uat01 ~]$
+
+ 
+
+5) Verify RAC database conversion using SQL queries
+
+Verify the database is RAC using simple queries:
+
+
+[oracle@uat01 ~]$ sqlplus sys/oracle@uat as sysdba
+
+SQL*Plus: Release 11.2.0.3.0 Production on Mon Aug 4 13:47:08 2014
+
+Copyright (c) 1982, 2011, Oracle.  All rights reserved.
+
+
+Connected to:
+Oracle Database 11g Enterprise Edition Release 11.2.0.3.0 - 64bit Production
+With the Partitioning, Real Application Clusters, Automatic Storage Management, OLAP,
+Data Mining and Real Application Testing options
+
+SQL> select name, open_mode from v$database ;
+
+NAME      OPEN_MODE
+--------- --------------------
+UAT       READ WRITE
+
+SQL> select thread#, status from gv$instance ;
+
+   THREAD# STATUS
+---------- ------------
+         1 OPEN
+         2 OPEN
+
+SQL> show parameter cluster_database
+
+NAME                                 TYPE        VALUE
+------------------------------------ ----------- ------------------------------
+cluster_database                     boolean     TRUE
+cluster_database_instances           integer     3
+SQL> select thread#, group#, sequence#, status from v$log order by thread#, group#, sequence# ;
+
+   THREAD#     GROUP#  SEQUENCE# STATUS
+---------- ---------- ---------- ----------------
+         1          1          7 INACTIVE
+         1          2          8 CURRENT
+         1          3          6 INACTIVE
+         2          4          2 INACTIVE
+         2          5          3 INACTIVE
+         2          6          4 CURRENT
+
+12 rows selected.
+ 
+
+ 
+
+REFERENCES
+
+http://docs.oracle.com/cd/E11882_01/install.112/e41962/cvrt2rac.htm#RILIN1137 
+NOTE:452868.1 - RMAN 'Duplicate From Active Database' Feature in Oracle11g
+http://docs.oracle.com/cd/B19306_01/install.102/b14203/cvrt2rac.htm#BABBAAEH 
+NOTE:1910175.1 - RMAN DUPLICATE / RESTORE including Standby in ASM with OMF / non-OMF / Mixed Name for Datafile / Online Log / Controlfile
+NOTE:259694.1 - Oracle10G RMAN Database Duplication
+NOTE:228257.1 - RMAN 'Duplicate Database' Feature in Oracle9i / 10G and 11G
