@@ -1,0 +1,409 @@
+Step by Step Guide on Creating Physical Standby Using RMAN DUPLICATE...FROM ACTIVE DATABASE (Doc ID 1075908.1)	To BottomTo Bottom	
+Modified:	20-May-2016		Type:	HOWTO	
+Language:	
+
+
+Rate this document	Email link to this document	Open document in new window	Printable Page
+
+In this Document
+Goal
+Solution
+ 	PROCEDURE:
+ 	1. Prepare the production database to be the primary database
+ 	2. Ensure that the sql*net connectivity is working fine.
+ 	3. Create the standby database
+ 	4. Start managed recovery
+ 	5. Open standby database in Read Only (active dataguard)
+References
+
+APPLIES TO:
+
+Oracle Database - Enterprise Edition - Version 12.1.0.2 and later
+Information in this document applies to any platform.
+Checked for relevance on 21-AUG-2015
+
+
+GOAL
+
+
+Step by step guide on how to create a physical standby database using RMAN DUPLICATE FROM ACTIVE DATABASE command without shutting down the primary and using primary active database files (No need to take a backup)
+
+This is feature available in Oracle11g onwards.
+
+In case you may want or need more about your current topic - please also access the Backup & Recover Community of Customers and Oracle Specialists directly via:
+https://community.oracle.com/community/support/oracle_database/database_backup_and_recovery
+
+Database Name :- chicago
+Primary db_unique_name :- chicago
+standby db_unique_name :- Boston
+
+For duplicating a NON-Standby database, see :
+   Note 452868.1 RMAN 'Duplicate From Active Database' Feature in 11G
+
+SOLUTION
+
+1. Make the necessary changes to the primary database. 
+    a. Enable force logging.
+    b. Creating the password file if one does not exist.
+    c. Create standby redologs.
+    d. Modify the parameter file suitable for Dataguard.
+
+2. Ensure that the sql*net connectivity is working fine.
+
+3. Create the standby database over the network using the active(primary) database files.
+    a. Create the password file
+    b. Create the initialization parameter file for the standby database (auxiliary database)
+    c. Create the necessary mount points or the folders for the database files
+    d. Run the standby creation ON STANDBY by connecting to primary as target database.
+
+ 
+
+DUPLICATE TARGET DATABASE  
+FOR STANDBY
+FROM ACTIVE DATABASE
+SPFILE
+   PARAMETER_VALUE_CONVERT '', ''
+   SET DB_FILE_NAME_CONVERT '', ''
+   SET LOG_FILE_NAME_CONVERT '', ''
+   SET SGA_MAX_SIZE 200M
+   SET SGA_TARGET 125M;
+4. Check the log shipping and apply.
+
+PROCEDURE:
+
+While creating the standby database we use the active database files i.e., this command will be useful in creating the physical standby database using active database files over the network.
+
+1. Prepare the production database to be the primary database
+
+a. Ensure that the database is in archivelog mode .
+
+SQL> select log_mode from v$database;
+
+LOG_MODE
+------------
+ARCHIVELOG
+
+b. Enable force logging
+
+SQL> ALTER DATABASE FORCE LOGGING;
+
+c. Create standby redologs
+
+SQL> alter database add standby logfile '<name>' size <size>;
+
+d. Modify the primary initialization parameter for dataguard on primary,
+
+SQL> alter system set LOG_ARCHIVE_CONFIG='DG_CONFIG=(chicago,boston)';
+System altered.
+
+SQL> alter system set LOG_ARCHIVE_DEST_1='LOCATION=/u01/app/oracle/databases/chicago/redo/ VALID_FOR=(ALL_LOGFILES,ALL_ROLES) DB_UNIQUE_NAME=chicago';
+System altered.
+
+SQL> alter system set LOG_ARCHIVE_DEST_2='SERVICE=boston LGWR ASYNC VALID_FOR=(ONLINE_LOGFILES,PRIMARY_ROLE) DB_UNIQUE_NAME=boston';
+System altered.
+
+SQL> alter system set LOG_ARCHIVE_DEST_STATE_1=ENABLE;
+System altered.
+
+SQL> alter system set FAL_SERVER=boston;
+System altered.
+
+SQL> alter system set FAL_CLIENT=chicago;
+System altered.
+
+SQL> alter system set DB_FILE_NAME_CONVERT='/u01/app/oracle/databases/boston/data/','/u01/app/oracle/databases/chicago/data' scope=spfile;
+System altered.
+
+SQL> alter system set LOG_FILE_NAME_CONVERT='/u01/app/oracle/databases/boston/redo/','/u01/app/oracle/databases/chicago/redo' scope=spfile;
+System altered.
+2. Ensure that the sql*net connectivity is working fine.
+
+Insert a static entry for Boston in the listener.ora file of the standby system.
+
+SID_LIST_LISTENER =
+  (SID_LIST =
+    (SID_DESC =
+     (GLOBAL_DBNAME = boston.us.oracle.com)
+     (ORACLE_HOME = /u01/app/oracle/product/OraHome111)
+     (SID_NAME = boston)
+    )
+   )
+
+LISTENER =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = <auxiliary host>)(PORT = 1521))
+  )
+ 
+
+TNSNAMES.ORA for the Primary and Standby should have BOTH entries
+
+CHICAGO =
+  (DESCRIPTION =
+    (ADDRESS_LIST =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = <target host>)(PORT = 1521))
+    )
+    (CONNECT_DATA = (SERVICE_NAME = chicago.us.oracle.com))
+  ) 
+
+BOSTON =
+  (DESCRIPTION =
+    (ADDRESS_LIST =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = <auxiliary host>)(PORT = 1521))
+    )
+    (CONNECT_DATA = (SERVICE_NAME = boston.us.oracle.com))
+  )
+Check with the SQL*Net configuration using the following commands on the Primary AND Standby
+% tnsping chicago
+% tnsping boston
+3. Create the standby database
+
+a. Copy the password file from the primary $ORACLE_HOME/dbs and rename it to the standby database name.
+
+The username is required to be SYS and the password needs to be the same on the Primary and Standby. 
+The best practice for this is to copy the passwordfile as suggested. 
+The password file name must match the instance name/SID used at the standby site, not the DB_NAME.
+b. Create a initialization parameter with only one parameter DB_NAME.
+
+DB_NAME=chicago
+DB_UNIQUE_NAME=boston
+DB_BLOCK_SIZE=<same as primary>
+c. Create the necessary directories in the standby location to place database files and trace files ($ADR_HOME).
+
+d. Set the environment variable ORACLE_SID to the standby service and start the standby-instance.
+
+% export ORACLE_SID=boston
+% sqlplus "/ as sysdba"
+SQL> startup nomount pfile=$ORACLE_HOME/dbs/initcore1.ora
+NOTE : Use either PFILE or SPFILE 
+
+# Addtl. comment
+# If DUPLICATE without TARGET connection is used you cannot use SPFILE 
+# else getting
+
+RMAN-05537: DUPLICATE without TARGET connection when auxiliary instance is started with spfile cannot use SPFILE clause
+
+e. Verify if the connection 'AS SYSDBA' is working
+
+% sqlplus /nolog
+SQL> connect sys/<passwd<@boston AS SYSDBA
+SQL> connect sys/<passwd>@chicago AS SYSDBA
+
+f. On the primary system invoke the RMAN executable and connect to the primary and the auxiliary database ( i.e., the standby)
+
+$ rman target sys/sys@chicago auxiliary sys/sys@boston
+
+connected to target database: CHICAGO (DBID=761464750)
+connected to auxiliary database: CHICAGO (not mounted)
+
+RMAN> run {
+allocate channel prmy1 type disk;
+allocate channel prmy2 type disk;
+allocate channel prmy3 type disk;
+allocate channel prmy4 type disk;
+allocate auxiliary channel stby type disk;
+
+duplicate target database for standby from active database
+spfile
+  parameter_value_convert 'chicago','boston'
+  set db_unique_name='boston'
+  set db_file_name_convert='/chicago/','/boston/'
+  set log_file_name_convert='/chicago/','/boston/'
+  set control_files='/u01/app/oracle/oradata/control01.ctl'
+  set log_archive_max_processes='5'
+  set fal_client='boston'
+  set fal_server='chicago'
+  set standby_file_management='MANUAL'
+  set log_archive_config='dg_config=(chicago,boston)'
+  set log_archive_dest_2='service=chicago ASYNC valid_for=(ONLINE_LOGFILE,PRIMARY_ROLE) db_unique_name=chicago'
+;
+}
+
+using target database control file instead of recovery catalog
+allocated channel: prmy1
+channel prmy1: SID=147 device type=DISK
+
+allocated channel: prmy2
+channel prmy2: SID=130 device type=DISK
+
+allocated channel: prmy3
+channel prmy3: SID=137 device type=DISK
+
+allocated channel: prmy4
+channel prmy4: SID=170 device type=DISK
+
+allocated channel: stby
+channel stby: SID=98 device type=DISK
+
+Starting Duplicate Db at 19-MAY-08
+
+contents of Memory Script:
+{
+backup as copy reuse
+file '/u02/app/oracle/product/11.1.0/db_1/dbs/orapwcore' auxiliary format'/u02/app/oracle/product/11.1.0/db_1/dbs/orapwcore1' 
+file'/u02/app/oracle/product/11.1.0/db_1/dbs/spfilecore.ora' auxiliary format'/u02/app/oracle/product/11.1.0/db_1/dbs/spfilecore1.ora' ;
+sql clone "alter system set spfile= ''/u02/app/oracle/product/11.1.0/db_1/dbs/spfilecore1.ora''";
+}
+executing Memory Script
+
+Starting backup at 19-MAY-08
+Finished backup at 19-MAY-08
+
+sql statement: alter system set spfile= ''/u02/app/oracle/product/11.1.0/db_1/dbs/spfilecore1.ora''
+
+contents of Memory Script:
+{
+sql clone "alter system set audit_file_dest =''/u02/app/oracle/admin/boston/adump'' comment='''' scope=spfile";
+sql clone "alter system set dispatchers =''(PROTOCOL=TCP) (SERVICE=core1XDB)'' comment='''' scope=spfile";
+sql clone "alter system set log_archive_dest_2 =''service=core11 arch async VALID_FOR=(ONLINE_LOGFILES,PRIMARY_ROLE) db_unique_name=boston'' comment='''' scope=spfile";
+sql clone "alter system set db_unique_name =''boston'' comment='''' scope=spfile";
+sql clone "alter system set db_file_name_convert =''/chicago/'', ''/boston/'' comment='''' scope=spfile";
+sql clone "alter system set log_file_name_convert =''/chicago/'', ''/boston/'' comment='''' scope=spfile";
+sql clone "alter system set control_files =''/u01/app/oracle/oradata/control01.ctl'' comment='''' scope=spfile";
+sql clone "alter system set log_archive_max_processes =5 comment='''' scope=spfile";
+sql clone "alter system set fal_client =''boston'' comment='''' scope=spfile";
+sql clone "alter system set fal_server =''chicago'' comment='''' scope=spfile";
+sql clone "alter system set standby_file_management =''MANUAL'' comment='''' scope=spfile";
+sql clone "alter system set log_archive_config =''dg_config=(chicago,boston)'' comment='''' scope=spfile";
+sql clone "alter system set log_archive_dest_2 =''service=chicago ASYNC valid_for=(ONLINE_LOGFILE,PRIMARY_ROLE) db_unique_name=chicago'' comment='''' scope=spfile";
+shutdown clone immediate;
+startup clone nomount ;
+}
+executing Memory Script
+
+sql statement: alter system set audit_file_dest = ''/u02/app/oracle/admin/boston/adump'' comment= '''' scope=spfile
+sql statement: alter system set dispatchers = ''(PROTOCOL=TCP) (SERVICE=core1XDB)'' comment= '''' scope=spfile
+sql statement: alter system set log_archive_dest_2 = ''service=core11 arch async VALID_FOR=(ONLINE_LOGFILES,PRIMARY_ROLE) db_unique_name=boston'' comment= '''' scope=spfile
+sql statement: alter system set db_unique_name = ''boston'' comment= '''' scope=spfile
+sql statement: alter system set db_file_name_convert = ''/chicago/'', ''/boston/'' comment= '''' scope=spfile
+sql statement: alter system set log_file_name_convert = ''/chicago/'', ''/boston/'' comment= '''' scope=spfile
+sql statement: alter system set control_files = ''/u01/app/oracle/oradata/control01.ctl'' comment= '''' scope=spfile
+sql statement: alter system set log_archive_max_processes = 5 comment= '''' scope=spfile
+sql statement: alter system set fal_client = ''boston'' comment= '''' scope=spfile
+sql statement: alter system set fal_server = ''chicago'' comment= '''' scope=spfile
+sql statement: alter system set standby_file_management = ''AUTO'' comment= '''' scope=spfile
+sql statement: alter system set log_archive_config = ''dg_config=(chicago,boston)'' comment= '''' scope=spfile
+sql statement: alter system set log_archive_dest_2 = ''service=chicago ASYNC valid_for=(ONLINE_LOGFILE,PRIMARY_ROLE) db_unique_name=chicago'' comment= '''' scope=spfile
+
+Oracle instance shut down
+
+connected to auxiliary database (not started)
+Oracle instance started
+
+Total System Global Area 845348864 bytes
+
+Fixed Size 1303188 bytes
+Variable Size 482348396 bytes
+Database Buffers 356515840 bytes
+Redo Buffers 5181440 bytes
+
+contents of Memory Script:
+{
+backup as copy current controlfile for standby auxiliary format '/u01/app/oracle/oradata/control01.ctl';
+sql clone 'alter database mount standby database';
+}
+executing Memory Script
+
+Starting backup at 19-MAY-08
+channel prmy1: starting datafile copy
+copying standby control file
+output file name=/u02/app/oracle/product/11.1.0/db_1/dbs/snapcf_chicago.f tag=TAG20080519T173406 RECID=2 STAMP=655148053
+channel prmy1: datafile copy complete, elapsed time: 00:00:03
+Finished backup at 19-MAY-08
+
+sql statement: alter database mount standby database
+
+contents of Memory Script:
+{
+set newname for tempfile 1 to"/u02/app/oracle/oradata/boston/temp01.dbf";
+switch clone tempfile all;
+set newname for datafile 1 to "/u02/app/oracle/oradata/boston/system01.dbf";
+set newname for datafile 2 to "/u02/app/oracle/oradata/boston/sysaux01.dbf";
+set newname for datafile 3 to "/u02/app/oracle/oradata/boston/undotbs01.dbf";
+set newname for datafile 4 to "/u02/app/oracle/oradata/boston/users01.dbf";
+backup as copy reuse
+datafile 1 auxiliary format "/u02/app/oracle/oradata/boston/system01.dbf" 
+datafile 2 auxiliary format "/u02/app/oracle/oradata/boston/sysaux01.dbf" 
+datafile 3 auxiliary format "/u02/app/oracle/oradata/boston/undotbs01.dbf" 
+datafile 4 auxiliary format "/u02/app/oracle/oradata/boston/users01.dbf" ;
+sql 'alter system archive log current';
+}
+executing Memory Script
+
+executing command: SET NEWNAME
+
+renamed tempfile 1 to /u02/app/oracle/oradata/boston/temp01.dbf in control file
+
+executing command: SET NEWNAME
+executing command: SET NEWNAME
+executing command: SET NEWNAME
+executing command: SET NEWNAME
+
+Starting backup at 19-MAY-08
+channel prmy1: starting datafile copy
+input datafile file number=00001 name=/u02/app/oracle/oradata/chicago/system01.dbf
+channel prmy2: starting datafile copy
+input datafile file number=00002 name=/u02/app/oracle/oradata/chicago/sysaux01.dbf
+channel prmy3: starting datafile copy
+input datafile file number=00003 name=/u02/app/oracle/oradata/chicago/undotbs01.dbf
+channel prmy4: starting datafile copy
+input datafile file number=00004 name=/u02/app/oracle/oradata/chicago/users01.dbf
+output file name=/u02/app/oracle/oradata/boston/undotbs01.dbf tag=TAG20080519T173421 RECID=0 STAMP=0
+channel prmy3: datafile copy complete, elapsed time: 00:00:24
+output file name=/u02/app/oracle/oradata/boston/users01.dbf tag=TAG20080519T173421 RECID=0 STAMP=0
+channel prmy4: datafile copy complete, elapsed time: 00:00:16
+output file name=/u02/app/oracle/oradata/boston/system01.dbf tag=TAG20080519T173421 RECID=0 STAMP=0
+channel prmy1: datafile copy complete, elapsed time: 00:02:32
+output file name=/u02/app/oracle/oradata/boston/sysaux01.dbf tag=TAG20080519T173421 RECID=0 STAMP=0
+channel prmy2: datafile copy complete, elapsed time: 00:02:32
+Finished backup at 19-MAY-08
+
+sql statement: alter system archive log current
+
+contents of Memory Script:
+{
+switch clone datafile all;
+}
+executing Memory Script
+
+datafile 1 switched to datafile copy
+input datafile copy RECID=2 STAMP=655148231 file name=/u02/app/oracle/oradata/boston/system01.dbf
+datafile 2 switched to datafile copy
+input datafile copy RECID=3 STAMP=655148231 file name=/u02/app/oracle/oradata/boston/sysaux01.dbf
+datafile 3 switched to datafile copy
+input datafile copy RECID=4 STAMP=655148231 file name=/u02/app/oracle/oradata/boston/undotbs01.dbf
+datafile 4 switched to datafile copy
+input datafile copy RECID=5 STAMP=655148231 file name=/u02/app/oracle/oradata/boston/users01.dbf
+Finished Duplicate Db at 19-MAY-08
+released channel: prmy1
+released channel: prmy2
+released channel: prmy3
+released channel: prmy4
+4. Start managed recovery
+
+Connect to standby using SQL*Plus and start the MRP (Managed Recovery Process). Compare the primary last sequence and MRP (Managed Recovery Process) applying sequence.
+
+Example :
+
+SQL> alter database recover managed standby database disconnect from session;
+5. Open standby database in Read Only (active dataguard)
+
+If you are licensed to use Active Dataguard (ADG) than open the Standby Database in READ ONLY and start the recovery.
+
+SQL> alter database recover managed standby database cancel;
+SQL> alter database open;
+SQL> alter database recover managed standby database disconnect;
+ 6. DGMGRL,
+
+From standby server, Connect to Standby,
+
+DGMGRL>connect sys/<password>@<standby connect string>
+
+If Standby is already in mount mode and MRP is running (NOTE : DG broker automatically start the MRP if standby DB in mount mode)
+
+DGMGRL>edit database <standby> set state=apply-off;
+
+DGMGRL>shutdown
+
+DGMGRL>edit database <standby> set state=apply-on;
+
+DGMGRL>startup  <<<<MRP will get started automatically
