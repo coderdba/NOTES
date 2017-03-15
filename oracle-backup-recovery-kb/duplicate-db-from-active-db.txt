@@ -1,4 +1,430 @@
+=============================================================================
+DUPLICATE DB FROM ACTIVE DB
+=============================================================================
 11g
 https://www.pythian.com/blog/duplicate-from-active-database-using-rman-step-by-step/
 https://oracle-base.com/articles/11g/duplicate-database-using-rman-11gr2
 https://docs.oracle.com/cd/B28359_01/backup.111/b28270/rcmdupdb.htm#BRADV010
+
+================================
+  DUPLICATE 12C CDB WITH PDB
+================================
+====================================
+RMAN DUPLICATE – 12C CDB WITH PDB
+====================================
+
+------------------------------------
+Source and Destination Databases:
+------------------------------------
+
+NOTE:  They are set up here to be on different sites, with site indicator in db_unique_name
+
+Source: 
+DB_NAME = SOURCE1
+DB_UNIQUE_NAME = SOURCE1_SITE1
+
+Instances = SOURCE11, SOURCE12
+Nodes, scan, vip = sourcenode1, sourcenode2, source-scan, source-vip1, source-vip2
+
+Destination:
+DB_NAME = DEST1
+DB_UNIQUE_NAME = DEST1_SITE2
+
+Instances = DEST11, DEST12
+Nodes, scan, vip = destnode1, destnode2, dest-scan, dest-vip1, dest-vip2
+
+------------------------------------
+SYS Password:
+------------------------------------
+your_sys_password
+
+------------------------------------
+Create password file:  (DEST)
+------------------------------------
+Create them
+-	or  -  copy the source password files for instance1 and instance2 to destination node1 and node2
+
+Node1:
+$ cd $ORACLE_HOME/dbs
+$ orapwd file=orapwDEST11
+
+Node2:
+$ cd $ORACLE_HOME/dbs
+$ orapwd file=orapwDEST11
+
+------------------------------------
+Oratab: (DEST)
+------------------------------------
+Node1:
+DEST11:/u01/app/oracle/product/12.1.0.2:Y
+
+Node2:
+DEST12:/u01/app/oracle/product/12.1.0.2:Y
+
+
+------------------------------------
+Setup ‘archivelog’ for source DB:
+------------------------------------
+
+If source db is not archivelog,
+$ srvctl stop database –d SOURCE1_SITE1
+$ srvctl start database –d SOURCE1_SITE1 –s mount
+
+SQL> alter database archivelog;
+$ srvctl stop database –d SOURCE1_SITE1
+$ srvctl start database –d SOURCE1_SITE1
+
+
+SQL> select log_mode, database_role from v$database;
+
+LOG_MODE     DATABASE_ROLE
+------------ ----------------
+ARCHIVELOG   PRIMARY
+
+------------------------------------
+Set environment (DEST node1)
+------------------------------------
+
+. oraenv
+
+< provide destination SID which is also in destination oratab >
+
+------------------------------------
+Create a basic pfile (DEST node1)
+------------------------------------
+$ cd $ORACLE_HOME/dbs
+
+$ vi initSID.ora
+db_name=’DB_NAME’
+
+Example – initDEST11.ora
+db_name=’DEST1’
+
+------------------------------------
+Startup nomount (DEST node1)
+------------------------------------
+SQL> startup nomount pfile='/u01/app/oracle/product/12.1.0.2/dbs/initDEST11.ora'
+
+Verify:
+ps –ef | grep -i pmon |grep DEST11
+
+-------------------------------------------------------------------------
+Add the DB to the clusterware to prevent Chef or other automation from running a duplicate
+-------------------------------------------------------------------------
+
+Examples:
+$ add database -d DEST1_SITE1 -o /u01/app/oracle/product/12.1.0.2 -p +DATA_DG01/DEST1_SITE2/DEST1_spfile.ora -s open
+
+------------------------------------
+Add the instances to clusterware 
+------------------------------------
+NOTE: May be already done by Chef
+
+$ srvctl add instance -d DEST1_SITE2 -i DEST11 -n destnode1
+$ srvctl add instance -d DEST1_SITE2 -i DEST12 -n destnode2
+
+
+------------------------------------
+Create adump directory (DEST all nodes)
+------------------------------------
+$ mkdir -p /u01/app/oracle/admin/DB_UNIQUE_NAME/adump
+
+Example:
+$ mkdir -p /u01/app/oracle/admin/DEST1_SITE2/adump
+
+
+------------------------------------
+Ensure listener has the db_uniqe_name service for the destination DB: (DEST)
+------------------------------------
+
+Node1:
+SID_LIST_LISTENER=
+  (SID_LIST =
+    (SID_DESC = (GLOBAL_DBNAME = DEST1_SITE2) (ORACLE_HOME = /u01/app/oracle/product/12.1.0.2) (SID_NAME = DEST11))
+    (SID_DESC = (GLOBAL_DBNAME = DEST1_SITE2_DGMGRL) (ORACLE_HOME = /u01/app/oracle/product/12.1.0.2) (SID_NAME = DEST11))
+  )
+
+Node2:
+SID_LIST_LISTENER=
+  (SID_LIST =
+    (SID_DESC = (GLOBAL_DBNAME = DEST1_SITE2) (ORACLE_HOME = /u01/app/oracle/product/12.1.0.2) (SID_NAME = DEST12))
+    (SID_DESC = (GLOBAL_DBNAME = DEST1_SITE2_DGMGRL) (ORACLE_HOME = /u01/app/oracle/product/12.1.0.2) (SID_NAME = DEST12))
+  )
+
+----------------------------------------------------------------------
+Add TNS entries:  (In both source and dest – all nodes)
+----------------------------------------------------------------------
+NOTE:  This should be done in the TNS location common to grid and oracle like /usr/local/tns/tnsnames.ora
+(http://oracletechdba.blogspot.in/2015/05/ora-17627-ora-12154-tnscould-not.html)
+
+
+NOTE:  Instead of aliases SOURCE and DEST, you can also use SOURCE1 and DEST1 which are the actual DB names 
+
+SOURCE =
+  (DESCRIPTION =
+    (ADDRESS_LIST =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = source-vip1)(PORT = 1521))
+    )
+    (CONNECT_DATA = (SERVICE_NAME = SOURCE1_SITE1))
+  )
+
+DEST =
+  (DESCRIPTION =
+    (ADDRESS_LIST =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = dest-vip1)(PORT = 1521))
+    )
+    (CONNECT_DATA = (SERVICE_NAME = DEST1_SITE2))
+  )
+
+-----------------------------------
+Create rman duplicate script (rman-duplicate.cmd)
+-----------------------------------
+connect target    sys/your_sys_password@SOURCE
+connect auxiliary sys/your_sys_password@DEST
+
+run {
+
+allocate channel prmy1 type disk;
+allocate channel prmy2 type disk;
+allocate channel prmy3 type disk;
+allocate channel prmy4 type disk;
+
+allocate auxiliary channel stby1 type disk;
+allocate auxiliary channel stby2 type disk;
+allocate auxiliary channel stby3 type disk;
+allocate auxiliary channel stby4 type disk;
+
+duplicate target database to ‘DEST1’ from active database
+spfile
+SET DB_UNIQUE_NAME='DEST1_SITE2'
+SET CLUSTER_DATABASE='FALSE'
+SET CONTROL_FILES='+DATA_DG01','+FRA_DG01'
+SET DB_RECOVERY_FILE_DEST='+FRA_DG01'
+SET DB_CREATE_FILE_DEST='+DATA_DG01'
+SET DB_RECOVERY_FILE_DEST='+FRA_DG01'
+SET DB_CREATE_ONLINE_LOG_DEST_1=''
+SET DB_CREATE_ONLINE_LOG_DEST_2=''
+SET DIAGNOSTIC_DEST='/u01/app/oracle'
+SET AUDIT_FILE_DEST='/u01/app/oracle/admin/DEST1_SITE2/adump'
+SET DB_FILE_NAME_CONVERT='+DATA_DG01/SOURCE1_SITE1','+DATA_DG01/DEST1_SITE2','+FRA_DG01/SOURCE1_SITE1','+FRA_DG01/DEST1_SITE2'
+SET LOG_FILE_NAME_CONVERT='+DATA_DG01/SOURCE1_SITE1','+DATA_DG01/DEST1_SITE2','+FRA_DG01/SOURCE1_SITE1','+FRA_DG01/DEST1_SITE2'
+SET LOCAL_LISTENER =''
+SET REMOTE_LISTENER='dest-scan:1522'
+SET LOG_ARCHIVE_DEST_1='location="USE_DB_RECOVERY_FILE_DEST",  valid_for=(ALL_LOGFILES,ALL_ROLES)'
+SET LOG_ARCHIVE_DEST_2=''
+SET SERVICE_NAMES=''
+SET parallel_threads_per_cpu = 1
+SET "_enable_numa_support" = 'FALSE'
+SET "_smm_auto_max_io_size" = 1024
+SET use_large_pages='only'
+;
+}
+
+Run the duplicate:  (DEST node1)
+$ nohup rman @rman-duplicate.cmd &
+
+After it completes: (DEST node1)
+Check if a spfile is created for the db in $ORACLE_HOME/dbs on destination node1 where rman was run.
+
+/u01/app/oracle/product/12.1.0.2/dbs: ls -ltr *ora
+-rw-r--r-- 1 oracle oradba   17 Mar 15 02:03 initDEST11.ora   initial file
+-rw-r----- 1 oracle asmadm 5632 Mar 15 03:51 spfileDEST11.ora   newly created by rman
+
+Create new pfile: (DEST node1)
+$ cd $ORACLE_HOME/dbs
+$ mv initDEST11.ora initDEST11.ora.initial
+
+$ sqlplus / as sysdba
+
+SQL> create pfile='/u01/app/oracle/product/12.1.0.2/dbs/initDEST11.ora' from spfile=
+    '/u01/app/oracle/product/12.1.0.2/dbs/spfileDEST11.ora';	
+
+SQL> shutdown
+
+$ cp initDEST11.ora initDEST11.ora.fromRmanSpfile
+
+Edit initDEST11.ora and ensure old DB Name is replaced with new DB Name
+And cluster_database is set to TRUE
+
+Here are the differences to make:
+$ diff initDEST11.ora.fromRmanSpfile initDEST11.ora
+15c15
+< *.cluster_database=FALSE
+---
+> *.cluster_database=TRUE
+32c32
+< *.dispatchers='(PROTOCOL=TCP) (SERVICE=SOURCE1XDB)'
+---
+> *.dispatchers='(PROTOCOL=TCP) (SERVICE=DEST1XDB)'
+37,38c37,38
+< SOURCE12.instance_number=2
+< SOURCE11.instance_number=1
+---
+> DEST12.instance_number=2
+> DEST11.instance_number=1
+58,61c58,61
+< SOURCE12.thread=2
+< SOURCE11.thread=1
+< SOURCE12.undo_tablespace='UNDOTS2'
+< SOURCE11.undo_tablespace='UNDOTS1'
+---
+> DEST12.thread=2
+> DEST11.thread=1
+> DEST12.undo_tablespace='UNDOTS2'
+> DEST11.undo_tablespace='UNDOTS1'
+
+-----------------------------------
+Restart the instance (DEST node1)
+-----------------------------------
+$ sqlplus / as sysdba
+
+SQL> startup
+
+-----------------------------------
+Create spfile from  pfile:  (DEST node1)
+-----------------------------------
+create spfile='+DATA_DG01/DEST1_SITE2/DEST1_spfile.ora' from pfile='/u01/app/oracle/product/12.1.0.2/dbs/initDEST11.ora';
+
+-----------------------------------
+Edit pfile to reflect spfile: (DEST node1)
+-----------------------------------
+$ vi initDEST11.ora
+SPFILE='+DATA_DG01/DEST1_SITE2/DEST1_spfile.ora'
+
+-----------------------------------
+Copy pfile to other node(s):  (DEST node1)
+-----------------------------------
+$ scp initDEST11.ora destnode2:/u01/app/oracle/product/12.1.0.2/dbs/initDEST12.ora
+
+----------------------------------------------------------------------
+Restart the database and shutdown again (to ensure spfile works)
+----------------------------------------------------------------------
+SQL> shutdown
+
+SQL> startup
+
+SQL> shutdown
+
+-----------------------------------
+Start the db using srvctl
+-----------------------------------
+$ srvctl start database -d DEST1_SITE2
+
+----------------------------------------------------------------------
+Ensure log_archive_dest_2 is null as this is not to be maintained as standby
+----------------------------------------------------------------------
+(In the rman command block above, it gets set.  Just reconfirm)
+
+SQL> alter system set log_archive_dest_2='' scope=both sid='*';
+
+----------------------------------------------------------------------
+Make the database ‘primary’ as it currently shows up as standby
+----------------------------------------------------------------------
+$ srvctl modify database -d DEST1_SITE2 -s OPEN -r primary
+	Before making it ‘primary’ it shows up as standby:
+$ srvctl config database -d DEST1_SITE2
+Database unique name: DEST1_SITE2
+Database name: DEST1
+Oracle home: /u01/app/oracle/product/12.1.0.2
+Oracle user: oracle
+Spfile: +DATA_DG01/DEST1_SITE2/DEST1_spfile.ora
+Password file:
+Domain:
+Start options: mount
+Stop options: immediate
+Database role: PHYSICAL_STANDBY
+Management policy: AUTOMATIC
+Server pools:
+Disk Groups: DATA_DG01,FRA_DG01
+Mount point paths:
+Services:
+Type: RAC
+Start concurrency:
+Stop concurrency:
+OSDBA group: dba
+OSOPER group:
+Database instances: DEST11,DEST12
+Configured nodes: destnode1,destnode2 
+Database is administrator managed
+
+-----------------------------------
+Restart the database and verify
+-----------------------------------
+$ srvctl stop database -d DEST1_SITE2
+$ srvctl start database -d DEST1_SITE2
+$ srvctl config database -d DEST1_SITE2
+
+Database unique name: DEST1_SITE2
+Database name: DEST1
+Oracle home: /u01/app/oracle/product/12.1.0.2
+Oracle user: oracle
+Spfile: +DATA_DG01/DEST1_SITE2/DEST1_spfile.ora
+Password file:
+Domain:
+Start options: open
+Stop options: immediate
+Database role: PRIMARY
+Management policy: AUTOMATIC
+Server pools:
+Disk Groups: DATA_DG01,FRA_DG01
+Mount point paths:
+Services:
+Type: RAC
+Start concurrency:
+Stop concurrency:
+OSDBA group: dba
+OSOPER group:
+Database instances: DEST11,DEST12
+Configured nodes: destnode1,destnode2 
+Database is administrator managed
+
+-----------------------------------
+Open PDBs
+-----------------------------------
+SQL> alter pluggable database all open;
+SQL> alter pluggable database all save state;
+
+----------------------------------------------------------------------
+Rename the PDB – from their old source-db convention to new db convention
+----------------------------------------------------------------------
+
+SQL> alter pluggable database SOURCE1P1 close immediate instances=all;
+
+Pluggable database altered.
+
+SQL> alter pluggable database SOURCE1P1  open restricted;
+
+Pluggable database altered.
+
+SQL> show pdbs
+
+    CON_ID CON_NAME                       OPEN MODE  RESTRICTED
+---------- ------------------------------ ---------- ----------
+         2 PDB$SEED                       READ ONLY  NO
+         3 SOURCE1P1                      READ WRITE YES
+
+SQL> alter session set container=SOURCE1P1;
+
+Session altered.
+
+SQL>  alter pluggable database SOURCE1P1 rename global_name to  DEST1PD1;
+
+Pluggable database altered.
+
+SQL> alter pluggable database DEST1PD1 close immediate;
+
+Pluggable database altered.
+
+SQL> alter pluggable database DEST1PD1 open instances=all;
+
+Pluggable database altered.
+
+SQL> alter pluggable database DEST1PD1 save state;
+
+Pluggable database altered.
+
+-----------------------------------
+Create the services
+-----------------------------------
+$ srvctl add service -d DEST1_SITE2 -s SOURCE1_SVC1 -pdb  DEST1PD1 -r DEST11,DEST11 -e SELECT -m BASIC -w 5 -z 180
+
