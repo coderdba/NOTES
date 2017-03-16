@@ -218,18 +218,54 @@ SET "_smm_auto_max_io_size" = 1024
 SET use_large_pages='only'
 ;
 }
+------------------------------------
+Stop archlog backups (SOURCE)
+------------------------------------
+Comment out archlog backup jobs in the source database for the duration of rman-duplicate.
+This can be tricky - compromise between having good backup vs completing duplicate
+CONSIDER THIS - keep the backup, but try un-setting 'delete input' in backup scripts
 
+------------------------------------
 Run the duplicate:  (DEST node1)
+------------------------------------
 $ nohup rman @rman-duplicate.cmd &
 
+------------------------------------
+Missing Archlog error (if it comes)
+------------------------------------
+This can happen if backups swept off archlogs needed for recovery part of duplicate.
+
+RMAN-06054: media recovery requesting unknown archived log for thread 1 with sequence 1234 and starting SCN of 9893093284
+NOTE: There could be multiple errors - one for each thread also.
+
+- Find the max log file number in each thread: (SOURCE DB)
+SQL> select thread#, max(sequence#) from gv$archived_log group by thread# order by thread#;
+
+- Restore the archlogs which are not available in FRA. (SOURCE DB)
+RMAN> restore archivelog from sequence 1230 until sequence 1234 thread 1;
+RMAN> restore archivelog from sequence 1231 until sequence 1235 thread 2;
+RMAN> restore archivelog from sequence 1234 until sequence 1238 thread 3;
+RMAN> restore archivelog from sequence 1222 until sequence 1255 thread 4;
+
+- Restart Duplicate (DEST node1)
+NOTE: Restart the duplicate same as starting the duplicate.  
+      However, duplicate knows where it left off and start from there.
+      No need to worry that it starts from the beginning
+
+$ nohup rman @rman-duplicate.cmd &
+
+------------------------------------
 After it completes: (DEST node1)
+------------------------------------
 Check if a spfile is created for the db in $ORACLE_HOME/dbs on destination node1 where rman was run.
 
 /u01/app/oracle/product/12.1.0.2/dbs: ls -ltr *ora
 -rw-r--r-- 1 oracle oradba   17 Mar 15 02:03 initDEST11.ora   initial file
 -rw-r----- 1 oracle asmadm 5632 Mar 15 03:51 spfileDEST11.ora   newly created by rman
 
+------------------------------------
 Create new pfile: (DEST node1)
+------------------------------------
 $ cd $ORACLE_HOME/dbs
 $ mv initDEST11.ora initDEST11.ora.initial
 
@@ -242,8 +278,10 @@ SQL> shutdown
 
 $ cp initDEST11.ora initDEST11.ora.fromRmanSpfile
 
+------------------------------------------------------------------------
 Edit initDEST11.ora and ensure old DB Name is replaced with new DB Name
-And cluster_database is set to TRUE
+------------------------------------------------------------------------
+Also, set cluster_database to TRUE
 
 Here are the differences to make:
 $ diff initDEST11.ora.fromRmanSpfile initDEST11.ora
@@ -278,6 +316,11 @@ Restart the instance (DEST node1)
 $ sqlplus / as sysdba
 
 SQL> startup
+
+------------------------------------
+Start archlog backups (SOURCE)
+------------------------------------
+Restart/uncomment archivelog backup jobs in the source database.
 
 -----------------------------------
 Create spfile from  pfile:  (DEST node1)
@@ -427,3 +470,4 @@ Create the services
 -----------------------------------
 $ srvctl add service -d DEST1_SITE2 -s SOURCE1_SVC1 -pdb  DEST1PD1 -r DEST11,DEST11 -e SELECT -m BASIC -w 5 -z 180
 
+-END
