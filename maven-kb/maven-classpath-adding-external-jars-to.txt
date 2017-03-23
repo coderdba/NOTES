@@ -5,6 +5,94 @@ http://stackoverflow.com/questions/4955635/how-to-add-local-jar-files-in-maven-p
 
 Adding a local repository and a jar from that: http://stackoverflow.com/questions/2229757/maven-add-a-dependency-to-a-jar-by-relative-path
 
+
+-----------------------------------------
+A possible solution (that seemed to work) - more methods in more sections below
+-----------------------------------------
+https://developer.atlassian.com/docs/faq/troubleshooting/compilation-failure-package-does-not-exist
+http://stackoverflow.com/questions/2831335/maven-compile-fails-because-i-have-a-non-maven-jar
+
+Create a folder in the workstation as a 'local repository' (say /tmp/java/ownjars)
+Copy your jars to that folder
+Add that folder as the repo in pom.xml of the project
+Add the dependency of the necessary jars in pom.xml of the project
+
+POM.XML
+-------
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>com.gm.oracle</groupId>
+	<artifactId>com-gm-oracle-services</artifactId>
+	<packaging>war</packaging>
+	<version>0.0.1-SNAPSHOT</version>
+	<name>com-gm-oracle-services Maven Webapp</name>
+	<url>http://maven.apache.org</url>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<version.jdk>1.8</version.jdk>  <!-- 1.7 for JDK 7 -->
+		<version.jersey>2.25.1</version.jersey>
+		<version.servlet.api>3.1.0</version.servlet.api>  <!-- use 3.0.1 for Tomcat 7 or Java EE 6 (i.e. Glassfish 3.x) -->
+	</properties>
+	
+	<repositories>
+	<!-- Local repository -->
+    <repository>
+        <id>ownjars</id>
+        <name>ownjars</name>
+        <url>file:/tmp/java/ownjars</url>
+    </repository>
+    </repositories>
+
+	<dependencies>
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>3.8.1</version>
+			<scope>test</scope>
+		</dependency>
+ 
+        <!-- Local jar -->
+		<dependency>
+			<groupId>com.gm.oracle</groupId>
+			<artifactId>com-gm-oracle-datahandlers</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
+
+		<!-- Local jar -->
+		<dependency>
+			<groupId>com.gm.utils</groupId>
+			<artifactId>com-gm-utils-java</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
+		
+		<!-- Jersey -->
+		<dependency>
+			<groupId>org.glassfish.jersey.containers</groupId>
+			<artifactId>jersey-container-servlet</artifactId>
+			<version>${version.jersey}</version>
+		</dependency>
+
+		<!-- Jackson -->
+		<dependency> <groupId>org.glassfish.jersey.media</groupId> <artifactId>jersey-media-json-jackson</artifactId> 
+			<version>${version.jersey}</version> 
+	    </dependency>
+
+		<!-- Moxy -->
+		<dependency>
+			<groupId>org.glassfish.jersey.media</groupId>
+			<artifactId>jersey-media-moxy</artifactId>
+			<version>${version.jersey}</version>
+		</dependency>
+
+	</dependencies>
+
+	<build>
+		<finalName>com-gm-oracle-services</finalName>
+	</build>
+</project>
+
 ===============================
 THE RIGHT WAY - one (see two also)
 ===============================
