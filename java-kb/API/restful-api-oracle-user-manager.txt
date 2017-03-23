@@ -50,9 +50,98 @@ Package 3: User management programs - com.gm.oracle.services
 ------------------------------------------------------------
 Archetype - maven-archetype-webapp
 Group Id - com.gm.oracle
-Artifcat Id - com-gm-oracle-services
+Artifcat Id - comgmOracleServices --> Note '-' are not used as Jersey does not like path with dashes (see more explanation below)
 Package - com.gm.oracle.services
 
+Name of the war file is the part of the path in the url.
+If war name is xyz.war, then url will be http://localhost:8080/xyz
+Jersey does not like dashes in the URL so, x-y-z.war cannot be used.
+
+WAR file gets produced in Maven repo as well as the project 'target'folder.
+However, the Maven repo will also contain '-version' like '-1' attached to the filename.
+comgmOracleServices/target/comgmOracleServices.war --> in project folder
+~/.m2/repository/com/gm/oracle/comgmOracleServices/1/comgmOracleServices-1.war --> in maven repo
+--> USE THE ONE IN PROJECT FOLDER TO DEPLOY TO TOMCAT OR OTHER SERVER
+
+POM.XML
+-------
+NOTE: 
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>com.gm.oracle</groupId>
+	<artifactId>comgmOracleServices</artifactId>
+	<packaging>war</packaging>
+	<name>comgmOracleServices Maven Webapp</name>
+	<url>http://maven.apache.org</url>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<version.jdk>1.8</version.jdk>  <!-- 1.7 for JDK 7 -->
+		<version.jersey>2.25.1</version.jersey>
+		<version.servlet.api>3.1.0</version.servlet.api>  <!-- use 3.0.1 for Tomcat 7 or Java EE 6 (i.e. Glassfish 3.x) -->
+	</properties>
+
+	<repositories>
+		<!-- Local repository -->
+		<repository>
+			<id>ownjars</id>
+			<name>ownjars</name>
+			<url>file:/tmp/java/ownjars</url>
+		</repository>
+	</repositories>
+
+	<dependencies>
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>3.8.1</version>
+			<scope>test</scope>
+		</dependency>
+
+		<!-- Local jar -->
+		<dependency>
+			<groupId>com.gm.oracle</groupId>
+			<artifactId>com-gm-oracle-datahandlers</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
+
+		<!-- Local jar -->
+		<dependency>
+			<groupId>com.gm.utils</groupId>
+			<artifactId>com-gm-utils-java</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
+
+		<!-- Jersey -->
+		<dependency>
+			<groupId>org.glassfish.jersey.containers</groupId>
+			<artifactId>jersey-container-servlet</artifactId>
+			<version>${version.jersey}</version>
+		</dependency>
+
+		<!-- Jackson -->
+		<dependency>
+			<groupId>org.glassfish.jersey.media</groupId>
+			<artifactId>jersey-media-json-jackson</artifactId>
+			<version>${version.jersey}</version>
+		</dependency>
+
+		<!-- Moxy -->
+		<dependency>
+			<groupId>org.glassfish.jersey.media</groupId>
+			<artifactId>jersey-media-moxy</artifactId>
+			<version>${version.jersey}</version>
+		</dependency>
+
+	</dependencies>
+
+	<build>
+		<finalName>comgmOracleServices</finalName>
+	</build>
+	
+	<version>1</version>
+</project>
 
 ========================================================
               ECLIPSE - NO MAVEN
