@@ -19,6 +19,14 @@ select name || ' ' || value from v$parameter where name in ('log_archive_dest_1'
 
 select * from v$archive_gap;
 
+select ‘Last Log applied : ‘ Logs, to_char(next_time,‘DD-MON-YY:HH24:MI:SS’) Time
+from v$archived_log
+where sequence# = (select max(sequence#) from v$archived_log where applied=’YES’)
+union
+select ‘Last Log received : ‘ Logs, to_char(next_time,‘DD-MON-YY:HH24:MI:SS’) Time
+from v$archived_log
+where sequence# = (select max(sequence#) from v$archived_log);
+
 --select * from gv$log order by group#, thread#;
 
 select inst_id, group#, thread#, sequence# from gv$log order by group#, thread#;
