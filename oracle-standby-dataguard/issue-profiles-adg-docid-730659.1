@@ -1,0 +1,203 @@
+PHYSICAL: ORA-604 ORA-16000 on Standby Opened Read Only (Doc ID 730659.1)	To BottomTo Bottom	
+
+In this Document
+Symptoms
+Changes
+Cause
+Solution
+References
+APPLIES TO:
+
+Oracle Database - Enterprise Edition - Version 9.2.0.1 to 11.2.0.4 [Release 9.2 to 11.2]
+Information in this document applies to any platform.
+Oracle Database versions 9.2 to 10.2.0.4
+
+
+
+
+SYMPTOMS
+
+Tried to log into Standby database Opened Read Only as non-sysdba user via 
+SQLPLUS on the server:
+
+ It fails with the following errors:
+
+SQL> conn <username>
+Enter password: 
+ERROR: 
+ORA-00604: error occurred at recursive SQL level 1 
+ORA-16000: database open for read-only access 
+ORA-01017: invalid username/password; logon denied
+
+
+ 
+
+CHANGES
+
+These steps were taken on the PHYSICAL standby BEFORE the test was done.
+
+SQL> ALTER DATABASE RECOVER MANAGED STANDBY DATABASE CANCEL; 
+SQL> ALTER DATABASE OPEN; 
+SQL> SELECT NAME, DATABASE_ROLE FROM V$DATABASE; 
+
+NAME DATABASE_ROLE 
+--------- ---------------- 
+V102P PHYSICAL STANDBY 
+
+SQL> select log_mode,open_mode , database_role from v$database;
+ 
+LOG_MODE OPEN_MODE DATABASE_ROLE 
+------------ ---------- ----------------
+ARCHIVELOG READ ONLY PHYSICAL STANDBY
+CAUSE
+
+Cannot have failed_logon_attempts profiles set on an opened Read-only Standby Database. Oracle cannot write to the user$ table when the database is opened Read only.
+
+To verify the issue, set events for the ora-604 and ora-16000:
+
+Set the events on the standby.
+
+  SQL> alter system set events '604 trace name errorstack level 10'; 
+  SQL> alter system set events '16000 trace name errorstack level 10'; 
+ For 11g+, please set the events like:
+
+  SQL> alter system set events '604 trace name errorstack level 10';
+  SQL> alter system set events '16000 trace name errorstack level 3';
+ 
+
+ 
+
+ Reproduce the problem and upload the new trace files in the udump directory. 
+
+to unset the events:
+
+  SQL> alter system set events '604 trace name errorstack off'; 
+  SQL> alter system set events '16000 trace name errorstack off';
+ 
+
+ 
+
+You will receive a Stack Trace like:
+
+ksedmp ksddoa ksdpcg ksdpec ksfpec kgesev ksesec1 rpidrr rpidrv rpiexe ktsucu kqrcmt ktcrcm kziasfc kpolnb kpoauth opiodr ttcpip ...................
+
+Current cursor: 0, pgadep: 0 
+Cursor Dump: 
+---------------------------------------- 
+Cursor 1 (10386bc98): CURBOUND curiob: 103871080 
+curflg: 5 curpar: 0 curusr: 0 curses 5a97ec3e8 
+cursor name: 
+update user$ set name=:2,password=:3,datats#=:4,tempts#=:5,type#=:6,defrole=:7,resource$=:8,ptime=DECODE(to_char(:9, 'YYYY-MM-DD'), '0000-00-00', to_date(NULL), :9),exptime=DECODE(to_char(:10, 'YYYY-MM-DD'), '0000-00-00', to_date(NULL), :10),ltime=DECODE(to_char(:11, 'YYYY-MM-DD'), '0000-00-00', to_date(NULL), :11),astatus=:12, lcount=:13, defschclass=:14 where user#=:1 
+child pin: 0, child lock: 5ac621548, parent lock: 5ac6217f0 
+xscflg: 20100426, parent handle: 5bc588410, xscfl2: 5100400 
+
+-> Stack Trace functions: 
+
+kziasfc Set the FAILED_LOGIN_COUNT parameter of the user * 
+/ 
+ktsucu insert, update, delete from user$ */ 
+
+
+The ORA-16000 shows that the database is opened read-only. The ORA-1017 wants to update 
+the user$ table - FAILED_LOGIN_COUNT. This fails because the database isn't opened in read-write 
+mode, so that the internal tables (user$) can't be updated. This is the reason why the login never 
+is locked due to failed login. 
+
+In the above analysis it is established that the password profile does not work for a standby database in read only mode simply because of the fact no database writes can be done in read only, therefore the data dictionary (USER$) cannot be updated to log the failed login attempts
+
+SOLUTION
+
+You will need to change the Profile on the Standby to not use Failed_logon_attempts by setting them to unlimited on the Primary(get passed through the archive redo logs to the Standby) or disable using profiles on the Standby. You can try auditing users via OS on the Standby instead.
+
+Solution Steps:
+
+Solution 1:
+
+ 1. On the Primary:
+
+SQL> alter profile default limit failed_login_attempts unlimited ;
+
+ 2. You can verify the change was made once the archivelogs have applied on the Standby by:
+ 
+
+SQL> alter database open read only;
+SQL> select RESOURCE_NAME,RESOURCE_TYPE,LIMIT from dba_profiles where profile='<userprofilename>';
+ 
+
+Solution 2:
+
+  1. Disable using profiles on the Standby database only, by auditing via the OS:
+
+ On the Standby:
+
+    SQL> alter system set audit_trail='OS' scope=spfile;
+
+     (or if using init file, set audit_trail='OS' in the init file)
+
+     Restart the standby for the change to take effect.
+
+
+Solution 3: Other cases that cause the ora-16000 on the Standby are:
+
+ 1. Invalid Synonyms on the Primary
+
+   If you see in the 16000 trace:
+
+  ORA-16000: database open for read-only access 
+Current SQL statement for this session: 
+update syn$ set node=:2,owner=:3,name=:4 where obj#=:1
+
+Solution:
+
+On the Primary:
+
+SQL> select object_name, object_type from dba_objects where status='INVALID' and object_type = 'SYNONYM';
+
+
+Recompile the invalid synonyms
+
+ 
+
+  2. Logon/Startup triggers
+
+You normally will also receive the ORA-4088 with the ORA-16000 when it's a startup/logon trigger issue. You will just receive ORA-04088 when profiles are not involved and just startup/logon trigger issue.
+
+njprod01_dr_mrp0_12816506.trc 
+============================== 
+Redo shipping client performing standby login 
+OCISessionBegin failed -1 
+.. Detailed OCI error val is 4088 and errmsg is 'ORA-04088: error during execution of trigger 'ACCOUNTMGR.LOGON_AUDIT_TRIGGER' 
+ORA-01403: no data found 
+ORA-06512: at line 6 
+' 
+*** 2009-03-31 08:33:58.688 62692 kcrr.c 
+Error 4088 received logging on to the standby 
+*** 2009-03-31 08:33:58.688 62692 kcrr.c 
+FAL[client, MRP0]: Error 4088 connecting to njprod01 for fetching gap sequence 
+*** 2009-03-31 08:33:58.688 
+ksedmp: internal or fatal error 
+ORA-04088: error during execution of trigger '.'
+
+Solution:
+
+1) Disable the logon/startup trigger on the Primary or Standby, until you can fix it to not fire when the Standby database is open read only.
+
+You can disable the startup trigger by setting the _system_trig_enabled=false parameter in the Standby's init.ora file. 
+Refer My Oracle Support Note 68636.1 and set the _system_trig_enabled = false 
+in Standby DB.
+
+On the Primary:
+
+  o Modify the Startup trigger to not fire when a database is opened read-only. 
+
+         i.e.  if v_database_role !='READ ONLY' then
+
+  o Modify a Logon trigger to not fire for PUBLIC users. 
+
+         i.e. if v_username !='PUBLIC' then
+
+REFERENCES
+
+NOTE:461653.1 - Unable to connect to read only database, Getting error ORA-00604 ORA-16000
+NOTE:68636.1 - Init.ora Parameter "_SYSTEM_TRIG_ENABLED" [Hidden] Reference Note
+BUG:7581964 - INCORRECT LOGIN TO THE PRIMARY CAUSES ORA-16000 IN THE STANDBY DATABASE
