@@ -1,0 +1,117 @@
+
+Click to add to Favorites		Data Guard Standby Database log shipping failing reporting ORA-01031 and Error 1017 when using Redo Transport User (Doc ID 1542132.1)	To BottomTo Bottom	
+
+In this Document
+Symptoms
+Changes
+Cause
+Solution
+References
+
+APPLIES TO:
+
+Oracle Database - Enterprise Edition - Version 11.1.0.6 to 11.2.0.4 [Release 11.1 to 11.2]
+Information in this document applies to any platform.
+SYMPTOMS
+
+***Reviewed for Relevance 16-Jul-2015 ***
+
+**Checked for relevance on 26-Oct-2016**
+
+ 
+
+Redo shipping and FAL requests are failing between the Primary and Standby sites. 
+
+Enabling a trace of the event 16191 and reproducing the error using a defer and re-enable of the log archive shipping destination in the Primary site shows the following errors appear when a login attempt is made by the Primary to the standby site.
+
+  Redo shipping client performing standby login
+
+ 
+
+Archiver Trace Extract
+
+*** 2013-03-27 19:32:24.367
+OCISessionBegin failed. Error -1.. Detailed OCI error val is 1031 and errmsg is 'ORA-01031: insufficient privileges'
+OCISessionBegin failed. Error -1.. Detailed OCI error val is 1031 and errmsg is 'ORA-01031: insufficient privileges'
+OCI_DBVER attribute value retrieval failed error=1017
+
+*** 2013-03-27 19:32:24.717 4320 krsh.c
+Error 1017 received logging on to the standby
+------------------------------------------------------------
+Check that the primary and standby are using a password file
+and remote_login_passwordfile is set to SHARED or EXCLUSIVE,
+and that the SYS password is same in the password files.
+  returning error ORA-16191
+------------------------------------------------------------
+*** 2013-03-27 19:32:24.717 915 krsu.c
+Error 16191 connecting to destination LOG_ARCHIVE_DEST_2 standby host 'DB112A_STBY'
+Error 16191 attaching to destination LOG_ARCHIVE_DEST_2 standby host 'DB112A_STBY'
+*** 2013-03-27 19:32:24.717 4320 krsh.c
+PING[ARC2]: Heartbeat failed to connect to standby 'DB112A_STBY'. Error is 16191.
+*** 2013-03-27 19:32:24.717 2932 krsi.c
+krsi_dst_fail: dest:2 err:16191 force:0 blast:1
+ 
+The ARCH background process is attempting to connect to the standby site and failing reporting the errors in the trace file, 1031 insufficent privileges, 1017 and 16191.
+
+CHANGES
+
+ In this case the password file has been recreated and redistributed to the Primary and Standby sites and the RDBMS parameter redo_transport_user is set and SYSOPER has not been granted to the user specified in redo_transport_user.  Another scenario would be where the environment is a brand new environment where the parameter redo_transport_user has been implemented and SYSOPER has not been granted to the user specified in redo_transport_user.
+
+CAUSE
+
+Examination of the alert log in the Primary and identifying the last startup attempts parameter settings shows that the parameter.  In this case the parameter is set to a database user called REDOSHIP.
+
+redo_transport_user = "REDOSHIP"
+
+OR
+
+revealing the current setting for the parameter using the following command shows that a username has been specified for this parameter
+
+SQL> show parameter redo_transport_user
+
+
+
+Looking at the contents of the password file through the view v$pwfile_users, this user REDOSHIP is not present and as such has not been granted the SYSOPER privilege required to facilitate log shipping.
+
+
+select * from v$pwfile_users;
+
+USERNAME          SYSDB   SYSOP  SYSAS
+-------------------------------------------------
+SYS               TRUE    TRUE   FALSE
+ 
+ 
+
+
+SOLUTION
+
+The following documentation details the privileges that must be granted to the user specified by the parameter redo_transport_user. SYSOPER privilege must be granted to the user specified through redo_transport_user which will result in an entry being created in the password file for this user and therefor allow the databases in the standby configuration to connect to one another for shipping of the redo stream.
+
+ http://docs.oracle.com/cd/E11882_01/server.112/e25608/log_transport.htm#SBYDB4748
+
+          6.2.1.2 Redo Transport Authentication Using a Password File
+
+ 
+
+1. Grant SYSOPER to the user REDOSHIP specified in the parameter redo_transport_user.
+
+SQL> grant SYSOPER to REDOSHIP
+ 
+
+
+NOTE : From 12c onwards we can include SYSDG privilege, so REDO user can have these privileges SYSDG, SYSOPER, SYSDBA
+
+2. Defer the destination user to ship redo and re-enable this to check connections can now be made between the sites.
+
+SQL> alter system set log_archive_dest_state_X=defer scope=both sid='*'
+SQL> alter system set log_archive_dest_state_X=enable scope=both sid='*'
+ 
+ Where X is the number associated with the destination used to ship redo from the primary to the standby site.
+
+ 
+
+You may also review
+
+Note 1368170.1: Troubleshooting ORA-16191 and ORA-1017/ORA-1031 in Data Guard Log Transport Services
+
+for further Troubleshooting Hints.
