@@ -1,0 +1,91 @@
+Troubleshooting - Heartbeat failed to connect to standby (Doc ID 1432367.1)	To BottomTo Bottom	
+
+In this Document
+Purpose
+Troubleshooting Steps
+References
+APPLIES TO:
+
+Oracle Database - Enterprise Edition - Version 9.2.0.1 to 12.1.0.2 [Release 9.2 to 12.1]
+Information in this document applies to any platform.
+***Checked for relevance on 20-Aug-2013*** 
+***Checked for relevance on 26-OCT-2016***
+PURPOSE
+
+The Purpose of this Document is to troubleshoot the generic Error
+
+Heartbeat failed to connect to standby
+
+in the Primary ALERT.LOG. It shows most common and possible Causes along with Solutions to get rid of this Problem.
+
+TROUBLESHOOTING STEPS
+
+Introduction
+
+Once Log Transport Services from a Primary to a Standby Database are setup correctly and the Archive Destination is enabled and active, there will be a Heartbeat-Ping between the Primary and Standby Database. This Ping is being performed by a dedicated ARCn-Process on the Primary Database to an associated RFS-Process on the Standby. You can find out about this Process if you have a Look into the ALERT.LOG of the Primary Database and search for an Entry like this:
+
+
+ARC1 started with pid=21, OS id=6585
+...
+ARC1: Becoming the heartbeat ARCH
+-> In this Case we can find that ARC1 with pid 21 (OS-pid 6585) is the current Heartbeat ARCn-Process.
+
+This Process tries to ping an associated RFS-Process on the Standby Database. If you look into the Standby ALERT.LOG you can find Entries like this:
+
+
+RFS[2]: Assigned to RFS process 6621
+RFS[2]: Identified database type as 'physical standby': Client is ARCH pid 6585
+-> So here RFS-Process with OS-pid 6621 is the corresponding RFS-Process for the Heartbeat Ping
+
+Note that this can be quite dynamic since RFS-Processes are created and terminated on Need.
+If the Primary ARCn-Process is not able to reach a corresponding RFS-Process this Error is raised in the Primary ALERT.LOG together with the corresponding Reason.
+
+
+Diagnosing Problems:
+
+If the Heartbeat Ping fails you typically get an Error along with this Message in the following Section we discuss common Errors and how to solve them.
+
+The Errors in general look like this:
+
+PING[ARCn]: Heartbeat failed to connect to standby '<Standby>'. Error is xxxxx
+
+General Points to verify first:
+
+
+The Standby Database must at least be mounted to create a RFS-Process and make the Heartbeat Ping happen. So first of all you should always verify if the Standby Database is at least in 'mount'-Status and registered its Services with the correct Listener on the Standby Site.
+Verify if you are able to connect to the Standby Database from the Primary Site using the same Connect Descriptor or TNS-Alias used in the corresponding log_archive_dest_n:
+SQL> connect sys/<Password>@<Standby> as sysdba
+-> if this succeeds then it's a Problem specific on the Database where if you get the same Error here there is a general (mostly Setup or Configuration) Problem
+ARCn- and Database Processes read the TNSNAMES.ORA only when they are started or Log Transport Services are restarted. So if you make Modifications in the TNSNAMES.ORA on the Alias for the Standby Database the ARCn-Processes do not get aware of this Change unless they are restarted or you stop and restart Log Transport Services, ie. set the corresponding log_archive_dest_state_n to 'defer' and back to 'enable'.
+As an Alternative you can also try to directly put the Connect Identifier into the log_archive_dest_n which will avoid having to restart the ARCn-Processes or taking care of the correct TNSNAMES.ORA to be used
+
+Here are common Errors and Solutions:
+
+ORA-12514
+The Standby Database is down or the specified Service you want to connect to is not registered with Listener on the Standby Site.
+- Verify the Standby Database is at least in mount-Status
+- Ensure the Service used to connect by Log Transport Services is registered with the correct Listener
+- Review the TNSNAMES.ORA and ensure the Connection Details (Host, Protocol and Port) are correct
+ORA-12541
+The Log Transport Services cannot detect a Listener on the Destination
+- Ensure the Listener is running
+- Review the TNSNAMES.ORA and ensure the Connection Details (Host, Protocol and Port) are correct
+- Verify in /etc/hosts-File the IP-Address given for the local Node where the Listener is running is defined with it's real IP-Address rather than the localhost Address (127.0.0.1) and it matches with the Listener IP-Address or Hostname Resolution
+ORA-12154
+The given Connect Descriptor used for Log Transport Services cannot be resolved
+- Ensure the TNS-Alias setup with log_archive_dest_n exists in the TNSNAMES.ORA and is valid (Spelling, Brackets,...)
+- Try to manually connect to the Standby Database using the same TNS-Alias
+- Verify if you modified the TNSNAMES.ORA since the Database ARCn and LNS-Processes started; they may not be aware of the Change. So you may have to kill those so that they get respawned again
+ORA-3135
+The Communication between the ARCn and the RFS-Process died unexpectedly. 
+- Typical Cause are active Firewalls or Routers in the Network Connection between the Primary and Standby Database. Ensure there are no Features enabled on this Equipment which are able to modify TCP-Packets
+- The Network is overloaded; ensure there is always sufficient Bandwith available to cope with the current Redo Generation Rate - also see
+How To Calculate The Required Network Bandwidth Transfer Of Archivelogs In Dataguard Environments (Note 736755.1)
+for Calculation
+ORA-16191/ORA-1017
+The Log Transport Services cannot authenticate on the Standby Database
+- Ensure Passwordfile has been transfered to the Standby Site correctly
+- REMOTE_LOGIN_PASSWORDFILE is setup correct
+- Review
+Troubleshooting ORA-16191 and ORA-1017 in Data Guard Log Transport Services (Note 1368170.1)
+for further Troubleshooting
