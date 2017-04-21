@@ -1,0 +1,167 @@
+https://uhesse.com/2014/10/14/let-the-data-guard-broker-control-log_archive_-parameters/
+
+==================================================
+DATABASE PROPERTIES IN DGMGRL
+==================================================
+NOTE: DGConnectIdentifier is the connect string for the given database 
+      It can be a long complete connect string or a tns alias 
+      
+DGMGRL> connect /
+Connected
+
+DGMGRL> show configuration
+
+Configuration - DG_DB  (where DB is the db_name of the database, and DB_UNIQUE_NAME_SITE1 could be DB_SITE1)
+
+  Protection Mode: MaxPerformance
+  Databases:
+    DB_UNIQUE_NAME_SITE1 - Primary database
+    DB_UNIQUE_NAME_SITE2 - Physical standby database
+
+Fast-Start Failover: DISABLED
+
+Configuration Status:
+SUCCESS
+
+DGMGRL> show database verbose 'DB_UNIQUE_NAME_SITE1'
+
+Database - DB_UNIQUE_NAME_SITE1
+
+  Role:            PRIMARY
+  Intended State:  TRANSPORT-ON
+  Instance(s):
+    DB1
+    DB2
+
+  Properties:
+    DGConnectIdentifier             = '(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=cluster1-vip1)(PORT=1521))(ADDRESS=(PROTOCOL=TCP)(HOST=cluster1-vip2)(PORT=1521))(LOAD_BALANCE=yes)(CONNECT_DATA=(SERVICE_NAME=DB_UNIQUE_NAME_SITE1)))'
+    ObserverConnectIdentifier       = ''
+    LogXptMode                      = 'ASYNC'
+    DelayMins                       = '0'
+    Binding                         = 'optional'
+    MaxFailure                      = '0'
+    MaxConnections                  = '1'
+    ReopenSecs                      = '300'
+    NetTimeout                      = '30'
+    RedoCompression                 = 'DISABLE'
+    LogShipping                     = 'ON'
+    PreferredApplyInstance          = ''
+    ApplyInstanceTimeout            = '0'
+    ApplyParallel                   = 'AUTO'
+    StandbyFileManagement           = 'AUTO'
+    ArchiveLagTarget                = '0'
+    LogArchiveMaxProcesses          = '4'
+    LogArchiveMinSucceedDest        = '1'
+    DbFileNameConvert               = ''
+    LogFileNameConvert              = ''
+    FastStartFailoverTarget         = ''
+    InconsistentProperties          = '(monitor)'
+    InconsistentLogXptProps         = '(monitor)'
+    SendQEntries                    = '(monitor)'
+    LogXptStatus                    = '(monitor)'
+    RecvQEntries                    = '(monitor)'
+    ApplyLagThreshold               = '0'
+    TransportLagThreshold           = '0'
+    TransportDisconnectedThreshold  = '30'
+    SidName(*)
+    StaticConnectIdentifier(*)
+    StandbyArchiveLocation(*)
+    AlternateLocation(*)
+    LogArchiveTrace(*)
+    LogArchiveFormat(*)
+    TopWaitEvents(*)
+    (*) - Please check specific instance for the property value
+
+Database Status:
+SUCCESS
+
+
+DGMGRL> show database verbose 'DB_UNIQUE_NAME_SITE2'
+
+Database - DB_UNIQUE_NAME_SITE2
+
+  Role:            PHYSICAL STANDBY
+  Intended State:  APPLY-ON
+  Transport Lag:   0 seconds (computed 0 seconds ago)
+  Apply Lag:       0 seconds (computed 0 seconds ago)
+  Apply Rate:      570.00 KByte/s
+  Real Time Query: ON
+  Instance(s):
+    DB1
+    DB2
+
+  Properties:
+    DGConnectIdentifier             = '(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=cluster2-vip1)(PORT=1521))(ADDRESS=(PROTOCOL=TCP)(HOST=cluster2-vip2)(PORT=1521))(LOAD_BALANCE=yes)(CONNECT_DATA=(SERVICE_NAME=DB_UNIQUE_NAME_SITE2)))'
+    ObserverConnectIdentifier       = ''
+    LogXptMode                      = 'ASYNC'
+    DelayMins                       = '0'
+    Binding                         = 'optional'
+    MaxFailure                      = '0'
+    MaxConnections                  = '1'
+    ReopenSecs                      = '300'
+    NetTimeout                      = '30'
+    RedoCompression                 = 'DISABLE'
+    LogShipping                     = 'ON'
+    PreferredApplyInstance          = ''
+    ApplyInstanceTimeout            = '0'
+    ApplyParallel                   = 'AUTO'
+    StandbyFileManagement           = 'AUTO'
+    ArchiveLagTarget                = '0'
+    LogArchiveMaxProcesses          = '4'
+    LogArchiveMinSucceedDest        = '1'
+    DbFileNameConvert               = ''
+    LogFileNameConvert              = ''
+    FastStartFailoverTarget         = ''
+    InconsistentProperties          = '(monitor)'
+    InconsistentLogXptProps         = '(monitor)'
+    SendQEntries                    = '(monitor)'
+    LogXptStatus                    = '(monitor)'
+    RecvQEntries                    = '(monitor)'
+    ApplyLagThreshold               = '0'
+    TransportLagThreshold           = '0'
+    TransportDisconnectedThreshold  = '30'
+    SidName(*)
+    StaticConnectIdentifier(*)
+    StandbyArchiveLocation(*)
+    AlternateLocation(*)
+    LogArchiveTrace(*)
+    LogArchiveFormat(*)
+    TopWaitEvents(*)
+    (*) - Please check specific instance for the property value
+
+-----------------------
+MORE SETTINGS
+-----------------------
+    ObserverConnectIdentifier       = ''
+    LogXptMode                      = 'ASYNC'
+    DelayMins                       = '0'
+    Binding                         = 'OPTIONAL'
+    MaxFailure                      = '0'
+    MaxConnections                  = '1'
+    ReopenSecs                      = '300'
+    NetTimeout                      = '30'
+    RedoCompression                 = 'DISABLE'
+    LogShipping                     = 'ON'
+    PreferredApplyInstance          = ''
+    ApplyInstanceTimeout            = '0'
+    ApplyParallel                   = 'AUTO'
+    StandbyFileManagement           = 'AUTO'
+    ArchiveLagTarget                = '3600'
+    LogArchiveMaxProcesses          = '4'
+    LogArchiveMinSucceedDest        = '1'
+    DbFileNameConvert               = '/apps/oracle, /u01/app/oracle, +DATA_DG01/DB_UNIQUE_NAME_SITE1, +DATA_DG01/DB_UNIQUE_NAME_SITE2, +FRA_DG01/DB_UNIQUE_NAME_SITE2, +FRA_DG01/DB_UNIQUE_NAME_SITE2'
+    LogFileNameConvert               = '/apps/oracle, /u01/app/oracle, +DATA_DG01/DB_UNIQUE_NAME_SITE1, +DATA_DG01/DB_UNIQUE_NAME_SITE2, +FRA_DG01/DB_UNIQUE_NAME_SITE2, +FRA_DG01/DB_UNIQUE_NAME_SITE2'
+    FastStartFailoverTarget         = ''
+    InconsistentProperties          = '(monitor)'
+    InconsistentLogXptProps         = '(monitor)'
+    SendQEntries                    = '(monitor)'
+    LogXptStatus                    = '(monitor)'
+    RecvQEntries                    = '(monitor)'
+    ApplyLagThreshold               = '0'
+    TransportLagThreshold           = '0'
+
+
+==============================
+EDITING DGConnectIdentifier
+==============================
+
