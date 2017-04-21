@@ -1,0 +1,72 @@
+	Troubleshooting ORA-16191 and ORA-1017/ORA-1031 in Data Guard Log Transport Services or Data Guard Broker (Doc ID 1368170.1)	To BottomTo Bottom	
+
+In this Document
+Purpose
+Troubleshooting Steps
+References
+APPLIES TO:
+
+Oracle Database - Enterprise Edition - Version 11.1.0.6 to 12.1.0.2 [Release 11.1 to 12.1]
+Information in this document applies to any platform.
+PURPOSE
+
+*** Reviewed for Relevance 15-Jul-2015 ***
+
+This Document presents various Causes, Solutions and Things to verify when ORA-16191 and/or ORA-1017/ORA-1031 is encountered in the Log Transport Services or in the Data Guard Broker.
+
+In case you may want or need more about your current topic - please also access the Data Guard Community of Customers and Oracle Specialists directly via:
+https://community.oracle.com/community/support/oracle_database/high_availability_data_guard
+
+TROUBLESHOOTING STEPS
+
+Please follow the mentioned Points in the order presented to solve the ORA-16191 / ORA-01017 /ORA-1031 in Log Transport Services:
+
+NOTE: For Steps 1. - 5. if the Primary and/or Standby Database is a RAC Database, the Passwordfile must be the same on all Instances. So it has to be copied to all Instances in Case.
+
+1. Ensure the Initialization Parameter 'REMOTE_LOGIN_PASSWORDFILE' is set to 'SHARED' or 'EXCLUSIVE' on the Primary and Standby Database.
+
+2. There exists a Passwordfile on the Primary and Standby Database in $ORACLE_HOME/dbs ($ORACLE_HOME\database on Microsoft Windows) typically having the Format 'orapw<SID>'
+
+3. Verify if the Password for the SYS-User has been changed recently (possibly due to any Security Policies). In this Case the new Password is updated on the Physical Standby Database by the Log Apply Services, but Apply Services cannot update the Passwordfile. In this Case you have to copy/rename the Passwordfile from the Primary Database to the Standby Site again.
+
+4. Verify if the 'Strong Authentification Framework' is used. This depends on the Setting for the Initialization Parameter 'SEC_CASE_SENSITIVE_LOGON' - when set to 'TRUE' it is used, when set to 'FALSE' it is not used. Note that if it is enabled you cannot create a Passwordfile for a Physical Standby Database any more, you have to copy (ang possibly rename) the Passwordfile from the Primary Database instead. So if you are not sure you can copy/rename the Passwordfile from the Primary Database to the Standby Database again.
+
+5. If you do not use the 'Strong Authentification Framework' ensure the Passwordfile is created with the 'ignorecase=y' - Option on both Sites, eg.
+
+$ orapwd file=<Filename> password=<SYS-Password> ignorecase=y force=y
+
+When using Microsoft Windows you have to use 'oradim' and drop/recreate the Windows Service (called 'OracleService<SID>') with a new Passwordfile instead, eg.
+
+C:\> oradim -delete -sid <SID> 
+C:\> del $ORACLE_HOME\database\PWD<SID>.ora
+C:\> oradim -new -sid <SID> -syspwd <SYS-Password>
+
+
+6. If you have setup the 'REDO_TRANSPORT_USER'-Initialization Parameter to a certain User, this User must be granted the 'SYSOPER'-Role and the Setting for this Parameter must be the same on the Primary and all Standby Databases. See
+
+Note 1542132.1: Data Guard Standby Database log shipping failing reporting ORA-01031 and Error 1017 when using Redo Transport User
+
+7. If you are still suffering from ORA-16191 and ORA-01017/ORA-01031 although all mentioned Items are in Place, set Event 16191 on the Primary Database, eg.
+
+SQL> alter system set events '16191 trace name errorstack level 10'
+
+This will create a new Tracefile in the Trace-Directory. Forward the Tracefile generated together with the ALERT.LOGs and your Log Transport Services-Setup to Oracle Global Customer Services for Review and Recommendations.
+
+ 
+
+Please note if password file is changed it would be good to restart the standby database after new password file is copied from primary.
+
+ 
+
+NOTE : If passwordfile is stored on ASM for RAC case,
+
+Use srvctl to verify where the passwordfile is storaed and you can alter accordingly.
+
+srvctl config database -d <DB NAME> -a
+srvctl modify database -d <DB NAME> -pwfile <Passwordfile location>
+
+Example,
+
+srvctl modify database -d db121stb -pwfile +DATA/DB121STB/orapwdb1211
+
+ 
