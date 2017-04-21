@@ -1,0 +1,71 @@
+ORA-16191 ORA-01017 and ORA-16000 shipping the logs to Standby database (Doc ID 2129339.1)	To BottomTo Bottom	
+
+In this Document
+Symptoms
+Cause
+Solution
+References
+
+APPLIES TO:
+
+Oracle Database - Enterprise Edition - Version 11.2.0.4 and later
+Information in this document applies to any platform.
+SYMPTOMS
+
+Primary database errors out when shipping the archived logs to the Physical Standby:
+
+   PING[ARC2]: Heartbeat failed to connect to standby 'test_dg'. Error is 16191.
+
+ 
+
+Alert log shows:
+
+Error 1017 received logging on to the standby
+
+------------------------------------------------------------
+Check that the primary and standby are using a password file
+and remote_login_passwordfile is set to SHARED or EXCLUSIVE,
+and that the SYS password is same in the password files.
+returning error ORA-16191
+------------------------------------------------------------
+PING[ARC2]: Heartbeat failed to connect to standby 'test_dg'.
+
+After tracing is enabled, trace log shows ORA-16000:
+
+OCISessionBegin failed -1
+.. Detailed OCI error val is 604 and errmsg is 'ORA-00604: error occurred at recursive SQL level 1
+ORA-16000: database open for read-only access
+ORA-06512: at line 5
+ORA-16000: database open for read-only access
+
+CAUSE
+
+Standby database is using a logon trigger
+ 
+
+SOLUTION
+
+Disable the trigger.
+
+or
+
+Set the below parameter in the Standby database and restart:
+
+   _system_trig_enabled=false
+
+ 
+
+Alternatively:
+
+  ALTER SYSTEM SET "_system_trig_enabled"=FALSE;
+
+ 
+
+A value of FALSE stops system triggers from firing (i.e. triggers on various DDL or database events are disabled).
+
+ 
+
+REFERENCES
+
+NOTE:149948.1 - IMPORTANT: Set "_SYSTEM_TRIG_ENABLED=FALSE" When Upgrading / Downgrading / Applying Patch Sets
+NOTE:730659.1 - PHYSICAL: ORA-604 ORA-16000 on Standby Opened Read Only
