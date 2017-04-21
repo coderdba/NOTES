@@ -1,1 +1,148 @@
 http://umardba.blogspot.in/2009/11/how-to-add-second-standby-in-existing.html
+
+How to Add Second Standby in Existing Dataguard Configuration With Broker Using DGMGRL
+
+How to Add Second Standby in Existing Dataguard Configuration With Broker Using DGMGRL
+
+Doc ID:
+842822.1
+Type: 
+HOWTO
+
+Modified Date: 
+14-JUN-2009
+Status: 
+MODERATED
+In this Document
+  Goal
+  Solution
+  References
+Applies to: 
+Oracle Server - Enterprise Edition - Version: 10.2.0.1 to 11.1.0.8
+Information in this document applies to any platform.
+Goal
+This document provides the step by step approach on adding a second standby to an existing dataguard configuration.
+DGMGRL> show configuration; 
+
+Configuration 
+Name: DRS001 
+Enabled: YES 
+Protection Mode: MaxPerformance 
+Fast-Start Failover: DISABLED 
+Databases: 
+prim - Primary database 
+mystd - Physical standby database 
+
+Current status for "DRS001": 
+SUCCESS 
+
+Lets add another standby with the name SSTD.
+Solution
+Procedure
+========
+1) Take RMAN backup of PRIMARY database and controlfile for standby 
+2) Create pfile from spfile in PRIMARY and make necessary changes 
+3) Copy the files (Rman Backups , PFILE ) to the new server (SSTD)
+4) Use RMAN Duplicate to create the standby database
+5) Set log_archive_config parameter in all the database
+6) Create SRL - Standby Redo Logs if required in second standby (SSTD)
+7) Update log_archive_Dest_n parameter in PRIMARY that will be the remote archival for second standby and enable the log_archive_dest_state_n
+8) Enable DG Broker in second standby SSTD
+9) Add the second standby (SSTD) to the broker from PRIMARY
+10) Enable second standby (SSTD)
+11) Verify by using show configuration.
+
+Detailed Steps
+==========
+1) Take RMAN backup of PRIMARY database and controlfile for standby 
+RMAN> BACKUP DATABASE FORMAT '/tmp/prim_db_%U';
+RMAN> BACKUP CURRENT CONTROLFILE FOR STANDBY FORMAT '/tmp/prim_ctl_%U';
+
+
+2) Create pfile from spfile in PRIMARY and make necessary changes
+SQL> create pfile = '/tmp/initsstd.ora' from spfile;
+
+
+Example of changes:
+db_unique_name = 'sstd' 
+db_name='prim' 
+fal_server=prim 
+fal_client=sstd 
+db_file_name_convert = 'prim','sstd' 
+log_file_name_convert = 'prim','sstd' 
+log_archive_dest_1 =LOCATION=USE_DB_RECOVERY_FILE_DEST 
+
+3) Copy the files (Rman Backups , PFILE ) to the new server (SSTD) 
+$ scp /tmp/* oracle@sstd:/tmp/
+
+4) Use RMAN Duplicate to create the standby database 
+
+a) Configure tnsnames.ora in primary and second standby so that they can communicate each other and verify using tnsping. 
+example:  $ tnsping prim
+
+b) In second standby server create spfile from pfile and STARTUP NOMOUNT the instance.connect to RMAN as below and use DUPLICATE
+
+$ RMAN target sys@prim auxiliary /
+RMAN> duplicate target database for standby;
+
+
+5) Set log_archive_config parameter in all the database (prim, mystd, sstd)
+SQL> alter system set log_archive_config='dg_config=(prim,mystd,sstd)';
+
+
+6) Create SRL - Standby Redo Logs if required in second standby (SSTD) 
+SQL> alter database add standby logfile group 4 '/u01/app/oradata/sstd/sredo1.log' size 50M ;
+
+if ASM filesystem
+SQL> alter database add standby logfile group 4 '+FRA' size 50M ; 
+
+
+7) Update log_archive_Dest_n parameter in PRIMARY that will be the remote archival for second standby and enable the log_archive_dest_state_n 
+SQL> ALTER SYSTEM SET LOG_ARCHIVE_DEST_3 ='service=sstd lgwr async affirm valid_for=(online_logfiles,primary_role) db_unique_name=sstd';
+
+
+8) Enable DG Broker in second standby SSTD 
+SQL> ALTER SYSTEM SET DG_BROKER_START = TRUE;
+
+
+9) Add the second standby (SSTD) to the broker from PRIMARY 
+DGMGRL> add database sstd as connect identifier is sstd maintained as physical;
+
+DGMGRL> show configuration;
+
+Configuration 
+Name: DRS001 
+Enabled: YES 
+Protection Mode: MaxPerformance 
+Fast-Start Failover: DISABLED 
+Databases: 
+prim - Primary database 
+mystd - Physical standby database 
+sstd - Physical standby database (disabled)
+
+10) Enable second standby (SSTD) 
+DGMGRL> enable database sstd;
+
+11) Verify by using show configuration. 
+DGMGRL> show configuration; 
+
+
+Configuration 
+Name: DRS001 
+Enabled: YES 
+Protection Mode: MaxPerformance 
+Fast-Start Failover: DISABLED 
+Databases: 
+prim - Primary database 
+mystd - Physical standby database 
+sstd - Physical standby database 
+
+Current status for "DRS001": 
+SUCCESS 
+
+
+
+References
+Note 837102.1 - Step By Step Guide On Creating Physical Standby Using RMAN Duplicate In ASM Filesystem For ASM Primary
+Keywords
+LOG_ARCHIVE_DEST_3 ; PHYSICAL~STANDBY ; STANDBY~DATABASE ; 
