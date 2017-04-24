@@ -3,14 +3,25 @@ SRVCTL COMMAND REFERENCE
 START DATABASE
 srvctl start database -d DB_UNIQUE_NAME
 
-START DATABASE IN MOUNT MODE
-srvctl start database -d DB_UNIQUE_NAME -o mount
-
 LIST CONFIGURATION OF NODE SETUP
 srvctl config nodeapps
 
 CREATE SERVICE
 srvctl add service -d db_unique_name -s service_name -r preferred_list [-a available_list] [-P TAF_policy]
-srvctl add  service -d crm -s sales -r crm01,crm02 -a crm03
-srvctl add  service -d crm -s sales -r crm01,crm02 -a crm03 -P Preconnect
+srvctl add  service -d DB_UNIQUE_NAME -s salesvc -r INST1,INST2 -a INST3
+srvctl add  service -d DB_UNIQUE_NAME -s salessvc -r INST2,INST2 -a inst3 -P Preconnect
 
+SET OPEN MODE FOR DB (prim or standby)
+srvctl modify database -d DB_UNIQUE_NAME -s open
+srvctl modify database -d DB_UNIQUE_NAME -s mount
+
+START IN A SPECIFIC MODE
+srvctl start database -d DB_UNIQUE_NAME -o open  (open or open-read-only in the case of standby)
+srvctl start database -d DB_UNIQUE_NAME -o mount
+
+TIMEZONE FIX
+srvctl setenv database -d DB_UNIQUE_NAME -t 'TZ=US/Central'
+
+LIST SERVICES AND THEIR STATUSES
+srvctl status service -d DB_UNIQUE_NAME
+srvctl config service -d DB_UNIQUE_NAME
