@@ -19,6 +19,8 @@ https://databaseinternalmechanism.com/oracle-dataguard/creating-snapshot-standby
 http://docs.oracle.com/cd/B28359_01/server.111/b28295/dbresource.htm#g1044508
 http://www.oracle.com/technetwork/testcontent/usingsnapshot-088081.html#t1
 
+http://www.oracle.com/us/solutions/sap/wp-ora4sap-flashback11g-1-303814.pdf
+
 http://www.databasejournal.com/features/oracle/article.php/3834931/Using-Oracle-11gs-Active-Data-Guard-and-Snapshot-Standby-Features.htm
 
 -- some jots
@@ -43,10 +45,18 @@ SQL> select flashback_on from gv$database;
 NO
 NO
 
-- Invoke DGMGRL and connect as sys/oracle. Disable the MRP process
+- Disable the MRP process
 https://docs.oracle.com/cd/B28359_01/server.111/b28295/cli.htm#g1025435
 
 DGMGRL> EDIT DATABASE 'DB_UNIQUE_NAME_STBY' SET STATE='APPLY-OFF';
-Succeeded.
+Succeeded
 
+-Enable flashback
+SQL> alter database flahback on;
 
+- Create a restore point on standby (commands TBD)
+--> This step was skipped
+
+- Stop all instances and bring up only one instance
+srvctl stop database -d DB_UNIQUE_NAME_STBY
+srvctl start instance -d DB_UNIQUE_NAME_STBY -i INSTANCE_NAME -o mount
