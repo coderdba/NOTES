@@ -1,0 +1,147 @@
+http://www.datadisk.co.uk/html_docs/oracle_dg/backup_recovery.htm
+
+Backup and Recovery
+
+Protecting your data is extremely important, your job could depend on it, making sure that your data is backed up and that you are able to restore it in a disaster goes without saying. They are many methods to backing up your data
+
+Unix backup tools such as tar, dd cpio
+SAN backup utilities
+Tape backup
+3rd Party backup software such as netbackup
+Oracle's RMAN
+In this section I will only be covering Oracle RMAN which I have also covered in a previous Oracle article called RMAN, so if you need to brush up on your RMAN skills then take a look. Below is the terminology that I will be using
+
+Target database - the database against which RMAN commands are run
+Catalog database - the database that houses the recovery catalog schema
+Auxiliary database - when cloning a database, represents the name of the actual clone database
+Recovery Catalog - the catalog that contains metadata information about the backups
+Backup piece - the file that contains the backup of a control file,archived logs or a datafile
+Backupset - one or more backup pieces
+Image copy - the copy of a datafile, or archive log that is similar to copies made with the cp or dd operating system command
+Channel - the server session used to perform backups and recoveries; identifies a disk or tape device that will be used for backup or recovery
+You can now set persistent RMAN configurations for a primary or physical standby databases, this enables you to use backups made on one database for the restore and recovery of another database in your Data Guard configuration, also metadata on the primary and standby databases can be managed from the same recovery catalog.
+
+You can now enable block change tracking on a physical standby database which will allow you to quickly identify the blocks that have changed since the last incremental backup
+
+enable block change tracking	sql> alter database enable block change tracking using file '/u01/block_change/prod1dr/chgtrack.log';
+
+sql> select filename, status, bytes from v$block_change_tracking;
+Backups of controlfiles are interchangeable between a primary database and its physical standby database. You can restore a standby controlfile on a primary and a primary controlfile on a standby. You do not need to backup the controlfile on your standby databases, RMAN will now automatically synchronize the control file information with the standby databases when using an RMAN catalog.
+
+You can now resynchronize the RMAN catalog from a remote database using the resync catalog command with the connect identifier clause.
+
+resync RMAN remotely	rman> configure db_unique_name prod1dr connect identifier 'prod1dr';
+
+## can resync from specific site or all sites
+rman> resync catalog from db_unique_name prod1dr;
+rman> resync catalog from db_unique_name all;
+RMAN Configuration in Data Guard
+
+RMAN uses the db_unique_name parameter to identify one database from another, only the primary database must be explicitly registered using the register database command. Physical standby databases are registered automatically in the catalog when you use RMAN to connect to them as the target while connected to the recovery catalog. You can change the associated backups files with a different database using the change command with the reset db_unique_name option.
+
+associate backup files with different database	rman> changebackup tag='standby_backup_1' for db_unique_name prod1dr reset db_unique_name;
+There are a number of configuration options I only list the ones that are appropriate with Data Guard
+
+RMAN config for primary	## keep all backups for at least 7 days 
+rman> configure retention policy to recovery window of 7 days;
+
+## chose one of the following depending on when you want the archives to be deleted after shipping or after being applied 
+rman> configure archivelog deletion policy to shipped to all standby;
+rman> configure archivelog deletion policy to applied on all standby; 
+
+## configure the connect identifiers for all datbases
+rman> configure db_unique_name prod1 connect identifier 'prod1';
+rman> configure db_unique_name prod1dr connect identifier 'prod1dr';
+rman> list db_unique_name of database;
+RMAN config for standby	
+## enable automatic backups of the control file and server parameters
+rman> configure controlfile autobackup on;
+
+## skip backing up datafiles which a valid backup alrady exists with the same checkpoint
+rman> configure backup optimization;
+
+## configure tape or disk channels as required by the media software
+rman> configure channel device type sbt params '<channel parameters>';
+
+## Since the logs are backed up at the standby you can specify none
+rman> configure deletion policy to none;
+
+## delete the archive logs once they have been applied
+rman> configure archivelog deletion policy to applied to standby; 
+Backups and Recovery
+
+I am not going to talk about all the different backup scenarios (full, incremental, backup copies, backups of flash recovery area, archive) as I have also discussed this in another section called RMAN. I have also discuss how to create a standby database by cloning the primary database using the duplicate command.
+
+You can use images copies to create a standby database, however the primary database must be shutdown cleanly and opened in mount mode to perform the backup, once complete the primary can be restarted and the image copy copied to the standby server, after fixing the parameters as usual, mounted using the standby control file.
+
+Backups are pretty much the same as in any other database, apart from the deletion of archive log files there is not much to say.
+
+Recovery can come in in the following scenarios
+
+Block Corruption - these corruptions occur in files as a result of memory corruptions that are written to the files as well as I/O errors.
+Media Failure - the database is unable to read or write to a datafile, due to hardware failure, file missing, etc
+You can use RMAN to check for block corruptions and dbverify to identify corrupt data files, I have section regarding database corruptions.
+
+check for block corruptions	rman> backup validate database archivelog all;
+Also you have the flashback technologies to recover a number of accidents, drop tables, etc.
+
+Here is a small table will the most common recovery scenarios, but have a look at my database recovery section which goes in to great detail on database recovery.
+
+Loss of a data file on a primary database	
+connect to the primary database as the target
+# rman target / catalog rman/<password>@RCAT
+alter the datafile online
+rman> sql "alter database datafile 1 offline";
+restore and recover the datafile 
+rman> restore datafile 1;
+rman> recover datafile 1;
+rman> sql "alter database datafile 1 online";
+Using a standby datbase to recover the data file	
+connect to the standby database as the target database and to the primary as the auxiliary database
+# rman targt sys/<pwd>@prod1dr catalog rman/<pwd>@RCAT auxiliary /
+backup the datafile on the standby and transfer it to the primary
+rman> backup as copy datafile 1 auxiliary format '/u01/oradata/prod1dr/users.dbf';
+start rman and conect to the primary database as the target and to the recovery catalog
+# rman target / catalog rman/<pwd>@RCAT
+using the catalog datafilecopy command to catalog this datafile so that rman can use it
+rman> catalog datafilecopy '/u01/oradata/prod1dr/users.dbf';
+use the switch datafile command to switch the datafile copy so that this file becomes the current datafile 
+run {
+  set newname for datafile 1 to '/u01/oradata/prod1/users.dbf';
+  switch datafile 1;
+}
+Loss of a datafile on a standby database	
+stop the SQL Apply using the alter database command
+sql> alter database recover managed standby database cancel;
+start rman and connect both to the standby and the recovery catalog
+# rman target / catalog rman/<pwd>@RCAT
+issue the following command to restore and recover the data files
+rman> restore datafile 1;
+rman> recover datafile 1;
+restart SQL Apply 
+sql> alter database recover managed standby database using current logfile disconnect;
+Loss of a standby controlfile	
+start rman and connect both to the standby and the recovery catalog
+# rman target / catalog rman/<pwd>@RCAT
+Choose one of the below, the last option is the most recent 
+rman> restore controlfile from autobackup;
+rman> restore controlfile from '/backup_dir/piece_name';
+rman> restore controlfile; 
+Loss of a primary controlfile	You can restore the control file from a backup by executing the restore controlfile and the database recover commands.
+Loss of a online redo	
+shutdown the database
+copy the existing multiplexed member over the missing or damaged member
+# cp red03a.rdo red03b.rdo
+startup the database
+incomplete recovery of a primary database	
+Mount the database exclusive
+sql> startup mount exclusive
+flash back the database
+sql> flashback database to '<timestamp>';
+open the database reset logs;
+sql> alter database open resetlogs;
+Recovering from a dropped table	
+drop the table
+sql> drop table test;
+flashback the table 
+sql> flashback table test to before drop;
