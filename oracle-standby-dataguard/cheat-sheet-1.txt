@@ -1,0 +1,710 @@
+http://www.datadisk.co.uk/html_docs/oracle_dg/cheatsheet.htm
+
+Data Guard Cheatsheet
+
+currently being updated, this statement will be removed when I have completed this section
+
+Terminology
+
+Primary database	A production database
+Standby database	A database that can become the primary database, should the primary fail
+EOR	End Of Redo
+LWGR	Log Writer process
+LNS	Log Network Server
+ORL	Online Redo Log
+RFS	Remote File Server
+SRL	Standby Redo Log file
+SYNC and ASYNC	Synchronous and Asynchronous
+Log Files
+
+DG alert Log	drc<db_unique_name>.log
+Alert Log	alert_<SID>.log
+Logfile locations	# change the instance name to reflect the one you have choosen and the path you installed oracle 
+
+prod1 (alert log): /u01/app/oracle/diag/rdbms/prod1/PROD1/trace/alert_PROD1.log
+prod1 (DG log): /u01/app/oracle/diag/rdbms/prod1/PROD1/trace/drcPROD1.log
+prod1dr (alert log): /u01/app/oracle/diag/rdbms/prod1dr/PROD1DR/trace/alert_PROD1DR.log
+prod1dr (DG log): /u01/app/oracle/diag/rdbms/prod1dr/PROD1DR/trace/drcPROD1DR.log
+
+identify log files	## You can get the log locations from the below view
+
+col name for a25
+col value for a65; 
+select name, value from v$diag_info;
+Data Guard Broker
+
+Create base configuration	
+# Primary Database server
+
+DGMGRL> create configuration prod1 as
+> primary database is prod1
+> connect identifier is prod1;
+
+Configuration "prod1" created with primary database "prod1"
+
+Add the standby database	
+# Primary Database server - if you have setup db_unique_name, tnsname and log_archive_dest_n 
+
+DGMGRL> add database prod1dr;
+
+# Primary Database server - the full command set 
+
+DGMGRL> connect sys/password
+DGMGRL> add database prod1dr
+> as connect identifier is prod1dr
+> maintained as physical;
+
+Database "prod1dr" added
+
+Display configuration	DGMGRL> show configuration
+Display Database	DGMGRL> show database verbose prod1
+Enabling the configuration	# Primary Database server
+
+DGMGRL> enable configuration
+Enabled.
+Edit configuration	
+EDIT CONFIGURATION SET PROPERTY <name>=<value>
+EDIT DATABASE <db_name> SET PROPERTY <name>=<value>
+EDIT INSTANCE <in_name> SET PROPERTY <name>=value>
+
+There are many options see the broker section for more information
+
+Troubleshooting (Monitoring commands and log files)
+configuration	DGMGRL> show configuration;
+database	DGMGRL> show database prod1;
+DGMGRL> show database prod1dr;
+
+# There are a number of specific information commands, here are the most used 
+DGMGRL> show database prod1 statusreport;
+DGMGRL> show database prod1 inconsistentProperties;
+DGMGRL> show database prod1 inconsistentlogxptProps;
+DGMGRL> show database prod1 logxptstatus;
+DGMGRL> show database prod1 latestlog;
+Logfiles	# change the instance name to reflect the one you have choosen
+
+prod1 (alert log): /u01/app/oracle/diag/rdbms/prod1/PROD1/trace/alert_PROD1.log
+prod1 (DG log): /u01/app/oracle/diag/rdbms/prod1/PROD1/trace/drcPROD1.log
+prod1dr (alert log): /u01/app/oracle/diag/rdbms/prod1dr/PROD1DR/trace/alert_PROD1DR.log
+prod1dr (DG log): /u01/app/oracle/diag/rdbms/prod1dr/PROD1DR/trace/drcPROD1DR.log
+
+There are a number of commands that you can use to change the state of the database
+
+turn off/on the redo transport service for all standby databases	
+Primary
+DGMGRL> edit database prod1 set state=transport-off;
+
+DGMGRL> edit database prod1 set state=transport-on;
+turn off/on the apply state	
+Standby
+DGMGRL> edit database prod1dr set state=apply-off;
+
+DGMGRL> edit database prod1dr set state=apply-on;
+
+put a database into a real-time query mode	
+Standby
+DGMGRL> edit database prod1dr set state=apply-off;
+sql> alter database open read only; 
+DGMGRL> edit database prod1dr set state=apply-on;
+change the protection mode	
+Primary
+# Choose what level of protection you require
+sql> alter database set standby to maximize performance;
+sql> alter database set standby to maximize availability;
+sql> alter database set standby to maximize protection;
+
+# display the configuration
+DGMGRL> show configuration 
+Redo Processing
+
+Redo Processes (Primary and Standby Databases)
+Processes	
+There are a number of Oracle background processes that play a key role, first the primary database
+
+LGWR - log writer process flushes from the SGA to the ORL files
+LNS - LogWriter Network Service reads redo being flushed from the redo buffers by the LGWR and performs a network send of the redo to the standby
+ARCH - archives the ORL files to archive logs, that also used to fulfill gap resolution requests, one ARCH processes is dedicated to local redo log activity only and never communicates with a standby database
+The standby database will also have key processes
+
+RFS - Remote File Server process performs a network receive of redo transmitted from the primary and writes the network redo to the standby redo log (SRL) files.
+ARCH - performs the same as the primary but on the standby
+MRP - Managed Recover Process coordinates media recovery management, recall that a physical standby is in perpetual recovery mode
+LSP - Logical Standby Process coordinates SQL apply, this process only runs in a logical standby
+PR0x - recovery server process reads redo from the SRL or archive log files and apply this redo to the standby database.
+Real-Time Apply
+Enable real-time apply	
+sql> alter database recover managed standby database using current logfile disconnect;
+Determine if real-time apply is enabled	sql> select recovery_mode from v$archive_dest_status where dest_id = 2;
+
+RECOVERY_MODE
+--------------------------
+MANAGED REAL-TIME APPLY
+Tools and views to monitor redo
+Background processes	
+select process, client_process, thread#, sequence#, status from v$managed_standby;
+
+## primary (example) 
+
+PROCESS   CLIENT_P THREAD#    SEQUENCE#  STATUS
+--------- -------- ---------- ---------- ------------
+ARCH      ARCH     1          58         CLOSING
+ARCH      ARCH     0          0          CONNECTED
+ARCH      ARCH     1          59         CLOSING
+ARCH      ARCH     1          56         CLOSING
+LNS       LNS      1          60         WRITING
+LNS       LNS      1          60         WRITING
+
+## physical standby (example) 
+
+PROCESS   CLIENT_P THREAD#    SEQUENCE#  STATUS
+--------- -------- ---------- ---------- ------------
+ARCH      ARCH     0          0          CONNECTED
+ARCH      ARCH     1          55         CLOSING
+ARCH      ARCH     0          0          CONNECTED
+ARCH      ARCH     1          59         CLOSING
+RFS       N/A      0          0          IDLE
+RFS       UNKNOWN  0          0          IDLE
+RFS       UNKNOWN  0          0          IDLE
+RFS       LGWR     1          60         IDLE
+MRP0      N/A      1          60         APPLYING_LOG
+
+## Logical standby (example) 
+
+PROCESS   CLIENT_P THREAD#    SEQUENCE#  STATUS
+--------- -------- ---------- ---------- ------------
+ARCH      ARCH     1          55         CLOSING
+ARCH      ARCH     1          10         CLOSING
+ARCH      ARCH     0          0          CONNECTED
+ARCH      ARCH     0          0          CONNECTED
+RFS       UNKNOWN  0          0          IDLE
+RFS       LGWR     1          60         IDLE
+RFS       UNKNOWN  0          0          IDLE
+RFS       UNKNOWN  0          0          IDLE
+
+Information on Redo Data	select * from v$dataguard_stats;
+
+Note: this indirectly shows how much redo data could be lost if the primary db crashes
+Redo apply rate	
+select to_char(snapshot_time, 'dd-mon-rr hh24:mi:ss') snapshot_time,
+       thread#, sequence#, applied_scn, apply_rate
+       from v$standby_apply_snapshot;
+
+Note: this command can only run when the database is open
+
+Recovery operations	select to_char(start_time, 'dd-mon-rr hh24:mi:ss') start_time,
+       item, round(sofar/1024,2) "MB/Sec"
+       from v$recovery_progress
+       where (item='Active Apply Rate' or item='Average Apply Rate');
+Logical Standby
+
+schema that are not maintained by SQL apply	
+select owner from dba_logstdby_skip where statement_opt = 'INTERNAL SCHEMA' order by owner;
+
+Note: system and sys schema are not replicated so don't go creating tables in these schemas, the above command should return about 17 schemas (Oracle 11g) that are replicated.
+
+Check tables with unsupported data types	
+select distinct owner, table_name from dba_logstdby_unsupported;
+select owner, table_name from logstdby_unsupported_tables;
+
+skip replication of tables	
+## Syntax
+
+dbms_logstdby.skip (
+  stmt in varchar2,
+  schema_name in varchar2 default null,
+  object_name in varchar2 default null,
+  proc_name in varchar2 default null,
+  use_like in boolean default true,
+  esc in char1 default null
+);
+
+## Examples
+execute dbms_logstdby.skip(stmt => 'DML', schema_name => 'HR', object_name => 'EMPLOYEE');
+execute dbms_logstdby.skip(stmt => 'SCHEMA_DDL', schema_name => 'HR', object_name => 'EMPLOYEE');
+
+# skip all DML operations 
+execute dbms_logstdby.skip(stmt => 'DML', schema_name => 'HR', object_name => '%');
+
+revoke a skipped table	
+stop SQL apply 
+execute dbms_logstdby.instantiate_table(schema_name => 'HR', table_name => 'EMPLOYEE', DBLINK => 'INSTANTIATE_TABLE_LINK');
+execute dbms_logstdby.skip(stmt => 'DML', schema_name => 'HR', object_name => 'EMPLOYEE');
+start SQL apply
+
+Note: the dblink should point to the primary database, we have to stop SQL apply as the instantiate table procedure uses Oracle's data pump network interface to lock the source table to obtain the SCN at the primary database, it then releases the lock and gets a consistent snapshot of the table from the primary database, it remembers the SCN associated with the consistent snapshot.
+
+display what tables are being skipped	
+select owner, name, use_like, esc from dba_logstdby_skip where statement_opt = 'DML';
+
+setting the guard on a database	alter database guard standby;
+Inside SQL Apply
+List the above processes	select * from v$logstdby_process
+Increase the LCR cache size	# Set the cache size to 200MB 
+execute dbms_logstdby.apply_set('MAX_SGA', 200);
+How much LCR cache is being used	select used_memory_size from v$logmnr_session where session_id = (select value from v$logstdby_stats where name = 'SESSION_ID');
+setting SQL apply mode for the application	execute dbms_logstdby.apply_set (name => 'PRESERVE_COMMIT_ORDER', value => FALSE);
+Determine the number of DDL statements since the last restart	select name, value from v$logstdby_stats where name = 'DDL TXNS DELIVERED';
+
+NAME                  VALUE
+------------------------------------------------------------------------
+DDL TXNS DELIVERED    510
+displaying the barrier	select status_code as sc, status from v$logstdby_process where type = 'BUILDER';
+
+sc     status
+-------------------------------------------------------------------------------------
+44604  BARRIER SYNCHRONIZATION ON DDL WITH XID 1.15.256 (WAITING ON 17 TRANSACTIONS)
+Tuning SQL Apply
+MAX_SERVERS	# Set the MAX_SERVERS to 8 x the number of cores
+execute dbms_logstdby.apply_set ('MAX_SERVERS', 64);
+MAX_SGA	# Set the MAX_SGA to 200MB 
+execute dbms_logstdby.apply_set ('MAX_SGA', 200);
+_HASH_TABLE_SIZE	# Set the Hash table size to 10 million
+execute dbms_logstdby.apply_set ('_HASH_TABLE_SIZE', 10000000);
+DDL	defer DDLs to off-peak hours
+Preserve commit order	# Set the PERSERVE_COMMIT_ORDER to false
+execute dbms_logstdby.apply_set (name => 'PRESERVE_COMMIT_ORDER', value => FALSE);
+lagging SQL Apply	
+# apply lag: indicates how current the replicated data at the logical standby is
+# transport lag: indicates how much redo data that has already been generated is missing at the logical #                standby in term of redo records
+
+select name, value, unit from v$dataguard_stats; 
+
+SQL Apply component bottleneck	select name, value from v$logstdby_stats where name like 'TRASNACTIONS%';
+
+Name                              Value
+-----------------------------------------------------------------------------------------------------
+TRANSACTIONS APPLIED     3764
+TRANSACTIONS MINED       4985
+
+The mined transactions should be about twice the applied transaction, if this decreases or staying at a low value you need to start looking at the mining engine.
+Make sure all preparers are busy	
+select count(1) as idle_preparers from v$logstdby_process where type = 'PREPARER' and STATUS_CODE = 16166;
+
+IDLE_PREPARER
+----------------------------
+0
+
+Make sure the peak size is well below the amount allocated	select used_memory_size from v$logstdby_session where session_id = (select value from v$logstdby_stats where name = 'LOGMINER SESSION ID');
+
+USED_MEMORY_SIZE
+----------------------------
+32522244
+verify that the preparer does not have enough work for the applier processes	
+select (available_txn - pinned_txn) as pipleline_depth from v$logstdby_session where session_id (select value from v$lostdby_stats where name = 'LOGMINER SESSION ID');
+
+PIPELINE_DEPTH
+----------------------------
+8
+
+select count(*) as applier_count from v$logstdby_process where type = 'APPLIER';
+
+APPLIER_COUNT
+----------------------------
+20
+
+Setting max_servers and preparers	execute dbms_logstdby.apply_set('MAX_SERVERS', 36); 
+execute dbms_logstdby.apply_set('PREPARE_SERVERS', 3);
+display the pageout activity	## Run this first
+select name, value from v$logstdby_stats where name line '%PAGE%' or name like '%UPTIME' or name like '%IDLE%';
+
+## Run the second time about 10 mins later 
+select name, value from v$logstdby_stats where name line '%PAGE%' or name like '%UPTIME' or name like '%IDLE%';
+
+Now subtract one from the other and work out the percentage rate, if pageout has increase above 5% then increase the MAX_SERVERS
+unassigned large transactions	
+## By default SQL apply should be one-sixth of the number of applier processes
+
+select (available_txn - pinned_txn) as pipleline_depth from v$logstdby_session where session_id (select value from v$lostdby_stats where name = 'LOGMINER SESSION ID');
+
+PIPELINE_DEPTH
+----------------------------
+256
+
+select count(1) as idle_applier from v$logstdby_process where type = 'APPLIER' and statuscode = 16166;
+
+IDLE_APPLIER
+---------------------------
+12
+
+## Now look for the unassigned large transactions
+
+select value from v$logstdby_stats where name = 'LARGE TXNS WAITING TO BE ASSIGNED';
+
+VALUE
+---------------------------
+12
+
+Monitoring
+
+archive gap logs	# Use the thread# when using RAC an detect missing sequences 
+
+select thread#, low_sequence#, high_sequence# from v$archive_gap;
+delays in redo transport	
+select max(sequence#), thread# from v$archived_log group by thread#;
+
+## you can use the dg_archivelog_monitor.sh script, which accepts three parameters, primary, physical 
+## and the archive log threshold (# of archive logs) 
+
+dg_archivelog_monitor.sh <primary> <standby> <threshold>
+
+Identify the missing logs on the primary	
+## On the primary run the below
+select L.thread#, L.sequence#
+from
+  (select thread#, sequence# from v$archived_log where dest_id=1) L 
+    where L.sequence# not in 
+       (select sequence# from v$archived_log where dest_id=2 and thread# = L.thread#);
+
+apply rate and active monitoring	
+select to_char(start_time, 'DD-MON-RR HH24:MI:SS') start_time, item , sofar from v$recovery_progress
+  where item in ('Active Apply Rate', 'Average Apply Rate', 'Redo Applied');
+
+Note: the redo applied is measured in megabytes, while the average apply rate and the active apply rate is measured in kilobytes.
+
+transport and apply lag	
+col name for a13
+col value for a13
+col unit for a30
+set lines 132
+
+select name, value, unit, time_computed from v$dataguard_stats where name in ('transport lag', 'apply lag');
+
+## use the dg_time_lag.ksh script
+dg_time_lag.ksh
+
+Viewing the status of the managed recovery process	col client_pid for a10; 
+
+select pid, process, status, client_process, client_pid, thread#, sequence#, block#, blocks from v$managed_standby;
+Switchover, Failover and FSFO
+
+Quick Switchover and Failover (no checking)
+Complete Switchover	## Start the switcover on the original primary 
+alter database commit to switchover to standby;
+
+## On the new primary complete the switchover
+alter database commit to switchover to primary;
+
+## Now open the database on the new primary
+alter database open;
+Complete Failover	
+## Start the failover
+alter database commit to switchover to primary;
+
+# Change the level of protection that you require
+sql> alter database set standby to maximize performance;
+sql> alter database set standby to maximize availability;
+sql> alter database set standby to maximize protection;
+
+Broker switchover	DGMGRL> switchover to prod1lr
+
+Complete Physical Switchover with checks
+Action	
+Step
+Commands
+check redo has been received	
+1
+## check the syn status, it should say yes (run on the standby) 
+sql> select db_unique_name, protection_mode, synchronization_status, synchronized from v$archive_dest_status
+
+## if it says NO then lets make further checks (run on the standby) 
+sql> select client_process, process, sequence#, status from v$managed_standby;
+
+## now check on the primary we should be one in front (run on the primary)
+sql> select thread#, sequence#, status from v$log;
+
+Note: if using a RAC environment make sure you check each instance 
+check that redo has been applied (physical)	
+2
+## check that MRP (applying_log) matches the RFS process, if the MRP line is missing then you need to 
+## start the apply process, you also may see the status of wait_for_gap so wait until the gap have been 
+## resolved first
+
+sql> select client_process, process, sequence#, status from v$managed_standby;
+
+check that redo has been applied (logical)	
+3
+## if you are using a logical standby then you need to check the following to confirm the redo has been 
+## applied 
+
+sql> select applied_scn, latest_scn, mining_scn from v$logstdby_progress;
+
+## if the mining scn is behind you may have a gap check this by using the following 
+
+sql> select status from v$logstdby_process where type = 'READER';
+show any running jobs or backups	
+4
+sql> select process, operation, r.status, mbytes_processed pct, s.status from v$rman_status r, v$session s where r.sid=s.sid;
+increase logging level (if required)	
+5
+sql> alter system set log_archive_trace=8129;
+
+## to turn it off again
+sql> alter system set log_archive_trace=0;
+check for active sessions	
+6
+## Display the active sessions
+sql> select program, type from v$session where type='USER';
+check the switchover status	
+7
+## make sure the status is "to standby", if you get "sessions active", then stop those sessions (see above command to identify 
+## sessions) 
+sql> select switchover_status from v$database;
+tail the log alert log file	
+8
+tail alert??.log
+switchover (primary)	
+9
+## on the primary, after this command completes you will have two physical standbys 
+
+sql> alter database commit to switchover to physical standby with session shutdown;
+
+Note: at this point if you want to rollback this switchover see my troubleshooting section to get ot back to normal
+check the switchover status	
+10
+sql> select switchover_status from v$database;
+complete the switchover (physical)	
+11
+sql> alter database commit to switchover to primary with session shutdown;
+open the new primary	
+12
+sql> alter database open;
+finish off the old primary	
+13
+sql> shutdown immediate;
+sql> startup mount;
+sql> alter database recover managed standby database using current logfile disconnect;
+
+Complete Logical Switchover with checks
+Action	
+Step
+Commands
+check redo has been received	
+1
+## check the syn status, it should say yes (run on the standby) 
+sql> select db_unique_name, protection_mode, synchronization_status, synchronized from v$archive_dest_status
+
+## if it says NO then lets make further checks (run on the standby) 
+sql> select client_process, process, sequence#, status from v$managed_standby;
+
+## now check on the primary we should be one in front (run on the primary)
+sql> select thread#, sequence#, status from v$log;
+
+Note: if using a RAC environment make sure you check each instance 
+check that redo has been applied (physical)	
+2
+## check that MRP (applying_log) matches the RFS process, if the MRP line is missing then you need to 
+## start the apply process, you also may see the status of wait_for_gap so wait until the gap have been 
+## resolved first
+
+sql> select client_process, process, sequence#, status from v$managed_standby;
+
+check that redo has been applied (logical)	
+3
+## if you are using a logical standby then you need to check the following to confirm the redo has been 
+## applied 
+
+sql> select applied_scn, latest_scn, mining_scn from v$logstdby_progress;
+
+## if the mining scn is behind you may have a gap check this by using the following 
+
+sql> select status from v$logstdby_process where type = 'READER';
+show any running jobs or backups	
+4
+sql> select process, operation, r.status, mbytes_processed pct, s.status from v$rman_status r, v$session s where r.sid=s.sid;
+increase logging level (if required)	
+5
+sql> alter system set log_archive_trace=8129;
+
+## to turn it off again
+sql> alter system set log_archive_trace=0;
+check for active sessions	
+6
+## Display the active sessions
+sql> select program, type from v$session where type='USER';
+check the switchover status	
+7
+## make sure the status is "to standby", if you get "sessions active", then stop those sessions (see above command to identify 
+## sessions) 
+sql> select switchover_status from v$database;
+tail the log alert log file	
+8
+tail alert??.log
+Prepare the primary standby	
+9
+sql> alter database prepare to switchover to logical standby;
+
+## confirm that the prepare has started to happen, you should now see "preparing switchover" 
+sql> select switchover_status from v$database;
+Prepare the logical standby	
+10
+sql> alter database prepare to switchover to primary;
+
+## confirm that the prepare has started to happen, you should see "preparing dictionary" 
+sql> select switchover_status from v$database; 
+
+## wait a while until the dictionary is built and sent and you should see "preparing switchover" 
+sql> select switchover_status from v$database;
+Check primary database state	
+11
+## you should now see its in the state of "to logical standby"
+
+sql> select switchover_status from v$database;
+the last chance to CANCEL the switchover (no going back after this)	
+12
+## On the primary
+sql> alter database prepare to switchover cancel;
+
+## on the logical
+sql> alter database prepare to switchover cancel;
+switchover the primary to a logical standby	
+13
+sql> alter database commit to switchover to logical standby;
+switchover the logical standby to a primary	
+14
+## check that its ready to become the primary, you should see "to primary"
+
+sql> select switchover_status from v$database
+
+## Complete the switchover
+sql> alter database commit to standby to primary;
+start the apply process	
+15
+sql> alter database start logical standby apply immediate;
+
+Complete Physical/Logical failover with checks
+Action	
+Step
+Commands
+Check redo applied	
+1
+## This will tell you the lag time
+
+select name, value, time_computed from v$dataguard_stats where name like '%lag%';
+
+## You can also use the SCN number
+
+select thread#, sequence#, last_change#, last_time from v$standby_log; 
+the failover process (physical standby)	
+2
+## Start by telling the apply process that this standby is going to be the new primary, and to apply all 
+## the redo that it has
+
+alter database recover managed standby database cancel;
+alter database recover managed standby database finish;
+
+## At this point the protection mode is lowered
+
+select protection_mode from v$database;
+
+## Now issue the switchover command and then open the database 
+
+alter database commit to switchover to primary with session shutdown;
+alter database open;
+
+## Startup the other RAC instances if using RAC
+
+## You can then raise the protection mode (if desired)
+
+set standby database to maximum protection;
+
+the failover process (logical standby)	
+2
+alter database activate logical standby database finish apply;
+
+Bringing back the old Primary
+Action	
+Step
+Commands
+bring back the old primary (physical standby)	
+1
+## Since redo is applied by SCN we need he failover SCN from the new primary
+
+select to_char(standby_became_primary_scn) failover_scn from v$database;
+
+FAILOVER_SCN
+-----------------------------------------------
+7658841 
+
+## Now flashback the old primary to this SCN and start in mount mode 
+startup mount;
+flashback database to scn 7658841;
+alter database convert to physical standby;
+shutdown immediate;
+startup mount;
+
+## hopefully the old primary will start to resolve any gap issues at the next log switch, which means we can start the MRP 
+## process to get this standby going to catchup as fast as possible
+
+alter database recover managed standby database using current logfile disconnect;
+
+## eventually the missing redos will be sent to the standby and applied, bring us back to synchronization again.
+bring back the old primary (logical standby)	
+2
+## again we need to obtained the SCN
+select merge_change# as flashback_scn, processed_change# as recovery_scn from dba_logstdby_history where stream_sequence# = (select max(stream_sequence#)-1 from dba_logstdby_history); 
+
+flashback_scn      recovery_scn
+---------------------------------------------------------
+         7658941              7659568
+
+## Now flashback the old primary to this SCN and start in mount mode 
+startup mount;
+flashback database to scn 7658841;
+alter database convert to physical standby;
+shutdown immediate;
+startup mount;
+
+## Now we need to hand feed the archive logs from the primary to the standby (old primary) into the MRP 
+## process, so lets get those logs (run on the primary)
+
+select file_name from dba_logstdby_log where first_changed# <= recovery_scn and next_change# > flashback_scn;
+
+## Now you will hopefully have a short list of the files you need, now you need to register them with 
+## the standby database (old primary)
+
+alter database register logfile '<files from above list>';
+
+## Now you can recover up to the SCN but not including the one you specify
+recover managed standby database until change 7659568;
+
+## Now the standby database becomes a logical standby as up to this point it has been a physical one.
+alter database active standby database;
+
+## Lastly you need tell your new logical standby to ask the primary for a new copy of the dictionary and 
+## all the redo in between. The SQL Apply will connect to the new primary using the database link and 
+## retrieve the LogMiner dictionary, once the dictionary has been built, SQL Apply will apply all the 
+## redo sent from the new primary and get itself synchronized
+
+create public database link reinstatelogical connect to system identified by password using 'service_name_of_new_primary_database';
+
+alter database start logical standby apply new primary reinstatelogical;
+
+Use the Broker to bring back the old Primary
+Use the broker to do it all for you	
+n/a
+DGMGRL> failover to prod1dr;
+DGMGRL> reinstate database prod1;
+
+Fast Start Failover (FSFO)
+Monitor a specific condition via the Broker	DGMGRL> enable fast_start failover condition "Corrupted Controlfile";
+DGMGRL> enable fast_start failover condition "Datafile Offline";
+Display conditions that are be monitored	DGMGRL> show fast_start failover;
+Select the standby to become the primary	DGMGRL> edit database prod1 set property FastStartFailoverTarget = 'prod1dr';
+DGMGRL> edit database prod1dr set property FastStartFailoverTarget = 'prod1';
+change threshold	DGMGRL> edit configuration set property FastStartFailoverTargetThreshold = 45;
+lag limit	DGMGRL> edit configuration set property FastStartFailoverLagLimit = 60;
+abort primary if in a hung state	DGMGRL>edit configuration set property FastStartFailoverPmyShutdown = true;
+reinstate primary after a failover	DGMGRL>edit configuration set property FastStartFailoverAutoReinstate = true;
+Enable FSFO	DGMGRL> enable fast_start failover;
+
+## Display the configuration
+
+DGMGRL> show fast_start failover;
+Other sections of interest
+
+Active Data Guard - see active data guard
+
+Backups and Recovey - see backups and recovery
+
+Troubleshooting - see troubleshooting
+
+My complete setup guide - see complete setup guide
