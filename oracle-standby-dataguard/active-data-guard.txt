@@ -1,1 +1,174 @@
+=============================
+ACTIVE DATA GUARD
+=============================
+
 http://www.juliandyke.com/Research/DataGuard/ActiveDataGuard.php
+
+=============================
+USING SQLPLUS
+=============================
+http://www.pafumi.net/Active_Data_Guard.html
+
+Active Data Guard
+
+Oracle Active Data Guard is a new option with Oracle 11g.
+Oracle Active Data Guard enables read-only access to a physical standby database for queries, sorting, reporting, Web-based access, and so on, while continuously applying changes received from the production database.
+In older versions of Oracle Data Guard, you were able to open your standby database in read-only mode, but the database was not able to receive the redo from the production DB.
+
+For some applications Active Data Guard can represent a more efficient use of Oracle licenses on the standby database. Active Data Guard is available on Enterprise Edition only and is cost option which must be licensed on both the primary and standby database.
+
+Before you perform these actions, a Data Guard Broker configuration should be already configured. If you need to configure Data Guard Broker, GO HERE.
+
+Enable Active Data Guard using DG Broker
+Connect to DG Broker and disable the MRP Process
+$ dgmgrl
+DGMGRL> connect sys
+DGMGRL> show configuration
+DGMGRL> edit database 'STDBY' set state = 'apply-off';
+DGMGRL> show configuration
+
+Open the physical standby database in read-only mode
+sqlplus> alter database open read only;
+
+Connect to DG Broker again and enable the MRP Process
+$ dgmgrl
+DGMGRL> connect sys
+DGMGRL> edit database 'STDBY' set state = 'apply-on';
+DGMGRL> show configuration
+
+Now you can perform any Read Operation on the Standby!!!
+
+As you can see, this process is very simple, you just type a few commands, re-start your DB and you are ready to test this amazing feature!!!
+
+Redo data will continue to be received and applied by the database while it is operating in read only mode.
+
+If you perform any DDL and DML operation in PROD, you will see those operations also reflected on the Standby. As an example you can insert some data into a table in PROD and that row will be also inserted in the Standby.
+
+To determine whether a standby database is using Active Data Guard use the following query:
+SQL> SELECT database_role, open_mode FROM v$database;
+DATABASE_ROLE         OPEN_MODE
+-------------------- --------------------
+PHYSICAL STANDBY     READ ONLY WITH APPLY
+
+Disable Active Data Guard using DG Broker
+Connect to DG Broker and disable the MRP Process
+$ dgmgrl
+DGMGRL> connect sys
+DGMGRL> show configuration
+DGMGRL> edit database 'STDBY' set state = 'apply-off';
+DGMGRL> show configuration
+
+Shutdown the physical standby database
+sqlplus> shutdown immediate;
+sqlplus> startup mount;
+
+Connect to DG Broker again and enable the MRP Process
+$ dgmgrl
+DGMGRL> connect sys
+DGMGRL> edit database 'STDBY' set state = 'apply-on';
+DGMGRL> show configuration
+
+Now you Physical standby will be performing as usual
+
+
+Enable Active Data Guard using SQL*Plus
+We need to mention that the preferred method to Enable the Active Data Guard is by using the Broker.
+As you can see, this process is very simple, you just type a few commands, re-start your DB and you are ready to test this amazing feature!!!
+Redo data will continue to be received and applied by the database while it is operating in read only mode.
+
+Connect to the physical standby, cancel the managed standby recovery, then open it in read only mode. After that enable again the managed recovery process
+sqlplus> alter database recover managed standby database cancel
+sqlplus> alter database open read only; 
+sqlplus> alter database recover managed standby database using current logfile disconnect;
+
+Now the standby has been placed in managed recovery mode applying the log files while it is open.
+Now you can perform any Read Operation on the Standby
+
+If you perform any DDL and DML operation in PROD, you will see those operations also reflected on the Standby. 
+Confirm, changes applying on standby database
+
+On the primary create any table, do a log switch and check the maximum log sequence number: 
+SQL> create table test (cd number);
+SQL> alter system switch logfile; 
+SQL> select max(Sequence#) from v$log; 
+
+Connect to the Standby and also check the maximum log sequence number and the existence of that table: 
+SQL> select max(Sequence#) from v$log;
+SQL> describe test; 
+
+
+Disable Active Data Guard using SQL*Plus
+Connect to the physical standby and shut it down
+sqlplus> shutdown immediate
+
+Then Startup and mount it.
+sqlplus> startup mount;
+sqlplus> alter database recover managed standby database using current logfile disconnect;
+
+Now you Physical standby will be performing as usual
+
+
+
+
+Checking Different Scenarios
+If you start a database in SQL*Plus using the STARTUP command and then invoke managed recovery, the Active Data Guard will be enabled. 
+For example:
+SQL> STARTUP
+
+SQL> SELECT database_role, open_mode FROM v$database;
+DATABASE_ROLE         OPEN_MODE
+-------------------- --------------------
+PHYSICAL STANDBY     READ ONLY 
+
+SQL> ALTER DATABASE RECOVER MANAGED STANDBY DATABASE USING CURRENT LOGFILE disconnect;
+
+SQL> SELECT database_role, open_mode FROM v$database;
+
+SQL> SELECT database_role, open_mode FROM v$database;
+DATABASE_ROLE         OPEN_MODE
+-------------------- --------------------
+PHYSICAL STANDBY     READ ONLY WITH APPLY
+
+
+
+However, if the database is started in SQL*Plus using the STARTUP MOUNT command and then managed recovery is invoked, Active Data Guard will not be enabled.
+SQL> STARTUP MOUNT
+
+SQL> SELECT database_role, open_mode FROM v$database;
+DATABASE_ROLE         OPEN_MODE
+-------------------- --------------------
+PHYSICAL STANDBY     MOUNTED
+
+SQL> ALTER DATABASE RECOVER MANAGED STANDBY DATABASE USING CURRENT LOGFILE disconnect;
+
+SQL> SELECT database_role, open_mode FROM v$database;
+DATABASE_ROLE         OPEN_MODE
+-------------------- --------------------
+PHYSICAL STANDBY     MOUNTED
+
+
+If the database has been started in SQL*Plus using STARTUP MOUNT and the database is subsequently opened read only, then invoking managed recovery will enable Active Data Guard. 
+For example:
+SQL> STARTUP MOUNT
+
+SQL> SELECT database_role, open_mode FROM v$database;
+DATABASE_ROLE         OPEN_MODE
+-------------------- --------------------
+PHYSICAL STANDBY     MOUNTED
+
+SQL> ALTER DATABASE OPEN READ ONLY;
+
+SQL> SELECT database_role, open_mode FROM v$database;
+DATABASE_ROLE         OPEN_MODE
+-------------------- --------------------
+PHYSICAL STANDBY     READ ONLY 
+
+SQL> ALTER DATABASE RECOVER MANAGED STANDBY DATABASE USING CURRENT LOGFILE disconnect;
+
+SQL> SELECT database_role, open_mode FROM v$database;
+DATABASE_ROLE         OPEN_MODE
+-------------------- --------------------
+PHYSICAL STANDBY     READ ONLY WITH APPLY
+
+
+
