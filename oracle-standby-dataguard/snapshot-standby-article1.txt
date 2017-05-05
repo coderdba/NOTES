@@ -1,0 +1,59 @@
+https://databaseinternalmechanism.com/oracle-dataguard/creating-snapshot-standby/
+
+How to Create Snapshot Standby in DataGuard
+
+SNAPSHOT STANDBY:-
+
+Introduced in 11g, snapshot standby allows the standby database to be opened in read-write mode. When switched back into standby mode,
+all changes made whilst in read-write mode are lost. This is achieved using flashback database,
+but the standby database does not need to have flashback database explicitly enabled to take advantage of this feature, thought it works just the same if it is.
+
+Create a physical standby from my post How to create Physical Standby and then follow the below steps.
+
+CONVERT PHYSICAL STANDBY DATABASE TO SNAPSHOT STANDBY DATABASE
+
+Make sure the standby instance is in MOUNT mode.
+1
+select open_mode, database_role from v$database;
+Make sure managed recovery is disabled.
+1
+ALTER DATABASE RECOVER MANAGED STANDBY DATABASE CANCEL;
+Convert the standby to a snapshot standby.
+1
+2
+3
+4
+5
+SELECT flashback_on FROM v$database;
+select name, open_mode, database_role from v$database;
+ 
+ALTER DATABASE CONVERT TO SNAPSHOT STANDBY;
+ALTER DATABASE OPEN;
+1
+2
+SELECT flashback_on FROM v$database;
+select name, open_mode, database_role from v$database;
+ 
+
+CONVERT SNAPSHOT STANDBY DATABASE TO PHYSICAL STANDBY DATABASE
+
+To convert it back to the physical standby, losing all the changes made since the conversion to snapshot standby, issue the following commands.
+
+1
+2
+3
+4
+5
+6
+7
+SHUTDOWN IMMEDIATE;
+STARTUP MOUNT;
+ALTER DATABASE CONVERT TO PHYSICAL STANDBY;
+SHUTDOWN IMMEDIATE;
+STARTUP NOMOUNT;
+ALTER DATABASE MOUNT STANDBY DATABASE;
+ALTER DATABASE RECOVER MANAGED STANDBY DATABASE DISCONNECT;
+1
+2
+SELECT flashback_on FROM v$database;
+select name, open_mode, database_role from v$database;
