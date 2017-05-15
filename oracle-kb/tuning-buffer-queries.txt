@@ -1,0 +1,122 @@
+GV$SGA_TARGET_ADVICE
+
+--------
+ash1.sql
+--------
+spool ash1
+
+set lines 120
+set pages 100
+
+select * from (
+select sql_id, instance_number,   sample_hr,
+   module, action, cnt_on_cpu, cnt_waiting,
+   dense_rank () over (partition by instance_number, sample_hr order by  cnt_on_cpu desc) cpu_rnk,
+   dense_rank () over (partition by instance_number, sample_hr order by  cnt_waiting desc) wait_rnk
+from (
+   select 
+      sql_id,  instance_number,   to_char(sample_time, 'DD-MON-YYYY HH24') sample_hr,
+      sum(decode(ash.session_state,'ON CPU',1,0))  cnt_on_cpu,
+      sum(decode(ash.session_state,'WAITING',1,0)) cnt_waiting ,
+      module, action
+   from  
+      dba_hist_active_sess_history ash
+   where 
+      sample_time > sysdate - 1
+      and event='cell single block physical read'
+   group by 
+      sql_id, instance_number, module, action,  to_char(sample_time, 'DD-MON-YYYY HH24')
+   order by 3 desc
+ )
+)
+where  wait_rnk <=20 or cpu_rnk <=20
+order by sample_hr, cpu_rnk asc;
+
+spool off
+
+--------
+ash2.sql
+--------
+spool ash2
+set lines 120
+set pages 100
+
+   select 
+      sql_id,  instance_number,   to_char(sample_time, 'DD-MON-YYYY HH24') sample_hr,
+      sum(decode(ash.session_state,'ON CPU',1,0))  cnt_on_cpu,
+      sum(decode(ash.session_state,'WAITING',1,0)) cnt_waiting ,
+      module, action
+   from  
+      dba_hist_active_sess_history ash
+   where 
+      sample_time > sysdate - 1
+      and event='cell single block physical read'
+   group by 
+      sql_id, instance_number, module, action,  to_char(sample_time, 'DD-MON-YYYY HH24')
+   order by 3 desc;
+
+spool off
+
+
+--------
+ash3.sql
+--------
+spool ash3
+
+set lines 120
+set pages 100
+
+select sql_id, sum(cnt_on_cpu) on_cpu, sum(cnt_waiting) waiting
+from
+(
+   select 
+      sql_id,  instance_number,   to_char(sample_time, 'DD-MON-YYYY HH24') sample_hr,
+      sum(decode(ash.session_state,'ON CPU',1,0))  cnt_on_cpu,
+      sum(decode(ash.session_state,'WAITING',1,0)) cnt_waiting ,
+      module, action
+   from  
+      dba_hist_active_sess_history ash
+   where 
+      sample_time > sysdate - 1
+      and event='cell single block physical read'
+   group by 
+      sql_id, instance_number, module, action,  to_char(sample_time, 'DD-MON-YYYY HH24')
+   order by 3 desc
+)
+group by sql_id
+order by sum(cnt_waiting) desc
+;
+
+spool off
+
+-------
+bh.sql - buffer pool contents
+-------
+spool ash3
+
+set lines 120
+set pages 100
+
+select sql_id, sum(cnt_on_cpu) on_cpu, sum(cnt_waiting) waiting
+from
+(
+   select 
+      sql_id,  instance_number,   to_char(sample_time, 'DD-MON-YYYY HH24') sample_hr,
+      sum(decode(ash.session_state,'ON CPU',1,0))  cnt_on_cpu,
+      sum(decode(ash.session_state,'WAITING',1,0)) cnt_waiting ,
+      module, action
+   from  
+      dba_hist_active_sess_history ash
+   where 
+      sample_time > sysdate - 1
+      and event='cell single block physical read'
+   group by 
+      sql_id, instance_number, module, action,  to_char(sample_time, 'DD-MON-YYYY HH24')
+   order by 3 desc
+)
+group by sql_id
+order by sum(cnt_waiting) desc
+;
+
+spool off
+
