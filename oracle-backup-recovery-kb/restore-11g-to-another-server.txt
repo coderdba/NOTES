@@ -23,3 +23,28 @@ SQL> create spfile from pfile;
 SQL> create spfile from pfile='/tmp/pfile.ora';
 
 Find the spfile created as $ORACLE_HOME/dbs/spfile<SID>.ora
+
+RMAN> restore controlfile from '/home/oracle/stage/o1_mf_s_819826669_8x7w7g70_.bkp';
+
+Find the controlfile created as $ORACLE_HOME/dbs/cntrlRD20DB111.dbf
+
+Edit pfile further - comment out control_files line 
+  - and create a new control_files line with the path to the restored controlfile
+  
+-----------------------------
+NOW MOUNT THE DATABASE
+-----------------------------
+NOTE: The plain 'alter database mount' at this point gives an error.
+
+RMAN> alter database mount;
+
+using target database control file instead of recovery catalog
+RMAN-00571: ===========================================================
+RMAN-00569: =============== ERROR MESSAGE STACK FOLLOWS ===============
+RMAN-00571: ===========================================================
+RMAN-03002: failure of alter db command at 05/19/2017 04:28:38
+ORA-01103: database name 'DBNAME' in control file is not 'DUMMY'
+
+SQL> shutdown
+SQL> startup mount;
+
