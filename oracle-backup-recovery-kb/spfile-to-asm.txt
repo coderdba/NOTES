@@ -1,1 +1,59 @@
 https://emarcel.com/moving-spfile-from-file-system-to-asm-oracle-rac11g/
+
+Moving SPFILE from file system to ASM (ORACLE RAC11g)
+
+June 15, 2011 eMarcel Oracle, 1 Comment
+There are two nodes in oracle RAC database [rac1] and [rac2]
+Below tasks has to be executed from the first node [rac1]
+1. Create spfile in ASM “+RACDB_DATA” disk group
+SQL> connect / as sysdba
+SQL> show parameter spfile
+
+NAME TYPE VALUE
+------- ------- ------------------------------
+spfile string /u01/app/oracle/product/11.2.0/db_1/dbs/spfileracdb11.ora
+
+SQL> create pfile='/u01/app/oracle/product/11.2.0/db_1/dbs/initracdb11.ora' from spfile='/u01/app/oracle/product/11.2.0/db_1/dbs/spfileracdb11.ora';
+#Or simply:
+SQL> create pfile from spfile
+File created.
+
+SQL> create spfile='+RACDB_DATA' from pfile='/u01/app/oracle/product/11.2.0/db_1/dbs/initracdb11.ora';
+File created.
+
+SQL> exit
+2. New spfile has been created in ASM
+[grid@rac1 ~]$ asmcmd
+
+ASMCMD> ls RACDB_DATA/racdb1/spfile*
+spfileracdb1.ora
+
+ASMCMD> exit
+3. Modify initracdb11.ora on rac1 and initracdb12.ora on rac2 files to point to location in ASM
+[oracle@rac1 dbs]$ echo "SPFILE='+RACDB_DATA/racdb1/spfileracdb1.ora'" > /u01/app/oracle/product/11.2.0/db_1/dbs/initracdb11.ora
+[oracle@rac1 dbs]$ ssh rac2 "echo \"SPFILE='+RACDB_DATA/racdb1/spfileracdb1.ora'\" > /u01/app/oracle/product/11.2.0/db_1/dbs/initracdb12.ora"
+4. Update OCR with new SPFILE location
+ 
+[oracle@rac1 dbs]$ srvctl modify database -d racdb1 -p +RACDB_DATA/racdb1/spfileracdb1.ora
+5. Rename any existing spfiles in $ORACLE_HOME/dbs
+ 
+[oracle@rac1 dbs]$ mv /u01/app/oracle/product/11.2.0/db_1/dbs/spfileracdb11.ora /u01/app/oracle/product/11.2.0/db_1/dbs/spfileracdb11.ora_bak
+
+[oracle@rac1 dbs]$ ssh rac2 "mv /u01/app/oracle/product/11.2.0/db_1/dbs/spfileracdb12.ora /u01/app/oracle/product/11.2.0/db_1/dbs/spfileracdb12.ora_bak"
+6. Restart all instances to switch to new SPFILE
+ 
+[oracle@rac1 dbs]$ srvctl stop database -d racdb1
+[oracle@rac1 dbs]$ srvctl start database -d racdb1
+
+[oracle@rac1 dbs]$ srvctl status database -d racdb1
+Instance racdb11 is running on node rac1
+Instance racdb12 is running on node rac2
+7. Connect to the database and verify spfile parameter:
+[oracle@racdb1 dbs]$ <strong>connect / as sysdba</strong>
+
+SQL> SHOW parameter spfile
+
+NAME TYPE VALUE
+------ ----------- ------------------------------
+spfile string +RACDB_DATA/racdb1/spfileracdb 1.ora
+Cheers!!
