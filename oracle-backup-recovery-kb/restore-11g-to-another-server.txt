@@ -119,3 +119,430 @@ recover database ;
 OPEN RESETLOGS
 --------------------
 SQL> ALTER DATABASE OPEN RESETLOGS;
+
+===================================
+FROM THE WEBSITE
+===================================
+
+NEWS
+Oracle GoldenGate and Oracle 12c Online Training Commencing January 2017
+Now an Oracle 12c Certified Master Database Cloud Administrator
+Presenting at AUSOUG and AIOUG Conferences in November
+Perth, Australia+ (61) 417713124 prosolutions@gavinsoorma.com
+HOMEABOUTMEMBERS ONLYBLOGCONTACTLOG IN
+RESTORE RMAN BACKUP TO ANOTHER SERVER FOR TESTING DISASTER RECOVERY PROCEDURES AS WELL AS FOR CLONING
+Posted by Gavin SoormaOn July 5, 20130 CommentsDisaster Recovery, loss of all database files, resetlogs, restore, rman, rman clone
+This note explains the procedure used to restore an Oracle Suggested Strategy incremental backup on another server.
+This is useful when we have to do periodic  testing of disaster recovery procedures where we simulate a scenario when the complete database server has crashed and a new server has been provisioned.
+But let us assume that the directory structure on the new or target server is different to that of the source server.
+So in this case the backup has been restored to the staging location /home/oracle/stage on the new server  and all the database files are being restored in a different location to that on the source – /home/oracle/sqlfun
+ 
+Restore the SPFILE
+RMAN> startup nomount force;
+
+startup failed: ORA-01078: failure in processing system parameters
+LRM-00109: could not open parameter file '/u01/app/oracle/product/11.2.0/dbhome_2/dbs/initsqlfun.ora'
+
+starting Oracle instance without parameter file for retrieval of spfile
+Oracle instance started
+
+Total System Global Area     158662656 bytes
+
+Fixed Size                     2226456 bytes
+Variable Size                104859368 bytes
+Database Buffers              46137344 bytes
+Redo Buffers                   5439488 bytes
+
+RMAN> restore spfile from '/home/oracle/stage/o1_mf_s_819826669_8x7w7g70_.bkp';
+
+Starting restore at 04-JUL-13
+using target database control file instead of recovery catalog
+allocated channel: ORA_DISK_1
+channel ORA_DISK_1: SID=162 device type=DISK
+
+channel ORA_DISK_1: restoring spfile from AUTOBACKUP /home/oracle/stage/o1_mf_s_819826669_8x7w7g70_.bkp
+channel ORA_DISK_1: SPFILE restore from AUTOBACKUP complete
+Finished restore at 04-JUL-13
+Create the PFILE from SPFILE and make parameter changes as required
+$ sqlplus sys as sysdba
+
+SQL*Plus: Release 11.2.0.3.0 Production on Thu Jul 4 09:43:48 2013
+
+Copyright (c) 1982, 2011, Oracle.  All rights reserved.
+
+Enter password:
+Connected to an idle instance.
+
+SQL> create pfile from spfile;
+
+File created.
+Note- make required changes here in the init.ora file to take care of new directories for control files, audit dump, fast recovery area etc
+SQL> create spfile from pfile;
+
+File created.
+ 
+Restore the Control Files
+RMAN> restore controlfile from '/home/oracle/stage/o1_mf_s_819826669_8x7w7g70_.bkp';
+
+Starting restore at 04-JUL-13
+using target database control file instead of recovery catalog
+allocated channel: ORA_DISK_1
+channel ORA_DISK_1: SID=134 device type=DISK
+
+channel ORA_DISK_1: restoring control file
+channel ORA_DISK_1: restore complete, elapsed time: 00:00:01
+output file name=/home/oracle/sqlfun/control01.ctl
+output file name=/home/oracle/sqlfun/control02.ctl
+Finished restore at 04-JUL-13
+ 
+Mount the database and catalog the backup pieces which have been restored in the new location
+RMAN> alter database mount;
+
+database mounted
+released channel: ORA_DISK_1
+
+RMAN> catalog start with '/home/oracle/stage';
+
+Starting implicit crosscheck backup at 04-JUL-13
+using target database control file instead of recovery catalog
+allocated channel: ORA_DISK_1
+channel ORA_DISK_1: SID=134 device type=DISK
+Crosschecked 25 objects
+Finished implicit crosscheck backup at 04-JUL-13
+
+Starting implicit crosscheck copy at 04-JUL-13
+using channel ORA_DISK_1
+Crosschecked 10 objects
+Finished implicit crosscheck copy at 04-JUL-13
+
+searching for all files in the recovery area
+cataloging files...
+cataloging done
+
+List of Cataloged Files
+=======================
+File Name: /u01/app/oracle/flash_recovery_area/SQLFUN/autobackup/2013_07_04/o1_mf_n_819884144_8x9ncjfl_.bkp
+File Name: /u01/app/oracle/flash_recovery_area/SQLFUN/archivelog/2013_07_04/2013_07_03/o1_mf_1_33_8x84ld7x_.arc
+File Name: /u01/app/oracle/flash_recovery_area/SQLFUN/archivelog/2013_07_04/2013_07_03/o1_mf_1_35_8x8db3hp_.arc
+File Name: /u01/app/oracle/flash_recovery_area/SQLFUN/archivelog/2013_07_04/2013_07_03/o1_mf_1_36_8x8dbgcm_.arc
+File Name: /u01/app/oracle/flash_recovery_area/SQLFUN/archivelog/2013_07_04/2013_07_03/o1_mf_1_34_8x8d9y2h_.arc
+File Name: /u01/app/oracle/flash_recovery_area/SQLFUN/archivelog/2013_07_04/2013_07_03/o1_mf_1_32_8x6mflv0_.arc
+
+searching for all files that match the pattern /home/oracle/stage
+
+List of Files Unknown to the Database
+=====================================
+File Name: /home/oracle/stage/o1_mf_sysaux_7zpgb1hd_.dbf
+File Name: /home/oracle/stage/o1_mf_nnnd1_ORA_OEM_LEVEL_0_8x7w6zcb_.bkp
+File Name: /home/oracle/stage/o1_mf_nnnd1_ORA_OEM_LEVEL_0_8x7w76jv_.bkp
+File Name: /home/oracle/stage/o1_mf_undotbs1_7zpgck9f_.dbf
+File Name: /home/oracle/stage/o1_mf_nnnd1_ORA_OEM_LEVEL_0_8x7w65l9_.bkp
+File Name: /home/oracle/stage/o1_mf_example_7zgkdp6p_.dbf
+File Name: /home/oracle/stage/o1_mf_threaten_7zpgbyck_.dbf
+File Name: /home/oracle/stage/o1_mf_users_7zpgcnno_.dbf
+File Name: /home/oracle/stage/o1_mf_s_819826669_8x7w7g70_.bkp
+File Name: /home/oracle/stage/o1_mf_index_da_7zgkcz04_.dbf
+File Name: /home/oracle/stage/o1_mf_example__7zpgcg0x_.dbf
+File Name: /home/oracle/stage/o1_mf_system_7zpgbh79_.dbf
+File Name: /home/oracle/stage/o1_mf_nnnd1_ORA_OEM_LEVEL_0_8x7w7b0f_.bkp
+
+Do you really want to catalog the above files (enter YES or NO)? YES
+cataloging files...
+cataloging done
+
+List of Cataloged Files
+=======================
+File Name: /home/oracle/stage/o1_mf_sysaux_7zpgb1hd_.dbf
+File Name: /home/oracle/stage/o1_mf_nnnd1_ORA_OEM_LEVEL_0_8x7w6zcb_.bkp
+File Name: /home/oracle/stage/o1_mf_nnnd1_ORA_OEM_LEVEL_0_8x7w76jv_.bkp
+File Name: /home/oracle/stage/o1_mf_undotbs1_7zpgck9f_.dbf
+File Name: /home/oracle/stage/o1_mf_nnnd1_ORA_OEM_LEVEL_0_8x7w65l9_.bkp
+File Name: /home/oracle/stage/o1_mf_example_7zgkdp6p_.dbf
+File Name: /home/oracle/stage/o1_mf_threaten_7zpgbyck_.dbf
+File Name: /home/oracle/stage/o1_mf_users_7zpgcnno_.dbf
+File Name: /home/oracle/stage/o1_mf_s_819826669_8x7w7g70_.bkp
+File Name: /home/oracle/stage/o1_mf_index_da_7zgkcz04_.dbf
+File Name: /home/oracle/stage/o1_mf_example__7zpgcg0x_.dbf
+File Name: /home/oracle/stage/o1_mf_system_7zpgbh79_.dbf
+File Name: /home/oracle/stage/o1_mf_nnnd1_ORA_OEM_LEVEL_0_8x7w7b0f_.bkp
+ 
+Generate the SET NEWNAME FOR DATAFILE command
+Note:
+Since the OSS backup image copy is based on Oracle Managed File format (OMF), I find this error even though we have set the DB_FILE_NAME_CONVERT parameter to account for the directory path change between source and target.
+RMAN is not restoring the data files in the new location but is looking for the directory path which existed on the source database, but which is not present on the new or target server where we are doing the restore.
+ 
+RMAN> restore database;
+Starting restore at 04-JUL-13
+using channel ORA_DISK_1
+channel ORA_DISK_1: restoring datafile 00001
+input datafile copy RECID=3060 STAMP=819884997 file name=/home/oracle/stage/o1_mf_system_7zpgbh79_.dbf
+destination for restore of datafile 00001: /u01/app/oracle/oradata/sqlfun/system01.dbf
+ORA-19504: failed to create file “/u01/app/oracle/oradata/sqlfun/system01.dbf”
+ORA-27040: file create error, unable to create file
+Linux-x86_64 Error: 2: No such file or directory
+Additional information: 1
+ORA-19600: input file is datafile-copy 3060 (/home/oracle/stage/o1_mf_system_7zpgbh79_.dbf)
+ORA-19601: output file is datafile 1 (/u01/app/oracle/oradata/sqlfun/system01.dbf)
+ 
+So to work around this we will generate a text file via SQL*PLUS which will contain the SET NEWNAME commands and call this file from RMAN.
+These are the contents of the text file rename_files.sql
+set head off pages 0 feed off echo off verify off
+set lines 200
+spool rename_datafiles.lst
+select ‘SET NEWNAME FOR DATAFILE ‘ || FILE# || ‘ TO ”’ || ‘/home/oracle/sqlfun/’ || substr(name,instr(name,’/’,-1)+1) || ”’;’ from v$datafile;
+spool off
+exit;
+$ sqlplus sys as sysdba
+
+SQL*Plus: Release 11.2.0.3.0 Production on Thu Jul 4 09:52:44 2013
+
+Copyright (c) 1982, 2011, Oracle.  All rights reserved.
+
+Enter password:
+
+Connected to:
+Oracle Database 11g Enterprise Edition Release 11.2.0.3.0 - 64bit Production
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+
+SQL> @rename_files.sql
+SET NEWNAME FOR DATAFILE 1 TO '/home/oracle/sqlfun/system01.dbf';
+SET NEWNAME FOR DATAFILE 2 TO '/home/oracle/sqlfun/sysaux01.dbf';
+SET NEWNAME FOR DATAFILE 3 TO '/home/oracle/sqlfun/undotbs01.dbf';
+SET NEWNAME FOR DATAFILE 4 TO '/home/oracle/sqlfun/users01.dbf';
+SET NEWNAME FOR DATAFILE 5 TO '/home/oracle/sqlfun/threatened_fauna_data.dbf';
+SET NEWNAME FOR DATAFILE 6 TO '/home/oracle/sqlfun/example_temp01.dbf';
+SET NEWNAME FOR DATAFILE 7 TO '/home/oracle/sqlfun/EXAMPLE_5';
+SET NEWNAME FOR DATAFILE 8 TO '/home/oracle/sqlfun/INDEX_DATA_6';
+ 
+Restore and Recover the database
+Now pass this file name to the RMAN run block
+RMAN> run {
+2> @rename_datafiles.lst
+3> SET NEWNAME FOR DATAFILE 1 TO '/home/oracle/sqlfun/system01.dbf';
+4> SET NEWNAME FOR DATAFILE 2 TO '/home/oracle/sqlfun/sysaux01.dbf';
+5> SET NEWNAME FOR DATAFILE 3 TO '/home/oracle/sqlfun/undotbs01.dbf';
+6> SET NEWNAME FOR DATAFILE 4 TO '/home/oracle/sqlfun/users01.dbf';
+7> SET NEWNAME FOR DATAFILE 5 TO '/home/oracle/sqlfun/threatened_fauna_data.dbf';
+8> SET NEWNAME FOR DATAFILE 6 TO '/home/oracle/sqlfun/example_temp01.dbf';
+9> SET NEWNAME FOR DATAFILE 7 TO '/home/oracle/sqlfun/EXAMPLE_5';
+10> SET NEWNAME FOR DATAFILE 8 TO '/home/oracle/sqlfun/INDEX_DATA_6';
+11> **end-of-file**
+12> restore database;
+13> switch datafile all;
+14> recover database;
+15> }
+
+executing command: SET NEWNAME
+
+executing command: SET NEWNAME
+
+executing command: SET NEWNAME
+
+executing command: SET NEWNAME
+
+executing command: SET NEWNAME
+
+executing command: SET NEWNAME
+
+executing command: SET NEWNAME
+
+executing command: SET NEWNAME
+
+Starting restore at 04-JUL-13
+using target database control file instead of recovery catalog
+allocated channel: ORA_DISK_1
+channel ORA_DISK_1: SID=125 device type=DISK
+
+channel ORA_DISK_1: restoring datafile 00001
+input datafile copy RECID=3060 STAMP=819884997 file name=/home/oracle/stage/o1_mf_system_7zpgbh79_.dbf
+destination for restore of datafile 00001: /home/oracle/sqlfun/system01.dbf
+channel ORA_DISK_1: copied datafile copy of datafile 00001
+output file name=/home/oracle/sqlfun/system01.dbf RECID=3061 STAMP=819885296
+channel ORA_DISK_1: restoring datafile 00002
+input datafile copy RECID=3053 STAMP=819884997 file name=/home/oracle/stage/o1_mf_sysaux_7zpgb1hd_.dbf
+destination for restore of datafile 00002: /home/oracle/sqlfun/sysaux01.dbf
+channel ORA_DISK_1: copied datafile copy of datafile 00002
+output file name=/home/oracle/sqlfun/sysaux01.dbf RECID=3062 STAMP=819885313
+channel ORA_DISK_1: restoring datafile 00003
+input datafile copy RECID=3054 STAMP=819884997 file name=/home/oracle/stage/o1_mf_undotbs1_7zpgck9f_.dbf
+destination for restore of datafile 00003: /home/oracle/sqlfun/undotbs01.dbf
+channel ORA_DISK_1: copied datafile copy of datafile 00003
+output file name=/home/oracle/sqlfun/undotbs01.dbf RECID=3063 STAMP=819885321
+channel ORA_DISK_1: restoring datafile 00004
+input datafile copy RECID=3057 STAMP=819884997 file name=/home/oracle/stage/o1_mf_users_7zpgcnno_.dbf
+destination for restore of datafile 00004: /home/oracle/sqlfun/users01.dbf
+channel ORA_DISK_1: copied datafile copy of datafile 00004
+output file name=/home/oracle/sqlfun/users01.dbf RECID=3064 STAMP=819885322
+channel ORA_DISK_1: restoring datafile 00005
+input datafile copy RECID=3056 STAMP=819884997 file name=/home/oracle/stage/o1_mf_threaten_7zpgbyck_.dbf
+destination for restore of datafile 00005: /home/oracle/sqlfun/threatened_fauna_data.dbf
+channel ORA_DISK_1: copied datafile copy of datafile 00005
+output file name=/home/oracle/sqlfun/threatened_fauna_data.dbf RECID=3065 STAMP=819885327
+channel ORA_DISK_1: restoring datafile 00006
+input datafile copy RECID=3059 STAMP=819884997 file name=/home/oracle/stage/o1_mf_example__7zpgcg0x_.dbf
+destination for restore of datafile 00006: /home/oracle/sqlfun/example_temp01.dbf
+channel ORA_DISK_1: copied datafile copy of datafile 00006
+output file name=/home/oracle/sqlfun/example_temp01.dbf RECID=3066 STAMP=819885331
+channel ORA_DISK_1: restoring datafile 00007
+input datafile copy RECID=3055 STAMP=819884997 file name=/home/oracle/stage/o1_mf_example_7zgkdp6p_.dbf
+destination for restore of datafile 00007: /home/oracle/sqlfun/EXAMPLE_5
+channel ORA_DISK_1: copied datafile copy of datafile 00007
+output file name=/home/oracle/sqlfun/EXAMPLE_5 RECID=3067 STAMP=819885334
+channel ORA_DISK_1: restoring datafile 00008
+input datafile copy RECID=3058 STAMP=819884997 file name=/home/oracle/stage/o1_mf_index_da_7zgkcz04_.dbf
+destination for restore of datafile 00008: /home/oracle/sqlfun/INDEX_DATA_6
+channel ORA_DISK_1: copied datafile copy of datafile 00008
+output file name=/home/oracle/sqlfun/INDEX_DATA_6 RECID=3068 STAMP=819885339
+Finished restore at 04-JUL-13
+
+datafile 1 switched to datafile copy
+input datafile copy RECID=3069 STAMP=819885343 file name=/home/oracle/sqlfun/system01.dbf
+datafile 2 switched to datafile copy
+input datafile copy RECID=3070 STAMP=819885343 file name=/home/oracle/sqlfun/sysaux01.dbf
+datafile 3 switched to datafile copy
+input datafile copy RECID=3071 STAMP=819885343 file name=/home/oracle/sqlfun/undotbs01.dbf
+datafile 4 switched to datafile copy
+input datafile copy RECID=3072 STAMP=819885343 file name=/home/oracle/sqlfun/users01.dbf
+datafile 5 switched to datafile copy
+input datafile copy RECID=3073 STAMP=819885343 file name=/home/oracle/sqlfun/threatened_fauna_data.dbf
+datafile 6 switched to datafile copy
+input datafile copy RECID=3074 STAMP=819885343 file name=/home/oracle/sqlfun/example_temp01.dbf
+datafile 7 switched to datafile copy
+input datafile copy RECID=3075 STAMP=819885343 file name=/home/oracle/sqlfun/EXAMPLE_5
+datafile 8 switched to datafile copy
+input datafile copy RECID=3076 STAMP=819885343 file name=/home/oracle/sqlfun/INDEX_DATA_6
+
+Starting recover at 04-JUL-13
+using channel ORA_DISK_1
+channel ORA_DISK_1: starting incremental datafile backup set restore
+channel ORA_DISK_1: specifying datafile(s) to restore from backup set
+destination for restore of datafile 00001: /home/oracle/sqlfun/system01.dbf
+destination for restore of datafile 00002: /home/oracle/sqlfun/sysaux01.dbf
+destination for restore of datafile 00007: /home/oracle/sqlfun/EXAMPLE_5
+destination for restore of datafile 00008: /home/oracle/sqlfun/INDEX_DATA_6
+channel ORA_DISK_1: reading from backup piece /home/oracle/stage/o1_mf_nnnd1_ORA_OEM_LEVEL_0_8x7w65l9_.bkp
+channel ORA_DISK_1: piece handle=/home/oracle/stage/o1_mf_nnnd1_ORA_OEM_LEVEL_0_8x7w65l9_.bkp tag=ORA_OEM_LEVEL_0
+channel ORA_DISK_1: restored backup piece 1
+channel ORA_DISK_1: restore complete, elapsed time: 00:00:03
+channel ORA_DISK_1: starting incremental datafile backup set restore
+channel ORA_DISK_1: specifying datafile(s) to restore from backup set
+destination for restore of datafile 00003: /home/oracle/sqlfun/undotbs01.dbf
+channel ORA_DISK_1: reading from backup piece /home/oracle/stage/o1_mf_nnnd1_ORA_OEM_LEVEL_0_8x7w6zcb_.bkp
+channel ORA_DISK_1: piece handle=/home/oracle/stage/o1_mf_nnnd1_ORA_OEM_LEVEL_0_8x7w6zcb_.bkp tag=ORA_OEM_LEVEL_0
+channel ORA_DISK_1: restored backup piece 1
+channel ORA_DISK_1: restore complete, elapsed time: 00:00:01
+channel ORA_DISK_1: starting incremental datafile backup set restore
+channel ORA_DISK_1: specifying datafile(s) to restore from backup set
+destination for restore of datafile 00004: /home/oracle/sqlfun/users01.dbf
+destination for restore of datafile 00005: /home/oracle/sqlfun/threatened_fauna_data.dbf
+channel ORA_DISK_1: reading from backup piece /home/oracle/stage/o1_mf_nnnd1_ORA_OEM_LEVEL_0_8x7w76jv_.bkp
+channel ORA_DISK_1: piece handle=/home/oracle/stage/o1_mf_nnnd1_ORA_OEM_LEVEL_0_8x7w76jv_.bkp tag=ORA_OEM_LEVEL_0
+channel ORA_DISK_1: restored backup piece 1
+channel ORA_DISK_1: restore complete, elapsed time: 00:00:01
+channel ORA_DISK_1: starting incremental datafile backup set restore
+channel ORA_DISK_1: specifying datafile(s) to restore from backup set
+destination for restore of datafile 00006: /home/oracle/sqlfun/example_temp01.dbf
+channel ORA_DISK_1: reading from backup piece /home/oracle/stage/o1_mf_nnnd1_ORA_OEM_LEVEL_0_8x7w7b0f_.bkp
+channel ORA_DISK_1: piece handle=/home/oracle/stage/o1_mf_nnnd1_ORA_OEM_LEVEL_0_8x7w7b0f_.bkp tag=ORA_OEM_LEVEL_0
+channel ORA_DISK_1: restored backup piece 1
+channel ORA_DISK_1: restore complete, elapsed time: 00:00:01
+
+starting media recovery
+
+archived log for thread 1 with sequence 33 is already on disk as file /u01/app/oracle/flash_recovery_area/SQLFUN/archivelog/2013_07_04/2013_07_03/o1_mf_1_33_8x84ld7x_.arc
+archived log for thread 1 with sequence 34 is already on disk as file /u01/app/oracle/flash_recovery_area/SQLFUN/archivelog/2013_07_04/2013_07_03/o1_mf_1_34_8x8d9y2h_.arc
+archived log for thread 1 with sequence 35 is already on disk as file /u01/app/oracle/flash_recovery_area/SQLFUN/archivelog/2013_07_04/2013_07_03/o1_mf_1_35_8x8db3hp_.arc
+archived log for thread 1 with sequence 36 is already on disk as file /u01/app/oracle/flash_recovery_area/SQLFUN/archivelog/2013_07_04/2013_07_03/o1_mf_1_36_8x8dbgcm_.arc
+archived log file name=/u01/app/oracle/flash_recovery_area/SQLFUN/archivelog/2013_07_04/2013_07_03/o1_mf_1_33_8x84ld7x_.arc thread=1 sequence=33
+archived log file name=/u01/app/oracle/flash_recovery_area/SQLFUN/archivelog/2013_07_04/2013_07_03/o1_mf_1_34_8x8d9y2h_.arc thread=1 sequence=34
+archived log file name=/u01/app/oracle/flash_recovery_area/SQLFUN/archivelog/2013_07_04/2013_07_03/o1_mf_1_35_8x8db3hp_.arc thread=1 sequence=35
+archived log file name=/u01/app/oracle/flash_recovery_area/SQLFUN/archivelog/2013_07_04/2013_07_03/o1_mf_1_36_8x8dbgcm_.arc thread=1 sequence=36
+unable to find archived log
+archived log thread=1 sequence=37
+RMAN-00571: ===========================================================
+RMAN-00569: =============== ERROR MESSAGE STACK FOLLOWS ===============
+RMAN-00571: ===========================================================
+RMAN-03002: failure of recover command at 07/04/2013 09:55:58
+RMAN-06054: media recovery requesting unknown archived log for thread 1 with sequence 37 and starting SCN of 33985482
+
+RMAN>
+the error can be ignored as RMAN has applied all the available archive log files and is now trying to apply a non-existent archive log file.
+Open the database with RESETLOGS
+The RESETLOGS command will fail because we do not have the same directory path which existed on the source for the Online Redo Log files.
+So we create a script which will generate the new online redo log file names.
+These are the contents of the rename_logfiles.sql file
+set head off pages 0 feed off echo off verify off
+set lines 200
+spool rename_logfiles.lst
+select ‘alter database rename file ”’|| member ||”’ ‘||chr(10)|| ‘ TO ”’ || ‘/home/oracle/sqlfun/’ || substr(member,instr(member,’/’,-1)+1) || ”’;’ from v$logfile;
+spool off
+exit;
+$ sqlplus sys as sysdba
+
+SQL*Plus: Release 11.2.0.3.0 Production on Thu Jul 4 10:05:17 2013
+
+Copyright (c) 1982, 2011, Oracle.  All rights reserved.
+
+Enter password:
+
+Connected to:
+Oracle Database 11g Enterprise Edition Release 11.2.0.3.0 - 64bit Production
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+
+SQL> @rename_logfiles.sql
+alter database rename file  '/u01/app/oracle/oradata/sqlfun/redo03.log'
+TO '/home/oracle/sqlfun/redo03.log';
+
+alter database rename file  '/u01/app/oracle/oradata/sqlfun/redo02.log'
+TO '/home/oracle/sqlfun/redo02.log';
+
+alter database rename file  '/u01/app/oracle/oradata/sqlfun/redo01.log'
+TO '/home/oracle/sqlfun/redo01.log';
+Note – we can do all this from the RMAN prompt as well using the RMAN SQL command. But for this example we do it from SQL*PLUS
+$ sqlplus sys as sysdba
+
+SQL*Plus: Release 11.2.0.3.0 Production on Thu Jul 4 10:50:44 2013
+
+Copyright (c) 1982, 2011, Oracle.  All rights reserved.
+
+Enter password:
+
+Connected to:
+Oracle Database 11g Enterprise Edition Release 11.2.0.3.0 - 64bit Production
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+
+SQL> @rename_logfiles.lst
+
+Database altered.
+
+Database altered.
+
+Database altered.
+
+SQL> alter database open resetlogs;
+
+Database altered.
+ 
+0 COMMENTS
+LEAVE REPLY 
+Your email address will not be published. Required fields are marked *
+
+Comment
+
+
+Name *
+
+Email *
+
+Website
+
+POST COMMENT
+Enterprise Manager 12c Agentless Automatic Target Discovery
+12c Database Upgrade - 11.2.0.3 to 12.1.0.1 upgrade using DBUA
+RECENT POSTS
+
+Oracle 12c Release 2 Partitioning New FeaturesMay 15, 2017Oracle Database 12.2 New Feature – PDB Lockdown ProfilesApril 20, 2017Oracle Database 12.2 New Feature – Pluggable Database Performance ProfilesApril 11, 2017Oracle GoldenGate ConsultantApril 3, 2017Oracle Database 12c Release 2 New Feature – Application ContainersMarch 30, 2017
+CONTACT ME
+
+Perth, Australia+ (61) 417713124 prosolutions@gavinsoorma.com
+RECENT COMMENTS AND FEEDBACK
