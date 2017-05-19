@@ -1,1 +1,106 @@
 http://forums.databasejournal.com/showthread.php?47249-Moving-control-file-from-file-system-to-ASM-system
+
+sshivayo  sshivayo is offline
+Registered User
+Join Date
+Oct 2007
+Posts
+2
+Moving control file from file system to ASM system
+I have read this article posted on this site. It looks pretty good. I am talking about DBMS_TRANSFER_FILE.COPY_FILE();.
+I have little bit different issue. In production the whole setup is on ASM except control files of the instance is lying outside on file system.
+
+Let me be more clear the instance was created using ASM and one fine day a DBA crashed the setup. So we had to set it up at the earliest without the Control,system and sysaux file outside the ASM and the instance could be accessed. This is a production instance accessed by thousands of users across the continent over web. All these activity was carried out by a DBA when I was not here. Last monthly maintenance he moved system and sysaux file and left behind the control file and I have no idea how he did it.
+
+So I was looking for an easiest way of moving these control files to ASM with limited time usage as the production setup is across the ocean and I will be using WAN and Verizion conectivity to resolve this issue. I have read the DBMS_FILE_TRANSFER.COPY_FILE(). I am still finding it uncomfortable to use, please some one help me with its functionality and usage. It will be nice to let me know if it is not the correct way of doing it. Guide me to resolve this issue.
+
+Thanks in advance
+Shiva
+Reply With Quote Reply With Quote Share on Google+      
+10-24-2007, 01:53 PM #2 sshivayo  sshivayo is offline
+Registered User
+Join Date
+Oct 2007
+Posts
+2
+The package couldn't be used as duplicating the controlfile needs the instance to be do
+wn/or in nomount mode where the packages could never be used at this stages.
+
+To Move the controlfile from the Filesystem to ASM please refer to the following steps :
+
+1. Identify the location of the current controlfile:
+SQL> select name from v$controfile;
+
+NAME
+--------------------------------------------------------------------------------
+/oradata2/102b/oradata/P10R2/control01.ctl'
+
+2. Shutdown the database and start the instance:
+SQL> shutdown normal
+SQL> startup nomount
+
+3. Use RMAN to move the controlfile to ASM :
+$ rman nocatalog
+RMAN>connect target
+RMAN>restore controlfile to '<DISKGROUP_NAME>' from '<OLD_PATH>';
+
+e.g.
+
+RMAN> restore controlfile to '+DG1' from '/oradata2/102b/oradata/P10R2/control01.ctl';
+
+Starting restore at 23-DEC-05
+allocated channel: ORA_DISK_1
+channel ORA_DISK_1: sid=156 devtype=DISK
+
+channel ORA_DISK_1: copied control file copy
+Finished restore at 23-DEC-05
+
+
+We are only specifying the name of the diskgroup, so Oracle will create an OMF (Oracle Mana
+ged File). Use ASMCMD or sqlplus to identify the name assigned to the controlfile
+
+4. On the ASM instance, identify the name of the controlfile:
+
+Using ASMCMD:
+$ asmcmd
+ASMCMD> cd <DISKGROUP_NAME>
+ASMCMD> find -t controlfile . *
+
+
+Changing the current directory to the diskgroup where the controlfile was created will speed the search.
+
+Output:
+
+ASMCMD> find -t controlfile . *
++DG1/P10R2/CONTROLFILE/backup.308.577785757
+ASMCMD>
+
+Note the name assigned to the controlfile. Although the name starts with the backup word, that does not indicate is a backup of the file. 
+This just the name assigned for the identical copy of the current controlfile.
+
+5. On the database side:
+
+* Modify init.ora or spfile, replacing the new path to the init parameter control_files.
+* if using init<SID>.ora, just modify the control_files parameter and restart the database.
+* If using spfile,
+
+1) startup nomount the database instance
+2) alter system set control_files='+DG1/P10R2/CONTROLFILE/backup.308.577785757' scope=spfile;
+3) shutdown immediate
+
+6.
+start the instance.
+
+Verify that new control file has been recognized. If the new controlfile was not used, the complete procedure needs to be repeated.
+
+NOTE : Steps 3 to 5 Could be repeated to multiplexes the contolfile to more than on each diskgroup .
+Reply With Quote Reply With Quote Share on Google+      
+11-22-2007, 02:36 AM #3 kssekhar  kssekhar is offline
+Registered User
+Join Date
+Nov 2007
+Location
+Chennai
+Posts
+1
+As per my assuption, DBMS_FILE_TRANSFER.COPY_FILE() will be used for tablespaces. but not with controlfiles.
