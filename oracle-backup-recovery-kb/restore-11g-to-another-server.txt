@@ -2,3 +2,24 @@
 RESTORE 11G DATABASE TO ANOTHER SERVER
 ==================================================
 https://gavinsoorma.com/2013/07/restore-rman-backup-to-another-server-for-testing-disaster-recovery-procedures-as-well-as-for-cloning/
+
+
+RMAN> startup nomount force;
+
+RMAN> restore spfile to '/tmp/spfile.ora' from '/home/oracle/stage/o1_mf_s_819826669_8x7w7g70_.bkp';
+-OR-
+RMAN> restore spfile from '/home/oracle/stage/o1_mf_s_819826669_8x7w7g70_.bkp';
+(this may error out forcing to use 'to' clause)
+
+SQL> create pfile='/tmp/pfile.ora' from spfile='/tmp/spfile.ora';
+-OR-
+SQL> create pfile from spfile;
+(if using standard $ORACLE_HOME/dbs locations)
+
+Edit pfile as needed - particularly dump dests, file_name_convert, memory etc
+
+SQL> create spfile from pfile;
+-OR-
+SQL> create spfile from pfile='/tmp/pfile.ora';
+
+Find the spfile created as $ORACLE_HOME/dbs/spfile<SID>.ora
