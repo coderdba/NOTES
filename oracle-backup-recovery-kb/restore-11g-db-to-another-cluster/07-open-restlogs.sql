@@ -1,0 +1,1 @@
+alter database open resetlogs;
