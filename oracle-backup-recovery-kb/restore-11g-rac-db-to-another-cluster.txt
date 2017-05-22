@@ -1,8 +1,41 @@
 ==================================================
-RESTORE 11G DATABASE TO ANOTHER SERVER
+RESTORE 11G DATABASE TO ANOTHER CLUSTER
 ==================================================
+http://facedba.blogspot.in/2013/12/restore-oracle-database-rac-asm-to-rac.html
+
+http://www.oracle-class.com/?p=2126
 https://gavinsoorma.com/2013/07/restore-rman-backup-to-another-server-for-testing-disaster-recovery-procedures-as-well-as-for-cloning/
 
+
+==========================
+HIGH LEVEL STEPS
+==========================
+Add db and instances to crs (srvctl add db, add instance)
+restore spfile
+create a temp pfile from spfile
+edit the temp pfile 
+- set cluster_database=false
+- DO NOT change control file names in pfile - except if the diskgroups are different
+- Set db_file_name_convert, log_file_name_convert if necessary
+- Remove log_archive_dest_2 etc standby settings
+Create a new spfile (in dbs folder) using this file
+
+restore controlfile
+restore db
+recover db (restores arch logs)
+open reset logs
+
+alter system set cluster_database=true scope=spfile
+create spfile in asm
+edit pfile in dbs folder to point to the asm spfile
+copy pfile to node2 with node2 pfile name
+restart instance 1 - with sqlplus
+start instance 2 - with sqlplus 
+stop database using srvctl
+start database using srvctl
+
+==========================
+==========================
 
 RMAN> startup nomount force;
 
