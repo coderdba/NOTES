@@ -79,6 +79,19 @@ Example /etc/hosts
 172.168.0.101   mychef devops1 --> one of these has to be the given FQDN for the IP of the machine
 ::1             localhost 
 
+---- If you want to use a different certificate:
+       Because the FQDN has already been configured, do the following:
+
+       Replace the contents of /var/opt/opscode/nginx/ca/FQDN.crt and /var/opt/opscode/nginx/ca/FQDN.key 
+       with the certifying authority’s files.
+
+       Reconfigure the Chef server:
+
+       $ chef-server-ctl reconfigure
+       Restart the Nginx service to load the new key and certificate:
+
+       $ chef-server-ctl restart nginx
+
 -- CONNECT TO WEB-UI
 http://devops1 (assuming devops1 is the FQDN)
 or
@@ -90,16 +103,40 @@ It will warn about self-signed-certificate - accept that and proceed.
 ---------
 CONFIGURE
 ---------
-- 
-
-
---> TBD next steps
 
 - CREATE AN ADMINISTRATOR
 $ chef-server-ctl user-create USER_NAME FIRST_NAME LAST_NAME EMAIL 'PASSWORD' --filename FILE_NAME
 
+The file_name is for the user validation private-key.  
+--> Keept the file safe
+
+Example:
+chef-server-ctl user-create rama rama chandra rama.chandra@company.com 'rama123' --filename /tmp/rama.pem
+
+-- ALTERNATIVELY
+Create a user in the Web-UI.
+To get the private key for the user, download the user's starter kit 
+--> CAUTION - that will reset the key for the user
+
+- CREATE AN ORGANIZATION
+$ chef-server-ctl org-create short_name 'full_organization_name' --association_user user_name --filename ORGANIZATION-validator.pem
+
+The association_user is the user that is the admin for the organization
+Save the organization validator pem file safe - though it can be downloaded 
+
+Example:
+$ chef-server-ctl org-create 4thcoffee 'Fourth Coffee, Inc.' --association_user stevedanno --filename /path/to/4thcoffee-validator.pem
+
+-- ALTERNATIVELY
+Create the organization in the Web-UI
+Click 'reset validation key' to get the key for the organization
 
 
+--> TBD next steps
+
+===============================
+INFO AND SUNDRY
+===============================
 ------
 --> for server and chef-manage install use the above doc
 --> for chef-manage install:
