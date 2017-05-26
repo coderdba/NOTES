@@ -35,20 +35,25 @@ GET THE GIT CLIENT AND SECRET FOR YOUR APP
 You must register Drone with GitHub to obtain the client and secret. The authorization callback url must match <scheme>://<host>/authorize
 
 ----------------------------
-CREATE DOCKER-COMPOSE.YML
+Set the environment
 ----------------------------
-
-- Set the environment
 export DRONE_GITHUB_CLIENT=1b5721a6c13bf3cbd1bd
 export DRONE_GITHUB_SECRET=36547eba420b7f268a687f4696e24569d65e076d
 export DRONE_SECRET=some_string (and remember it)
+
+----------------------------
+CREATE DOCKER-COMPOSE.YML
+----------------------------
+NOTE: Port forwarding is done in the following directive
+    ports:
+      - 80:8000
 
 - docker-compose.yml
 version: '2'
 
 services:
   drone-server:
-    image: drone/drone:0.5
+    image: drone/drone:0.7
     ports:
       - 80:8000
     volumes:
@@ -62,7 +67,7 @@ services:
       - DRONE_SECRET=${DRONE_SECRET}
 
   drone-agent:
-    image: drone/drone:0.5
+    image: drone/drone:0.7
     command: agent
     restart: always
     depends_on: [ drone-server ]
@@ -71,7 +76,7 @@ services:
     environment:
       - DRONE_SERVER=ws://drone-server:8000/ws/broker
       - DRONE_SECRET=${DRONE_SECRET}
-
+      
 ---------------------------------
 BRING UP DRONE
 ---------------------------------
@@ -81,3 +86,23 @@ $ docker-compose down
 
 up will bring up a container with drone in it
 down will destroy the container
+
+- Create/start
+$ docker-compose up -d
+Creating network "docker_default" with the default driver
+Creating docker_drone-server_1
+Creating docker_drone-agent_1
+
+- Verify
+$ docker ps
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS                                   NAMES
+adc6bc98be6e        drone/drone:0.7     "/drone agent"      5 seconds ago       Up 3 seconds        80/tcp, 443/tcp, 8000/tcp               docker_drone-agent_1
+2208c95f5b47        drone/drone:0.7     "/drone server"     6 seconds ago       Up 4 seconds        80/tcp, 443/tcp, 0.0.0.0:80->8000/tcp   docker_drone-server_1
+
+- Shutdown/destroy
+$ docker-compose down
+
+------------
+Access Drone
+------------
+http://localhost:80 --> note: 80 of host is forwarded to 8000 of drone container
