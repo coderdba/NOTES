@@ -1,3 +1,5 @@
+-- This give cell events and which SQL types (like create table, select etc) are causing them
+
 select event , non_exa_event, operation ,count(*)
  from
  (select event,
