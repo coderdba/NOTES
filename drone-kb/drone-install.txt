@@ -18,7 +18,9 @@ STEPS
 ================
 Setup Documentation docs.drone.io/installation
 
-- Download Dronke docker image
+----------------------------
+Download Dronke docker image
+----------------------------
 
 $ docker pull drone/drone:0.7
 
@@ -27,4 +29,44 @@ REPOSITORY             TAG                 IMAGE ID            CREATED          
 drone/drone            0.7                 c58de76939e9        20 hours ago        25.72 MB
 postgres               latest              ca3a55649cfc        6 days ago          269.1 MB
 
+------------------------------------------
+GET THE GIT CLIENT AND SECRET FOR YOUR APP
+------------------------------------------
+You must register Drone with GitHub to obtain the client and secret. The authorization callback url must match <scheme>://<host>/authorize
 
+----------------------------
+CREATE DOCKER-COMPOSE.YML
+----------------------------
+
+- Set the environment
+export DRONE_GITHUB_CLIENT=1b5721a6c13bf3cbd1bd
+export DRONE_GITHUB_SECRET=36547eba420b7f268a687f4696e24569d65e076d
+
+- docker-compose.yml
+version: '2'
+
+services:
+  drone-server:
+    image: drone/drone:0.5
+    ports:
+      - 80:8000
+    volumes:
+      - ./drone:/var/lib/drone/
+    restart: always
+    environment:
+      - DRONE_OPEN=true
+      - DRONE_GITHUB=true
+      - DRONE_GITHUB_CLIENT=${DRONE_GITHUB_CLIENT}
+      - DRONE_GITHUB_SECRET=${DRONE_GITHUB_SECRET}
+      - DRONE_SECRET=${DRONE_SECRET}
+
+  drone-agent:
+    image: drone/drone:0.5
+    command: agent
+    restart: always
+    depends_on: [ drone-server ]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - DRONE_SERVER=ws://drone-server:8000/ws/broker
+      - DRONE_SECRET=${DRONE_SECRET}
