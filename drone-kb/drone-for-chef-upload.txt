@@ -8,6 +8,8 @@ https://hub.docker.com/r/jmccann/drone-chef/ --> to publish to chef server
 
 http://plugins.drone.io/jmccann/chef-supermarket/ --> to publish to internal or public chef-supermarket
 
+Webhooks: https://developer.github.com/webhooks/creating/
+
 ====================
 CREATE A COOKBOOK
 ====================
@@ -18,4 +20,65 @@ CREATE .DRONE.YML
 ====================
 Create .drone.yml in the base directory of the cookbook
 
+pipeline:
+  test:
+    image: jmccann/drone-chefdk:1.2.22
+    when:
+      event: pull_request
+    commands:
+      - echo "Testing"
+      - rubocop --only Syntax
 
+  upload:
+    image: jmccann/drone-chef-supermarket:1
+    pull: true
+    when:
+      event: push
+      branch: master
+    user: ${CHEF_USERNAME}
+    private_key: ${CHEF_PRIV_KEY}
+    server: https://devops1
+    ssl_verify: false
+
+  deploy:
+    image: jmccann/drone-chef:2
+    pull: true
+    when:
+      event: push
+      branch: master
+    user: ${CHEF_USERNAME}
+    private_key: ${CHEF_PRIV_KEY}
+    server: https://devops1
+    org: test1
+    berks_files:
+      - Berksfile
+    ssl_verify: false
+
+======================
+SET ENVIRONMENT
+======================
+export DRONE_HOST=<host where drone is running - not required for the current purpose>
+export DRONE_SECRET=dronesecret123 (or other secret given during drone install)
+export DRONE_GITHUB_CLIENT=<github client created for the given drone installation>
+export DRONE_GITHUB_SECRET=<github secret created for the given drone installation>
+export DRONE_SERVER=http://localhost:80
+export DRONE_TOKEN=<token gotten from drone>
+
+====================
+ADD SECRET
+====================
+
+TBD - these steps need to be tested yet 
+
+The user of chef-user.pem should have read-write/admin access to the organization mentioned in drone.yml.
+
+•	drone secret add --image=jmccann/drone-chef:2 coderdba/drone-chef-upload-test1 CHEF_PRIV_KEY @/Users/dbgsm0/C/keys/Chef-Keys-OwnChef/user-validator-chef-vagrantVm-devops1-gowrish.pem
+
+•	drone secret add --conceal --image=drone.docker.target.com/drone-chef:2 <org name>/<cookbookname> CHEF_USERNAME the_chef_username
+--> alternatively, set the environment CHEF_USERNAME
+
+•	drone sign <orgname>/<cookbookname>
+
+•	git add .
+•	git commit -m “cookbok to use drone now on”
+•	git push origin <branch>
