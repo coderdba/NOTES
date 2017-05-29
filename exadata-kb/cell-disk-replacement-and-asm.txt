@@ -1,0 +1,27 @@
+======================================
+CELL DISK REPLACEMENT AND ASM
+======================================
+
+------------------------
+Get sufficient work-time
+------------------------
+If ASM makes a disk offline, it will drop it after some time.
+Ensure sufficient time to replace the erring cell disk - by setting disk_repair_time in ASM.
+
+- Check
+select dg.name, a.value from v$asm_diskgroup
+dg, v$asm_attribute a where dg.group_number=a.group_number and
+a.name='disk_repair_time';
+
+- Set
+ALTER DISKGROUP DATA SET ATTRIBUTE DISK_REPAIR_TIME'='10.5H';
+
+------------------------
+VERIFY REDUNDANCY
+------------------------
+Check whether ASM diskgroup will crash if a cell goes down
+--> that is, failgroup/redundancy is not sufficient
+
+$ cellcli -e list griddisk attributes name, status, asmmodestatus, asmdeactivationoutcome
+
+If any disk does not return asmdeactivationoutcome='Yes' check the redundancy for that diskgroup.
