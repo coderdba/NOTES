@@ -57,11 +57,35 @@ NOTE: When asm diskgroup is created, all cells are presented to it (see later in
 - NAMING CONVENTION
 
 -- Cell Disk
+
+CD_NN_CELLMM
+'NN' is the serial number of the cell disk in the cell number 'MM'
+
+Examlple:
 CD_00_CELL01
-wher 00 is the serial number of the cell disk in the cell CELL01 - 00, 01, 02 etc
+CD_01_CELL01
+...
+...
+
+CD_00_CELL02
+CD_01_CELL02
+...
+...
 
 -- Grid Disk
+NOTE: Typically, for proper layout and efficient redundancy, use all celldisks to create griddisks for an ASM diskgroup
+
+DISGROUP_CELLDISK
+
 DATA1_CD_00_CELL01
+DATA1_CD_01_CELL01
+...
+...
+
+DATA1_CD_00_CELL02
+DATA1_CD_01_CELL02
+
+
 
 - CHECK FREE SPACE IN CELLDISK
 
@@ -72,28 +96,64 @@ CellCLI> LIST CELLDISK where freeSpace != 0 DETAIL
 # cellcli -e list celldisk detail 
 --> Look for disks with freespace > 0 
 
-- CREATE GRIDDISKS
+- CREATE GRIDDISKS AND ASM DISKGROUP
 
-Example:  Create one griddisk each in each cell (cell01 to cell04) for data-diskgroup
+-- Example 1: Use just one cell disk in each cell (though usually not done like this) and mirror across multiple cells
 
---> on cell01
-# cellcli -e create griddisk DATA1_CD_00_cell01 celldisk=CD_00_cell01,size=25G
+   NOTE: In this example the 'usable size' of the ASM diskgroup will be 25G * 1 * 4 / 3
+        
+        --- CREATE THE GRIDDISKS
+        
+        For DATA1 ASM diskgroup - Create one griddisk each in each cell  (cell01 to cell04) on celldisk 00 of each cell 
 
---> on cell02
-# cellcli -e create griddisk DATA1_CD_00_cell03 celldisk=CD_00_cell01,size=25G
+        --> on cell01
+        # cellcli -e create griddisk DATA1_CD_00_cell01 celldisk=CD_00_cell01,size=25G
 
---> on cell03
-# cellcli -e create griddisk DATA1_CD_00_cell03 celldisk=CD_00_cell01,size=25G
+        --> on cell02
+        # cellcli -e create griddisk DATA1_CD_00_cell03 celldisk=CD_00_cell01,size=25G
 
---> on cell04
-# cellcli -e create griddisk DATA1_CD_00_cell04 celldisk=CD_00_cell01,size=25G
+        --> on cell03
+        # cellcli -e create griddisk DATA1_CD_00_cell03 celldisk=CD_00_cell01,size=25G
 
-- CREATE ASM DISKGROUP
-The disk name should start with 'o/'.
+        --> on cell04
+        # cellcli -e create griddisk DATA1_CD_00_cell04 celldisk=CD_00_cell01,size=25G
 
-SQL> CREATE DISKGROUP DATA1 HIGH REDUNDANCY  DISK 'o/*/DATA1_CD*' SIZE 25G attribute 'compatible.rdbms'='11.2.0.1', 'compatible.asm'='12.1.0.2', 'au_size'='4M', 'appliance.mode'='true', 'cell.smart_scan_capable'='TRUE';
+        --- CREATE ASM DISKGROUP
+        NOTE: The disk name should start with 'o/'.
+        NOTE: For redundancy the griddisks should be on different cells
+        NOTE: DATA1_CD_00 - '00' is also added in the disk pattern so that griddisks on only 00 celldisk will be used
 
+        SQL> CREATE DISKGROUP DATA1 HIGH REDUNDANCY  DISK 'o/*/DATA1_CD_00*' SIZE 25G attribute 
+             'compatible.rdbms'='11.2.0.1', 'compatible.asm'='12.1.0.2', 'au_size'='4M', 
+             'appliance.mode'='true', 'cell.smart_scan_capable'='TRUE';
 
+-- Example 2: Use ALL cell disk in each cell (usually 12 disks will be there in each cell) and mirror across multiple cells
+
+   NOTE: In this example the 'usable size' of the ASM diskgroup will be 25G * 12 * 4 / 3
+
+        --- CREATE THE GRIDDISKS
+        
+        For DATA1 ASM diskgroup - Create one griddisk each in each cell  (cell01 to cell04) on celldisk 00 of each cell 
+
+        --> on cell01 to cell04 (or cell05/6/7 ... per your setup)
+        # cellcli -e create griddisk DATA1_CD_00_cell01 celldisk=CD_00_cell01,size=25G
+        # cellcli -e create griddisk DATA1_CD_01_cell01 celldisk=CD_01_cell01,size=25G
+        ...
+        ...
+        # cellcli -e create griddisk DATA1_CD_10_cell01 celldisk=CD_00_cell01,size=25G
+        # cellcli -e create griddisk DATA1_CD_11_cell01 celldisk=CD_01_cell01,size=25G
+        
+        ... similarly create 12 griddisks in other cells also - replacing cell01 with cell02 etc
+        
+        --- CREATE ASM DISKGROUP
+        NOTE: The disk name should start with 'o/'.
+        NOTE: For redundancy the griddisks should be on different cells
+        NOTE: DATA1_CD_* - '00' is NOT added in the disk pattern so that 'DATA1' griddisks on ALL celldisks will be used
+        
+        SQL> CREATE DISKGROUP DATA1 HIGH REDUNDANCY  DISK 'o/*/DATA1_CD_*' SIZE 25G attribute 
+             'compatible.rdbms'='11.2.0.1', 'compatible.asm'='12.1.0.2', 'au_size'='4M', 
+             'appliance.mode'='true', 'cell.smart_scan_capable'='TRUE';
+             
 =======
 ILOM
 =======
