@@ -28,3 +28,41 @@ $ cellcli -e list griddisk attributes name, status, asmmodestatus, asmdeactivati
 
 If any disk does not return asmdeactivationoutcome='Yes' check the redundancy for that diskgroup.
 --> It means that the specific disk/diskgroup does not have sufficient redundancy.
+
+----------------------------
+INACTIVATE DISKS
+----------------------------
+Once all disks show asmdeactivationoutcome=Yes, then inactivate the disks
+
+# cellcli -e alter griddisk all inactive
+
+- Verify
+
+--> should show asmmodestatus=OFFLINE or asmmodestatus=UNUSED/OFFLINE and asmdeactivationoutcome=Yes 
+# cellcli -e list griddisk attributes name,status,asmmodestatus,asmdeactivationoutcome
+
+--> should show inactive
+# cellcli -e list griddisk
+
+-------------------------
+SHUTDOWN THE CELL
+-------------------------
+# shutdown -h now
+# shutdown -F -r now  (this will force a fsck on reboot)
+
+-------------------------
+AFTER RESTART
+-------------------------
+- Activate the grid disks
+# cellcli -e alter griddisk all active
+
+- Verify if all are 'active'
+# cellcli -e list griddisk
+
+- Wait for them be online
+--> during this process, the extents that were not written to these disks during downtime will be written to them
+--> this does not do a rebalance
+# cellcli -e list griddisk attributes name, asmmodestatus
+
+- 
+
