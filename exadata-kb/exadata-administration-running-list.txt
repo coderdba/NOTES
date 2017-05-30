@@ -85,8 +85,6 @@ DATA1_CD_01_CELL01
 DATA1_CD_00_CELL02
 DATA1_CD_01_CELL02
 
-
-
 - CHECK FREE SPACE IN CELLDISK
 
 CellCLI> LIST CELLDISK where freeSpace != 0 DETAIL
@@ -153,7 +151,29 @@ CellCLI> LIST CELLDISK where freeSpace != 0 DETAIL
         SQL> CREATE DISKGROUP DATA1 HIGH REDUNDANCY  DISK 'o/*/DATA1_CD_*' SIZE 25G attribute 
              'compatible.rdbms'='11.2.0.1', 'compatible.asm'='12.1.0.2', 'au_size'='4M', 
              'appliance.mode'='true', 'cell.smart_scan_capable'='TRUE';
-             
+   
+----------------------------------
+RESIZE GRIDDISKS AND ASM DISKGROUP
+----------------------------------
+http://asmsupportguy.blogspot.in/2014/08/how-to-resize-grid-disks-in-exadata.html
+
+To grow an ASM diskgroup, no need to add new griddisks - resize the griddisks and resize the asm disksgroup.
+
+STEP1 - Resize griddisks - do this on ALL CELLS that participate in 'DATA' ASM diskgroup 
+# cellcli -e alter griddisk  DATA_CD_00_exacell01, DATA_CD_01_exacell01, DATA_CD_02_exacell01, DATA_CD_03_exacell01, DATA_CD_04_exacell01, DATA_CD_05_exacell01, DATA_CD_06_exacell01, DATA_CD_07_exacell01, DATA_CD_08_exacell01, DATA_CD_09_exacell01, DATA_CD_10_exacell01, DATA_CD_11_exacell01 size=50G;
+...
+...
+Do this on all cells replacing exacell01 with appropriate string
+
+STEP2 - Resize ASM diskgroup
+SQL> ALTER DISKGROUP DATA RESIZE ALL;
+
+This will start a rebalance - watch it with the following command until "no rows selected" for this diskgroup.
+SQL> select * from gv$asm_operation;
+
+Check that the ASM sees the new size, with the following command:
+SQL> select name, total_mb from v$asm_disk_stat where name like 'DATA%';
+
 =======
 ILOM
 =======
