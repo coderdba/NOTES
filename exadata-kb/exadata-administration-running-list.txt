@@ -184,6 +184,56 @@ http://www.toadworld.com/platforms/oracle/w/wiki/11517.manually-create-cell-disk
 When a bad hard disk is replaced in a cell, the auto-create process should re-create the lost celldisk and griddisks.
 However, if they are not automatically recreated, create them manually using steps in the above site/note.
 
+- MAIN STEPS
+
+Hard Disk 9 in the Storage cell 2 was replaced. From the “list alerthistory” it is confirmed that the Cell Disk and Grid Disks were not created automatically.
+CellCLI> list alerthistory
+
+         21_4   2015-02-20T11:29:34-06:00       clear           "Data hard disk was replaced. Status       : NORMAL Manufacturer : HITACHI Model Number : H7220AA30SUN2.0T Size         : 2.0TB Serial Number : 1422M8TTYZ Firmware     : JKAOA28A Slot Number   : 9 Cell Disk     : Not configured Grid Disk     : Not configured"
+
+Verify that the Physical Disk and the LUN are create after disk replacement 
+but the Cell Disk and Grid Disks are not created.
+
+        Physical disk is present and shows the updated “PhysicalInsertTime”. The LUN number is 0_9.
+        CellCLI> list physicaldisk 18:9 detail
+        
+        Cell disk is not created and the status is set to “not present”
+        CellCLI> list celldisk where lun=0_9 detail
+
+        CellCLI> list celldisk
+         CD_00_oracloudceladm02         normal
+         ...
+         CD_09_oracloudceladm02         not present
+         
+        CellCLI> list griddisk where celldisk=CD_09_oracloudceladm02 detail
+        --> shows for missing ones "status: not present" 
+        
+Create the celldisk
+CellCLI> create celldisk CD_09_oracloudceladm02 lun=0_9
+
+Identify the Grid Disk name, size and offset by running the following command on a different Grid Disk.
+CellCLI> list griddisk where celldisk=CD_08_oracloudceladm02 attributes name,size,offset
+         DATA_CD_08_oracloudceladm02           1456.9375G     32M
+         RECO_CD_08_oracloudceladm02           375.609375G     1456.984375G
+         SYSTEMDG_CD_08_oracloudceladm02       29.109375G     1832.59375G
+
+Create the Grid Disk using the sizes show in the previous command output.
+CellCLI> create griddisk DATA_CD_09_oracloudceladm02 celldisk=CD_09_oracloudceladm02,size=1456.9375G
+GridDisk DATA_CD_09_oracloudceladm02 successfully created
+
+CellCLI> create griddisk RECO_CD_09_oracloudceladm02 celldisk=CD_09_oracloudceladm02,size=375.609375G
+GridDisk RECO_CD_09_oracloudceladm02 successfully created
+
+CellCLI> create griddisk SYSTEMDG_CD_09_oracloudceladm02 celldisk=CD_09_oracloudceladm02,size=29.109375G
+GridDisk SYSTEMDG_CD_09_oracloudceladm02 successfully created
+
+Verify the Grid Disks are created using the correctly
+CellCLI> list griddisk where celldisk=CD_09_oracloudceladm02 attributes name,size,offset
+         DATA_CD_09_oracloudceladm02           1456.9375G     32M
+         RECO_CD_09_oracloudceladm02           375.609375G     1456.984375G
+         SYSTEMDG_CD_09_oracloudceladm02       29.109375G     1832.59375G
+
+
 =======
 ILOM
 =======
