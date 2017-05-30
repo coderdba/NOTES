@@ -7,6 +7,13 @@ Monitoring storage servers - http://www.oracle.com/technetwork/articles/servers-
 -------------------
 DISK ATTRIBUTES
 -------------------
+
+CellCLI> list physicaldisk where status=critical|normal detail
+CellCli> list physicaldisk attributes name (attribute size does not exist for physicaldisk)
+
+CellCLI> list celldisk attributes name, size
+CellCLI> list celldisk detail
+
 CellCLI> list griddisk attributes name,asmmodestatus,asmdeactivationoutcome
 DATA1_CD_00_ed1celadm02	 ONLINE	 Yes
 DATA1_CD_01_ed1celadm02	 ONLINE	 Yes
@@ -14,8 +21,7 @@ DATA1_CD_01_ed1celadm02	 ONLINE	 Yes
 CellCLI> list griddisk attributes name, size
 CellCLI> list griddisk detail
 
-CellCLI> list celldisk attributes name, size
-CellCLI> list celldisk detail
+CellCLI> LIST CELLDISK where freeSpace != 0 DETAIL
 
 -------------------
 DISK ERROR
@@ -36,6 +42,56 @@ CellCLI> list alerthistory
 
 
 CellCLI> LIST ALERTHISTORY WHERE severity = 'critical' AND examinedBy = '' DETAIL
+
+
+----------------------------------
+CREATE GRIDDISKS AND ASM DISKGROUP
+----------------------------------
+Celldisks are whole physical disks (formatted of sorts as 'cell disks')
+Griddisks are slices of celldisk - they will be used in ASM diskgroup creation
+IMPORTANT - to enable 'redundancy' during ASM diskgroup creation, 
+            make griddisks to use in same disk group with the same size and naming convetion across the cells
+NOTE: When asm diskgroup is created, all cells are presented to it (see later in this doc)
+      However, depending upon the redundancy set for the diskgroup, the usable-space gets reduced
+
+- NAMING CONVENTION
+
+-- Cell Disk
+CD_00_CELL01
+wher 00 is the serial number of the cell disk in the cell CELL01 - 00, 01, 02 etc
+
+-- Grid Disk
+DATA1_CD_00_CELL01
+
+- CHECK FREE SPACE IN CELLDISK
+
+CellCLI> LIST CELLDISK where freeSpace != 0 DETAIL
+
+- OR -
+
+# cellcli -e list celldisk detail 
+--> Look for disks with freespace > 0 
+
+- CREATE GRIDDISKS
+
+Example:  Create one griddisk each in each cell (cell01 to cell04) for data-diskgroup
+
+--> on cell01
+# cellcli -e create griddisk DATA1_CD_00_cell01 celldisk=CD_00_cell01,size=25G
+
+--> on cell02
+# cellcli -e create griddisk DATA1_CD_00_cell03 celldisk=CD_00_cell01,size=25G
+
+--> on cell03
+# cellcli -e create griddisk DATA1_CD_00_cell03 celldisk=CD_00_cell01,size=25G
+
+--> on cell04
+# cellcli -e create griddisk DATA1_CD_00_cell04 celldisk=CD_00_cell01,size=25G
+
+- CREATE ASM DISKGROUP
+The disk name should start with 'o/'.
+
+SQL> CREATE DISKGROUP DATA1 HIGH REDUNDANCY  DISK 'o/*/DATA1_CD*' SIZE 25G attribute 'compatible.rdbms'='11.2.0.1', 'compatible.asm'='12.1.0.2', 'au_size'='4M', 'appliance.mode'='true', 'cell.smart_scan_capable'='TRUE';
 
 
 =======
