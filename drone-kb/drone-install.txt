@@ -193,6 +193,47 @@ Type: git
 Private: true
 Remote: https://www.github.com/coderdba/cookbook_name
 
+=========
+SSL
+=========
+Generate key and cert:
+openssl req -new -newkey rsa:2048 -days 365 -nodes -x509 -keyout server.key -out server.crt
+
+Modify docker-compose.yml:
+
+version: '2'
+
+services:
+  drone-server:
+    image: drone/drone:0.7
+    ports:
+      - 8080:8000
+    volumes:
+      - ./drone:/var/lib/drone/
+      - ./drone/cert:/var/lib/drone/cert/
+      - /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
+    restart: always
+    environment:
+      - DRONE_OPEN=true
+      - DRONE_GITHUB=true
+      - DRONE_GITHUB_URL=${DRONE_GITHUB_URL}
+      - DRONE_GITHUB_CLIENT=${DRONE_GITHUB_CLIENT}
+      - DRONE_GITHUB_SECRET=${DRONE_GITHUB_SECRET}
+      - DRONE_SECRET=${DRONE_SECRET}
+      - DRONE_GITHUB_SKIP_VERIFY=${DRONE_GITHUB_SKIP_VERIFY}
+      - DRONE_SERVER_CERT=/var/lib/drone/cert/server.crt
+      - DRONE_SERVER_KEY=/var/lib/drone/cert/server.key
+
+  drone-agent:
+    image: drone/drone:0.7
+    command: agent
+    restart: always
+    depends_on: [ drone-server ]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - DRONE_SERVER=wss://docker-host-name(or should it be left as drone-server):8080/ws/broker
+      - DRONE_SECRET=${DRONE_SECRET}
 
 =====================
 APPENDIX
