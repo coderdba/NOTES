@@ -1,0 +1,31 @@
+http://dba-oracle.com/bk_ora_19505_tips.htm
+
+ORA-19505: failed to identify file "/zfs/backup/DB_UNIQUE_NAME/L0_dfdsfs-12fsdf0"
+ORA-27037: unable to obtain file status
+Linux-x86_64 Error: 2: No such file or directory
+Additional information: 3
+
+Problem:
+
+I got an ORA-19505 error while doing RMAN recovery with the following error message:
+
+RMAN-03002: failure of Duplicate Db command at 07/17/2006 10:14:14
+RMAN-03015: error occurred in stored script Memory Script
+ORA-19505: failed to identify file "/backup/rman_0606/stby_ctl_7062.rman"
+ORA-27037: unable to obtain file status
+IBM AIX RISC System/6000 Error: 2: No such file or directory
+Additional information: 3
+
+How should I go about resolving this error?
+
+Answer:
+
+You need to run a crosscheck to update your controlfiles. Doing so will make sure that the RMAN is only looking for non-expired files.
+
+RMAN first checks to insure that the backups it knows about are present. You need to run a crosscheck after the backup so that the control file/catalog is updated and knows that the old backups are no longer present. Then when you run the clone it will only look for the last backup before starting the clone.
+
+The Oracle documentation says the following about ORA-19505:
+
+ORA-19505: failed to identify file "string"
+Cause: call to identify the file returned an error
+Action: check additional messages, and check if the file exists
