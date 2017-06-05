@@ -187,7 +187,7 @@ where
     a.db_key = b.db_key 
 and a.dbinc_key = b.dbinc_key 
 and a.site_key = b.site_key 
-and b.db_unique_name like 'E06P0111%' 
+and b.db_unique_name like 'XYZ%' 
 and b.database_role = 'PRIMARY'
 and b.db_key = c.db_key
 and a.session_key = c.session_key
