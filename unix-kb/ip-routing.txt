@@ -1,0 +1,72 @@
+https://serverfault.com/questions/182550/specifing-ip-address-for-outbound-connections-on-a-multi-ip-host
+
+========================================================
+WHICH IP IS MY HOST USING FOR OUTBOUND CONNECTIONS
+========================================================
+Just 'ping' does not show which IP of the host is being used for pinging/connecting to other servers.
+Use 'ping -I interface outsidehost' --> example 'ping -I eth0 outsidehost1'
+
+Try each interface and you will know which interface and IP the host uses.
+
+Steps are given below.
+
+-----------------------------
+LIST THE HOSTNAME AND ITS IP 
+-----------------------------
+NOTE:  this may not be the IP that is used by outbound (see ip route list step further below)
+
+# hostname
+myhost1
+
+# nslookup myhost1
+110.198.193.13
+
+----------------------------------------------------------
+LIST ALL IP ADDRESSES OF THE BOX
+----------------------------------------------------------
+# ip addr list
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 16436 qdisc noqueue state UNKNOWN 
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP qlen 1000
+    link/ether 00:16:3e:00:3f:f3 brd ff:ff:ff:ff:ff:ff
+    inet 110.198.193.13/23 brd 10.98.193.255 scope global eth0
+3: bondeth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP qlen 1000
+    link/ether 00:16:3e:61:0d:71 brd ff:ff:ff:ff:ff:ff
+    inet 110.166.140.96/23 brd 110.166.141.255 scope global bondeth0
+    inet 110.166.140.100/23 brd 110.166.141.255 scope global secondary bondeth0:1
+    inet 110.166.140.106/23 brd 110.166.141.255 scope global secondary bondeth0:4
+    inet 110.166.140.105/23 brd 110.166.141.255 scope global secondary bondeth0:5
+4: ib0: <BROADCAST,MULTICAST,SLAVE,UP,LOWER_UP> mtu 65520 qdisc pfifo_fast master bondib0 state UP qlen 1024
+    link/infiniband 80:00:05:4a:fe:80:00:00:00:00:00:00:00:21:28:00:65:ce:d3:0b brd 00:ff:ff:ff:ff:12:40:1b:ff:ff:00:00:00:00:00:00:ff:ff:ff:ff
+5: ib1: <BROADCAST,MULTICAST,SLAVE,UP,LOWER_UP> mtu 65520 qdisc pfifo_fast master bondib0 state UP qlen 1024
+    link/infiniband 80:00:05:4b:fe:80:00:00:00:00:00:00:00:21:28:00:65:ce:d3:0c brd 00:ff:ff:ff:ff:12:40:1b:ff:ff:00:00:00:00:00:00:ff:ff:ff:ff
+6: bond0: <BROADCAST,MULTICAST,MASTER> mtu 1500 qdisc noop state DOWN 
+    link/ether 00:00:00:00:00:00 brd ff:ff:ff:ff:ff:ff
+7: bondib0: <BROADCAST,MULTICAST,MASTER,UP,LOWER_UP> mtu 65520 qdisc noqueue state UP 
+    link/infiniband 80:00:05:4b:fe:80:00:00:00:00:00:00:00:21:28:00:65:ce:d3:0c brd 00:ff:ff:ff:ff:12:40:1b:ff:ff:00:00:00:00:00:00:ff:ff:ff:ff
+    inet 192.168.10.6/22 brd 192.168.11.255 scope global bondib0
+
+----------------------------------------------------------
+CHECK WHICH NETWORK IS USED FOR OUTBOUND CONNECTIONS
+----------------------------------------------------------
+# ip route list
+
+default via 101.166.140.1 dev bondeth0 --> NOTE THAT THIS IS USED FOR OUTBOUND
+110.166.140.0/23 dev bondeth0  proto kernel  scope link  src 110.166.140.96 --> THAT MEANS, THIS IS USED FOR OUTBOUND 
+110.198.192.0/23 dev eth0  proto kernel  scope link  src 110.198.193.13 --> NOT THIS
+192.168.8.0/22 dev bondib0  proto kernel  scope link  src 192.168.10.6 
+
+----------------------------------------------------------
+VERIFY
+----------------------------------------------------------
+- PING AN EXTERNAL BOX USING HOSTNAME'S INTERFACE
+# ping -I eth0 outsidehost1 
+PING 110.197.82.76 (110.197.82.76) from 110.198.193.13 eth0: 56(84) bytes of data.
+From 110.198.193.13 icmp_seq=2 Destination Host Unreachable
+
+- PING AN EXTERNAL BOX USING THE OUTBOUND INTERFACE
+# ping -T bondeth0 outsidehost1
+PING 110.197.82.76 (110.197.82.76) from 110.166.140.96 bondeth0: 56(84) bytes of data.
+64 bytes from 110.197.82.76: icmp_seq=1 ttl=60 time=1.10 ms
+64 bytes from 110.197.82.76: icmp_seq=2 ttl=60 time=1.16 ms
