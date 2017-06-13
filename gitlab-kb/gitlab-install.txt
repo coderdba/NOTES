@@ -1,16 +1,94 @@
 ========================
 GITLAB INSTALL
 ========================
+RHEL/CENTOS
+
 Installation 1: /u01/mywork/gitlab (olx0003)
 
-How to Install:
+==============
+How to Install
+==============
 http://www.techoism.com/how-to-install-gitlab-on-centosrhel/
 
+The following text taken directly from the above website:
+Step 1: Install and Configure the necessary dependencies
+
+You need to configure mail service on our server. We can use any mail service like postfix, sendmail, exim etc. In this article I am using postfix email service.
+
+# yum install postfix 
+# service postfix start
+# chkconfig postfix on
+# lokkit -s http -s ssh
+Step 2: Install other dependencies
+
+Now you need to install other dependencies packages. You following command to install dependencies:
+
+# yum install curl openssh-server cronie
+Step 3: Install GitLab package on Server
+
+Use following command to install GitLab packages on server.
+
+# curl https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.rpm.sh | # bash
+# yum install gitlab-ce
+If you are not comfortable installing the repository through a piped script, you can find the entire script here.
+
+Step 4: Change External URl
+
+If you want to change the external url the use follow below steps:
+
+# vim /etc/gitlab/gitlab.rb
+external_url 'http://host.domain.com'
+Step 5: Configure GitLab on Server
+
+# gitlab-ctl reconfigure
+Step 6: Acces and login GitLab
+
+You can browse GitLab from your browser using server IP or hostname. Use below details to login in GitLab:
+
+http://192.168.10.55
+or
+http://hostname
+Username: root 
+Password: 5iveL!fe
+gitlab
+
+gitlab1
+
+Note: If you do any changes in configuration file than you need to run reconfigure command to make the changes.Use following command to reconfigure:
+
+# gitlab-ctl reconfigure
+
+=================
+FILES/FOLDERS
+=================
+
+GitLab Detail:
+
+Main Configuration File: /var/opt/gitlab/gitlab-rails/etc/gitlab.yml
+GitLab Document Root: /opt/gitlab
+Default Repository Location: /var/opt/gitlab/git-data/repositories
+Default Nginx Configuration File: /opt/gitlab/embedded/conf/nginx.conf
+GitLab Nginx Configuration file Location: /var/opt/gitlab/nginx/conf
+Postgresql data Directory: /var/opt/gitlab/postgresql/data
+
+==============
 Port change:
+==============
+
 https://docs.gitlab.com/omnibus/settings/nginx.html
 https://serverfault.com/questions/585528/set-gitlab-external-web-port-number
 http://www.thecfguy.com/blog/how-to-change-default-port-for-gitlab/
 
+- Port is mentioned in /var/opt/gitlab/gitlab-rails/etc/gitlab.yml
+
+    host: olx0003
+    port: 80
+    https: false
+    
+
+===============
+START/STOP ETC
+===============
 gitlab-ctl stop
 gitlab-ctl start
 gitlab-ctl status
@@ -23,7 +101,9 @@ tail -f /var/log/gitlab/prometheus/current
 -rw-------. 1 root root  9644 Jun  1 05:29 gitlab-secrets.json
 drwxr-xr-x. 2 root root  4096 Jun  1 05:15 trusted-certs
 
+==============
 Status:
+==============
 # gitlab-ctl status
 down: gitaly: 1017688s, normally up; run: log: (pid 24536) 1019231s
 down: gitlab-monitor: 1017688s, normally up; run: log: (pid 25102) 1019199s
