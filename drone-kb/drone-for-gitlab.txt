@@ -11,7 +11,6 @@ How to: https://docs.gitlab.com/ee/integration/gitlab.html
 
 https://docs.gitlab.com/ee/integration/oauth_provider.html
 
-
 Application: droneolx0003
 
 Application Id	0f68ec502b07d165c5eb491e724ab5c3c6e1e410d7dac4f5b8897aec4b6e6083
@@ -22,6 +21,58 @@ Scopes
 api (Access your API)
 read_user (Read user information)
 openid (Authenticate using OpenID Connect)
+
+=====================
+docker-compose.yml
+=====================
+version: '2'
+
+services:
+  drone-server:
+    image: drone/drone:0.7
+    ports:
+      - 8080:8000
+    volumes:
+      - ./drone:/var/lib/drone/
+      - ./drone/cert:/var/lib/drone/cert/
+      - /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
+    restart: always
+    environment:
+      - DRONE_OPEN=true
+      - DRONE_GITLAB=true
+      - DRONE_GITLAB_URL=${DRONE_GITLAB_URL}
+      - DRONE_GITLAB_CLIENT=${DRONE_GITLAB_CLIENT}
+      - DRONE_GITLAB_SECRET=${DRONE_GITLAB_SECRET}
+      - DRONE_SECRET=${DRONE_SECRET}
+      - DRONE_GITLAB_SKIP_VERIFY=${DRONE_GITLAB_SKIP_VERIFY}
+
+  drone-agent:
+    image: drone/drone:0.7
+    command: agent
+    restart: always
+    depends_on: [ drone-server ]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - DRONE_SERVER=wss://olx0003:8080/ws/broker
+      - DRONE_SECRET=${DRONE_SECRET}
+
+=====================
+START AND STOP
+=====================
+
+docker-compose up  -d
+
+docker-compose down
+
+=====================
+ACCESS DRONE
+=====================
+http://olx0003:8080
+
+It comes with a login screen - and clicking 'login' will take you to gitlab application authorization screen.
+
+TBD - oauth_error every time trying to authroize
 
 =====================
 PRODUCT DOCUMENTATION
