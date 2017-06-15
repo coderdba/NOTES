@@ -23,7 +23,71 @@ read_user (Read user information)
 openid (Authenticate using OpenID Connect)
 
 =====================
-docker-compose.yml
+Environment File
+=====================
+export DRONE_GITLAB_URL=http://olx0003:8090
+
+# application droneolx0003
+export DRONE_GITLAB_CLIENT=18a32f33cc8c041677ceece0ff11db3d95a532c23d971ef691b485dc7ae5056b
+export DRONE_GITLAB_SECRET=500988b801c127b83a65feb4107148ebce2648bbb86b42aafa4f6e2dc0b68d4d
+
+
+# application droneolx0003-testagain
+#export DRONE_GITLAB_CLIENT=0cf9676e8779ad3629094487277cc4b58a0773aca0d30ae4b340a62d18b2452e
+#export DRONE_GITLAB_SECRET=ca96241eb4ef78c4f3bc367766d5e43687258ca61bf9d10bd108433eee065a21
+
+export DRONE_SECRET=t123
+
+export DRONE_GITLAB_SKIP_VERIFY=true
+#export DRONE_GITLAB_SKIP_VERIFY=false
+
+#export DRONE_SERVER_CERT=/mywork/drone/server.crt
+#export DRONE_SERVER_KEY=/u01/mywork/drone/server.key
+
+=====================
+docker-compose.yml - WORKING
+=====================
+version: '2'
+
+services:
+  drone-server:
+    image: drone/drone:0.7
+    #entrypoint: /bin/bash
+    extra_hosts:
+     #- "somehost:162.242.195.82"
+     #- "otherhost:50.31.209.229"
+     #- "olx0003:192.168.0.1"
+     - "olx0003:10.63.160.170"
+    ports:
+      - 8080:8000
+      - 122:22
+    volumes:
+      - ./drone:/var/lib/drone/
+      - ./drone/cert:/var/lib/drone/cert/
+      - /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
+    restart: always
+    environment:
+      - DRONE_OPEN=true
+      - DRONE_GITLAB=true
+      - DRONE_GITLAB_URL=${DRONE_GITLAB_URL}
+      - DRONE_GITLAB_CLIENT=${DRONE_GITLAB_CLIENT}
+      - DRONE_GITLAB_SECRET=${DRONE_GITLAB_SECRET}
+      - DRONE_SECRET=${DRONE_SECRET}
+      - DRONE_GITLAB_SKIP_VERIFY=true
+
+  drone-agent:
+    image: drone/drone:0.7
+    command: agent
+    restart: always
+    depends_on: [ drone-server ]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - DRONE_SERVER=ws://olx0003.hq.company.com:8080/ws/broker
+      - DRONE_SECRET=${DRONE_SECRET}
+
+=====================
+docker-compose.yml - INITIAL
 =====================
 version: '2'
 
