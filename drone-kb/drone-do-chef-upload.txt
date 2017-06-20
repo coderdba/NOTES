@@ -70,22 +70,47 @@ drone repo ls
 drone repo info gwrsh/myproject1
 drone repo info test/testproject1
 
-- Get the latest drone-chef docker image
+- Get the latest drone-chef docker image (on drone host where docker is running - MAY NOT BE A REQUIRED STEP)
 # docker pull jmccann/drone-chef:0.5
 
-- Add chef server username as a drone secret - for the repo
+- Add chef server username as a drone secret - for the repo (on workstation)
 . ./drone-env-olx0003.env
 
 drone secret add --conceal --image=jmccann/drone-chef:0.5 gwrsh/myproject1 CHEF_USER gwrsh
 
 NOTE: gwrsh/myproject1 is the gitlab repo - not the chef-server org-repo
 
-- Add chef server user's private key as a drone secret - for the repo
+- Add chef server user's private key as a drone secret - for the repo (on workstation)
 . ./drone-env-olx0003.env
 
 drone secret add --conceal --image=jmccann/drone-chef:0.5 gwrsh/myproject1 CHEF_USER_PRIVATE_KEY /u01/mywork/drone-cicd/gwrsh-chef-olx003-key.pem
 
 NOTE: gwrsh/myproject1 is the gitlab repo - not the chef-server org-repo
+
+- Sign the gitlab repo into drone (on workstation)
+drone sign gwrsh/myproject1
+
+- YML for deployment pipeline/build definition
+.drone.yml (in the gitlab cloned repo on workstation)
+
+#If you update this file don't forget to sign it via DRONE-CLI:
+#drone sign <orgname>/<cookbookname>
+#
+#
+pipeline:
+  deploy:
+    image: jmccann/drone-chef:0.5
+    pull: true
+    when:
+      event: push
+      branch: master
+    user: ${CHEF_USER}
+    private_key: ${CHEF_USER_PRIVATE_KEY}
+    server: https://oralx0003:443
+    org: test1
+    #berks_files:
+      #- Berksfile
+    ssl_verify: false
 
 = = = = = = = = = = = = = = = = =
 OLD NOTES BELOW
