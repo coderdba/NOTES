@@ -1,0 +1,22 @@
+[docker@olx0003 ~]$ docker run -P -d --name mongodb mongo
+docker: Error response from daemon: Conflict. The container name "/mongodb" is already in use by container "c7c0ab6cc659d86239e69aadbea89561ae4220af0ffd9a2d3a401e9c96c86f48". You have to remove (or rename) that container to be able to reuse that name.
+See 'docker run --help'.
+
+[docker@olx0003 ~]$ docker ps
+CONTAINER ID        IMAGE               COMMAND             CREATED              STATUS              PORTS                                                              NAMES
+0e83b33f6244        drone/drone:0.7     "/drone agent"      About a minute ago   Up About a minute   80/tcp, 443/tcp, 8000/tcp                                          drone_drone-agent_1
+1b479f69fe92        drone/drone:0.7     "/drone server"     About a minute ago   Up About a minute   80/tcp, 443/tcp, 0.0.0.0:32769->7342/tcp, 0.0.0.0:8080->8000/tcp   drone_drone-server_1
+
+[docker@olx0003 ~]$ docker ps -aq
+0e83b33f6244
+1b479f69fe92
+c7c0ab6cc659 --> this is the container that was stopped earlier
+
+[docker@olx0003 ~]$ docker start c7c0ab6cc659
+c7c0ab6cc659
+
+[docker@olx0003 ~]$ docker ps
+CONTAINER ID        IMAGE               COMMAND                  CREATED              STATUS              PORTS                                                              NAMES
+0e83b33f6244        drone/drone:0.7     "/drone agent"           About a minute ago   Up About a minute   80/tcp, 443/tcp, 8000/tcp                                          drone_drone-agent_1
+1b479f69fe92        drone/drone:0.7     "/drone server"          About a minute ago   Up About a minute   80/tcp, 443/tcp, 0.0.0.0:32769->7342/tcp, 0.0.0.0:8080->8000/tcp   drone_drone-server_1
+c7c0ab6cc659        mongo               "docker-entrypoint..."   About an hour ago    Up 5 seconds        0.0.0.0:32770->27017/tcp                                           mongodb
