@@ -12,6 +12,12 @@ Webhooks: Creating: https://developer.github.com/webhooks/creating/
 Webhooks: Expose localhost to internet using Ngrok: https://developer.github.com/webhooks/configuring/
 NGROK download/install: https://ngrok.com/download
 
+================================================================================
+IMPORTANT IMPORTANT IMPORTANT
+Use FQDN's everywhere in URLs etc - for drone, gitlab, chef servers
+Add non-default ports specifically to URLs
+================================================================================
+
 ========================================
 URLS
 ========================================
@@ -29,7 +35,7 @@ organization 'test1'
 -----
 DRONE
 -----
-http://olx0003:8080
+http://olx0003.hq.company.com:8080 (or http://olx003:8090, not preferred as docker containers cannot recognize non-fqdn)
 
 Drone token for the user:  Logon to drone --> account --> show token
 --> it is a long string like: 
@@ -38,7 +44,7 @@ sdsfdsf3dsf.eyJ0ZXh0IjoiZ293cmlzaCIsInR5cGUiOiJ1c2VyIn0.k5VAOJCiReC295XJr6ugJj7P
 ------
 GITLAB
 ------
-http://olx0003:8090
+http://olx0003.hq.company.com:8090 (or http://olx003:8090, not preferred as docker containers cannot recognize non-fqdn)
 user g (or g.m.t.c)
 pw t13
 
@@ -51,48 +57,41 @@ FOR GITLAB PROJECT
 
 GOAL: Push to gitlab repo gwrsh/myproject1 should be deployed to test1 org in chef-server
 
-- Working folder (on workstation)
+THESE STEPS ARE TO BE DONE ON WORKSTATION - NOT DRONE SERVER (THOUGH CAN BE DONE THERE)
+
+---------------------------------
+- Working folder 
+---------------------------------
 /mywork
 
-- Environment file
-
-drone-env-olx003.env -
-
-export DRONE_SERVER=http://olx0003:8080
-export DRONE_TOKEN=eyJdsfsf13dsbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0ZXh0IjoiZ29.....
-
-- Test drone-cli with drone server and token
-
-. ./drone-env-olx0003.env
-
-drone info
-drone repo ls
-drone repo info gwrsh/myproject1
-drone repo info test/testproject1
-
-- Get the latest drone-chef docker image (on drone host where docker is running - MAY NOT BE A REQUIRED STEP)
-# docker pull jmccann/drone-chef:0.5
-
-- Add chef server username as a drone secret - for the repo (on workstation)
-. ./drone-env-olx0003.env
-
-drone secret add --conceal --image=jmccann/drone-chef:0.5 gwrsh/myproject1 CHEF_USER gwrsh
-
-NOTE: gwrsh/myproject1 is the gitlab repo - not the chef-server org-repo
-
-- Add chef server user's private key as a drone secret - for the repo (on workstation)
-. ./drone-env-olx0003.env
-
-drone secret add --conceal --image=jmccann/drone-chef:0.5 gwrsh/myproject1 CHEF_USER_PRIVATE_KEY /u01/mywork/drone-cicd/gwrsh-chef-olx003-key.pem
-
-NOTE: gwrsh/myproject1 is the gitlab repo - not the chef-server org-repo
-
-- Sign the gitlab repo into drone (on workstation)
-drone sign gwrsh/myproject1
-
+------------------------------------------------------
 - YML for deployment pipeline/build definition
+------------------------------------------------------
 .drone.yml (in the gitlab cloned repo on workstation)
 
+--------------------------
+IF USING DRONE:0.6 ONWARDS
+--------------------------
+#If you update this file don't forget to sign it via DRONE-CLI:
+#drone sign <orgname>/<cookbookname>
+#
+#
+pipeline:
+  deploy:
+    image: jmccann/drone-chef:0.5
+    pull: true
+    when:
+      event: push
+      branch: master
+    user: gwrsh
+    secrets: [ CHEF_PRIVATE_KEY ]
+    server: https://olx0003.hq.company.com:443
+    org: test1
+    ssl_verify: false                
+
+------------------
+IF USING DRONE:0.5
+------------------
 #If you update this file don't forget to sign it via DRONE-CLI:
 #drone sign <orgname>/<cookbookname>
 #
@@ -111,6 +110,64 @@ pipeline:
     #berks_files:
       #- Berksfile
     ssl_verify: false
+    
+------------------------------------------
+- Environment file - drone-env-olx003.env
+------------------------------------------
+export DRONE_SERVER=http://olx0003.hq.company.com:8080 # (or http://olx003:8090, not preferred as docker containers cannot recognize non-fqdn)
+export DRONE_TOKEN=eyJdsfsf13dsbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0ZXh0IjoiZ29.....
+
+------------------------------------------------------------------
+- Test drone-cli with drone server and token
+------------------------------------------------------------------
+. ./drone-env-olx0003.env
+
+drone info
+drone repo ls
+drone repo info gwrsh/myproject1
+drone repo info test/testproject1
+
+---------------------------------------------------------------------------------------------------
+- Get the latest drone-chef docker image (on drone host where docker is running)
+- MAY NOT BE A REQUIRED STEP - as this will be dynamically pulled
+---------------------------------------------------------------------------------------------------
+# docker pull jmccann/drone-chef:0.5
+
+---------------------------------------------------------------------------------------------------
+- Add chef server username as a drone secret - for the repo (on workstation)
+---------------------------------------------------------------------------------------------------
+NOTE: Secrets are treated differently in Drone 0.5, and 0.6/0.7
+NOTE: In drone:0.6 onwards, drone-chef plugin takes 'user' (for chef server) as hardcoded like user: myusername 
+      and CHEF_PRIVATE_KEY as a secret and no reference to private_key is required in .drone.yml
+NOTE: In drone:0.5, both user and key can be probably secrets referenced as user: ${USER_SECRET},  
+      private_key: ${PRIVATE_KEY_SECRET} --> any name for secret is fine
+
+DECIDE BASED ON NOTES ABOVE NOTES
+
+. ./drone-env-olx0003.env
+drone secret add --conceal --image=jmccann/drone-chef:0.5 gwrsh/myproject1 CHEF_USER gwrsh
+
+NOTE: gwrsh/myproject1 is the gitlab repo - not the chef-server org-repo
+
+---------------------------------------------------------------------------------------------------
+- Add chef server user's private key as a drone secret - for the repo (on workstation)
+---------------------------------------------------------------------------------------------------
+NOTE: In drone:0.6 onwards, drone-chef plugin takes 'user' (for chef server) as hardcoded like user: myusername 
+      and CHEF_PRIVATE_KEY (must be this name) as a secret and no reference to private_key is required in .drone.yml
+NOTE: In drone:0.5, both user and key can be probably secrets referenced as user: ${USER_SECRET},  
+      private_key: ${PRIVATE_KEY_SECRET} --> any name for secret is fine
+NOTE: gwrsh/myproject1 is the gitlab repo - not the chef-server org-repo
+
+. ./drone-env-olx0003.env
+drone secret add --conceal --image=jmccann/drone-chef:0.5 gwrsh/myproject1 CHEF_USER_PRIVATE_KEY /u01/mywork/drone-cicd/gwrsh-chef-olx003-key.pem
+
+---------------------------------------------------------------------------------------------------
+- Sign the gitlab repo into drone (on workstation)
+---------------------------------------------------------------------------------------------------
+NOTE: Sign is not required in drone:0.6 onwards
+NOTE: The sig file produced also should be pushed to git-repo of the cookbook
+
+drone sign gwrsh/myproject1
 
 = = = = = = = = = = = = = = = = =
 OLD NOTES BELOW
