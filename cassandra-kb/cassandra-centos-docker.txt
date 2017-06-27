@@ -24,27 +24,458 @@ RUN echo sslverify=false >> $yumrepo
 
 #RUN python --version
 #RUN java --version
-
-#RUN export NSS_DISABLE_HW_GCM=1
-
+##RUN export NSS_DISABLE_HW_GCM=1
 #RUN cat /etc/yum.conf
-#
 #RUN cat $yumrepo
-#
 #RUN cat /etc/pki/tls/certs/ca-bundle.crt
 
-#RUN yum -y install cassandra
+RUN yum -y install cassandra
 
-##RUN service cassandra start
-
-##RUN chkconfig cassandra on
+##RUN service cassandra start --> this is to be done in the container - not in the image
+##RUN chkconfig cassandra on  --> this is to be done in the container - not in the image
 
 ================================================
 BUILD THE IMAGE
 ================================================
-docker build --rm -t centoscas:0.1 .
+
+-----------
+BUILD
+-----------
+NOTE: -rm to remove intermediate containers it creates during the build
+
+# docker build --rm -t cascentosone:0.1 .
+
+----------
+VERIFY
+----------
+NOTE: The centos image is the one downloaded during build.  If not needed anymore we can remove it.
+
+# docker images (or docker image ls)
+
+REPOSITORY                           TAG                 IMAGE ID            CREATED             SIZE
+cascentosone                         0.1                 059231b0c83f        10 minutes ago      488MB
+centos                               7.0.1406            16e9fdecc1fe        10 months ago       210MB
 
 ================================================
 CREATE A CONTAINER AND START CASSANDRA IN IT
 ================================================
 TBD
+
+======================
+APPENDIX
+======================
+
+-------------------
+BUILD SCREEN OUTPUT
+-------------------
+[root@oralx0003 centos-single-node-docker]# docker build --rm -t centoscas:0.1 .
+Sending build context to Docker daemon  147.4MB
+Step 1/10 : FROM centos:7.0.1406
+ ---> 16e9fdecc1fe
+Step 2/10 : ENV yumrepo /etc/yum.repos.d/cassandra.repo
+ ---> Running in 9bb2badefdbe
+ ---> ccc4ea5a73f9
+Removing intermediate container 9bb2badefdbe
+Step 3/10 : RUN echo [cassandra] > $yumrepo
+ ---> Running in 6db5dba4259f
+ ---> f0303ff754b8
+Removing intermediate container 6db5dba4259f
+Step 4/10 : RUN echo name=Apache Cassandra >> $yumrepo
+ ---> Running in 2417bfe67377
+ ---> 5c489904f588
+Removing intermediate container 2417bfe67377
+Step 5/10 : RUN echo baseurl=https://www.apache.org/dist/cassandra/redhat/311x/ >> $yumrepo
+ ---> Running in f93c05af2d7b
+ ---> bda46be9da75
+Removing intermediate container f93c05af2d7b
+Step 6/10 : RUN echo gpgcheck=1 >> $yumrepo
+ ---> Running in 2f22d69e79de
+ ---> f53d0f0bae1c
+Removing intermediate container 2f22d69e79de
+Step 7/10 : RUN echo repo_gpgcheck=1 >> $yumrepo
+ ---> Running in 5993c338a2d1
+ ---> 39caad6e8984
+Removing intermediate container 5993c338a2d1
+Step 8/10 : RUN echo gpgkey=https://www.apache.org/dist/cassandra/KEYS >> $yumrepo
+ ---> Running in 82090ca190cd
+ ---> eb8500f672c2
+Removing intermediate container 82090ca190cd
+Step 9/10 : RUN echo sslverify=false >> $yumrepo
+ ---> Running in 52bd791707b4
+ ---> 77c57ca182ee
+Removing intermediate container 52bd791707b4
+Step 10/10 : RUN yum -y install cassandra
+ ---> Running in 49ef996d0e9d
+Loaded plugins: fastestmirror
+Retrieving key from https://www.apache.org/dist/cassandra/KEYS
+Importing GPG key 0xF2833C93:
+ Userid     : "Eric Evans <eevans@sym-link.com>"
+ Fingerprint: cec8 6bb4 a0ba 9d0f 9039 7cae f835 8fa2 f283 3c93
+ From       : https://www.apache.org/dist/cassandra/KEYS
+Determining fastest mirrors
+ * base: centos.mirror.ndchost.com
+ * extras: centos.host-engine.com
+ * updates: mirror.umd.edu
+Resolving Dependencies
+--> Running transaction check
+---> Package cassandra.noarch 0:3.11.0-1 will be installed
+--> Processing Dependency: jre >= 1.8.0 for package: cassandra-3.11.0-1.noarch
+--> Running transaction check
+---> Package java-1.8.0-openjdk.x86_64 1:1.8.0.131-3.b12.el7_3 will be installed
+--> Processing Dependency: java-1.8.0-openjdk-headless = 1:1.8.0.131-3.b12.el7_3 for package: 1:java-1.8.0-openjdk-1.8.0.131-3.b12.el7_3.x86_64
+--> Processing Dependency: xorg-x11-fonts-Type1 for package: 1:java-1.8.0-openjdk-1.8.0.131-3.b12.el7_3.x86_64
+--> Processing Dependency: libpng15.so.15(PNG15_0)(64bit) for package: 1:java-1.8.0-openjdk-1.8.0.131-3.b12.el7_3.x86_64
+--> Processing Dependency: libjvm.so(SUNWprivate_1.1)(64bit) for package: 1:java-1.8.0-openjdk-1.8.0.131-3.b12.el7_3.x86_64
+--> Processing Dependency: libjpeg.so.62(LIBJPEG_6.2)(64bit) for package: 1:java-1.8.0-openjdk-1.8.0.131-3.b12.el7_3.x86_64
+--> Processing Dependency: libjli.so(SUNWprivate_1.1)(64bit) for package: 1:java-1.8.0-openjdk-1.8.0.131-3.b12.el7_3.x86_64
+--> Processing Dependency: libjava.so(SUNWprivate_1.1)(64bit) for package: 1:java-1.8.0-openjdk-1.8.0.131-3.b12.el7_3.x86_64
+--> Processing Dependency: libasound.so.2(ALSA_0.9.0rc4)(64bit) for package: 1:java-1.8.0-openjdk-1.8.0.131-3.b12.el7_3.x86_64
+--> Processing Dependency: libasound.so.2(ALSA_0.9)(64bit) for package: 1:java-1.8.0-openjdk-1.8.0.131-3.b12.el7_3.x86_64
+--> Processing Dependency: fontconfig(x86-64) for package: 1:java-1.8.0-openjdk-1.8.0.131-3.b12.el7_3.x86_64
+--> Processing Dependency: libpng15.so.15()(64bit) for package: 1:java-1.8.0-openjdk-1.8.0.131-3.b12.el7_3.x86_64
+--> Processing Dependency: libjvm.so()(64bit) for package: 1:java-1.8.0-openjdk-1.8.0.131-3.b12.el7_3.x86_64
+--> Processing Dependency: libjpeg.so.62()(64bit) for package: 1:java-1.8.0-openjdk-1.8.0.131-3.b12.el7_3.x86_64
+--> Processing Dependency: libjli.so()(64bit) for package: 1:java-1.8.0-openjdk-1.8.0.131-3.b12.el7_3.x86_64
+--> Processing Dependency: libjava.so()(64bit) for package: 1:java-1.8.0-openjdk-1.8.0.131-3.b12.el7_3.x86_64
+--> Processing Dependency: libgif.so.4()(64bit) for package: 1:java-1.8.0-openjdk-1.8.0.131-3.b12.el7_3.x86_64
+--> Processing Dependency: libawt.so()(64bit) for package: 1:java-1.8.0-openjdk-1.8.0.131-3.b12.el7_3.x86_64
+--> Processing Dependency: libasound.so.2()(64bit) for package: 1:java-1.8.0-openjdk-1.8.0.131-3.b12.el7_3.x86_64
+--> Processing Dependency: libXtst.so.6()(64bit) for package: 1:java-1.8.0-openjdk-1.8.0.131-3.b12.el7_3.x86_64
+--> Processing Dependency: libXrender.so.1()(64bit) for package: 1:java-1.8.0-openjdk-1.8.0.131-3.b12.el7_3.x86_64
+--> Processing Dependency: libXi.so.6()(64bit) for package: 1:java-1.8.0-openjdk-1.8.0.131-3.b12.el7_3.x86_64
+--> Processing Dependency: libXext.so.6()(64bit) for package: 1:java-1.8.0-openjdk-1.8.0.131-3.b12.el7_3.x86_64
+--> Processing Dependency: libXcomposite.so.1()(64bit) for package: 1:java-1.8.0-openjdk-1.8.0.131-3.b12.el7_3.x86_64
+--> Processing Dependency: libX11.so.6()(64bit) for package: 1:java-1.8.0-openjdk-1.8.0.131-3.b12.el7_3.x86_64
+--> Running transaction check
+---> Package alsa-lib.x86_64 0:1.1.1-1.el7 will be installed
+---> Package fontconfig.x86_64 0:2.10.95-10.el7 will be installed
+--> Processing Dependency: freetype for package: fontconfig-2.10.95-10.el7.x86_64
+--> Processing Dependency: fontpackages-filesystem for package: fontconfig-2.10.95-10.el7.x86_64
+--> Processing Dependency: libfreetype.so.6()(64bit) for package: fontconfig-2.10.95-10.el7.x86_64
+---> Package giflib.x86_64 0:4.1.6-9.el7 will be installed
+--> Processing Dependency: libSM.so.6()(64bit) for package: giflib-4.1.6-9.el7.x86_64
+--> Processing Dependency: libICE.so.6()(64bit) for package: giflib-4.1.6-9.el7.x86_64
+---> Package java-1.8.0-openjdk-headless.x86_64 1:1.8.0.131-3.b12.el7_3 will be installed
+--> Processing Dependency: tzdata-java >= 2015d for package: 1:java-1.8.0-openjdk-headless-1.8.0.131-3.b12.el7_3.x86_64
+--> Processing Dependency: nss-softokn(x86-64) >= 3.16.2.3 for package: 1:java-1.8.0-openjdk-headless-1.8.0.131-3.b12.el7_3.x86_64
+--> Processing Dependency: nss(x86-64) >= 3.28.4 for package: 1:java-1.8.0-openjdk-headless-1.8.0.131-3.b12.el7_3.x86_64
+--> Processing Dependency: copy-jdk-configs >= 1.1-3 for package: 1:java-1.8.0-openjdk-headless-1.8.0.131-3.b12.el7_3.x86_64
+--> Processing Dependency: chkconfig >= 1.7 for package: 1:java-1.8.0-openjdk-headless-1.8.0.131-3.b12.el7_3.x86_64
+--> Processing Dependency: chkconfig >= 1.7 for package: 1:java-1.8.0-openjdk-headless-1.8.0.131-3.b12.el7_3.x86_64
+--> Processing Dependency: lksctp-tools(x86-64) for package: 1:java-1.8.0-openjdk-headless-1.8.0.131-3.b12.el7_3.x86_64
+--> Processing Dependency: jpackage-utils for package: 1:java-1.8.0-openjdk-headless-1.8.0.131-3.b12.el7_3.x86_64
+---> Package libX11.x86_64 0:1.6.3-3.el7 will be installed
+--> Processing Dependency: libX11-common >= 1.6.3-3.el7 for package: libX11-1.6.3-3.el7.x86_64
+--> Processing Dependency: libxcb.so.1()(64bit) for package: libX11-1.6.3-3.el7.x86_64
+---> Package libXcomposite.x86_64 0:0.4.4-4.1.el7 will be installed
+---> Package libXext.x86_64 0:1.3.3-3.el7 will be installed
+---> Package libXi.x86_64 0:1.7.4-2.el7 will be installed
+---> Package libXrender.x86_64 0:0.9.8-2.1.el7 will be installed
+---> Package libXtst.x86_64 0:1.2.2-2.1.el7 will be installed
+---> Package libjpeg-turbo.x86_64 0:1.2.90-5.el7 will be installed
+---> Package libpng.x86_64 2:1.5.13-7.el7_2 will be installed
+---> Package xorg-x11-fonts-Type1.noarch 0:7.5-9.el7 will be installed
+--> Processing Dependency: ttmkfdir for package: xorg-x11-fonts-Type1-7.5-9.el7.noarch
+--> Processing Dependency: ttmkfdir for package: xorg-x11-fonts-Type1-7.5-9.el7.noarch
+--> Processing Dependency: mkfontdir for package: xorg-x11-fonts-Type1-7.5-9.el7.noarch
+--> Processing Dependency: mkfontdir for package: xorg-x11-fonts-Type1-7.5-9.el7.noarch
+--> Running transaction check
+---> Package chkconfig.x86_64 0:1.3.61-4.el7 will be updated
+---> Package chkconfig.x86_64 0:1.7.2-1.el7 will be an update
+---> Package copy-jdk-configs.noarch 0:1.2-1.el7 will be installed
+---> Package fontpackages-filesystem.noarch 0:1.44-8.el7 will be installed
+---> Package freetype.x86_64 0:2.4.11-12.el7 will be installed
+---> Package javapackages-tools.noarch 0:3.4.1-11.el7 will be installed
+--> Processing Dependency: python-javapackages = 3.4.1-11.el7 for package: javapackages-tools-3.4.1-11.el7.noarch
+--> Processing Dependency: libxslt for package: javapackages-tools-3.4.1-11.el7.noarch
+---> Package libICE.x86_64 0:1.0.9-2.el7 will be installed
+---> Package libSM.x86_64 0:1.2.2-2.el7 will be installed
+---> Package libX11-common.noarch 0:1.6.3-3.el7 will be installed
+---> Package libxcb.x86_64 0:1.11-4.el7 will be installed
+--> Processing Dependency: libXau.so.6()(64bit) for package: libxcb-1.11-4.el7.x86_64
+---> Package lksctp-tools.x86_64 0:1.0.17-2.el7 will be installed
+---> Package nss.x86_64 0:3.15.4-6.el7 will be updated
+--> Processing Dependency: nss = 3.15.4-6.el7 for package: nss-sysinit-3.15.4-6.el7.x86_64
+--> Processing Dependency: nss(x86-64) = 3.15.4-6.el7 for package: nss-tools-3.15.4-6.el7.x86_64
+---> Package nss.x86_64 0:3.28.4-1.2.el7_3 will be an update
+--> Processing Dependency: nss-util >= 3.28.2-1.1 for package: nss-3.28.4-1.2.el7_3.x86_64
+--> Processing Dependency: nspr >= 4.13.1 for package: nss-3.28.4-1.2.el7_3.x86_64
+--> Processing Dependency: libnssutil3.so(NSSUTIL_3.24)(64bit) for package: nss-3.28.4-1.2.el7_3.x86_64
+--> Processing Dependency: libnssutil3.so(NSSUTIL_3.21)(64bit) for package: nss-3.28.4-1.2.el7_3.x86_64
+--> Processing Dependency: libnssutil3.so(NSSUTIL_3.17.1)(64bit) for package: nss-3.28.4-1.2.el7_3.x86_64
+---> Package nss-softokn.x86_64 0:3.15.4-2.el7 will be updated
+---> Package nss-softokn.x86_64 0:3.16.2.3-14.4.el7 will be an update
+--> Processing Dependency: nss-softokn-freebl(x86-64) >= 3.16.2.3-14.4.el7 for package: nss-softokn-3.16.2.3-14.4.el7.x86_64
+---> Package ttmkfdir.x86_64 0:3.0.9-42.el7 will be installed
+---> Package tzdata-java.noarch 0:2017b-1.el7 will be installed
+---> Package xorg-x11-font-utils.x86_64 1:7.5-20.el7 will be installed
+--> Processing Dependency: libfontenc.so.1()(64bit) for package: 1:xorg-x11-font-utils-7.5-20.el7.x86_64
+--> Processing Dependency: libXfont.so.1()(64bit) for package: 1:xorg-x11-font-utils-7.5-20.el7.x86_64
+--> Running transaction check
+---> Package libXau.x86_64 0:1.0.8-2.1.el7 will be installed
+---> Package libXfont.x86_64 0:1.5.1-2.el7 will be installed
+---> Package libfontenc.x86_64 0:1.1.2-3.el7 will be installed
+---> Package libxslt.x86_64 0:1.1.28-5.el7 will be installed
+---> Package nspr.x86_64 0:4.10.2-4.el7 will be updated
+---> Package nspr.x86_64 0:4.13.1-1.0.el7_3 will be an update
+---> Package nss-softokn-freebl.x86_64 0:3.15.4-2.el7 will be updated
+---> Package nss-softokn-freebl.x86_64 0:3.16.2.3-14.4.el7 will be an update
+---> Package nss-sysinit.x86_64 0:3.15.4-6.el7 will be updated
+---> Package nss-sysinit.x86_64 0:3.28.4-1.2.el7_3 will be an update
+---> Package nss-tools.x86_64 0:3.15.4-6.el7 will be updated
+---> Package nss-tools.x86_64 0:3.28.4-1.2.el7_3 will be an update
+---> Package nss-util.x86_64 0:3.15.4-2.el7 will be updated
+---> Package nss-util.x86_64 0:3.28.4-1.0.el7_3 will be an update
+---> Package python-javapackages.noarch 0:3.4.1-11.el7 will be installed
+--> Processing Dependency: python-lxml for package: python-javapackages-3.4.1-11.el7.noarch
+--> Running transaction check
+---> Package python-lxml.x86_64 0:3.2.1-4.el7 will be installed
+--> Finished Dependency Resolution
+
+Dependencies Resolved
+
+================================================================================
+ Package                      Arch    Version                  Repository  Size
+================================================================================
+Installing:
+ cassandra                    noarch  3.11.0-1                 cassandra   28 M
+Installing for dependencies:
+ alsa-lib                     x86_64  1.1.1-1.el7              base       415 k
+ copy-jdk-configs             noarch  1.2-1.el7                base        14 k
+ fontconfig                   x86_64  2.10.95-10.el7           base       229 k
+ fontpackages-filesystem      noarch  1.44-8.el7               base       9.9 k
+ freetype                     x86_64  2.4.11-12.el7            base       391 k
+ giflib                       x86_64  4.1.6-9.el7              base        40 k
+ java-1.8.0-openjdk           x86_64  1:1.8.0.131-3.b12.el7_3  updates    233 k
+ java-1.8.0-openjdk-headless  x86_64  1:1.8.0.131-3.b12.el7_3  updates     31 M
+ javapackages-tools           noarch  3.4.1-11.el7             base        73 k
+ libICE                       x86_64  1.0.9-2.el7              base        65 k
+ libSM                        x86_64  1.2.2-2.el7              base        39 k
+ libX11                       x86_64  1.6.3-3.el7              base       606 k
+ libX11-common                noarch  1.6.3-3.el7              base       162 k
+ libXau                       x86_64  1.0.8-2.1.el7            base        29 k
+ libXcomposite                x86_64  0.4.4-4.1.el7            base        22 k
+ libXext                      x86_64  1.3.3-3.el7              base        39 k
+ libXfont                     x86_64  1.5.1-2.el7              base       150 k
+ libXi                        x86_64  1.7.4-2.el7              base        40 k
+ libXrender                   x86_64  0.9.8-2.1.el7            base        25 k
+ libXtst                      x86_64  1.2.2-2.1.el7            base        20 k
+ libfontenc                   x86_64  1.1.2-3.el7              base        30 k
+ libjpeg-turbo                x86_64  1.2.90-5.el7             base       134 k
+ libpng                       x86_64  2:1.5.13-7.el7_2         base       213 k
+ libxcb                       x86_64  1.11-4.el7               base       189 k
+ libxslt                      x86_64  1.1.28-5.el7             base       242 k
+ lksctp-tools                 x86_64  1.0.17-2.el7             base        88 k
+ python-javapackages          noarch  3.4.1-11.el7             base        31 k
+ python-lxml                  x86_64  3.2.1-4.el7              base       758 k
+ ttmkfdir                     x86_64  3.0.9-42.el7             base        48 k
+ tzdata-java                  noarch  2017b-1.el7              updates    183 k
+ xorg-x11-font-utils          x86_64  1:7.5-20.el7             base        87 k
+ xorg-x11-fonts-Type1         noarch  7.5-9.el7                base       521 k
+Updating for dependencies:
+ chkconfig                    x86_64  1.7.2-1.el7              base       175 k
+ nspr                         x86_64  4.13.1-1.0.el7_3         updates    126 k
+ nss                          x86_64  3.28.4-1.2.el7_3         updates    872 k
+ nss-softokn                  x86_64  3.16.2.3-14.4.el7        base       306 k
+ nss-softokn-freebl           x86_64  3.16.2.3-14.4.el7        base       204 k
+ nss-sysinit                  x86_64  3.28.4-1.2.el7_3         updates     58 k
+ nss-tools                    x86_64  3.28.4-1.2.el7_3         updates    496 k
+ nss-util                     x86_64  3.28.4-1.0.el7_3         updates     73 k
+
+Transaction Summary
+================================================================================
+Install  1 Package  (+32 Dependent packages)
+Upgrade             (  8 Dependent packages)
+
+Total download size: 67 M
+Downloading packages:
+Delta RPMs disabled because /usr/bin/applydeltarpm not installed.
+Public key for chkconfig-1.7.2-1.el7.x86_64.rpm is not installed
+warning: /var/cache/yum/x86_64/7/base/packages/chkconfig-1.7.2-1.el7.x86_64.rpm: Header V3 RSA/SHA256 Signature, key ID f4a80eb5: NOKEY
+Public key for java-1.8.0-openjdk-1.8.0.131-3.b12.el7_3.x86_64.rpm is not installed
+warning: /var/cache/yum/x86_64/7/cassandra/packages/cassandra-3.11.0-1.noarch.rpm: Header V4 RSA/SHA256 Signature, key ID fe4b2bda: NOKEY
+Public key for cassandra-3.11.0-1.noarch.rpm is not installed
+--------------------------------------------------------------------------------
+Total                                              1.0 MB/s |  67 MB  01:05     
+Retrieving key from file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
+Importing GPG key 0xF4A80EB5:
+ Userid     : "CentOS-7 Key (CentOS 7 Official Signing Key) <security@centos.org>"
+ Fingerprint: 6341 ab27 53d7 8a78 a7c2 7bb1 24c6 a8a7 f4a8 0eb5
+ Package    : centos-release-7-0.1406.el7.centos.2.3.x86_64 (@CentOS/$releasever)
+ From       : /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
+Retrieving key from https://www.apache.org/dist/cassandra/KEYS
+Importing GPG key 0xF2833C93:
+ Userid     : "Eric Evans <eevans@sym-link.com>"
+ Fingerprint: cec8 6bb4 a0ba 9d0f 9039 7cae f835 8fa2 f283 3c93
+ From       : https://www.apache.org/dist/cassandra/KEYS
+Importing GPG key 0x8D77295D:
+ Userid     : "Eric Evans <eevans@sym-link.com>"
+ Fingerprint: c496 5ee9 e301 5d19 2ccc f2b6 f758 ce31 8d77 295d
+ From       : https://www.apache.org/dist/cassandra/KEYS
+Importing GPG key 0x2B5C1B00:
+ Userid     : "Sylvain Lebresne (pcmanus) <sylvain@datastax.com>"
+ Fingerprint: 5aed 1bf3 78e9 a19d ade1 bcb3 4bd7 36a8 2b5c 1b00
+ From       : https://www.apache.org/dist/cassandra/KEYS
+Importing GPG key 0x0353B12C:
+ Userid     : "T Jake Luciani <jake@apache.org>"
+ Fingerprint: 514a 2ad6 31a5 7a16 dd00 47ec 749d 6eec 0353 b12c
+ From       : https://www.apache.org/dist/cassandra/KEYS
+Importing GPG key 0xFE4B2BDA:
+ Userid     : "Michael Shuler <michael@pbandjelly.org>"
+ Fingerprint: a26e 528b 271f 19b9 e5d8 e19e a278 b781 fe4b 2bda
+ From       : https://www.apache.org/dist/cassandra/KEYS
+Running transaction check
+Running transaction test
+Transaction test succeeded
+Running transaction
+  Updating   : nspr-4.13.1-1.0.el7_3.x86_64                                1/49 
+  Updating   : nss-util-3.28.4-1.0.el7_3.x86_64                            2/49 
+  Installing : freetype-2.4.11-12.el7.x86_64                               3/49 
+  Installing : libICE-1.0.9-2.el7.x86_64                                   4/49 
+  Updating   : nss-softokn-freebl-3.16.2.3-14.4.el7.x86_64                 5/49 
+  Updating   : nss-softokn-3.16.2.3-14.4.el7.x86_64                        6/49 
+  Installing : libxslt-1.1.28-5.el7.x86_64                                 7/49 
+  Installing : libfontenc-1.1.2-3.el7.x86_64                               8/49 
+  Updating   : chkconfig-1.7.2-1.el7.x86_64                                9/49 
+  Updating   : nss-3.28.4-1.2.el7_3.x86_64                                10/49 
+  Updating   : nss-sysinit-3.28.4-1.2.el7_3.x86_64                        11/49 
+  Installing : libjpeg-turbo-1.2.90-5.el7.x86_64                          12/49 
+  Installing : libXfont-1.5.1-2.el7.x86_64                                13/49 
+  Installing : 1:xorg-x11-font-utils-7.5-20.el7.x86_64                    14/49 
+  Installing : python-lxml-3.2.1-4.el7.x86_64                             15/49 
+  Installing : python-javapackages-3.4.1-11.el7.noarch                    16/49 
+  Installing : javapackages-tools-3.4.1-11.el7.noarch                     17/49 
+  Installing : libSM-1.2.2-2.el7.x86_64                                   18/49 
+  Installing : ttmkfdir-3.0.9-42.el7.x86_64                               19/49 
+  Installing : libX11-common-1.6.3-3.el7.noarch                           20/49 
+  Installing : libXau-1.0.8-2.1.el7.x86_64                                21/49 
+  Installing : libxcb-1.11-4.el7.x86_64                                   22/49 
+  Installing : libX11-1.6.3-3.el7.x86_64                                  23/49 
+  Installing : libXext-1.3.3-3.el7.x86_64                                 24/49 
+  Installing : libXi-1.7.4-2.el7.x86_64                                   25/49 
+  Installing : libXtst-1.2.2-2.1.el7.x86_64                               26/49 
+  Installing : giflib-4.1.6-9.el7.x86_64                                  27/49 
+  Installing : libXcomposite-0.4.4-4.1.el7.x86_64                         28/49 
+  Installing : libXrender-0.9.8-2.1.el7.x86_64                            29/49 
+  Installing : alsa-lib-1.1.1-1.el7.x86_64                                30/49 
+  Installing : tzdata-java-2017b-1.el7.noarch                             31/49 
+  Installing : copy-jdk-configs-1.2-1.el7.noarch                          32/49 
+  Installing : lksctp-tools-1.0.17-2.el7.x86_64                           33/49 
+  Installing : 1:java-1.8.0-openjdk-headless-1.8.0.131-3.b12.el7_3.x86_   34/49 
+  Installing : fontpackages-filesystem-1.44-8.el7.noarch                  35/49 
+  Installing : fontconfig-2.10.95-10.el7.x86_64                           36/49 
+  Installing : xorg-x11-fonts-Type1-7.5-9.el7.noarch                      37/49 
+  Installing : 2:libpng-1.5.13-7.el7_2.x86_64                             38/49 
+  Installing : 1:java-1.8.0-openjdk-1.8.0.131-3.b12.el7_3.x86_64          39/49 
+  Installing : cassandra-3.11.0-1.noarch                                  40/49 
+  Updating   : nss-tools-3.28.4-1.2.el7_3.x86_64                          41/49 
+  Cleanup    : nss-tools-3.15.4-6.el7.x86_64                              42/49 
+  Cleanup    : nss-sysinit-3.15.4-6.el7.x86_64                            43/49 
+  Cleanup    : nss-3.15.4-6.el7.x86_64                                    44/49 
+  Cleanup    : nss-softokn-3.15.4-2.el7.x86_64                            45/49 
+  Cleanup    : nss-util-3.15.4-2.el7.x86_64                               46/49 
+  Cleanup    : nspr-4.10.2-4.el7.x86_64                                   47/49 
+  Cleanup    : nss-softokn-freebl-3.15.4-2.el7.x86_64                     48/49 
+  Cleanup    : chkconfig-1.3.61-4.el7.x86_64                              49/49 
+  Verifying  : libXext-1.3.3-3.el7.x86_64                                  1/49 
+  Verifying  : nss-tools-3.28.4-1.2.el7_3.x86_64                           2/49 
+  Verifying  : giflib-4.1.6-9.el7.x86_64                                   3/49 
+  Verifying  : nspr-4.13.1-1.0.el7_3.x86_64                                4/49 
+  Verifying  : libjpeg-turbo-1.2.90-5.el7.x86_64                           5/49 
+  Verifying  : nss-3.28.4-1.2.el7_3.x86_64                                 6/49 
+  Verifying  : libXtst-1.2.2-2.1.el7.x86_64                                7/49 
+  Verifying  : chkconfig-1.7.2-1.el7.x86_64                                8/49 
+  Verifying  : python-lxml-3.2.1-4.el7.x86_64                              9/49 
+  Verifying  : nss-softokn-3.16.2.3-14.4.el7.x86_64                       10/49 
+  Verifying  : libxcb-1.11-4.el7.x86_64                                   11/49 
+  Verifying  : 2:libpng-1.5.13-7.el7_2.x86_64                             12/49 
+  Verifying  : fontpackages-filesystem-1.44-8.el7.noarch                  13/49 
+  Verifying  : ttmkfdir-3.0.9-42.el7.x86_64                               14/49 
+  Verifying  : nss-util-3.28.4-1.0.el7_3.x86_64                           15/49 
+  Verifying  : 1:java-1.8.0-openjdk-headless-1.8.0.131-3.b12.el7_3.x86_   16/49 
+  Verifying  : cassandra-3.11.0-1.noarch                                  17/49 
+  Verifying  : python-javapackages-3.4.1-11.el7.noarch                    18/49 
+  Verifying  : libXcomposite-0.4.4-4.1.el7.x86_64                         19/49 
+  Verifying  : libXrender-0.9.8-2.1.el7.x86_64                            20/49 
+  Verifying  : lksctp-tools-1.0.17-2.el7.x86_64                           21/49 
+  Verifying  : copy-jdk-configs-1.2-1.el7.noarch                          22/49 
+  Verifying  : nss-sysinit-3.28.4-1.2.el7_3.x86_64                        23/49 
+  Verifying  : xorg-x11-fonts-Type1-7.5-9.el7.noarch                      24/49 
+  Verifying  : libfontenc-1.1.2-3.el7.x86_64                              25/49 
+  Verifying  : libxslt-1.1.28-5.el7.x86_64                                26/49 
+  Verifying  : freetype-2.4.11-12.el7.x86_64                              27/49 
+  Verifying  : tzdata-java-2017b-1.el7.noarch                             28/49 
+  Verifying  : nss-softokn-freebl-3.16.2.3-14.4.el7.x86_64                29/49 
+  Verifying  : libICE-1.0.9-2.el7.x86_64                                  30/49 
+  Verifying  : libXfont-1.5.1-2.el7.x86_64                                31/49 
+  Verifying  : javapackages-tools-3.4.1-11.el7.noarch                     32/49 
+  Verifying  : 1:java-1.8.0-openjdk-1.8.0.131-3.b12.el7_3.x86_64          33/49 
+  Verifying  : libXi-1.7.4-2.el7.x86_64                                   34/49 
+  Verifying  : libSM-1.2.2-2.el7.x86_64                                   35/49 
+  Verifying  : alsa-lib-1.1.1-1.el7.x86_64                                36/49 
+  Verifying  : libX11-1.6.3-3.el7.x86_64                                  37/49 
+  Verifying  : libXau-1.0.8-2.1.el7.x86_64                                38/49 
+  Verifying  : libX11-common-1.6.3-3.el7.noarch                           39/49 
+  Verifying  : fontconfig-2.10.95-10.el7.x86_64                           40/49 
+  Verifying  : 1:xorg-x11-font-utils-7.5-20.el7.x86_64                    41/49 
+  Verifying  : nss-softokn-3.15.4-2.el7.x86_64                            42/49 
+  Verifying  : nss-util-3.15.4-2.el7.x86_64                               43/49 
+  Verifying  : nss-3.15.4-6.el7.x86_64                                    44/49 
+  Verifying  : nss-tools-3.15.4-6.el7.x86_64                              45/49 
+  Verifying  : chkconfig-1.3.61-4.el7.x86_64                              46/49 
+  Verifying  : nss-softokn-freebl-3.15.4-2.el7.x86_64                     47/49 
+  Verifying  : nspr-4.10.2-4.el7.x86_64                                   48/49 
+  Verifying  : nss-sysinit-3.15.4-6.el7.x86_64                            49/49 
+
+Installed:
+  cassandra.noarch 0:3.11.0-1                                                   
+
+Dependency Installed:
+  alsa-lib.x86_64 0:1.1.1-1.el7                                                 
+  copy-jdk-configs.noarch 0:1.2-1.el7                                           
+  fontconfig.x86_64 0:2.10.95-10.el7                                            
+  fontpackages-filesystem.noarch 0:1.44-8.el7                                   
+  freetype.x86_64 0:2.4.11-12.el7                                               
+  giflib.x86_64 0:4.1.6-9.el7                                                   
+  java-1.8.0-openjdk.x86_64 1:1.8.0.131-3.b12.el7_3                             
+  java-1.8.0-openjdk-headless.x86_64 1:1.8.0.131-3.b12.el7_3                    
+  javapackages-tools.noarch 0:3.4.1-11.el7                                      
+  libICE.x86_64 0:1.0.9-2.el7                                                   
+  libSM.x86_64 0:1.2.2-2.el7                                                    
+  libX11.x86_64 0:1.6.3-3.el7                                                   
+  libX11-common.noarch 0:1.6.3-3.el7                                            
+  libXau.x86_64 0:1.0.8-2.1.el7                                                 
+  libXcomposite.x86_64 0:0.4.4-4.1.el7                                          
+  libXext.x86_64 0:1.3.3-3.el7                                                  
+  libXfont.x86_64 0:1.5.1-2.el7                                                 
+  libXi.x86_64 0:1.7.4-2.el7                                                    
+  libXrender.x86_64 0:0.9.8-2.1.el7                                             
+  libXtst.x86_64 0:1.2.2-2.1.el7                                                
+  libfontenc.x86_64 0:1.1.2-3.el7                                               
+  libjpeg-turbo.x86_64 0:1.2.90-5.el7                                           
+  libpng.x86_64 2:1.5.13-7.el7_2                                                
+  libxcb.x86_64 0:1.11-4.el7                                                    
+  libxslt.x86_64 0:1.1.28-5.el7                                                 
+  lksctp-tools.x86_64 0:1.0.17-2.el7                                            
+  python-javapackages.noarch 0:3.4.1-11.el7                                     
+  python-lxml.x86_64 0:3.2.1-4.el7                                              
+  ttmkfdir.x86_64 0:3.0.9-42.el7                                                
+  tzdata-java.noarch 0:2017b-1.el7                                              
+  xorg-x11-font-utils.x86_64 1:7.5-20.el7                                       
+  xorg-x11-fonts-Type1.noarch 0:7.5-9.el7                                       
+
+Dependency Updated:
+  chkconfig.x86_64 0:1.7.2-1.el7                                                
+  nspr.x86_64 0:4.13.1-1.0.el7_3                                                
+  nss.x86_64 0:3.28.4-1.2.el7_3                                                 
+  nss-softokn.x86_64 0:3.16.2.3-14.4.el7                                        
+  nss-softokn-freebl.x86_64 0:3.16.2.3-14.4.el7                                 
+  nss-sysinit.x86_64 0:3.28.4-1.2.el7_3                                         
+  nss-tools.x86_64 0:3.28.4-1.2.el7_3                                           
+  nss-util.x86_64 0:3.28.4-1.0.el7_3                                            
+
+Complete!
+ ---> 059231b0c83f
+Removing intermediate container 49ef996d0e9d
+Successfully built 059231b0c83f
+Successfully tagged centoscas:0.1
