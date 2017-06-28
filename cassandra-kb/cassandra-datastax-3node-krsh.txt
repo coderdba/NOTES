@@ -1,0 +1,99 @@
+--jdk
+            yum install java-1.7.0-openjdk-devel
+            java -version
+ 
+            or
+ 
+cd /opt/
+wget --no-cookies --no-check-certificate --header "Cookie: gpw_e24=http%3A%2F%2Fwww.oracle.com%2F; oraclelicense=accept-securebackup-cookie" "http://download.oracle.com/otn-pub/java/jdk/8u121-b13/e9e7ea248e2c4826b92b3f075a80e441/jdk-8u121-linux-x64.tar.gz"
+tar xzf jdk-8u121-linux-x64.tar.gz
+cd /opt/jdk1.8.0_121/
+alternatives --install /usr/bin/java java /opt/jdk1.8.0_121/bin/java 2
+alternatives --config java
+java -version
+ 
+--python
+            yum install gcc
+            cd /usr/src
+            wget https://www.python.org/ftp/python/2.7.13/Python-2.7.13.tgz
+            tar xzf Python-2.7.13.tgz
+            cd Python-2.7.13
+            ./configure
+            make altinstall
+            python2.7 -V
+ 
+--config file setup
+            touch /etc/yum.repos.d/datastax.repo
+            cat /etc/yum.repos.d/datastax.repo
+                        [datastax]
+                        name = DataStax Repo for Apache Cassandra
+                        baseurl = http://rpm.datastax.com/community
+                        enabled = 1
+                        gpgcheck = 0
+ 
+ 
+--Single Node
+            --install cassandra (be in root else sudo and below command)
+            yum install dsc30
+            yum install cassandra30-tools
+ 
+            --start the cassandra service
+            service cassandra start
+            /etc/init.d/cassandra start
+            nodetool status
+ 
+            --stop the cassandra service
+            service cassandra stop
+ 
+--Multi Node
+ 
+cd /etc/cassandra/default.conf
+vi cassandra.yaml
+ 
+--Node1 (10.63.162.89)
+ 
+            --replace the below parm
+                        cluster_name: 'MyCassandraCluster'
+                        num_tokens: 256
+                        seeds: "10.63.162.89,10.63.162.90"
+                        listen_address: 10.63.162.89
+                        rpc_address: 10.63.162.89
+                        endpoint_snitch: GossipingPropertyFileSnitch
+            --append in the last the below line
+                        auto_bootstrap: false
+ 
+            --allow firewall
+                        firewall-cmd --add-port=7000/tcp
+                        firewall-cmd --add-port=9042/tcp
+                        firewall-cmd --list-all
+ 
+--Node 2 (10.63.162.90)
+ 
+            --replace the below parm
+                        cluster_name: 'MyCassandraCluster'
+                        num_tokens: 256
+                        seeds: "10.63.162.89,10.63.162.90"
+                        listen_address: 10.63.162.90
+                        rpc_address: 10.63.162.90
+                        endpoint_snitch: GossipingPropertyFileSnitch
+            --append in the last the below line
+                        auto_bootstrap: false
+ 
+            --allow firewall
+                        firewall-cmd --add-port=7000/tcp
+                        firewall-cmd --add-port=9042/tcp
+                        firewall-cmd --list-all
+ 
+--restart in both nodes
+ 
+            service cassandra stop
+            rm -rf /var/lib/cassandra/data/system/*
+            rm -rf /var/lib/cassandra/data/data/system/*
+            service cassandra start
+            --/etc/init.d/cassandra start
+            nodetool status
+ 
+--start cql prompt in both nodes respectively
+ 
+            cqlsh 10.63.162.90
+            cqlsh 10.63.162.89
