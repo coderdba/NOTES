@@ -47,6 +47,31 @@ RUN systemctl list-unit-files | grep enabled
 
 CMD ["/usr/sbin/init"]
 
+- cassandra.service
+# https://gist.github.com/s0undt3ch/969b744d3d7b88c29cba
+# /usr/lib/systemd/system/cassandra.service
+
+[Unit]
+Description=Cassandra
+After=network.target
+
+[Service]
+PIDFile=/var/run/cassandra/cassandra.pid
+User=cassandra
+Group=cassandra
+ExecStart=/usr/sbin/cassandra -f -p /var/run/cassandra/cassandra.pid
+StandardOutput=journal
+StandardError=journal
+LimitNOFILE=100000
+LimitMEMLOCK=infinity
+LimitNPROC=32768
+LimitAS=infinity
+Restart=always
+
+
+[Install]
+WantedBy=multi-user.target
+
 - Build
 docker build --rm -t cassandraone/centos:0.3 .
 
@@ -70,10 +95,17 @@ Screen output - enabling the service:
     Removing intermediate container 17cfe21c06f0
     Step 15/15 : CMD /usr/sbin/init
 
+- Run a container
+NOTE: Per the site below, "container=docker" is needed for some reason
+NOTE: Also, this is not required - /usr/sbin/init in the run command - if it is already specified in CMD in Dockerfile
+
+https://forums.docker.com/t/issues-while-starting-a-service-within-docker-container/8624
+Syntax: docker run --privileged  -ti -e "container=docker"  -v /sys/fs/cgroup:/sys/fs/cgroup  trinitronx/ansible-base:stable-centos7  /usr/sbin/init
+
+docker run --privileged  -ti -e "container=docker"  -v /sys/fs/cgroup:/sys/fs/cgroup  < image id > 
+
 
 -- SECOND TRIAL:
-============================
-============================
 However, got error
 https://stackoverflow.com/questions/36545105/docker-couldnt-find-an-alternative-telinit-implementation-to-spawn
 
