@@ -105,9 +105,44 @@ NOTE: Also, this is not required - /usr/sbin/init in the run command - if it is 
 https://forums.docker.com/t/issues-while-starting-a-service-within-docker-container/8624
 Syntax: docker run --privileged  -ti -e "container=docker"  -v /sys/fs/cgroup:/sys/fs/cgroup  trinitronx/ansible-base:stable-centos7  /usr/sbin/init
 
-docker run --privileged  -ti -e "container=docker"  -v /sys/fs/cgroup:/sys/fs/cgroup  < image id > 
+SOLVED!!
+NOTE: cassandra starts by 'init' - see messages below
 
+COMMAND:
+# docker run --privileged  -ti -e "container=docker"  -v /sys/fs/cgroup:/sys/fs/cgroup  < image id > 
 
+MESSAGES:
+systemd 219 running in system mode. (+PAM +AUDIT +SELINUX +IMA -APPARMOR +SMACK +SYSVINIT +UTMP +LIBCRYPTSETUP +GCRYPT +GNUTLS +ACL +XZ -LZ4 -SECCOMP +BLKID +ELFUTILS +KMOD +IDN)
+Detected virtualization docker.
+Detected architecture x86-64.
+
+Welcome to CentOS Linux 7 (Core)!
+
+Set hostname to <43be31858669>.
+Initializing machine ID from random generator.
+[  OK  ] Reached target Swap.
+[  OK  ] Reached target Local File Systems.
+[  OK  ] Reached target Paths.
+[  OK  ] Created slice Root Slice.
+[  OK  ] Created slice System Slice.
+[  OK  ] Listening on Delayed Shutdown Socket.
+[  OK  ] Listening on Journal Socket.
+         Starting Create Volatile Files and Directories...
+[  OK  ] Reached target Slices.
+         Starting Journal Service...
+[  OK  ] Started Create Volatile Files and Directories.
+[ INFO ] Update UTMP about System Boot/Shutdown is not active.
+[DEPEND] Dependency failed for Update UTMP about System Runlevel Changes.
+Job systemd-update-utmp-runlevel.service/start failed with result 'dependency'.
+[  OK  ] Started Journal Service.
+[  OK  ] Reached target System Initialization.
+[  OK  ] Reached target Timers.
+[  OK  ] Listening on D-Bus System Message Bus Socket.
+[  OK  ] Reached target Sockets.
+[  OK  ] Reached target Basic System.
+[  OK  ] Started Cassandra.
+         Starting Cassandra...
+[  OK  ] Reached target Multi-User System.
 -- SECOND TRIAL:
 However, got error
 https://stackoverflow.com/questions/36545105/docker-couldnt-find-an-alternative-telinit-implementation-to-spawn
@@ -229,8 +264,17 @@ runlevel4.target  enabled
 5 unit files listed.
 [root@a09b1568cfe9 /]# systemctl list-unit-files |grep cassandra
 
-*** This also created /etc/init.d/cassandra file also!!
 *******************************************************
+SOLVED!!
+***
+*** This also created /etc/init.d/cassandra file !!
+***
+--> --> also, in /etc/rcX.d folders links to this cassandra file was created
+
+Upon docker run with 'bash' as entry point, run /etc/init.d/cassandra start to start cassandra and 'stop' to stop it.
+--> However, if we omit 'bash' in docker run then MOSTLY IT WILL START CASSANDRA ANYWAY
+*******************************************************
+
 
 - Set up autostart of cassandra
 https://gist.github.com/sgomezvillamor/5458309
