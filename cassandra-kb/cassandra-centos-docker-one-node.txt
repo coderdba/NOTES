@@ -15,6 +15,62 @@ NOTE: To get into a container just to check what is in it: docker run --rm -it  
               (that is not the same as "docker exec -ti 3a8ca3bd4e2a bash" - which is for an existing container)
 --> that will give a '#' prompt of the container and we can look around
 
+-- THIRD TRIAL
+
+- Dockerfile:
+
+FROM centos/systemd
+
+#MAINTAINER "Your Name" <you@example.com>
+
+ENV yumrepo=/etc/yum.repos.d/cassandra.repo
+
+RUN echo [cassandra] > $yumrepo
+RUN echo name=Apache Cassandra >> $yumrepo
+RUN echo baseurl=https://www.apache.org/dist/cassandra/redhat/311x/ >> $yumrepo
+RUN echo gpgcheck=1 >> $yumrepo
+RUN echo repo_gpgcheck=1 >> $yumrepo
+RUN echo gpgkey=https://www.apache.org/dist/cassandra/KEYS >> $yumrepo
+RUN echo sslverify=false >> $yumrepo
+
+COPY cassandra.service /usr/lib/systemd/system/cassandra.service
+
+RUN yum -y install cassandra 
+RUN yum clean all 
+RUN systemctl enable cassandra.service
+RUN systemctl list-unit-files | grep enabled
+
+#RUN service cassandra start
+#RUN chkconfig cassandra on
+
+#EXPOSE 80
+
+CMD ["/usr/sbin/init"]
+
+- Build
+docker build --rm -t cassandraone/centos:0.3 .
+
+Screen output - enabling the service:
+
+    Step 13/15 : RUN systemctl enable cassandra.service
+     ---> Running in b87ad1031a59
+    Created symlink /etc/systemd/system/multi-user.target.wants/cassandra.service, pointing to
+    /usr/lib/systemd/system/cassandra.service.
+     ---> 17287fbbd5eb
+    Removing intermediate container b87ad1031a59
+    Step 14/15 : RUN systemctl list-unit-files | grep enabled
+     ---> Running in 17cfe21c06f0
+    cassandra.service                      enabled 
+    default.target                         enabled 
+    multi-user.target                      enabled 
+    runlevel2.target                       enabled 
+    runlevel3.target                       enabled 
+    runlevel4.target                       enabled 
+     ---> 80beaf8b0c28
+    Removing intermediate container 17cfe21c06f0
+    Step 15/15 : CMD /usr/sbin/init
+
+
 -- SECOND TRIAL:
 ============================
 ============================
