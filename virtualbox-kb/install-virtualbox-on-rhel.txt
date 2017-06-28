@@ -105,10 +105,13 @@ Dependency Installed:
 Complete!
 
 ====================
-CONFIGURE
+CONFIGURE AND START
 ====================
 also see - https://forums.virtualbox.org/viewtopic.php?f=7&t=73749
 
+--------------
+CONFIGURE
+--------------
 NOTE: This is a fluke that I got to know about /sbin/vboxconfig when I ran vboxmanage --version command as below
 # vboxmanage --version
 WARNING: The vboxdrv kernel module is not loaded. Either there is no module
@@ -152,11 +155,33 @@ Installed:
 Dependency Installed:
   cpp.x86_64 0:4.8.5-11.el7      glibc-devel.x86_64 0:2.17-157.el7_3.4      glibc-headers.x86_64 0:2.17-157.el7_3.4      libmpc.x86_64 0:1.0.1-3.el7      mpfr.x86_64 0:3.1.1-4.el7     
 
-
+-- NOTE: Though it states it started the services, it did not seem to start them
 # ./vboxconfig
 vboxdrv.sh: Stopping VirtualBox services.
 vboxdrv.sh: Building VirtualBox kernel modules.
 vboxdrv.sh: Starting VirtualBox services.
+
+---------------------
+START SERVICE
+---------------------
+# cd /lib/systemd/system
+# ls -l vbox*
+-rw-r--r--. 1 root root 495 Jun 28 11:31 vboxautostart-service.service
+-rw-r--r--. 1 root root 501 Jun 28 11:31 vboxballoonctrl-service.service
+-rw-r--r--. 1 root root 467 Jun 28 11:31 vboxdrv.service
+-rw-r--r--. 1 root root 477 Jun 28 11:31 vboxweb-service.service
+
+# systemctl start vboxdrv
+
+# systemctl status vboxdrv
+● vboxdrv.service - VirtualBox Linux kernel module
+   Loaded: loaded (/usr/lib/virtualbox/vboxdrv.sh; enabled; vendor preset: disabled)
+   Active: active (exited) since Wed 2017-06-28 11:31:25 CDT; 3min 33s ago
+  Process: 51659 ExecStart=/usr/lib/virtualbox/vboxdrv.sh start (code=exited, status=0/SUCCESS)
+
+Jun 28 11:31:25 clx0007 systemd[1]: Starting VirtualBox Linux kernel module...
+Jun 28 11:31:25 clx0007 vboxdrv.sh[51659]: vboxdrv.sh: Starting VirtualBox services.
+Jun 28 11:31:25 clx0007 systemd[1]: Started VirtualBox Linux kernel module.
 
 =======================
 ADD USERS TO VBOX GROUP
