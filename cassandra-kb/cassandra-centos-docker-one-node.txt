@@ -112,6 +112,9 @@ That showed that systemd transferred control to chkconfig to enable cassandra as
 docker run --privileged --name cassandraone -v /sys/fs/cgroup:/sys/fs/cgroup:ro --rm -it 51427d00b2ed bash
 
 -- Inside the container
+
+NOTE that systemctl enabled services or list of services does not include cassandra
+
 # /sbin/chkconfig --list
 
 Note: This output shows SysV services only and does not include native
@@ -123,6 +126,21 @@ Note: This output shows SysV services only and does not include native
       'systemctl list-dependencies [target]'.
 
 cassandra      	0:off	1:off	2:on	3:on	4:on	5:on	6:off
+
+[root@a09b1568cfe9 /]# systemctl list-unit-files --state=enabled
+UNIT FILE         STATE  
+default.target    enabled
+multi-user.target enabled
+runlevel2.target  enabled
+runlevel3.target  enabled
+runlevel4.target  enabled
+
+5 unit files listed.
+[root@a09b1568cfe9 /]# systemctl list-unit-files |grep cassandra
+
+- Set up autostart of cassandra
+https://gist.github.com/sgomezvillamor/5458309
+https://jansipke.nl/centos-cassandra-init-start-stop-script/
 
 
 
