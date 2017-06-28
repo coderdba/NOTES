@@ -18,7 +18,80 @@ NOTE: To get into a container just to check what is in it: docker run --rm -it  
               (that is not the same as "docker exec -ti 3a8ca3bd4e2a bash" - which is for an existing container)
 --> that will give a '#' prompt of the container and we can look around
 
--- THIRD TRIAL
+-- FOURTH TRIAL - without systemd
+
+Dockerfile:
+
+#
+# Dockerfile for cassandra without systemd service
+#
+
+FROM centos/systemd
+
+#MAINTAINER "Your Name" <you@example.com>
+
+ENV yumrepo=/etc/yum.repos.d/cassandra.repo
+
+RUN echo [cassandra] > $yumrepo
+RUN echo name=Apache Cassandra >> $yumrepo
+RUN echo baseurl=https://www.apache.org/dist/cassandra/redhat/311x/ >> $yumrepo
+RUN echo gpgcheck=1 >> $yumrepo
+RUN echo repo_gpgcheck=1 >> $yumrepo
+RUN echo gpgkey=https://www.apache.org/dist/cassandra/KEYS >> $yumrepo
+RUN echo sslverify=false >> $yumrepo
+
+RUN yum -y install cassandra 
+RUN yum clean all 
+RUN systemctl enable cassandra.service
+RUN systemctl list-unit-files | grep enabled
+
+RUN ls /etc/init.d/cas*
+RUN ls -l /etc/rc.d/*/*
+
+# Required ports
+# 7000: intra-node communication
+# 7001: TLS intra-node communication
+# 7199: JMX
+# 9042: CQL
+# 9160: thrift service
+
+EXPOSE 7000 7001 7199 9042 9160
+
+# init may not be required as we are not creating cassandra.service file in this case
+#CMD ["/usr/sbin/init"]
+
+
+Build:
+docker --no-cache build --rm -t cassandraone/centos:0.4 .
+
+Run:
+docker run --privileged --name cassandraone -v /sys/fs/cgroup:/sys/fs/cgroup:ro --rm -it c6b24aa03205
+
+Logon to running container:
+# docker exec -it 68cd50f3efdd /bin/bash
+
+In the container
+# ps -ef|grep cassandra
+
+cassand+    100      1  5 10:14 ?        00:00:14 /usr/lib/jvm/jre/bin/java -Xloggc:/var/log/cassandra/gc.log -ea -
+XX:+UseThreadPriorities -XX:ThreadPriorityPolicy=42 -XX:+HeapDumpOnOutOfMemoryError -Xss256k -XX:StringTableSize=1000003 -
+XX:+AlwaysPreTouch -XX:-UseBiasedLocking -XX:+UseTLAB -XX:+ResizeTLAB -XX:+UseNUMA -XX:+PerfDisableSharedMem -
+Djava.net.preferIPv4Stack=true -XX:+UseParNewGC -XX:+UseConcMarkSweepGC -XX:+CMSParallelRemarkEnabled -XX:SurvivorRatio=8 -
+XX:MaxTenuringThreshold=1 -XX:CMSInitiatingOccupancyFraction=75 -XX:+UseCMSInitiatingOccupancyOnly -XX:CMSWaitDuration=10000
+-XX:+CMSParallelInitialMarkEnabled -XX:+CMSEdenChunksRecordAlways -XX:+CMSClassUnloadingEnabled -XX:+PrintGCDetails -
+XX:+PrintGCDateStamps -XX:+PrintHeapAtGC -XX:+PrintTenuringDistribution -XX:+PrintGCApplicationStoppedTime -
+XX:+PrintPromotionFailure -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=10M -Xms3967M -Xmx3967M -
+Xmn400M -XX:CompileCommandFile=/etc/cassandra/conf/hotspot_compiler -javaagent:/usr/share/cassandra/lib/jamm-0.3.0.jar -
+Dcassandra.jmx.local.port=7199 -Dcom.sun.management
+
+# su - cassandra
+Last login: Wed Jun 28 10:14:34 UTC 2017
+-bash-4.2$ id
+uid=998(cassandra) gid=997(cassandra) groups=997(cassandra)
+
+
+
+-- THIRD TRIAL - with systemd
 
 - Dockerfile:
 
