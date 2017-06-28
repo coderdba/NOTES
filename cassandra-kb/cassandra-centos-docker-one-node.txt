@@ -69,7 +69,60 @@ Checked the systemd version just for info:
   # /usr/lib/systemd/systemd  --version
   systemd 219
   +PAM +AUDIT +SELINUX +IMA -APPARMOR +SMACK +SYSVINIT +UTMP +LIBCRYPTSETUP +GCRYPT +GNUTLS +ACL +XZ -LZ4 -SECCOMP +BLKID +ELFUTILS +KMOD +IDN
+  
+In the container:
 
+# ps -ef|grep cassandra 
+--> did not return anything
+
+# /usr/sbin/init
+Couldn't find an alternative telinit implementation to spawn.
+
+--> To try fix this:
+https://stackoverflow.com/questions/36545105/docker-couldnt-find-an-alternative-telinit-implementation-to-spawn
+- http://developers.redhat.com/blog/2014/05/05/running-systemd-within-docker-container/
+
+docker run --privileged --name cassandraone -v /sys/fs/cgroup:/sys/fs/cgroup:ro --rm -it 03d9928a2a5e bash
+--> This did not help either - cassandra process did not start automatically
+
+    Checked the systemd version just for info:
+      # /usr/lib/systemd/systemd  --version
+      systemd 219
+      +PAM +AUDIT +SELINUX +IMA -APPARMOR +SMACK +SYSVINIT +UTMP +LIBCRYPTSETUP +GCRYPT +GNUTLS +ACL +XZ -LZ4 
+          -SECCOMP +BLKID +ELFUTILS +KMOD +IDN
+
+Ran systemd manually instead of /usr/sbin/init:
+# /usr/lib/systemd/systemd 
+Trying to run as user instance, but the system has not been booted with systemd.
+
+- NEXT BUILT A NEW VERSION OF THE IMAGE, 
+
+In Dockerfile separated the yum, etc commands into multiple lines instead of one line.
+--> Built a new version of the image
+
+That showed that systemd transferred control to chkconfig to enable cassandra as cassandra is not a 'native' service
+
+    Step 12/14 : RUN systemctl enable cassandra.service
+     ---> Running in 70c911799381
+    cassandra.service is not a native service, redirecting to /sbin/chkconfig.
+    Executing /sbin/chkconfig cassandra on
+     ---> f8ea59cb7480
+
+- Ran a temporary container again with the new image
+docker run --privileged --name cassandraone -v /sys/fs/cgroup:/sys/fs/cgroup:ro --rm -it 51427d00b2ed bash
+
+-- Inside the container
+# /sbin/chkconfig --list
+
+Note: This output shows SysV services only and does not include native
+      systemd services. SysV configuration data might be overridden by native
+      systemd configuration.
+
+      If you want to list systemd services use 'systemctl list-unit-files'.
+      To see services enabled on particular target use
+      'systemctl list-dependencies [target]'.
+
+cassandra      	0:off	1:off	2:on	3:on	4:on	5:on	6:off
 
 
 
