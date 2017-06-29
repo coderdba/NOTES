@@ -200,7 +200,33 @@ firewall-cmd --zone=public --add-port=9042/tcp --permanent
 firewall-cmd --zone=public --add-port=9160/tcp --permanent
 firewall-cmd --reload
 
+- RUN CQLSH FROM HOST
+Install cqlsh (see other doc on it)
+Open ports if not open already
 
+# cqlsh (this uses host and host port 9042 that is mapped to container)
+Got this error:
+Connection error: ('Unable to connect to any servers', {'127.0.0.1': error(111, "Tried connecting to [('127.0.0.1', 9042)]. Last error: Connection refused")})
+
+# cqlsh 172.17.0.2 9042 (uses IP of docker container and its port)
+Connection error: ('Unable to connect to any servers', {'172.17.0.2': error(111, "Tried connecting to [('172.17.0.2', 9042)]. Last error: Connection refused")})
+
+Added ~/.cassandra/cqlshrc:
+However, kept getting same errors with different IP addresses based on hostname
+[connection]
+#hostname = olx0003
+hostname = 10.63.160.170
+#hostname = 127.0.0.1
+port = 9042
+; factory = cqlshlib.kerberos_ssl.kerberos_ssl_transport_factory
+
+; [kerberos]
+#; hostname = 172.17.0.2 
+; hostname = 10.63.160.170
+#; hostname = olx0003
+; service = cassandra
+; optional
+; principal = bill/cassandra-admin@foo.example.com
 
 ================= OTHER TRIALS =================
 -- THIRD TRIAL - with systemd
