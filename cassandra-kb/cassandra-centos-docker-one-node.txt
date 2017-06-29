@@ -11,7 +11,7 @@ CQLSH to container:
 https://stackoverflow.com/questions/34645846/cannot-connect-to-cassandra-docker-with-cqlsh
 
 ================================================================================================
-------------- NOT SUCCESSFUL YET -----------------
+------------- NOT FULLY SUCCESSFUL YET -----------------
 ================================================================================================
 SYSTEMD - the service or systemctl kind of thing is not in the standard centos docker image
 Therefore, we must use probably centos/systemd per https://hub.docker.com/r/centos/systemd/
@@ -21,7 +21,7 @@ NOTE: To get into a container just to check what is in it: docker run --rm -it  
               (that is not the same as "docker exec -ti 3a8ca3bd4e2a bash" - which is for an existing container)
 --> that will give a '#' prompt of the container and we can look around
 
--- FOURTH TRIAL - without systemd
+-- FOURTH TRIAL - without systemd (success)
 
 Dockerfile:
 
@@ -249,6 +249,31 @@ Error: No public port '9042/udp' published for 5bb7988956c9
 
 # docker port 5bb7988956c9 9042
 101.63.160.170:9042
+
+The REASON is that cassandra.yaml has 'localhost' for everything.  
+Change the following in it: (where 172.17.0.2 is the IP of the container)
+          - seeds: "172.17.0.2"
+listen_address: 172.17.0.2
+rpc_address: 0.0.0.0
+broadcast_address: 172.17.0.2
+broadcast_rpc_address: 172.17.0.2
+
+HOW TO:
+Logon to the container using docker exec ... bash
+Stop cassandra - /etc/init.d/cassandra stop
+Modify the file - /etc/cassandra/conf/cassandra.yaml with the above settings
+Start cassandara - /etc/init.d/cassandra start
+
+Logon locally using cqlsh - it worked
+Logon remotely from host using cqlsh:
+
+# cqlsh
+Connection error: ('Unable to connect to any servers', {'127.0.0.1': ProtocolError
+("cql_version '3.3.1' is not supported by remote (w/ native protocol). Supported versions: [u'3.4.4']",)})
+
+--NEED to install cqlsh later version
+
+
 
 
 ================= OTHER TRIALS =================
