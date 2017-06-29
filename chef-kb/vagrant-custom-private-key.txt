@@ -1,0 +1,52 @@
+====================================
+CUSTOM PRIVATE KEY FOR VAGRANT SSH
+====================================
+
+http://ermaker.github.io/blog/2015/11/18/change-insecure-key-to-my-own-key-on-vagrant.html
+
+Change Insecure Key To My Own Key On Vagrant
+
+NOV 18, 2015
+
+ 
+Vagrant changes the insecure key pair to randomly generated key on first setup by default. You may want to change the insecure key pair to your own key, not generated. Here is the steps for changing to your key.
+
+Use multiple private keys
+
+Let your keys are keys/private and keys/public. You can set up the configuration like below to use two or more private keys. The key that the box has at first is ~/.vagrant.d/insecure_private_key so you should append this default key. Vagrant tries using private keys in order, so let your major key frist.
+
+  config.ssh.private_key_path = ["keys/private", "~/.vagrant.d/insecure_private_key"]
+Do not generate a key
+
+Vagrant generates a random key and insert to box and this random key is not in the private keys to use (set up above). So you cannot login. So we modify setting to not insert random generated key in the box, like this.
+
+  config.ssh.insert_key = false
+Copy public key to VM
+
+Let's copy the public key into the box. we can login with keys/private from now on.
+
+  config.vm.provision "file", source: "keys/public", destination: "~/.ssh/authorized_keys"
+Prevent access with plaintext password
+
+You should set up one more thing. The box allows login with plaintext password so attacker can login with default username and password vagrant / vagrant. To disable it, modify the configuration file and restart sshd.
+
+  config.vm.provision "shell", inline: <<-EOC
+    sudo sed -i -e "\\#PasswordAuthentication yes# s#PasswordAuthentication yes#PasswordAuthentication no#g" /etc/ssh/sshd_config
+    sudo service ssh restart
+  EOC
+Result
+
+The final result is here. Just vagrant up and connect the box with your key.
+
+Vagrant.configure(2) do |config|
+  config.vm.box = "ubuntu/trusty64"
+
+  # ssh settings
+  config.ssh.insert_key = false
+  config.ssh.private_key_path = ["keys/private", "~/.vagrant.d/insecure_private_key"]
+  config.vm.provision "file", source: "keys/public", destination: "~/.ssh/authorized_keys"
+  config.vm.provision "shell", inline: <<-EOC
+    sudo sed -i -e "\\#PasswordAuthentication yes# s#PasswordAuthentication yes#PasswordAuthentication no#g" /etc/ssh/sshd_config
+    sudo service ssh restart
+  EOC
+end
