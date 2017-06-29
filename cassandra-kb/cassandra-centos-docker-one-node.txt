@@ -136,8 +136,71 @@ tcp        0      0 127.0.0.1:9160          0.0.0.0:*               LISTEN      
 [root@oralx0003 centos-single-node-docker]# netstat -anp |grep 9042
 tcp        0      0 127.0.0.1:9042          0.0.0.0:*               LISTEN      118850/docker-proxy 
 
+-- Check network in the container
+# docker inspect 3611d1447f04(container id)
+
+"NetworkSettings": {
+            "Bridge": "",
+            "SandboxID": "9290a421cc2df6f7b9778aaa7a92ebe2a32da86d9fb32ecbdeafea49d5c11b35",
+            "HairpinMode": false,
+            "LinkLocalIPv6Address": "",
+            "LinkLocalIPv6PrefixLen": 0,
+            "Ports": {
+                "7000/tcp": null,
+                "7001/tcp": null,
+                "7199/tcp": null,
+                "9042/tcp": [
+                    {
+                        "HostIp": "127.0.0.1",
+                        "HostPort": "9042"
+                    }
+                ],
+                "9160/tcp": [
+                    {
+                        "HostIp": "127.0.0.1",
+                        "HostPort": "9160"
+                    }
+                ]
+            },
+            "SandboxKey": "/var/run/docker/netns/9290a421cc2d",
+            "SecondaryIPAddresses": null,
+            "SecondaryIPv6Addresses": null,
+            "EndpointID": "30a64e57996434fcccee463ae217bf638279bbfed2161a9cad872ac8a0a24e41",
+            "Gateway": "172.17.0.1",
+            "GlobalIPv6Address": "",
+            "GlobalIPv6PrefixLen": 0,
+            "IPAddress": "172.17.0.2",
+            "IPPrefixLen": 16,
+            "IPv6Gateway": "",
+            "MacAddress": "02:42:ac:11:00:02",
+            "Networks": {
+                "bridge": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": null,
+                    "NetworkID": "6b320020b925d169ecfd03f243f7f91138ae935e681148fb1c44258d6063e205",
+                    "EndpointID": "30a64e57996434fcccee463ae217bf638279bbfed2161a9cad872ac8a0a24e41",
+                    "Gateway": "172.17.0.1",
+                    "IPAddress": "172.17.0.2",
+                    "IPPrefixLen": 16,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "MacAddress": "02:42:ac:11:00:02"
+                }
+            }
+
+
 -- Open the host ports to outside world
 -> Refer to unix-kb
+
+If using firewalld:
+
+firewall-cmd --zone=public --add-port=9042/tcp --permanent
+firewall-cmd --zone=public --add-port=9160/tcp --permanent
+firewall-cmd --reload
+
+
 
 ================= OTHER TRIALS =================
 -- THIRD TRIAL - with systemd
