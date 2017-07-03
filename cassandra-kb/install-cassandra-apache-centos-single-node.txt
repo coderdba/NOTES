@@ -1,0 +1,137 @@
+==================================================================
+  CASSANDRA - APACHE DISTRIBUTION - INSTALL AND BASIC CONFIG
+  
+  On Centos, Single Node
+==================================================================
+http://wiki.apache.org/cassandra/GettingStarted
+http://cassandra.apache.org/download/
+
+=====================
+CREATE YUM REPO FILE
+=====================
+NOTE: Sometimes yum may get confused which repo to use - among the repo files in the yum.repos.d
+      In such cases, move the irrelevant files temporarily to other location and keep the relevant ones
+    
+/etc/yum.repos.d/cassandra.repo
+
+[cassandra]
+name=Apache Cassandra
+baseurl=https://www.apache.org/dist/cassandra/redhat/311x/
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://www.apache.org/dist/cassandra/KEYS
+sslverify=false
+
+======================
+INSTALL PRE-REQUISITES
+======================
+
+-------------------------
+CHECK PRE-REQUISITES
+-------------------------
+NOTE: Many dependencies show as 'Unsatisfied' - but it is misleading - they may be already there
+
+# yum deplist cassandra
+
+Loaded plugins: fastestmirror
+Loading mirror speeds from cached hostfile
+package: cassandra.noarch 3.11.0-1
+  dependency: /bin/sh
+   Unsatisfied dependency
+  dependency: jre >= 1.8.0
+   Unsatisfied dependency
+  dependency: python(abi) >= 2.7
+   Unsatisfied dependency
+  dependency: shadow-utils
+   Unsatisfied dependency
+
+# python --version
+Python 2.7.5
+
+-------------------------
+INSTALL PREREQUISITES
+-------------------------
+
+- INSTALL JRE 1.8
+https://docs.oracle.com/javase/8/docs/technotes/guides/install/linux_jre.html#CFHIEGAA
+https://www.tecmint.com/install-java-jdk-jre-on-rhel-centos-fedora/
+
+-- Download jre rpm from Oracle's website
+
+-- Install
+# rpm -ivh ./jre-8u131-linux-x64.rpm
+Preparing...                          ################################# [100%]
+Updating / installing...
+   1:jre1.8.0_131-1.8.0_131-fcs       ################################# [100%]
+Unpacking JAR files...
+	plugin.jar...
+	javaws.jar...
+	deploy.jar...
+	rt.jar...
+	jsse.jar...
+	charsets.jar...
+	localedata.jar...
+  
+-- Verify
+# which java
+/bin/java
+
+# java -version
+java version "1.8.0_131"
+
+==============================
+INSTALL AND START CASSANDRA
+==============================
+
+- INSTALL
+# yum install cassandra
+
+- SETUP AUTOSTART
+NOTE: Cassandra is not a systemd service - so it will set up for 'rc'
+# systemctl enable cassandra.service
+cassandra.service is not a native service, redirecting to /sbin/chkconfig.
+Executing /sbin/chkconfig cassandra on
+
+- VERIFY AUTOSTART
+# ls -l /etc/init.d/cassandra
+-rwxr-xr-x. 1 root root 3828 Jun 19 20:09 /etc/init.d/cassandra
+
+# ls -l /etc/rc.d/*/*cass*
+-rwxr-xr-x. 1 root root 3828 Jun 19 20:09 /etc/rc.d/init.d/cassandra
+lrwxrwxrwx. 1 root root   19 Jul  3 05:36 /etc/rc.d/rc0.d/K20cassandra -> ../init.d/cassandra
+lrwxrwxrwx. 1 root root   19 Jul  3 05:36 /etc/rc.d/rc1.d/K20cassandra -> ../init.d/cassandra
+lrwxrwxrwx. 1 root root   19 Jul  3 05:36 /etc/rc.d/rc2.d/S80cassandra -> ../init.d/cassandra
+lrwxrwxrwx. 1 root root   19 Jul  3 05:36 /etc/rc.d/rc3.d/S80cassandra -> ../init.d/cassandra
+lrwxrwxrwx. 1 root root   19 Jul  3 05:36 /etc/rc.d/rc4.d/S80cassandra -> ../init.d/cassandra
+lrwxrwxrwx. 1 root root   19 Jul  3 05:36 /etc/rc.d/rc5.d/S80cassandra -> ../init.d/cassandra
+lrwxrwxrwx. 1 root root   19 Jul  3 05:36 /etc/rc.d/rc6.d/K20cassandra -> ../init.d/cassandra
+
+- START CASSANDRA
+# /etc/init.d/cassandra start
+Starting cassandra (via systemctl):                        [  OK  ]
+
+[root@cassandra-model yum.repos.d]# ps -ef|grep cas
+cassand+ 25251     1 99 05:39 ?        00:00:03 /usr/java/jre1.8.0_131/bin/java -Xloggc:/var/log/cassandra/gc.log -ea -XX:+UseThreadPriorities -XX:ThreadPriorityPolicy=42 -XX:+HeapDumpOnOutOfMemoryError -Xss256k -XX:StringTableSize=1000003 -XX:+AlwaysPreTouch -XX:-UseBiasedLocking -XX:+UseTLAB -XX:+ResizeTLAB -XX:+UseNUMA -XX:+PerfDisableSharedMem -Djava.net.preferIPv4Stack=true -XX:+UseParNewGC -XX:+UseConcMarkSweepGC -XX:+CMSParallelRemarkEnabled -XX:SurvivorRatio=8 -XX:MaxTenuringThreshold=1 -XX:CMSInitiatingOccupancyFraction=75 -XX:+UseCMSInitiatingOccupancyOnly -XX:CMSWaitDuration=10000 -XX:+CMSParallelInitialMarkEnabled -XX:+CMSEdenChunksRecordAlways -XX:+CMSClassUnloadingEnabled -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintHeapAtGC -XX:+PrintTenuringDistribution -XX
+
+- VERIFY
+# cqlsh
+Connected to Test Cluster at 127.0.0.1:9042.
+[cqlsh 5.0.1 | Cassandra 3.11.0 | CQL spec 3.4.4 | Native protocol v4]
+Use HELP for help.
+cqlsh> 
+
+# netstat -anp
+NOTE: Only relevant ones are pasted below
+
+Active Internet connections (servers and established)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name      
+tcp        0      0 127.0.0.1:9042          0.0.0.0:*               LISTEN      25251/java          
+tcp        0      0 127.0.0.1:7000          0.0.0.0:*               LISTEN      25251/java                   
+tcp        0      0 0.0.0.0:7199            0.0.0.0:*               LISTEN      25251/java          
+
+=======================================
+MOVE BACK ANY REPO FILES TO YUM.REPOS.D
+=======================================
+NOTE: Also, remove or move to elsewhere cassandra.repo as that seemed to interefere with other installs later on
+
+
