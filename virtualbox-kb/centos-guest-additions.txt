@@ -3,43 +3,38 @@ https://unix.stackexchange.com/questions/18435/how-to-install-virtualbox-guest-a
 
 https://www.if-not-true-then-false.com/2010/install-virtualbox-guest-additions-on-fedora-centos-red-hat-rhel/
 
-Virtualbox 5.1 GUI is crazy and does not show 'devices' directly.
+=========================
+MOUNT GUEST ADDITIONS ISO
+=========================
+
+- Shutdown the VM
+$ vagrant halt
+
+- CREATE A KEYBOARD SHORTCUT TO USE TO MOUNT THE GUEST ADDITIONS (you need VirtualBox GUI for this)
+Virtualbox 5.1 GUI is crazy and does not show 'devices' links/panes directly.
 
 Need to go to 'preferences' --> virtual machine --> and set up a keyboard shortcut here
+
+- ADD AN OPTICAL DRIVE TO THE MACHINE
+In the GUI, in 'storage' add an optical drive - choose ok for 'empty' drive
+
+- MOUNT THE GUEST ADDITIONS ISO TO THE OPTICAL DRIVE 
 Start the VM
 Press the keyboard shortcut to mount the guest-additions iso
 
-NOW - the ISO DOES NOT SHOW UP IN /media
+- MOUNT THE OPTICAL DRIVE TO A MOUNT POINT IN THE MACHINE
   Instead, /dev/cdcom or equivalent should be mounted to a /media/cdrom or such:
   mkdir /media/cdrom
   mount /dev/cdrom /media/cdrom
 
-yum install gcc
-yum install kernel-devel-<kernel number>
+===============================
+FIND THE KERNEL TO BE INSTALLED
+===============================
+Run the guest-additions program - it will fail, but lists the kernel to be installed
 
-export KERN_DIR=/usr/src/kernels/3.10.0-514.21.2.el7.x86_64
-  /media/cdrom/VBoxLinuxAdditions.run
-  Verifying archive integrity... All good.
-  Uncompressing VirtualBox 5.0.16 Guest Additions for Linux............
-  VirtualBox Guest Additions installer
-  Removing installed version 5.0.16 of VirtualBox Guest Additions...
-  Removing existing VirtualBox non-DKMS kernel modules[  OK  ]
-  Copying additional installer modules ...
-  Installing additional modules ...
-  Removing existing VirtualBox non-DKMS kernel modules[  OK  ]
-  Building the VirtualBox Guest Additions kernel modules
-  Building the main Guest Additions module[  OK  ]
-  Building the shared folder support module[  OK  ]
-  Building the OpenGL support module[  OK  ]
-  Doing non-kernel setup of the Guest Additions[  OK  ]
-  Starting the VirtualBox Guest Additions [  OK  ]
-  Installing the Window System drivers
-  Could not find the X.Org or XFree86 Window System, skipping.
-
-
-REFERENCE LISTING
 -- Kernel-devel version in the listing below ...
 # /media/cdrom/VBoxLinuxAdditions.run
+
 Verifying archive integrity... All good.
 Uncompressing VirtualBox 5.0.16 Guest Additions for Linux............
 VirtualBox Guest Additions installer
@@ -63,6 +58,49 @@ Doing non-kernel setup of the Guest Additions[  OK  ]
 Installing the Window System drivers
 Could not find the X.Org or XFree86 Window System, skipping.
 
+=================================
+INSTALL PRE-REQUSITES AND KERNEL
+=================================
+
+yum install gcc
+yum install kernel-devel-<kernel number>
+
+=========================
+INSTALL GUEST ADDITIONS
+=========================
+
+# export KERN_DIR=/usr/src/kernels/3.10.0-514.21.2.el7.x86_64
+ 
+# /media/cdrom/VBoxLinuxAdditions.run
+
+  Verifying archive integrity... All good.
+  Uncompressing VirtualBox 5.0.16 Guest Additions for Linux............
+  VirtualBox Guest Additions installer
+  Removing installed version 5.0.16 of VirtualBox Guest Additions...
+  Removing existing VirtualBox non-DKMS kernel modules[  OK  ]
+  Copying additional installer modules ...
+  Installing additional modules ...
+  Removing existing VirtualBox non-DKMS kernel modules[  OK  ]
+  Building the VirtualBox Guest Additions kernel modules
+  Building the main Guest Additions module[  OK  ]
+  Building the shared folder support module[  OK  ]
+  Building the OpenGL support module[  OK  ]
+  Doing non-kernel setup of the Guest Additions[  OK  ]
+  Starting the VirtualBox Guest Additions [  OK  ]
+  Installing the Window System drivers
+  Could not find the X.Org or XFree86 Window System, skipping.
+
+=========================
+VERIFY
+=========================
+
+# lsmod | grep vboxguest
+vboxguest             297222  2 vboxsf
+
+
+=========================
+APPENDIX
+=========================
 ----------------------------------
 SPACE USAGE DURING KERNEL AND GUEST-ADDITIONS INSTALL
 ----------------------------------
