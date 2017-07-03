@@ -139,6 +139,8 @@ OPEN CASSANDRA TO EXTERNAL CONNECTIONS
 =======================================
 
 -------------------------------------------------------------------------------
+EDIT cassandra.yaml
+
 ADD OWN IP'S IN THE PLACE OF LOCALHOST IN /etc/cassandra/conf/cassandra.yaml
 -------------------------------------------------------------------------------
 
@@ -151,3 +153,31 @@ The changes from original yaml file are:
     broadcast_address: 172.17.0.2
     broadcast_rpc_address: 172.17.0.2
 
+-----------------------------
+RESTART CASSANDRA
+-----------------------------
+# /etc/init.d/cassandra stop
+# /etc/init.d/cassandra start
+
+-----------------------------
+VERIFY
+-----------------------------
+
+- NETWORK CONNECTIONS TO SHOW IP ADDR INSTEAD OF 127.0.0.1 
+
+NOTE: Only 7000 seems to listen on the IP of the machie. Others on 0.0.0.0
+
+# netstat -anp
+Active Internet connections (servers and established)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name             
+tcp        0      0 0.0.0.0:9042            0.0.0.0:*               LISTEN      2780/java           
+tcp        0      0 192.168.3.100:7000      0.0.0.0:*               LISTEN      2780/java                   
+tcp        0      0 0.0.0.0:7199            0.0.0.0:*               LISTEN      2780/java           
+
+- TELNET from host
+$ telnet 192.168.3.100 7000
+Trying 192.168.3.100...
+Connected to t7775rac01a-rac.target.com.
+Escape character is '^]'.
+
+- CQLSH from another machine
