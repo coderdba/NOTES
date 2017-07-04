@@ -6,7 +6,7 @@ Usage:
 Copy all these files to a folder
 Run build.sh to build an image
 Run runwithportvol.sh to create a container as daemon using the image
---> note that this has a redirect to /dev/null so that that process is continuously running 
+--> note that this has a command to do 'tail -f /dev/null' so that that process is continuously running 
     - otherwise container exits upon completion of docker-entrypoint.sh
 
 Use porthostopen.sh to open host's port so that someone can connect to the container from outside of this host
