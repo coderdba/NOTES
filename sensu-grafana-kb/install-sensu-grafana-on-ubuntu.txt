@@ -51,17 +51,17 @@ LOGON TO THE CONTAINER
 ======================================================     
 SENSU INSTALL - Sensu Master Installation
 ======================================================
-Install the GPG public key
+- Install the GPG public key
 # wget -q http://sensu.global.ssl.fastly.net/apt/pubkey.gpg -O- | sudo apt-key add -
 OK
 
-Create an APT configuration file at /etc/apt/sources.list.d/sensu.list
+- Create an APT configuration file at /etc/apt/sources.list.d/sensu.list
 echo "deb http://sensu.global.ssl.fastly.net/apt sensu main" | sudo tee /etc/apt/sources.list.d/sensu.list
 
-Create an APT configuration file at /etc/apt/sources.list.d/sensu.list
+- Create an APT configuration file at /etc/apt/sources.list.d/sensu.list
 echo "deb http://sensu.global.ssl.fastly.net/apt sensu main" | sudo tee /etc/apt/sources.list.d/sensu.list
 
-Update APT and Install Sensu
+- Update APT and Install Sensu
 # sudo apt-get install sensu
 Reading package lists... Done
 Building dependency tree       
@@ -80,3 +80,40 @@ Preparing to unpack .../sensu_0.26.5-2_amd64.deb ...
 Unpacking sensu (0.26.5-2) ...
 Processing triggers for ureadahead (0.100.0-16) ...
 Setting up sensu (0.26.5-2) ...
+
+- Client Configuration 
+Copy the following contents to a configuration file located at /etc/sensu/conf.d/client.json
+
+{
+          "client": {
+            "name": "sensu-server",
+            "address": "127.0.0.1",
+            "environment": "sensu",
+            "subscriptions": [ "linux"],
+            "keepalive":
+            {
+           "handler": "mailer",
+            "thresholds": {
+            "warning": 250,
+            "critical": 300
+          }
+            },
+"socket": {
+          "bind": "127.0.0.1",
+          "port": 3030
+            }
+          }
+}
+
+- At minimum, all of the Sensu processes require configuration to tell them how to connect 
+to the configured Sensu Transport.
+
+Copy the following contents to a configuration file located at /etc/sensu/conf.d/transport.json
+
+{
+"transport": 
+{
+"name": "rabbitmq",
+"reconnect_on_error": true
+}
+}
