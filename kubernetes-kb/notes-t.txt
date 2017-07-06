@@ -1,0 +1,82 @@
+CONTAINERS
+Containers share host’s kernel
+VM’s have their own kernels
+
+CGroups, Namespaces
+- resource limit capabilities for processes??
+- https://www.netdevconf.org/1.1/tutorial-namespaces-and-cgroups-basis-linux-containers-rami-rosen.html
+
+cgroups (abbreviated from control groups) is a Linux kernel feature that limits, accounts for, and isolates the resource usage (CPU, memory, disk I/O, network, etc.) of a collection of processes.
+
+Linux containers - LXC
+Docker - an abstraction to use cgroups and namespaces better
+
+VMs - set CPU and memory for each
+Container - 
+
+KUBERNETES
+Written in ‘go’, open source
+misos - apache
+nomad - hashi
+white paper
+
+Master node
+Worker node
+
+Master node consists of API servers, controller manager, scheduler
+Everything that hits Kube hits api server
+API can do what kubectl does
+
+Scheduler - checks where capacity is in various nodes and runs the load there
+Controller manager - controller to manage stuff based on annotations and labels in the yaml file
+- checks current state and desired state (like need 3 but one is down …)
+
+Etcd - key-value store
+- maintain cluster state
+- keeps itself HA talking to peers
+
+We can create our own controller and deploy to controller manager
+- Prometheus is one such controller - reads all containers annotations and pulls that data
+- Kube does not have cron - so some people have written pods that wake up periodically and do jobs
+
+PODS - 
+A pod can have multiple container in it
+
+SERVICES -
+Load balancer for pods
+A service can be created for sets of pods
+
+CONFIG MAP-
+If some dependencies are there outside of a pod - define it here
+A pod can contact that resource and go back to the pod
+
+SECRETS-
+Encrypted items for use of pods/containers
+
+Both configmap and secret can be available in a POD, or keep secrets in a different location
+
+NAMESPACES-
+For security and resource limits
+- no question of segmenting persistent data as Kube does not support persistence
+Logical division in the cluster - as namespaces
+App teams can deploy their pods in different namespaces
+Tokens are issued to apps in specific namespaces - no pem/crt as of now
+There is no concept of ‘users’ in Kube
+
+GKE-
+Google Kuberetes Engine
+Managed service by google
+We can create Kube cluster and get a token to access it
+No namespaces in GKE
+
+Custom cluster with own nodes we can create namespaces
+
+QUOTA-
+Namespace and Pod level quotas - yml file
+- Limits (like upper limit)
+- Requests (like min/lower limit)
+Limits
+- at pod or namespace level - limits.cpu/mem
+Requests
+- min resources absolutely needed for the pod to run
+- always assured
