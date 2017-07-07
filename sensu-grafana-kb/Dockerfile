@@ -111,7 +111,7 @@ COPY mailer.json /etc/sensu/mailer.json
 
 # Restart sensu server
 #RUN service sensu-server restart 
-RUN service sensu-server status && service sensu-server start 
+#RUN service sensu-server status && service sensu-server start 
 
 # Set up auto start
 RUN update-rc.d sensu-server defaults && update-rc.d sensu-client defaults && update-rc.d sensu-api defaults && update-rc.d uchiwa defaults
