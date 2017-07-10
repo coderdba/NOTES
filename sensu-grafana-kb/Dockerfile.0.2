@@ -2,7 +2,7 @@
 # INSTALL SENSU AND GRAFANA (and associated dependencies)
 #
 
-FROM ubuntu:14.04
+FROM debian:jessie
 
 EXPOSE 3000 8080
 
@@ -12,10 +12,11 @@ RUN chmod +x /root/service_start.sh
 
 # Update apt repository
 # Install wget
-RUN apt-get update && apt-get install -y wget && apt-get install -y build-essential
+RUN apt-get update && apt-get install -y wget && apt-get install -y build-essential && apt-get install -y curl && apt-get install -y apt-transport-https
 #RUN apt-get install -y wget
 
 # Install the GPG public key
+RUN apt-get install -y sudo
 RUN wget -q http://sensu.global.ssl.fastly.net/apt/pubkey.gpg -O- | sudo apt-key add -
 
 # Create an APT configuration file at /etc/apt/sources.list.d/sensu.list
@@ -49,7 +50,7 @@ RUN wget http://packages.erlang-solutions.com/erlang-solutions_1.0_all.deb && dp
 #RUN apt-get -y install erlang-nox
 
 # Install rabbitmq
-RUN wget http://www.rabbitmq.com/releases/rabbitmq-server/v3.6.0/rabbitmq-server_3.6.0-1_all.deb && dpkg -i rabbitmq-server_3.6.0-1_all.deb 
+RUN apt-get install -y logrotate && wget http://www.rabbitmq.com/releases/rabbitmq-server/v3.6.0/rabbitmq-server_3.6.0-1_all.deb && dpkg -i rabbitmq-server_3.6.0-1_all.deb 
 #RUN dpkg -i rabbitmq-server_3.6.0-1_all.deb 
 
 # Copy rabbitmq.json
@@ -124,10 +125,43 @@ RUN update-rc.d sensu-server defaults && update-rc.d sensu-client defaults && up
 # 0.2
 
 # Install Graphite
-RUN apt-get install -y graphite-carbon && echo "CARBON_CACHE_ENABLED=true" > /etc/default/graphite-carbon && service carbon-cache start
+#RUN apt-get install -y graphite-carbon && echo "CARBON_CACHE_ENABLED=true" > /etc/default/graphite-carbon && service carbon-cache start
+RUN DEBIAN_FRONTEND=noninteractive apt-get -q -y --force-yes install graphite-carbon && echo "CARBON_CACHE_ENABLED=true" > /etc/default/graphite-carbon && service carbon-cache start
 
 # Install web-ui
 RUN apt-get install -y graphite-web apache2 libapache2-mod-wsgi && chown _graphite /var/lib/graphite && sudo -u _graphite graphite-manage syncdb --noinput && rm -f /etc/apache2/sites-enabled/000-default.conf && cp /usr/share/graphite-web/apache2-graphite.conf /etc/apache2/sites-enabled/graphite.conf && service apache2 restart
+
+#-- good up to here
+
+# Install Grafana
+# configure the grafana repo
+# new - from official doc (i have included the new one also from the old one)
+COPY grafana_stable.list /etc/apt/sources.list.d/grafana_stable.list
+# old - from tutorial doc
+#RUN echo "deb https://packagecloud.io/grafana/stable/debian/ jessie main" | tee /etc/apt/sources.list.d/grafana.list  
+
+# old - from tutorial
+#RUN curl -k -O https://packagecloud.io/gpg.key && apt-key add gpg.key 
+RUN curl -k https://packagecloud.io/gpg.key | sudo apt-key add -
+# new - from frafana official doc
+RUN curl -k -L https://packagecloud.io/grafana/stable/gpgkey | sudo apt-key add -
+
+RUN apt-get install -y gnutls-bin
+RUN update-ca-certificates -v
+
+# INSTALL
+RUN wget https://grafanarel.s3.amazonaws.com/builds/grafana_4.1.1-1484211277_amd64.deb && apt-get install -y adduser libfontconfig && dpkg -i grafana_4.1.1-1484211277_amd64.deb
+#RUN apt-get update 
+#RUN apt-get install -y --allow-unauthenticated grafana
+
+# Install git and clone sensu-metrics-relay
+RUN apt-get install -y git && git clone https://github.com/opinionlab/sensu-metrics-relay.git && cp -R sensu-metrics-relay/lib/sensu/extensions/* /etc/sensu/extensions/.
+#RUN apt-get install -y git && git clone git://github.com/opower/sensu-metrics-relay.git && cp -R sensu-metrics-relay/lib/sensu/extensions/* /etc/sensu/extensions/.
+#cd sensu-metrics-relay  
+#cp -R lib/sensu/extensions/* /etc/sensu/extensions
+
+COPY relay.json /etc/sensu/conf.d/relay.json
+COPY metrics-vmstat.json /etc/sensu/conf.d/metrics-vmstat.json
 
 #--------
 #CMD ["tail -f /dev/null"]
