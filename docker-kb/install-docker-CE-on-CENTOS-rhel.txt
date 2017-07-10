@@ -58,6 +58,7 @@ NOTE: Used centos doc as it uses yum and Fedora doc uses dnf
 # yum makecache fast
 
 # yum install docker-ce
+NOTE: This removes any soft link to /var/lib/docker to other location like /u01/var/lib/docker and its contents.
 
        Loaded plugins: product-id, rhnplugin, search-disabled-repos, subscription-manager
        This system is not registered to Red Hat Subscription Management. You can use subscription-manager to register.
@@ -107,6 +108,78 @@ NOTE: Used centos doc as it uses yum and Fedora doc uses dnf
 
 # docker --version
 Docker version 17.06.0-ce, build 02c1d87
+
+-- start docker
+# systemctl start docker
+
+# docker info
+NOTE: Uses 'overlayfs' by default
+
+       Containers: 0
+        Running: 0
+        Paused: 0
+        Stopped: 0
+       Images: 0
+       Server Version: 17.06.0-ce
+       Storage Driver: overlay
+        Backing Filesystem: extfs
+        Supports d_type: true
+       Logging Driver: json-file
+       Cgroup Driver: cgroupfs
+       Plugins: 
+        Volume: local
+        Network: bridge host macvlan null overlay
+        Log: awslogs fluentd gcplogs gelf journald json-file logentries splunk syslog
+       Swarm: inactive
+       Runtimes: runc
+       Default Runtime: runc
+       Init Binary: docker-init
+       containerd version: cfb82a876ecc11b5ca0977d1733adbe58599088a
+       runc version: 2d41c047c83e09a6d61d464906feb2a2f3c52aa4
+       init version: 949e6fa
+       Security Options:
+        seccomp
+         Profile: default
+       Kernel Version: 3.10.0-514.21.2.el7.x86_64
+       Operating System: Red Hat Enterprise Linux Server 7.3 (Maipo)
+       OSType: linux
+       Architecture: x86_64
+       CPUs: 4
+       Total Memory: 15.5GiB
+       Name: caslx0007
+       ID: NVYA:K2XA:HRBH:REJ6:GYLI:IGOZ:VVAY:USNF:YY2I:V7XY:AV2S:KBV5
+       Docker Root Dir: /var/lib/docker
+       Debug Mode (client): false
+       Debug Mode (server): false
+       Registry: https://index.docker.io/v1/
+       Experimental: false
+       Insecure Registries:
+        127.0.0.0/8
+       Live Restore Enabled: false
+
+
+---------------------------
+CAUTION - FOR PROD INSTALL
+---------------------------
+On production systems, you should install a specific version of Docker CE instead of always using the latest. List the available versions. This example uses the sort -r command to sort the results by version number, highest to lowest, and is truncated.
+
+Note: This yum list command only shows binary packages. To show source packages as well, omit the .x86_64 from the package name.
+$ yum list docker-ce.x86_64  --showduplicates | sort -r
+docker-ce.x86_64            17.06.0.ce-1.el7.centos            docker-ce-stable 
+docker-ce.x86_64            17.06.0.ce-1.el7.centos            @docker-ce-stable
+docker-ce.x86_64            17.03.2.ce-1.el7.centos            docker-ce-stable 
+docker-ce.x86_64            17.03.1.ce-1.el7.centos            docker-ce-stable 
+docker-ce.x86_64            17.03.0.ce-1.el7.centos            docker-ce-stable 
+
+docker-ce.x86_64  17.06.0.el7                               docker-ce-stable  
+The contents of the list depend upon which repositories are enabled, and will be specific to your 
+version of CentOS (indicated by the .el7 suffix on the version, in this example). 
+Choose a specific version to install. 
+The second column is the version string. The third column is the repository name, 
+which indicates which repository the package is from and by extension its stability level. 
+To install a specific version, append the version string to the package name and separate them by a hyphen (-):
+
+$ sudo yum install docker-ce-<VERSION>
 
 ---------------------
 docker.repo - manually created from info from somewhere
