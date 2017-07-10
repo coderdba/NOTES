@@ -370,77 +370,61 @@ sudo update-rc.d uchiwa defaults
 
 At this point, you can access Sensu dashboard at http://sensuserver-ip-address:8080
 
------------------------------------
--- TRY ACCESSING SENSU DASHBOARD
------------------------------------
-TBD: GOT ERROR - We couldn't load Uchiwa configuration
+======================================================
+INSTALL GRAPHITE AND GRAFANA
+======================================================
+-------------------------------
+Installing Graphite
+-------------------------------
+What is Graphite?
+Graphite is used to store metrics. It does not provide a facility for collecting metrics. It only receive the metrics from different platform. It’s made up of three major components.
 
-# curl http://localhost:8080
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="">
-  <meta name="author" content="">
+1.Carbon — A high-performance service that listens for time-series data 
+2. Whisper — A simple database library for storing time-series data
+3. Django — Graphite’s user interface & API for rendering graphs and dashboards (web frontend)
 
-  <link rel="icon" type="image/x-icon" href="bower_components/uchiwa-web/favicon.ico">
 
-  <title ng-bind="titleFactory.get()">uchiwa</title>
+- Install carbon. 
+The default carbon configuration stores only one day. 
+If you need to customize adjust the Retention rates.
 
-  <!-- Customized Bootstrap -->
-  <link href="bower_components/uchiwa-web/css/bootstrap-uchiwa/bootstrap-uchiwa.css?rel=1485364255143" rel="stylesheet">
+# apt-get install -y graphite-carbon  
 
-  <!-- 3rd Party CSS -->
-  <link href="bower_components/fontawesome/css/font-awesome.min.css?rel=1485364255143" rel="stylesheet">
-  <link href="bower_components/angular-toastr/dist/angular-toastr.min.css?rel=1485364255143" rel="stylesheet">
-  <link href="bower_components/highlightjs/styles/tomorrow.css?rel=1485364255143" rel="stylesheet">
-  <link href="bower_components/angular-mass-autocomplete-uchiwa/massautocomplete.theme.css?rel=1485364255143" rel="stylesheet">
+echo "CARBON_CACHE_ENABLED=true" > /etc/default/graphite-carbon  
+service carbon-cache start
 
-  <!-- Uchiwa CSS -->
-  <link href="bower_components/uchiwa-web/css/uchiwa-default/uchiwa-default.css?rel=1485364255143" rel="stylesheet" site-theme>
-</head>
+- Install the web frontend
+apt-get install -y graphite-web apache2 libapache2-mod-wsgi  
+chown _graphite /var/lib/graphite  
+sudo -u _graphite graphite-manage syncdb --noinput  
+rm -f /etc/apache2/sites-enabled/000-default.conf  
+cp /usr/share/graphite-web/apache2-graphite.conf /etc/apache2/sites-enabled/graphite.conf  
+service apache2 restart
 
-<body>
+At this point, you can access Graphite dashboard at http://sensuserver-ip-address (port 80 of apache)
 
-  <div id="error">
-    <div class="error-code mb15 mt25">Oops!</div>
-    <h3 class="font-bold">We couldn't load Uchiwa configuration.</h3>
+-------------------------------
+Install Grafana
+-------------------------------
+NOTE: apt-get install failed due to certificate issues.
+      --> Installed directly downloading the deb package instead
+      
+- What is grafana?
+Grafana provides a powerful and easy way to create, explore, and share dashboards. It provides rich graphing experience.
 
-    <div class="error-desc">
-      Try refreshing the page and check your connectivity.<br/>
-      If the issue persists, please refer to this
-      <a href="https://docs.uchiwa.io/guides/troubleshooting/#errors">documentation</a> page.
-    </div>
-  </div>
+- Install Grafana
+Install grafana to visualize the metrics. 
 
-<ng-view></ng-view>
+Add the following line to your /etc/apt/sources/grafana_sources.list
+deb https://packagecloud.io/grafana/stable/debian/ jessie main
 
-<!-- 3rd Party JS -->
-<script src="bower_components/angular/angular.min.js?rel=1485364255142"></script>
-<script src="bower_components/angular-cookies/angular-cookies.min.js?rel=1485364255142"></script>
-<script src="bower_components/angular-resource/angular-resource.min.js?rel=1485364255142"></script>
-<script src="bower_components/angular-route/angular-route.min.js?rel=1485364255142"></script>
-<script src="bower_components/angular-sanitize/angular-sanitize.min.js?rel=1485364255142"></script>
-<script src="bower_components/angular-toastr/dist/angular-toastr.tpls.min.js?rel=1485364255142"></script>
-<script src="bower_components/angular-bootstrap/ui-bootstrap-tpls.min.js?rel=1485364255142"></script>
-<script src="bower_components/highlightjs/highlight.pack.js?rel=1485364255142"></script>
-<script src="bower_components/angular-mass-autocomplete-uchiwa/massautocomplete.min.js?rel=1485364255142"></script>
-<script src="bower_components/moment/min/moment.min.js?rel=1485364255143"></script>
-<script src="bower_components/angular-moment/angular-moment.min.js?rel=1485364255143"></script>
-<script src="bower_components/angular-gravatar/build/angular-gravatar.min.js?rel=1485364255143"></script>
-<script src="bower_components/ua-parser-js/dist/ua-parser.min.js?rel=1485364255143"></script>
+Then add the Package Cloud key. This allows you to install signed packages.
+# curl https://packagecloud.io/gpg.key | sudo apt-key add –
 
-<!-- Uchiwa JS -->
-<script src="bower_components/uchiwa-web/js/bootstrap.js?rel=1485364255141"></script>
-<script src="bower_components/uchiwa-web/js/app.js?rel=1485364255141"></script>
-<script src="bower_components/uchiwa-web/js/common.js?rel=1485364255141"></script>
-<script src="bower_components/uchiwa-web/js/constants.js?rel=1485364255142"></script>
-<script src="bower_components/uchiwa-web/js/controllers.js?rel=1485364255142"></script>
-<script src="bower_components/uchiwa-web/js/directives.js?rel=1485364255142"></script>
-<script src="bower_components/uchiwa-web/js/factories.js?rel=1485364255142"></script>
-<script src="bower_components/uchiwa-web/js/filters.js?rel=1485364255142"></script>
-<script src="bower_components/uchiwa-web/js/services.js?rel=1485364255142"></script>
-</body>
-</html>
-root@9443b37377de:/etc/sensu# 
+Update your Apt repositories and install Grafana
+# sudo apt-get update sudo apt-get install grafana
+
+--> IF THIS FAILS, use the following method to download and isntall the deb package itself:
+# wget https://grafanarel.s3.amazonaws.com/builds/grafana_4.1.1-1484211277_amd64.deb && apt-get install -y adduser libfontconfig && dpkg -i grafana_4.1.1-1484211277_amd64.deb
+
+At this point, you can access Grafana dashboard at http://sensuserver-ip-address:3000
