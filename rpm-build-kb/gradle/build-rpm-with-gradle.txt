@@ -37,7 +37,51 @@ into /Users/username/.gradle/wrapper/dists/gradle-3.4.1-bin/<some random string>
 Old version - https://stackoverflow.com/questions/24184579/how-to-properly-write-a-gradle-wrapper-properties-file
 
 TBD - TO BE CONTINUED
+$ gradlew clean build buildRpm
 
 ================
 SIMPLE EXAMPLE 1
 ================
+
+$ cat build.gradle
+plugins {
+  id 'nebula.ospackage' version '3.4.0'
+  id 'nebula.nebula-release' version '4.0.1'
+}
+
+buildRpm {
+
+  packageName "testRpm"
+  version "0"
+  release "1"
+
+  preInstall file('preInstall.sh')
+
+  from('install_this_file.file')
+  {
+    into '/tmp/install_this_file.file'
+    fileMode 0644
+    user 'root'
+    permissionGroup 'root'
+  }
+
+}
+
+$ cat preInstall.sh
+echo `date` > /tmp/preInstall.out
+
+$ cat install_this_file.file
+this is a test file to copy to another place
+
+$ gradle wrapper
+
+$ gradlew clean build buildRpm
+
+$ ls -lR build/distributions
+total 8
+-rw-r--r--  1 dbgsm0  DHC\Domain Users  2424 Jul 11 22:27 testRpm-0-1.noarch.rpm
+
+$ rpm -qlp testRpm-0-1.noarch.rpm
+==> warning: tag 1096 type(0x5) != implicit type(0x20004)
+/tmp/install_this_file.file
+/tmp/install_this_file.file/install_this_file.file
