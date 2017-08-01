@@ -1,0 +1,66 @@
+LOCK AND UNLOCK A UNIX USER
+
+http://www.golinuxhub.com/2014/08/how-to-check-lock-status-of-any-user.html
+
+--------------------------
+LOCK PASSWORD (not user)
+--------------------------
+To lock the password
+# passwd -l user1
+Locking password for user user1.
+passwd: Success
+
+Review the status in /etc/shadow
+# grep user1 /etc/shadow user1:!!$6$ciJaoDR9$Qpt9sctRLjbZ4/Agxy9UOvu/XQqNrFo9rpgfZ/xrF/8JphkEvF29ITpef0SVLdJcrpv8Q/.6mRAHee4tZT0r11:16299:0:99999:7:::
+As you can see above two exclamation mark (!!) before the encrypted password which means 
+that the password has been locked
+
+To unlock the password
+# passwd -u user1
+Unlocking password for user user1.
+passwd: Success
+
+--------------------------
+LOCK USER/ACCOUNT ITSELF
+--------------------------
+In this case the user account might have been locked by the administrator
+
+To lock an account
+# usermod -L user1
+
+Review your /etc/shadow file for the changes
+# grep user1 /etc/shadow
+user1:!$6$ciJaoDR9$Qpt9sctRLjbZ4/Agxy9UOvu/XQqNrFo9rpgfZ/xrF/8JphkEvF29ITpef0SVLdJcrpv8Q/.6mRAHee4tZT0r11:16299:0:99999:7:::
+
+As you see an extra single exclamation mark(!) appeared in the password section before the 
+encrypted password starts which signifies that the user account is locked
+
+To unlock a user account
+# usermod -U user1
+
+--------------------------
+Password never set
+--------------------------
+This can also be the scenario where the administrator has not assigned any password due to which 
+the user is not able to login
+
+So to verify this again you need to check your /etc/shadow file
+# grep user1 /etc/shadow
+user1:!!:16299:0:99999:7:::
+
+As you see two exclamation mark(!!) is there but no encrypted password which means a password is not set.
+
+If the password was set without lock your /etc/shadow would look like something below
+# grep user1 /etc/shadow
+user1:$6$ciJaoDR9$Qpt9sctRLjbZ4/Agxy9UOvu/XQqNrFo9rpgfZ/xrF/8JphkEvF29ITpef0SVLdJcrpv8Q/.6mRAHee4tZT0r11:16299:0:99999:7:::
+
+----------------------------------------------------
+Check the lock status of any Linux Account
+----------------------------------------------------
+Now one single command to see the lock status of the user
+# passwd -S user1
+user1 LK 2014-08-17 0 99999 7 -1 (Password locked.)
+
+If the user account is unlocked you will output like below
+# passwd -S user1
+user1 PS 2014-08-17 0 99999 7 -1 (Password set, SHA512 crypt.)
