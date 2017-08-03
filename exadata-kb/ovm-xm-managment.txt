@@ -28,3 +28,34 @@ xm shutdown <domian>
 xm reboot <domain>
 xm destroy <domain> (to be used as last resort if VM becomes unresponsive)
 --> Does not actually destroy - it just immediately stops like a power-off
+
+====================
+MODIFY VCPUS OF VM'S
+====================
+
+# xm info |grep -A3 nr_cpus
+
+nr_cpus                : 44
+nr_nodes               : 2
+cores_per_socket       : 22
+threads_per_core       : 2
+
+# cat /EXAVMIMAGES/GuestImages/e01vm01.company.com/vm.cfg |grep -i vcpu
+vcpus = 24
+maxvcpus = 48
+
+# xm vcpu-set e01vm01.company.com 8
+
+Edit /EXAVMIMAGES/GuestImages/e01vm01.company.com/vm.cfg
+and change the value of ‘vcpus’
+
+-- VERIFY
+# grep vcpu vm.cfg
+vcpus = 8 --> NOTE THIS CHANGE
+maxvcpus = 48
+
+# xm list ed15adm06vm01.target.com -l |grep vcpu
+    (vcpus 48)
+    (online_vcpus 8) --> NOTE THIS CHANGE
+
+
