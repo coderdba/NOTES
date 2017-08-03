@@ -1,0 +1,25 @@
+===================================
+    ASM MANAGEMENT IN EXADATA
+===================================
+
+=====
+NOTES
+=====
+EXTERNAL redundancy probably is not supported - see ORA-15414 below
+We need to create at least 3 failure groups and 10 or 12 disks in each failure group
+--> That is, if we have 3 cells, they will be three failure groups.  In each cell, it needs 10 or 12 disks
+
+SQL> create diskgroup mydg_dg EXTERNAL REDUNDANCY DISK 'o/*/mydg_*' size 96M;
+*
+ERROR at line 1:
+ORA-15018: diskgroup cannot be created
+ORA-15288: disk(s) require disk group attribute cell.smart_scan_capable clause
+
+SQL> create diskgroup gowrish_dg EXTERNAL REDUNDANCY DISK 'o/*/mydg_*' size 96M attribute 
+'compatible.rdbms'='11.2.0.4', 'compatible.asm'='12.1.0.2', 'au_size'='4M', 'appliance.mode'='true', 
+'cell.smart_scan_capable'='TRUE'
+*
+ERROR at line 1:
+ORA-15018: diskgroup cannot be created
+ORA-15414: Appliance mode requires at least 3 failure groups and either 10 or
+12 disks in all failure groups.
