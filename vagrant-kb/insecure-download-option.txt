@@ -1,0 +1,37 @@
+
+VAGRANT DOWNLOAD BOX INSECURE
+=============================
+
+During first vagrant up for a box, you may get this error:
+  If you'd like to turn off curl's verification of the certificate, use
+   the -k (or --insecure) option.
+
+SOLUTION:
+
+https://github.com/mitchellh/vagrant/pull/1712
+igorbonadio commented on May 10, 2013
+Currently, it's possible to download a box from an insecure server using the command:
+
+OPTION1: Add the box first and then use it in Vagrantfile
+
+NOTE: You can use the full URL or the alias 
+
+Using the box URL:
+vagrant box add mybox  https://insecureserver.com/mybox.box --insecure
+
+Using alias:
+$ vagrant box add --insecure terrywang/oraclelinux-6-x86_64             
+==> box: Loading metadata for box 'terrywang/oraclelinux-6-x86_64'
+    box: URL: https://atlas.hashicorp.com/terrywang/oraclelinux-6-x86_64
+==> box: Adding box 'terrywang/oraclelinux-6-x86_64' (v6.9) for provider: virtualbox
+    box: Downloading: https://vagrantcloud.com/terrywang/boxes/oraclelinux-6-x86_64/versions/6.9/providers/virtualbox.box
+ 
+
+OPTION2: Add directive in Vagrantfile
+NOTE: For this, you need the box URL
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "mybox"
+  config.vm.box_url = "https://insecureserver.com/mybox.box"
+  config.vm.box_download_insecure = true
+end
