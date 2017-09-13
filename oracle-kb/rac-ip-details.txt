@@ -1,0 +1,81 @@
+https://maleshg.wordpress.com/2013/11/03/identify-your-rac-newtork-details/
+
+As per defined IP Addresses in /etc/hosts, Let’s find the same information using various commands available from GRID and OS.
+
+Let’s verify the same if Grid (cluster) picked up the correct IP’s.
+
+NODE-1
+=========
+mgracsolsrv64bit1:/export/home/grid: cat /etc/hosts
+#
+# Internet host table
+#
+::1     localhost
+127.0.0.1       localhost
+192.168.56.99   mgsrv-dns         mgsrv-dns.mgdom.com       loghost
+
+#PUBLIC
+192.168.56.20   mgracsolsrv64bit1 mgracsolsrv64bit1.mgdom.com
+192.168.56.21   mgracsolsrv64bit2 mgracsolsrv64bit2.mgdom.com
+#PRIVATE
+192.168.05.01  mgracsolsrv64bit1-priv mgracsolsrv64bit1-priv.mgdom.com
+192.168.05.02  mgracsolsrv64bit2-priv mgracsolsrv64bit2-priv.mgdom.com
+#VIRTUAL
+192.168.56.30 mgracsolsrv64bit1-vip mgracsolsrv64bit1-vip.mgdom.com
+192.168.56.31 mgracsolsrv64bit2-vip mgracsolsrv64bit2-vip.mgdom.com
+###########################################################################################################
+1) To Find Cluster Name
+###########################################################################################################
+$ /u01/app/11.2.0.1/grid/bin/olsnodes -c
+mgrac-cluster
+
+###########################################################################################################
+2) Find the PUBLIC and VIP Node name
+###########################################################################################################
+$ /u01/app/11.2.0.1/grid/bin/olsnodes -n -i
+mgracsolsrv64bit1       1       mgracsolsrv64bit1-vip
+mgracsolsrv64bit2       2       mgracsolsrv64bit2-vip
+
+$ /u01/app/11.2.0.1/grid/bin/srvctl config nodeapps -a
+VIP exists.:mgracsolsrv64bit1
+VIP exists.: /mgracsolsrv64bit1-vip/192.168.56.30/255.255.255.0/e1000g0
+VIP exists.:mgracsolsrv64bit2
+VIP exists.: /mgracsolsrv64bit2-vip/192.168.56.31/255.255.255.0/e1000g0
+
+$ /u01/app/11.2.0.1/grid/bin/crsctl stat res ora.mgracsolsrv64bit1.vip -p |egrep ‘^NAME|TYPE|USR_ORA_VIP|START_DEPENDENCIES|SCAN_NAME|VERSION’
+NAME=ora.mgracsolsrv64bit1.vip
+TYPE=ora.cluster_vip_net1.type
+START_DEPENDENCIES=hard(ora.net1.network) pullup(ora.net1.network)
+USR_ORA_VIP=mgracsolsrv64bit1-vip
+VERSION=11.2.0.1.0
+
+###########################################################################################################
+3) To find Private IP Details
+###########################################################################################################
+$ /u01/app/11.2.0.1/grid/bin/olsnodes -n -i -l -p
+mgracsolsrv64bit1       1       192.168.5.1     mgracsolsrv64bit1-vip    => (Middle one is Private IP – 192.168.5.1)
+
+The Oracle Interface Configuration Tool (oifcfg) is used define and administer network interfaces such as the public and private interfaces.
+———————————————————————————————————————————————
+
+Oracle only store network interface name and subnet ID in OCR, not the netmask. Oifcfg command can be used for such change, oifcfg commands only require to run on 1 of the cluster node, not all. When netmask is changed, the associated subnet ID is also changed.
+
+Interfaces used  are : e1000g0  , e1000g1 , oifcfg would not show exact IP’s,  instead it shows SubnetID  in OCR.
+
+Subnet Info in Oracle Clusterware – OCR – To find out what’s in OCR:
+Both public and private network information are stored in OCR.
+
+$ /u01/app/11.2.0.1/grid/bin/oifcfg getif
+e1000g0  192.168.56.0  global  public
+e1000g1  192.168.0.0  global  cluster_interconnect       —-> Private Interface
+
+Note: 
+The first column is the network adapter name
+The second column is the subnet ID
+The third column is always “global” and should not be changed
+The last column indicates whether it’s public or cluster_interconnect(private) in Oracle Clusterware
+
+To include the subnet mask, append the -n option to the -p option:
+Shows the available interfaces that you can configure with setif.
+The –p parameter displays the type of interface which can be PRIVATE, PUBLIC or UNKNOWN.
+The iflist command queries the operating system to find which network interfaces are present on this node.
