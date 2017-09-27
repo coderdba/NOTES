@@ -1,6 +1,7 @@
 =================================
            CHEF VAULT
 =================================
+https://www.collectiveidea.com/blog/archives/2015/01/11/encrypting-secrets-with-chef-vault --> good
 https://blog.chef.io/2016/01/21/chef-vault-what-is-it-and-what-can-it-do-for-you/ --> basic, good
 http://jtimberman.housepub.org/blog/2013/09/10/managing-secrets-with-chef-vault/ --> good
 http://hedge-ops.com/chef-vault-tutorial/ --> good with tips on knife.rb
@@ -31,6 +32,28 @@ knife vault update VAULT ITEM VALUES (options)
 =========================
 CREATING A VAULT
 =========================
+
+--------------------
+SETUP KNIFE.RB
+--------------------
+# See https://docs.getchef.com/config_rb_knife.html for more information on knife configuration options
+
+current_dir = File.dirname(__FILE__)
+log_level                :info
+log_location             STDOUT
+node_name                "my-chef-server-username"
+client_key               "#{current_dir}/my-chef-server-username.pem"
+chef_server_url          "https://chefserver.company.com/organizations/my-org-name"
+
+# These are optional:
+#validation_client_name   'my-org-name'
+#validation_key           '/home/.chef/my-org-name.pem
+#cookbook_path            ["#{current_dir}/../cookbooks"]
+# optional until here
+
+--------------------
+CREATE VAULT
+--------------------
 https://blog.chef.io/2016/01/21/chef-vault-what-is-it-and-what-can-it-do-for-you/
 
 - Create a folder ~/data_bags (like E:/data_bags on the chef-toolchain Bill's kitchen like setup)
@@ -48,11 +71,21 @@ https://blog.chef.io/2016/01/21/chef-vault-what-is-it-and-what-can-it-do-for-you
     --> this is implicit - no need to mention that in json - TAKEN FROM THE settings we use in knife commands
     (as you specified above in the search criteria and administrators list)
 
+Basic commands:
+knife vault create [vault] [item] '{}'
+knife vault create [vault] [item] '{}' -S 'search' -A 'user1,user2'
+
+NOTE: 'search' can be node list, policy:*, policy:name, role:*, role:name, name:*, * -- and so on
+NOTE: 'search' as '*' and 'name:*' should cover all nodes in an organization
+
+Detailed/Example commands:
 $ knife vault create <vault name> <item name> -A <admin user list> -M client -S <node list> <json file>
 NOTE: In this example, item name and the json's first field are same - can be different
 
 $ knife vault create credentials testuser -A user1,user2 -M client -S 'name:*' -J testuser.json
 -OR- use ./testuser.json or <directory>/testuser.json if using a specific file not in data_bags folder
+
+$ knife vault create credentials testuser -A user1,user2 -M client -S '*' -J testuser.json
 
 --> NOTE: -S 'name:*' is for allowing this vault to be used in any server
            It can be filtered by servername patterns or directive 'policy_name:...' where policy is the policy/role of servers
