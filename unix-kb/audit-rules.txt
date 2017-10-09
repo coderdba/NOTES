@@ -19,5 +19,36 @@ https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/6/html/Se
 FOR KVM
 https://www.ibm.com/support/knowledgecenter/en/linuxonibm/liaat/liaatkvmsecrules.htm
 
+=========================================
+EXAMPLE: SYNTAX "-F key=" vs "-k" 
+=========================================
+
+------------------------------------
+SETUP RULES USING "-F key=" SYNTAX
+------------------------------------
+Added the key=perm_mod
+
+- FILE - /etc/audit/rules.d/audit.rules
+
+# First rule - delete all
+-D
+
+# Increase the buffers to survive stress events.
+# Make this bigger for busy systems
+-b 320
+
+# Feel free to add below this line. See auditctl man page
+-a exit,always -F arch=b32 -S chmod,fchmod,fchmodat -F auid>=500 -F auid!=4294967295 -F key=perm_mod
+-a exit,always -F arch=b64 -S chmod,fchmod,fchmodat -F auid>=500 -F auid!=4294967295 -F key=perm_mod
+
+- CREATE A FILE /tmp/a2 and change its mode to 777
+-->  THAT SHOWS UP IN /var/log/audit/audit.log as follows
+
+type=SYSCALL msg=audit(1507524142.785:32268): arch=c000003e syscall=268 success=yes exit=0 a0=ffffffffffffff9c a1=17ea0f0 a2=1ff a3=7fff96cf6920 items=1 ppid=40019 pid=51148 auid=184592927 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts0 ses=4301 comm="chmod" exe="/usr/bin/chmod" subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 key="perm_mod"
+type=CWD msg=audit(1507524142.785:32268):  cwd="/tmp"
+type=PATH msg=audit(1507524142.785:32268): item=0 name="a2" inode=16 dev=fd:02 mode=0100644 ouid=0 ogid=0 rdev=00:00 obj=unconfined_u:object_r:user_tmp_t:s0 objtype=NORMAL
+
+
+
 
 
