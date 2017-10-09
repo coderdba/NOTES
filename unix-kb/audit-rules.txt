@@ -26,7 +26,7 @@ EXAMPLE: SYNTAX "-F key=" vs "-k"
 ------------------------------------
 SETUP RULES USING "-F key=" SYNTAX
 ------------------------------------
-Added the key=perm_mod
+Tested with - key=perm_mod
 
 - FILE - /etc/audit/rules.d/audit.rules
 
@@ -58,6 +58,35 @@ type=CWD msg=audit(1507524142.785:32268):  cwd="/tmp"
 type=PATH msg=audit(1507524142.785:32268): item=0 name="a2" inode=16 dev=fd:02 mode=0100644 ouid=0 ogid=0 rdev=00:00 obj=unconfined_u:object_r:user_tmp_t:s0 objtype=NORMAL
 
 
+------------------------------------
+SETUP RULES USING "-k" SYNTAX
+------------------------------------
+Tested with -k perm_mod
 
+- FILE - /etc/audit/rules.d/audit.rules
 
+# First rule - delete all
+-D
+
+# Increase the buffers to survive stress events.
+# Make this bigger for busy systems
+-b 320
+
+# Feel free to add below this line. See auditctl man page
+# SYNTAX -k perm_mod
+-a exit,always -F arch=b32 -S chmod,fchmod,fchmodat -F auid>=500 -F auid!=4294967295 -k perm_mod
+-a exit,always -F arch=b64 -S chmod,fchmod,fchmodat -F auid>=500 -F auid!=4294967295 -k perm_mod
+
+- RESTART AUDITD PROCESS
+# service auditd restart
+
+- VERIFY ACTIVE RULES
+NOTE: This shows same output as the output we got when -F syntax was used
+
+# auditctl -l
+-a always,exit -F arch=b32 -S chmod,fchmod,fchmodat -F auid>=500 -F auid!=-1 -F key=perm_mod
+-a always,exit -F arch=b64 -S chmod,fchmod,fchmodat -F auid>=500 -F auid!=-1 -F key=perm_mod
+
+- CREATE A FILE /tmp/a3 and change its mode to 777
+-->  THAT SHOWS UP IN /var/log/audit/audit.log as follows
 
