@@ -1,0 +1,31 @@
+https://oracle-base.com/articles/misc/detect-and-correct-corruption
+(read the article for more info than extracted here)
+
+- FOR DATA FILES
+RMAN> BACKUP VALIDATE DATABASE ARCHIVELOG ALL;
+-> and then view V$DATABASE_BLOCK_CORRUPTION
+
+- FOR BACKUP FILES
+RMAN> RESTORE DATABASE VALIDATE;
+RMAN> RESTORE ARCHIVELOG ALL VALIDATE;
+
+- FOR DATA FILES
+C:\>dbv file=C:\Oracle\oradata\TSH1\system01.dbf feedback=10000 blocksize=8192
+
+- FOR OBJECTS
+ANALYZE .. VALIDATE STRUCTURE
+
+The ANALYZE command can be used to verify each data block in the analyzed object. If any corruption is detected rows are added to the INVALID_ROWS table.
+
+-- Create the INVALID_ROWS table
+SQL> @C:\Oracle\901\rdbms\admin\UTLVALID.SQL
+
+-- Validate the table structure.
+SQL> ANALYZE TABLE scott.emp VALIDATE STRUCTURE;
+
+-- Validate the table structure along with all it's indexes.
+SQL> ANALYZE TABLE scott.emp VALIDATE STRUCTURE CASCADE;
+
+-- Validate the index structure.
+SQL> ANALYZE INDEX scott.pk_emp VALIDATE STRUCTURE;
+
