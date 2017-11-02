@@ -1,0 +1,38 @@
+PAM CONFIGURATION
+
+==================================
+LOCKING USER FOR PASSWORD FAILURES
+==================================
+
+FIRST do this:
+
+Ensure the folowing line exists in sshd, login, sudo, su files in /etc/pam.d:
+auth       include      password-auth
+- OR - 
+auth       include      system-auth
+
+NEXT use one of the following methods for the rest of the setup:  pam_faillock.so or pam_tally2.so
+
+---------------------
+USING pam_faillock.so
+---------------------
+FILES system-auth, password-auth
+
+auth required pam_faillock.so preauth audit silent deny=5 unlock_time=900
+# Comment out the current pam_unix.so and add the following
+auth [success=1 default=bad] pam_unix.so
+auth [default=die] pam_faillock.so authfail audit deny=5 unlock_time=900
+auth sufficient pam_faillock.so authsucc audit deny=5 unlock_time=900
+
+# add this line as well
+account     required      pam_faillock.so
+
+---------------------
+USING pam_tally2.so
+---------------------
+It seems pam_tally2 is not preferred from RHEL6 onwards -- need to validate that statement.
+
+IN FILES system-auth, password-auth - add the following line:
+
+auth required pam_tally2.so deny=6 onerr=fail lock_time=1800 serialize
+
