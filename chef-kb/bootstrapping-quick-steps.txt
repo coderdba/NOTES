@@ -1,0 +1,89 @@
+==============================
+BOOTSTRAPPING QUICK STEPS
+- OCT 2017 
+==============================
+
+BOOTSTRAPPING FROM WORKSTATION - USING VALIDATOR-CLIENT (LIKE MY OWN CHEF SERVER USERID)
+ 
+Command: (the IP is for the FQDN of the node being bootstrapped)
+ 
+Necesssary files in .chef directory:
+ 
+File 1. knife.rb
+NOTE: Here, we have not given org-validator and org-validator.pem
+ 
+# See https://docs.getchef.com/config_rb_knife.html for more information on knife configuration options
+ 
+current_dir = File.dirname(__FILE__)
+log_level                :info
+log_location             STDOUT
+node_name                "my_chef_svr_username"
+client_key               "#{current_dir}/my_chef_svr_username.pem"
+chef_server_url          "https://chefsvr.company.com/organizations/my_org"
+cookbook_path            ["#{current_dir}/../cookbooks"]
+ 
+File 2. my_chef_svr_username.pem
+ 
+Run the command:
+knife bootstrap ip_of_the_node_like_101.63.165.201 -N nodename.company.com -x username_on_node --sudo
+ 
+The run will create the following in the node machine in /etc/chef directory:
+-rw-------. 1 root root 1679 Sep 11 04:29 client.pem
+-rw-r--r--. 1 root root  216 Sep 11 04:29 client.rb
+-rw-r--r--. 1 root root   16 Sep 11 04:29 first-boot.json
+drwxr-xr-x. 2 root root   36 Sep 11 04:29 trusted_certs
+-rw-------. 1 root root 1679 Sep 11 04:29 validation.pem
+ 
+BOOTSTRAPPING FROM WORKSTATION - USING ORG VALIDATOR ITSELF
+ 
+Same steps as above, but knife.rb will have node_name and client_key removed/commented, and
+validation_client_name and validation_key instead (which are for the organization)
+ 
+# See https://docs.getchef.com/config_rb_knife.html for more information on knife configuration options
+ 
+current_dir = File.dirname(__FILE__)
+log_level                :info
+log_location             STDOUT
+#
+#node_name                "my_chef_svr_username"
+#client_key               "#{current_dir}/my_chef_svr_username.pem"
+ 
+#
+validation_client_name   "my_org-validator"
+validation_key           "#{current_dir}/my_org-validator.pem"
+ 
+#
+chef_server_url          "https://chefsvr.company.com/organizations/my_org"
+cookbook_path            ["#{current_dir}/../cookbooks"]
+ 
+BOOTSTRAP FROM NODE ITSELF
+ 
+Files in /etc/chef
+ 
+File 1: client.rb
+ 
+log_location     STDOUT
+chef_server_url  "https://chefsvr.company.com/organizations/my_org"
+validation_client_name "my_org-validator"
+node_name "nodename.company.com"
+trusted_certs_dir "/etc/chef/trusted_certs"
+ 
+File2: validation.pem --> which is a copy of my_org-validator.pem
+ 
+Run bootstrap by running chef-client --once (not client bootstrap)
+ 
+This will create /etc/chef/client.pem
+ 
+ 
+----- from workstation thru knife command
+ 
+knife bootstrap ip_of_the_node_like_101.63.165.201 -N nodename.company.com -x username_on_node --sudo
+ 
+it creates the trusted certs in the node
+[root@nodename chef]# ls -ltr
+total 16
+-rw-------. 1 root root 1679 Sep 11 04:45 validation.pem
+drwxr-xr-x. 2 root root   36 Sep 11 04:45 trusted_certs
+-rw-r--r--. 1 root root  216 Sep 11 04:45 client.rb
+-rw-r--r--. 1 root root   16 Sep 11 04:45 first-boot.json
+-rw-------. 1 root root 1679 Sep 11 04:45 client.pem
