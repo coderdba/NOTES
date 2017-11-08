@@ -62,6 +62,54 @@ validation_key           "#{current_dir}/my_org-validator.pem"
 chef_server_url          "https://chefsvr.company.com/organizations/my_org"
 cookbook_path            ["#{current_dir}/../cookbooks"]
 
+----------------------------------------------------------------------
+BOOTSTRAPPING FROM WORKSTATION - USING PRIVATE KEY OF NODE'S ROOT USER
+----------------------------------------------------------------------
+
+Generate key in #/root/.ssh on the server node01
+Copy the private key of it to O:\.chef on the laptop
+
+Bootstrap as follows:
+O:\.chef>knife bootstrap node01 --ssh-user root --identity-file 'O:\.chef\node01-root-id-rsa.pem' --node-name node01
+
+Connecting to node01
+node01 Starting first Chef Client run...
+node01 Starting Chef Client, version 12.4.0
+node01 resolving cookbooks for run list: []
+node01 Synchronizing Cookbooks:
+node01 Compiling Cookbooks...
+node01 [2016-02-28T21:56:49-06:00] WARN: Node node01 has an empty run list.
+node01 Converging 0 resources
+node01
+node01 Running handlers:
+node01 Running handlers complete
+node01 Chef Client finished, 0/0 resources updated in 6.716135316 seconds
+
+Upload Oracle client cookbook:
+O:\.chef>knife cookbook upload cbora12cclt
+Uploading cbora12cclt    [0.1.0]
+Uploaded 1 cookbook.
+
+Set node run list
+
+O:\.chef>knife node run_list set node01 'recipe[cbora12cclt]'
+node01:
+  run_list: recipe[cbora12cclt]'
+
+chef-reset.rb
+-------------
+stop chef client
+restart chef client with 15 min interval
+verify
+exit
+
+O:\.chef>knife node run_list set node01 'recipe[cbora12cclt]','recipe[chef-reset]'
+node01:
+  run_list: recipe[cbora12cclt]','recipe[chef-reset]'
+
+metadata.rb
+0.1.1
+
 ---------------------------------------
 BOOTSTRAP FROM NODE ITSELF
 --------------------------------------- 
