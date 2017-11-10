@@ -20,7 +20,7 @@ $ sudo su - redis
 /home/redis
 
 - OPEN PORTS 
-6379 - default port
+6379 is the default port
 
 - DOWNLOAD REDIS SOFTWARE
 # download
@@ -101,14 +101,61 @@ $ redis-cli
 OK
 127.0.0.1:6379> CONFIG get requirepass
 (error) NOAUTH Authentication required.
+
 127.0.0.1:6379> AUTH password
 (error) ERR invalid password
+
 127.0.0.1:6379> AUTH redis123
 OK
 127.0.0.1:6379> CONFIG get requirepass
 1) "requirepass"
 2) "redis123"
+
 127.0.0.1:6379> 
+
+---------------------------
+ENABLE PASSWORD FOR STOP
+---------------------------
+https://stackoverflow.com/questions/32165078/how-to-start-and-stop-redis-service-with-authentication
+https://stackoverflow.com/questions/23396336/shutdown-redis-server-from-command-line/28658706#28658706
+
+When password is set for the instance, stop requires password, but does not prompt for password.
+# /etc/init.d/redis_6379 stop
+Stopping ...
+(error) NOAUTH Authentication required.
+Waiting for Redis to shutdown ...
+Waiting for Redis to shutdown ...
+
+- https://stackoverflow.com/questions/32165078/how-to-start-and-stop-redis-service-with-authentication
+
+You have to manually edit the start/stop-service script:
+
+sudo vi /etc/init.d/redis_6379
+Find the following line:
+
+$CLIEXEC -p $REDISPORT shutdown
+And replace it with the following 'changeit' is where your password goes:
+
+$CLIEXEC -p $REDISPORT -a changeit shutdown
+Now you should be able to start and stop the service without any problems
+
+-- https://stackoverflow.com/questions/23396336/shutdown-redis-server-from-command-line/28658706#28658706
+
+You could modify your init.d/redis_6379 script and use the -a parameter of redis-cli to specify the password:
+
+CLIEXEC="/usr/local/bin/redis-cli -a your_secret"
+
+---------------------------
+ENABLE REMOTE CONNECTIONS
+---------------------------
+https://stackoverflow.com/questions/19091087/open-redis-port-for-remote-connections
+In file /etc/redis/6379.conf
+
+Change the line "bind 127.0.0.1" to the following:
+
+bind 0.0.0.0
+
+
 
 ===========================
 RUNNING MULTIPLE INSTANCES
