@@ -27,7 +27,7 @@ File 2. my_chef_svr_username.pem
  
 Run the command:
 knife bootstrap ip_of_the_node_like_101.63.165.201 -N nodename.company.com -x username_on_node --sudo
- 
+
 The run will create the following in the node machine in /etc/chef directory:
 -rw-------. 1 root root 1679 Sep 11 04:29 client.pem
 -rw-r--r--. 1 root root  216 Sep 11 04:29 client.rb
@@ -132,6 +132,29 @@ This will create /etc/chef/client.pem
 
 Then, run the following command to delete validation.pem:
 chef-client -o chef-client::delete_validation --once
+
+=====================================
+TROUBLESHOOTING
+=====================================
+
+---------------------
+SSL VALIDATION ERROR
+---------------------
+You may get ssl certification verification error during bootstrap or chef-client run.
+To avoid it:  https://stackoverflow.com/questions/29131020/ssl-validation-error-coming-while-doing-chef-client-setup
+
+From the site:
+I think the bug is still open about knife not pushing the trusted_certs directory to bootstraping nodes.
+
+Workaround for now, bootstrap with --node-ssl-verify-mode none so the chef client will not verify ssl 
+(and it will write the ssl_verify_mode :verify_none to node's client.rb - like /etc/chef/client.rb)
+--> Or, add the following to knife.rb while bootstrapping:
+ssl_verify_mode    :verify_none
+
+--> Or, add the following into client.rb on the node:
+ssl_verify_mode    :verify_none
+
+
 
 = = = = = = = = = = = = = = = 
 RANDOM NOTES
