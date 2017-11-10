@@ -189,6 +189,8 @@ RUNNING MULTIPLE INSTANCES
 ===========================
 https://discuss.pivotal.io/hc/en-us/articles/206087627-How-to-setup-and-run-multiple-Redis-server-instances-on-a-Linux-host
 
+NOTE:  See the section on 'simplification' to simplify init scripting
+
 # mkdir /var/redis/6380  --> new directory for files of DB on port 6380
 # cp /etc/init.d/redis_6379 /etc/init.d/redis_6380  --> init script
 # cp /etc/redis/6379.conf /etc/redis/6380.conf --> config file
@@ -211,6 +213,36 @@ logfile /var/log/redis_6380.log
 
 Modify dir:
 dir /var/redis/6380
+
+-----------------
+SIMPLIFICATION
+-----------------
+We can use one init script for all redis instances - without having to create and modify init script for each port.
+For that, do as follows:
+
+1. Create conf files as redis_<port>.conf - example redis_6379.conf - instead of 6379.conf
+
+2. Create a new init script - /etc/init.d/redis_init - as copy of /etc/init.d/redis_6370
+2a. Modify /etc/init.d/redis_init as follows:
+
+IN ORIGINAL FILE:
+EXEC=/usr/local/bin/redis-server        (no change here)
+CLIEXEC=/usr/local/bin/redis-cli         (no change here)
+PIDFILE=/var/run/redis_6379.pid --> change as below
+CONF="/etc/redis/6379.conf" --> change as below
+REDISPORT="6379" --> change as below
+
+IN MODIFIED FILE:
+NAME=`basename ${0}` --> new line added
+EXEC=/usr/local/bin/redis-server       (no change here)
+CLIEXEC=/usr/local/bin/redis-cli        (no change here)
+PIDFILE=/var/run/${NAME}.pid  --> changed
+CONF="/etc/redis/${NAME}.conf" --> changed
+REDISPORT="${NAME#*_}" --> changed
+
+3. Create port-wise init scripts as links to this master script
+ln -s /etc/init.d/redis_init /etc/init.d/redis_6379
+ln -s /etc/init.d/redis_init /etc/init.d/redis_6380
 
 ===========================
 RUNNING MULTIPLE INSTANCES - ANOTHER WAY
