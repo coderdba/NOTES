@@ -21,6 +21,9 @@ https://developers.redhat.com/blog/2017/06/09/how-to-setup-a-redis-server-cluste
 https://redislabs.com/redis-enterprise-documentation/administering/cluster-operations/new-cluster-setup/
 
 
+====================================
+INSTALL RUBY AND GEMS
+====================================
 - INSTALL RUBY
 Needed for redis-trib.rb
 # apt-get install ruby
@@ -29,7 +32,31 @@ Needed for redis-trib.rb
 # gem install redis
 
 ====================================
-MULTI-MASTER CLUSTER
+SET UP CONFIG FILES AND START REDIS
+====================================
+
+- TOPOLOGY
+Machines - m1,m2,m3
+Master port on every machine - 6379
+Slave port on every machine  - 6380
+
+- CONFIG FILES ON EACH MACHINE
+/etc/redis/redis_6379.conf
+/etc/redis/redis_6380.conf
+
+- CONTENT OF CONFIG FILES
+First, create them same as in non-cluster (follow redis-non-cluster document in this repo)
+
+Add/uncomment the following in them:
+cluster-enabled yes
+cluster-config-file /etc/redis/nodes-6379.conf
+cluster-node-timeout 15000
+
+- INIT.D FILES
+Create init.d files for both ports as in non-cluster 
+
+====================================
+CREATE CLUSTER
 ====================================
 # create cluster with three masters
 ./redis-trib.rb create 110.163.70.47:6379 110.163.71.39:6379 110.163.71.91:6379
