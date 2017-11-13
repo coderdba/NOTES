@@ -29,65 +29,56 @@ Needed for redis-trib.rb
 # gem install redis
 
 ====================================
-SINGLE MASTER MULTI SLAVE CLUSTER
-====================================
-- Edit /etc/redis/redis_6380.conf
-ON ALL NODES - MASTER AND SLAVE
-NOTE: You can use different ports on different severs/machines/vms also
-
-Add/uncomment:
-cluster-enabled yes
-cluster-config-file /etc/redis/nodes-6380.conf
-cluster-node-timeout 15000
-
-- REMOVE AUTOSTART STANDALONE REDIS ON THE PORT
-(maybe NOT REQUIRED)
-# update-rc.d redis_6380 remove
-
-- Restart Redis 
-NOTE: This will start Redis in cluster mode
-NOTE: Do on all nodes - master and slave
-
-/etc/init.d/redis_6380 stop
-/etc/init.d/redis_6380 start
-
-# ps -ef |grep redis
-root      1069     1  0 10:04 ?        00:00:01 /usr/local/bin/redis-server 0.0.0.0:6379
-root      1338     1  0 10:21 ?        00:00:00 /usr/local/bin/redis-server 0.0.0.0:6380 [cluster]
-
-
-====================================
 MULTI-MASTER CLUSTER
 ====================================
-- Create the cluster --> with three masters
-# redis-stable/src/redis-trib.rb create ip.of.server1:6380 ip.of.server2:6380 ip.of.server3:6380
+# create cluster with three masters
+./redis-trib.rb create 110.163.70.47:6379 110.163.71.39:6379 110.163.71.91:6379
 
-# ./redis-trib.rb create 110.63.170.147:6380 110.63.171.139:6380 110.63.171.191:6380
+# add one slave each
+Syntax:
+./redis-trib.rb add-node --slave --master-id <id of the master> <slave ip>:<slave port> <master ip>:<master port>
+
+./redis-trib.rb add-node --slave --master-id 84ff05dd70877ac1dc693bcb97a8b62f59c918ca 110.163.71.39:6380 110.163.70.47:6379
+./redis-trib.rb add-node --slave --master-id ddbeecc18ff64f4e4b5376718a2b00564f3e4c04 110.163.71.91:6380 110.163.71.39:6379
+./redis-trib.rb add-node --slave --master-id bb98cc4aa5631764f608c8b086285e22a19485a7 110.163.70.47:6380 110.163.71.91:6379
+
+Alternate syntax:
+./redis-trib.rb add-node --slave <slave ip>:<slave port> <any random master ip>:<its port>
+Note that the command line here is exactly like the one we used to add a new master, 
+so we are not specifying to which master we want to add the replica. In this case what happens is that 
+redis-trib will add the new node as replica of a random master among the masters with less replicas.
+
+=======
+OUTPUTS
+=======
+
+- CREATE CLUSTER
+root@redisc1:/home/redis/redis-4.0.2/src# ./redis-trib.rb create 110.163.70.47:6379 110.163.71.39:6379 110.163.71.91:6379
 >>> Creating cluster
 >>> Performing hash slots allocation on 3 nodes...
 Using 3 masters:
-110.63.170.147:6380
-110.63.171.139:6380
-110.63.171.191:6380
-M: 0d9356adc1fd9291e312d7ee529255074cbda133 110.63.170.147:6380
+110.163.70.47:6379
+110.163.71.39:6379
+110.163.71.91:6379
+M: 84ff05dd70877ac1dc693bcb97a8b62f59c918ca 110.163.70.47:6379
    slots:0-5460 (5461 slots) master
-M: 64b4a9f1f97245e804a0ab84d3f203954b2bad42 110.63.171.139:6380
+M: ddbeecc18ff64f4e4b5376718a2b00564f3e4c04 110.163.71.39:6379
    slots:5461-10922 (5462 slots) master
-M: 1c3d30f6de183480fdfe1266d8a5adaccd04d8df 110.63.171.191:6380
+M: bb98cc4aa5631764f608c8b086285e22a19485a7 110.163.71.91:6379
    slots:10923-16383 (5461 slots) master
 Can I set the above configuration? (type 'yes' to accept): yes
 >>> Nodes configuration updated
 >>> Assign a different config epoch to each node
 >>> Sending CLUSTER MEET messages to join the cluster
 Waiting for the cluster to join..
->>> Performing Cluster Check (using node 110.63.170.147:6380)
-M: sdfsdfdsfsfswe3rerw 110.63.170.147:6380
+>>> Performing Cluster Check (using node 110.163.70.47:6379)
+M: 84ff05dd70877ac1dc693bcb97a8b62f59c918ca 110.163.70.47:6379
    slots:0-5460 (5461 slots) master
    0 additional replica(s)
-M: sdfsfrwerwsdfsdffds 110.63.171.191:6380
+M: bb98cc4aa5631764f608c8b086285e22a19485a7 110.163.71.91:6379
    slots:10923-16383 (5461 slots) master
    0 additional replica(s)
-M: sdfdsfasdfswr23423e 110.63.171.139:6380
+M: ddbeecc18ff64f4e4b5376718a2b00564f3e4c04 110.163.71.39:6379
    slots:5461-10922 (5462 slots) master
    0 additional replica(s)
 [OK] All nodes agree about slots configuration.
@@ -95,19 +86,97 @@ M: sdfdsfasdfswr23423e 110.63.171.139:6380
 >>> Check slots coverage...
 [OK] All 16384 slots covered.
 
-- /etc/redis/nodes-6380.conf 
+- VERIFY CLUSTER - BEFORE ADDING SLAVES
+# redis-cli -c -h 110.163.71.91 -p 6379
+110.163.71.91:6379> cluster nodes
+ddbeecc18ff64f4e4b5376718a2b00564f3e4c04 110.163.71.39:6379@16379 master - 0 1510574587580 2 connected 5461-10922
+84ff05dd70877ac1dc693bcb97a8b62f59c918ca 110.163.70.47:6379@16379 master - 0 1510574586578 1 connected 0-5460
+bb98cc4aa5631764f608c8b086285e22a19485a7 192.168.10.14:6379@16379 myself,master - 0 1510574586000 3 connected 10923-16383
 
-sdfsdfdsfsfswe3rerw 110.63.171.191:6380@16380 master - 0 1510568774973 3 connected 10923-16383
-sdfsfrwerwsdfsdffds 110.63.171.139:6380@16380 master - 0 1510568775463 2 connected 5461-10922
-sdfdsfasdfswr23423e 192.168.110.112:6380@16380 myself,master - 0 0 1 connected 0-5460
-vars currentEpoch 3 lastVoteEpoch 0
+- VERIFY CLUSTER - AFTER ADDING SLAVES
+root@redisc1:/home/redis/redis-4.0.2/src# redis-cli -c -h 110.163.71.91 -p 6379
+110.163.71.91:6379> cluster nodes
+84ff05dd70877ac1dc693bcb97a8b62f59c918ca 110.163.70.47:6379@16379 master - 0 1510575166000 1 connected 0-5460
+790d23dd6021f503ce2ef8a41f6670ba80bf1281 110.163.71.39:6380@16380 slave 84ff05dd70877ac1dc693bcb97a8b62f59c918ca 0 1510575166801 1 connected
+1dd9ce2b695e9244d749fa068be5e6510e8c8d03 110.163.71.91:6380@16380 slave ddbeecc18ff64f4e4b5376718a2b00564f3e4c04 0 1510575166000 2 connected
+f818f1c94855f9d37fe3505914bdec74eec3dcb5 110.163.70.47:6380@16380 slave bb98cc4aa5631764f608c8b086285e22a19485a7 0 1510575165798 3 connected
+ddbeecc18ff64f4e4b5376718a2b00564f3e4c04 110.163.71.39:6379@16379 master - 0 1510575167803 2 connected 5461-10922
+bb98cc4aa5631764f608c8b086285e22a19485a7 192.168.10.14:6379@16379 myself,master - 0 1510575165000 3 connected 10923-16383
 
-# ./redis-trib.rb info 10.63.70.47:6380
-110.63.170.147:6380 (0d9356ad...) -> 0 keys | 5461 slots | 0 slaves.
-110.63.171.191:6380 (1c3d30f6...) -> 0 keys | 5461 slots | 0 slaves.
-110.63.171.139:6380 (64b4a9f1...) -> 0 keys | 5462 slots | 0 slaves.
-[OK] 0 keys in 3 masters.
-0.00 keys per slot on average.
+- ADDING SLAVE
+root@redisc1:/home/redis/redis-4.0.2/src# ./redis-trib.rb add-node --slave --master-id 84ff05dd70877ac1dc693bcb97a8b62f59c918ca 110.163.71.39:6380 110.163.70.47:6379
+>>> Adding node 110.163.71.39:6380 to cluster 110.163.70.47:6379
+>>> Performing Cluster Check (using node 110.163.70.47:6379)
+M: 84ff05dd70877ac1dc693bcb97a8b62f59c918ca 110.163.70.47:6379
+   slots:0-5460 (5461 slots) master
+   0 additional replica(s)
+M: bb98cc4aa5631764f608c8b086285e22a19485a7 110.163.71.91:6379
+   slots:10923-16383 (5461 slots) master
+   0 additional replica(s)
+M: ddbeecc18ff64f4e4b5376718a2b00564f3e4c04 110.163.71.39:6379
+   slots:5461-10922 (5462 slots) master
+   0 additional replica(s)
+[OK] All nodes agree about slots configuration.
+>>> Check for open slots...
+>>> Check slots coverage...
+[OK] All 16384 slots covered.
+>>> Send CLUSTER MEET to node 110.163.71.39:6380 to make it join the cluster.
+Waiting for the cluster to join.
+>>> Configure node as replica of 110.163.70.47:6379.
+[OK] New node added correctly.
+
+root@redisc1:/home/redis/redis-4.0.2/src# ./redis-trib.rb add-node --slave --master-id ddbeecc18ff64f4e4b5376718a2b00564f3e4c04 110.163.71.91:6380 110.163.71.39:6379
+>>> Adding node 110.163.71.91:6380 to cluster 110.163.71.39:6379
+>>> Performing Cluster Check (using node 110.163.71.39:6379)
+M: ddbeecc18ff64f4e4b5376718a2b00564f3e4c04 110.163.71.39:6379
+   slots:5461-10922 (5462 slots) master
+   0 additional replica(s)
+M: bb98cc4aa5631764f608c8b086285e22a19485a7 110.163.71.91:6379
+   slots:10923-16383 (5461 slots) master
+   0 additional replica(s)
+S: 790d23dd6021f503ce2ef8a41f6670ba80bf1281 110.163.71.39:6380
+   slots: (0 slots) slave
+   replicates 84ff05dd70877ac1dc693bcb97a8b62f59c918ca
+M: 84ff05dd70877ac1dc693bcb97a8b62f59c918ca 110.163.70.47:6379
+   slots:0-5460 (5461 slots) master
+   1 additional replica(s)
+[OK] All nodes agree about slots configuration.
+>>> Check for open slots...
+>>> Check slots coverage...
+[OK] All 16384 slots covered.
+>>> Send CLUSTER MEET to node 110.163.71.91:6380 to make it join the cluster.
+Waiting for the cluster to join.
+>>> Configure node as replica of 110.163.71.39:6379.
+[OK] New node added correctly.
+
+
+root@redisc1:/home/redis/redis-4.0.2/src# ./redis-trib.rb add-node --slave --master-id bb98cc4aa5631764f608c8b086285e22a19485a7 110.163.70.47:6380 110.163.71.91:6379
+>>> Adding node 110.163.70.47:6380 to cluster 110.163.71.91:6379
+>>> Performing Cluster Check (using node 110.163.71.91:6379)
+M: bb98cc4aa5631764f608c8b086285e22a19485a7 110.163.71.91:6379
+   slots:10923-16383 (5461 slots) master
+   0 additional replica(s)
+M: 84ff05dd70877ac1dc693bcb97a8b62f59c918ca 110.163.70.47:6379
+   slots:0-5460 (5461 slots) master
+   1 additional replica(s)
+S: 790d23dd6021f503ce2ef8a41f6670ba80bf1281 110.163.71.39:6380
+   slots: (0 slots) slave
+   replicates 84ff05dd70877ac1dc693bcb97a8b62f59c918ca
+S: 1dd9ce2b695e9244d749fa068be5e6510e8c8d03 110.163.71.91:6380
+   slots: (0 slots) slave
+   replicates ddbeecc18ff64f4e4b5376718a2b00564f3e4c04
+M: ddbeecc18ff64f4e4b5376718a2b00564f3e4c04 110.163.71.39:6379
+   slots:5461-10922 (5462 slots) master
+   1 additional replica(s)
+[OK] All nodes agree about slots configuration.
+>>> Check for open slots...
+>>> Check slots coverage...
+[OK] All 16384 slots covered.
+>>> Send CLUSTER MEET to node 110.163.70.47:6380 to make it join the cluster.
+Waiting for the cluster to join.
+>>> Configure node as replica of 110.163.71.91:6379.
+[OK] New node added correctly.
+root@redisc1:/home/redis/redis-4.0.2/src# 
 
 ----------------------------------
 REMOVING MASTER NODES FROM CLUSTER - WITH NO SLAVES UNDER THEM
