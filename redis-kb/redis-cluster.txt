@@ -54,13 +54,32 @@ cluster-node-timeout 15000
 
 - INIT.D FILES
 Create init.d files for both ports as in non-cluster 
+Create rc files using update-rc.d as in non-cluster
 
 ====================================
 CREATE CLUSTER
 ====================================
-# create cluster with three masters
-./redis-trib.rb create 110.163.70.47:6379 110.163.71.39:6379 110.163.71.91:6379
 
+-----------------
+START REDIS
+-----------------
+# Start Redis on each port on each machine
+# /etc/init.d/redis_6379 start
+# /etc/init.d/redis_6380 start
+
+# ps -ef |grep redis
+root      1566     1  0 11:54 ?        00:00:07 /usr/local/bin/redis-server 0.0.0.0:6379 [cluster]
+root      1572     1  0 11:54 ?        00:00:06 /usr/local/bin/redis-server 0.0.0.0:6380 [cluster]
+
+-----------------
+CREATE CLUSTER
+-----------------
+# create cluster with three masters
+<redis software directory>/src/redis-trib.rb create 110.163.70.47:6379 110.163.71.39:6379 110.163.71.91:6379
+
+-----------------
+ADD SLAVES
+-----------------
 # add one slave each
 Syntax:
 ./redis-trib.rb add-node --slave --master-id <id of the master> <slave ip>:<slave port> <master ip>:<master port>
@@ -75,9 +94,22 @@ Note that the command line here is exactly like the one we used to add a new mas
 so we are not specifying to which master we want to add the replica. In this case what happens is that 
 redis-trib will add the new node as replica of a random master among the masters with less replicas.
 
-=======
-OUTPUTS
-=======
+-----------------
+VERIFY
+-----------------
+Set a key - connecting to slave
+
+110.163.71.39:6380> set mykey helloagain
+-> Redirected to slot [14687] located at 10.63.71.91:6379
+OK
+(0.75s)
+
+Set a key - connecting to master
+Get the key - connecting to master, slave etc...
+
+-----------------
+SCREEN OUTPUTS
+-----------------
 
 - CREATE CLUSTER
 root@redisc1:/home/redis/redis-4.0.2/src# ./redis-trib.rb create 110.163.70.47:6379 110.163.71.39:6379 110.163.71.91:6379
@@ -112,23 +144,6 @@ M: ddbeecc18ff64f4e4b5376718a2b00564f3e4c04 110.163.71.39:6379
 >>> Check for open slots...
 >>> Check slots coverage...
 [OK] All 16384 slots covered.
-
-- VERIFY CLUSTER - BEFORE ADDING SLAVES
-# redis-cli -c -h 110.163.71.91 -p 6379
-110.163.71.91:6379> cluster nodes
-ddbeecc18ff64f4e4b5376718a2b00564f3e4c04 110.163.71.39:6379@16379 master - 0 1510574587580 2 connected 5461-10922
-84ff05dd70877ac1dc693bcb97a8b62f59c918ca 110.163.70.47:6379@16379 master - 0 1510574586578 1 connected 0-5460
-bb98cc4aa5631764f608c8b086285e22a19485a7 192.168.10.14:6379@16379 myself,master - 0 1510574586000 3 connected 10923-16383
-
-- VERIFY CLUSTER - AFTER ADDING SLAVES
-root@redisc1:/home/redis/redis-4.0.2/src# redis-cli -c -h 110.163.71.91 -p 6379
-110.163.71.91:6379> cluster nodes
-84ff05dd70877ac1dc693bcb97a8b62f59c918ca 110.163.70.47:6379@16379 master - 0 1510575166000 1 connected 0-5460
-790d23dd6021f503ce2ef8a41f6670ba80bf1281 110.163.71.39:6380@16380 slave 84ff05dd70877ac1dc693bcb97a8b62f59c918ca 0 1510575166801 1 connected
-1dd9ce2b695e9244d749fa068be5e6510e8c8d03 110.163.71.91:6380@16380 slave ddbeecc18ff64f4e4b5376718a2b00564f3e4c04 0 1510575166000 2 connected
-f818f1c94855f9d37fe3505914bdec74eec3dcb5 110.163.70.47:6380@16380 slave bb98cc4aa5631764f608c8b086285e22a19485a7 0 1510575165798 3 connected
-ddbeecc18ff64f4e4b5376718a2b00564f3e4c04 110.163.71.39:6379@16379 master - 0 1510575167803 2 connected 5461-10922
-bb98cc4aa5631764f608c8b086285e22a19485a7 192.168.10.14:6379@16379 myself,master - 0 1510575165000 3 connected 10923-16383
 
 - ADDING SLAVE
 root@redisc1:/home/redis/redis-4.0.2/src# ./redis-trib.rb add-node --slave --master-id 84ff05dd70877ac1dc693bcb97a8b62f59c918ca 110.163.71.39:6380 110.163.70.47:6379
@@ -204,6 +219,43 @@ Waiting for the cluster to join.
 >>> Configure node as replica of 110.163.71.91:6379.
 [OK] New node added correctly.
 root@redisc1:/home/redis/redis-4.0.2/src# 
+
+- VERIFY CLUSTER - BEFORE ADDING SLAVES
+# redis-cli -c -h 110.163.71.91 -p 6379
+110.163.71.91:6379> cluster nodes
+ddbeecc18ff64f4e4b5376718a2b00564f3e4c04 110.163.71.39:6379@16379 master - 0 1510574587580 2 connected 5461-10922
+84ff05dd70877ac1dc693bcb97a8b62f59c918ca 110.163.70.47:6379@16379 master - 0 1510574586578 1 connected 0-5460
+bb98cc4aa5631764f608c8b086285e22a19485a7 192.168.10.14:6379@16379 myself,master - 0 1510574586000 3 connected 10923-16383
+
+- VERIFY CLUSTER - AFTER ADDING SLAVES
+root@redisc1:/home/redis/redis-4.0.2/src# redis-cli -c -h 110.163.71.91 -p 6379
+110.163.71.91:6379> cluster nodes
+84ff05dd70877ac1dc693bcb97a8b62f59c918ca 110.163.70.47:6379@16379 master - 0 1510575166000 1 connected 0-5460
+790d23dd6021f503ce2ef8a41f6670ba80bf1281 110.163.71.39:6380@16380 slave 84ff05dd70877ac1dc693bcb97a8b62f59c918ca 0 1510575166801 1 connected
+1dd9ce2b695e9244d749fa068be5e6510e8c8d03 110.163.71.91:6380@16380 slave ddbeecc18ff64f4e4b5376718a2b00564f3e4c04 0 1510575166000 2 connected
+f818f1c94855f9d37fe3505914bdec74eec3dcb5 110.163.70.47:6380@16380 slave bb98cc4aa5631764f608c8b086285e22a19485a7 0 1510575165798 3 connected
+ddbeecc18ff64f4e4b5376718a2b00564f3e4c04 110.163.71.39:6379@16379 master - 0 1510575167803 2 connected 5461-10922
+bb98cc4aa5631764f608c8b086285e22a19485a7 192.168.10.14:6379@16379 myself,master - 0 1510575165000 3 connected 10923-16383
+
+- VERIFY AGAIN
+110.163.71.91:6380> cluster info
+cluster_state:ok
+cluster_slots_assigned:16384
+cluster_slots_ok:16384
+cluster_slots_pfail:0
+cluster_slots_fail:0
+cluster_known_nodes:6
+cluster_size:3
+cluster_current_epoch:3
+cluster_my_epoch:2
+cluster_stats_messages_ping_sent:4037
+cluster_stats_messages_pong_sent:4244
+cluster_stats_messages_meet_sent:4
+cluster_stats_messages_sent:8285
+cluster_stats_messages_ping_received:4243
+cluster_stats_messages_pong_received:4041
+cluster_stats_messages_meet_received:1
+cluster_stats_messages_received:8285
 
 ----------------------------------
 REMOVING MASTER NODES FROM CLUSTER - WITH NO SLAVES UNDER THEM
