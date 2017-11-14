@@ -1,1 +1,65 @@
+=====================================
+REDIS REPLICATION (NOT CLUSTER)
+=====================================
 https://itschr.is/redis-cluster-vs-redis-replication/
+https://discuss.pivotal.io/hc/en-us/articles/205309278-How-to-setup-Redis-master-and-slave-replication
+https://redis.io/topics/replication
+
+One master - multiple slaves
+
+=====================================
+CREATE REDIS NODES
+=====================================
+Set up 3 (or more) Redis instances - as done in non-cluster Redis (see its doc in this repo).
+Ports can be same or different on the three nodes.
+
+=====================================
+SET UP REPLICATION
+=====================================
+
+---------------------------------
+METHOD 1 - IN CONFIG FILE
+---------------------------------
+This is preferred method to retain the slave config upon Redis or server restart.
+
+In /etc/redis/portnumber.conf (like 6389.conf) add this line:
+slaveof <master node IP or FQDN> <master node port>
+
+---------------------------------
+METHOD 2 - SLAVEOF COMMAND
+---------------------------------
+NOTE: This does not modify the configuration file /etc/redis/<port>.conf file.
+
+- Logon to slave
+redis-cli -c -h <slave host or IP> -p <slave port>
+
+- Run slaveof command
+110.163.71.91:6389> slaveof <master node IP or FQDN> <master node port>
+
+=====================================
+VERIFY
+=====================================
+
+Logon to slave using redis-cli:
+
+110.163.70.47:6389> info
+
+# Replication
+role:slave
+master_host:110.163.70.47
+master_port:6389
+master_link_status:up
+master_last_io_seconds_ago:7
+master_sync_in_progress:0
+slave_repl_offset:1526
+slave_priority:100
+slave_read_only:1
+connected_slaves:0
+master_replid:3b9997d18179dc42aa4932d1ea440c2b574ccc54
+master_replid2:0000000000000000000000000000000000000000
+master_repl_offset:1526
+second_repl_offset:-1
+repl_backlog_active:1
+repl_backlog_size:1048576
+repl_backlog_first_byte_offset:897
+repl_backlog_histlen:630
