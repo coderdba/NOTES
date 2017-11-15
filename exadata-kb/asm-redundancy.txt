@@ -1,0 +1,35 @@
+
+http://nnawaz.blogspot.in/2016/06/calculate-exadata-x6-storage-space.html
+
+Wednesday, June 15, 2016
+Calculate Exadata X6 Storage space available for ASM Normal and High Redundancy
+When reviewing the datasheet for the Exadata X6 the latest release you may want to understand how much usable space will be available for you to use for Normal and High Redundancy in ASM for your diskgroups.
+
+Each Exadata X6 storage cell comes with 12 x 8TB SAS 7200 RPM disks with a total Raw capacity of 96TB for each cell. Now if you want to see how to calculate the Normal or High redundancy for example of a Quarter Rack it is not simply taking the raw storage amount divided by 2 for Normal redundancy and 3 for High redundancy. The formula is below and I confirmed this with Oracle Support as well.
+
+
+Please note: The amount of storage that needs to be reserved to recover from the failure of a disk is 15% of the cell disk capacity. 
+
+# cellcli -e list celldisk attributes name,size 
+CD_00_internal 7.1192474365234375T
+...
+
+The calculation is as follows - 
+Size of one disk : 7.1192474365234375TB
+Disks per cell node : 12 
+No of cell nodes : 3 
+Total size of Disk : 7.119TB  * 12 * 3 = 256.284TB 
+
+Normal Redundancy  = [ Total size of Disk / 2 ] * .85 
+= [ 256.284TB / 2 ] * .85 
+= 128.142TB * .85 
+=> 108.9207TB or 109TB [ The value in the Exadata X6 data sheet ] 
+
+
+High Redundancy  = [ Total size of Disk / 3 ] * .85 
+= [ 256.284TB / 3 ] * .85 
+= 85.428TB * .85 
+=> 72.6138TB
+
+A table below also shows this information to easily see the values on the different size configurations.
+
