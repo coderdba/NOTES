@@ -47,3 +47,17 @@ openstack_compute_instance_v2.redis: Still creating... (2m30s elapsed)
 openstack_compute_instance_v2.redis: Creation complete after 2m36s (ID: b29140fe-010d-438b-9445-35a7f7aba0ab)
 
 Apply complete! Resources: 1 added, 0 changed, 0 destroyed.
+
+
+- AFTER ADDING floatipcreate.tf
+
+$ terraform apply
+openstack_compute_instance_v2.redis: Refreshing state... (ID: b29140fe-010d-438b-9445-35a7f7aba0ab)
+openstack_compute_floatingip_v2.floatip_1: Creating...
+  address:     "" => "<computed>"
+  fixed_ip:    "" => "<computed>"
+  instance_id: "" => "<computed>"
+  pool:        "" => "ext_vlanabcd_net"
+  region:      "" => "<computed>"
+openstack_compute_floatingip_v2.floatip_1: Creation complete after 1s (ID: 90f840b6-31a2-54b8-8862-533133561aba)
+
