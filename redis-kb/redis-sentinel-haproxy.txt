@@ -1,2 +1,109 @@
+=========================================================
+HAPROXY FOR MASTER AND SLAVE IN REPLICATION WITH SENTINEL
+=========================================================
 https://www.haproxy.com/blog/haproxy-advanced-redis-health-check/
 https://discuss.pivotal.io/hc/en-us/articles/205309388-How-to-setup-HAProxy-and-Redis-Sentinel-for-automatic-failover-between-Redis-Master-and-Slave-servers
+https://karlstoney.com/2015/07/23/redis-sentinel-behind-haproxy/
+
+NOTE: Sentinel itself does not matter for haproxy. 
+      You can use sentinel or other methods including manual method to promote a slave to become master when master dies.
+      
+============================
+CONFIGURE HAPROXY
+============================
+
+File: /etc/haproxy/haproxy.cfg
+
+Changes to do: 
+1. For master - add sections redis, ft_redis, bk_redis as given below (haproxy port different for master and slave)
+2. For slave - add sections redisslave, ft_redisslave, bk_redisslave as given below (haproxy port different for master and slave)
+3. Restart haproxy (service haproxy restart)
+
+Verify:
+Connect to haproxy master port using redis-cli 
+Type info
+Find whether it is master or slave
+
+global
+	log /dev/log	local0
+	log /dev/log	local1 notice
+	chroot /var/lib/haproxy
+	stats socket /run/haproxy/admin.sock mode 660 level admin
+	stats timeout 30s
+	user haproxy
+	group haproxy
+	daemon
+
+	# Default SSL material locations
+	ca-base /etc/ssl/certs
+	crt-base /etc/ssl/private
+
+	# Default ciphers to use on SSL-enabled listening sockets.
+	# For more information, see ciphers(1SSL). This list is from:
+	#  https://hynek.me/articles/hardening-your-web-servers-ssl-ciphers/
+	ssl-default-bind-ciphers ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:ECDH+AES128:DH+AES:ECDH+3DES:DH+3DES:RSA+AESGCM:RSA+AES:RSA+3DES:!aNULL:!MD5:!DSS
+	ssl-default-bind-options no-sslv3
+
+defaults
+	log	global
+	mode	http
+	option	httplog
+        mode tcp
+	option	dontlognull
+        timeout connect 5000
+        timeout client  50000
+        timeout server  50000
+	errorfile 400 /etc/haproxy/errors/400.http
+	errorfile 403 /etc/haproxy/errors/403.http
+	errorfile 408 /etc/haproxy/errors/408.http
+	errorfile 500 /etc/haproxy/errors/500.http
+	errorfile 502 /etc/haproxy/errors/502.http
+	errorfile 503 /etc/haproxy/errors/503.http
+	errorfile 504 /etc/haproxy/errors/504.http
+
+defaults redis
+mode tcp
+timeout connect 3s
+timeout server 6s
+timeout client 6s
+
+frontend ft_redis
+ bind *:16389 name redis
+ default_backend bk_redis
+
+backend bk_redis
+ option tcp-check
+ #uncomment these lines if you have basic auth
+ #tcp-check send AUTH\ yourpassword\r\n
+ #tcp-check expect +OK
+ tcp-check send PING\r\n
+ tcp-check expect string +PONG
+ tcp-check send info\ replication\r\n
+ tcp-check expect string role:master
+ tcp-check send QUIT\r\n
+ tcp-check expect string +OK
+ server R1 110.163.70.47:6389 check inter 1s
+ server R2 110.163.71.39:6389 check inter 1s
+ server R3 110.163.71.91:6389 check inter 1s
+
+defaults redisslave
+mode tcp
+timeout connect 3s
+timeout server 6s
+timeout client 6s
+
+frontend ft_redisslave
+ bind *:26389 name redisslave
+ default_backend bk_redisslave
+
+backend bk_redisslave
+ option tcp-check
+ tcp-check send PING\r\n
+ tcp-check expect string +PONG
+ tcp-check send info\ replication\r\n
+ tcp-check expect string role:slave
+ tcp-check send QUIT\r\n
+ tcp-check expect string +OK
+ server R1 110.163.70.47:6389 check inter 1s
+ server R2 110.163.71.39:6389 check inter 1s
+ server R3 110.163.71.91:6389 check inter 1s
