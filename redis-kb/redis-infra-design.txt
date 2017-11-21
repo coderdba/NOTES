@@ -1,0 +1,33 @@
+REDIS ON OPENSTACK DESIGN
+
+One Redis-VM with one instance per request
+
+•	Request for new Redis instance (client)
+•	Request received at Redis-Provision server (RPS)
+•	RPS will invoke Terraform to create a new VM
+•	RPS records the request in a file/table
+•	Terraform creates a new VM, assigns IP, invokes chef-bootstrap
+•	Chef on VM creates a Redis instance, changes its password
+•	Chef sends completion and credential to RPS file/table
+o	Invokes a URL at RPS which will append to a file/table
+•	RPS reads the table/file and sends mail to requesor
+
+
+Components
+Client – http request to RPS
+RPS – http server like Sinatra or Python
+Request – requestor name, LAN Id, Blossom Project, VM flavor (does not wait for final email)
+RPS response – ‘request received, you will get an email when completed’
+RPS email notification – IP, Port, Password – asynchronous with the request
+RPS file/table – can be a file appended by Sinatra/Python http server
+Terraform – needs NUID and keypair for the OST server-tenant
+
+Question – how do we plug-in a AD group here for authorized requestors?
+
+
+RPS methods
+GET – get vm details – for a blossom id 
+POST – create new redis vm
+
+Sinatra
+https://stackoverflow.com/questions/2259638/save-the-contents-of-a-textarea-into-a-text-file-with-ruby
