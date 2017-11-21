@@ -20,10 +20,30 @@ Changes to do:
 3. Restart haproxy (service haproxy restart)
 
 Verify:
-Connect to haproxy master port using redis-cli 
-Type info
-Find whether it is master or slave
+- Connect to haproxy master port using redis-cli 
 
+./redis-cli -h 110.163.108.39 -p 16389
+(where the IP is for haproxy server - not the redis master)
+
+- Type info replication
+Note down whether it is master or slave - should be master
+Note down the slave IPs
+
+- Stop/Pause master
+./redis-cli -p 6389 -h <master IP address> DEBUG sleep 120
+
+- Connect to haproxy master port using redis-cli 
+./redis-cli -h 110.163.108.39 -p 16389
+(where the IP is for haproxy server - not the redis master)
+
+- Type info replication
+Note down whether it is master or slave - should be master
+Note down the slave IPs
+--> This should be different from the previous slave list (after a few seconds or a minute or so - wait a bit)
+
+-----------------
+haproxy.cfg
+-----------------
 global
 	log /dev/log	local0
 	log /dev/log	local1 notice
