@@ -543,3 +543,21 @@ $ ssh ubuntu@192.168.10.3  --> on bastion to app server - using internal IP
 - Configure nginx
 $ sudo sed -i 's|<h1>.*</h1>|<h1> App Server 2 </h1>|' /var/www/html/index.nginx-debian.html
 
+=========================
+CREATE LOAD BALANCER
+=========================
+NOTE: Protocol HTTP (no separate http listener - in v3 that is possible - in v2 is it not possible?)
+
+$ neutron lb-pool-create --name MyLBPool --lb-method ROUND_ROBIN --protocol HTTP --subnet-id MySubNet
+
+$ neutron lb-pool-show MyLBPool
+
+=================================
+ADD APP SERVERS TO LOAD BALANCER
+=================================
+NOTE: Internal IP of associating VMs are used here
+
+$ neutron lb-member-create --address <internal IP of app server> --protocol-port <port> <lb pool name>
+
+$ neutron lb-member-create --address 192.168.10.2 --protocol-port 80 MyLBPool
+$ neutron lb-member-create --address 192.168.10.3 --protocol-port 80 MyLBPool
