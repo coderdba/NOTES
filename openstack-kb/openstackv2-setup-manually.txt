@@ -7,10 +7,11 @@ ON MAC
 ========================
 TENANT SETUP
 ========================
-Obtain tenant
+Obtain tenant in Openstack
 Upload your keys - or generate specific keys
 - If created Openstack specific key - Download the private key (or is it public key to download)
 Download RC.sh file
+--> more details in other dedicated section below
 
 ========================
 INSTALL CLIENT TOOLS
@@ -116,3 +117,50 @@ $ heat --version
 $ openstack —version
 …
 …
+
+============================	
+OPENSTACK ENVIRONMENT FILES
+============================
+------------------------------------
+Get the RC file and EC2 credentials
+------------------------------------
+- GET THE FILES
+In web-UI —> Compute —> Access & Security
+
+1. —> Download OpenStack RC File — This gives TENANT-openrc.sh
+2. —> Download EC2 Credentials — This gives TENANT-x509.zip - which contains caret.pem, cert.pem, ec2rc.sh, pk.pem
+
+- COPY THE FILES TO HOME DIRECTORY
+Copy DBOPT-Openrc.sh as username_projectname.sh into home directory.
+
+------------------------------------
+CERTIFICATES
+------------------------------------
+Download certificates for the company and store it in home directory as ~/.company.crt
+--> if it is your own install, probably haxx or self-signed certificate should do
+
+Source it in the RC file as:
+export OS_CACERT=$HOME/.company.crt
+
+------------------------------------
+SOURCE  ENVIRONMENT
+------------------------------------
+Source the RC file: (inside the virtualenv)
+
+$ source ~/username_projectname.sh
+--> This will prompt for a password - give the LAN password - which is same as OST password.
+
+Verify:
+(openstack) $ env | grep OS_
+OS_AUTH_URL=https://openstack.company.com:5000/v2.0
+OS_CACERT=/Users/myusername/.company.crt
+OS_PASSWORD=<password>
+OS_PROJECT_NAME=MYTENANT
+OS_REGION_NAME=RegionOne
+OS_TENANT_ID=alsdjfs90ad72543be89f9d54f8311ad9e
+OS_TENANT_NAME=MYTENANT
+OS_USERNAME=myusername
+
+Verify actually connecting to openstack server:
+$ openstack server list
+
