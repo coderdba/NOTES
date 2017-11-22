@@ -325,3 +325,82 @@ $ neutron router-interface-add MyRouter MySubNet
 $ openstack router set MyRouter --external-gateway ext_vlan1001_net
 - OR -
 $ neutron router-gateway-set MyRouter ext_vlan1001_net
+
+==========================
+SECURITY GROUPS AND RULES
+==========================
+
+-----------------------------------
+Create a Bastion Security Group
+-----------------------------------
+A 'basic' security group which allows only ssh and pings into it
+Usually the 'bastion' host is assigned this - so that one can ping and ssh into it from outside
+
+- Create the security group
+
+$ openstack security group create BasicSG --description 'Allow SSH and pings'
++-----------------+---------------------------------------------------------------------------------+
+| Field           | Value                                                                           |
++-----------------+---------------------------------------------------------------------------------+
+| created_at      | None                                                                            |
+| description     | Allow SSH and pings                                                             |
+| id              |-a0ef-4c93-b768-d11d1027ccce                                                     |
+| name            | BasicSG                                                                         |
+| project_id      | p9sidfd7ad72543be89f9d54f8311ad9e                                               |
+| revision_number | None                                                                            |
+| rules           | direction='egress', ethertype='IPv4', id='37f9-47c9-b44c-58ec6ec6c36a'          |
+|                 | direction='egress', ethertype='IPv6', id='4783-43d7-b5ce-38dc68ece10d'          |
+| updated_at      | None                                                                            |
++-----------------+---------------------------------------------------------------------------------+
+
+- Add rules to allow ssh
+
+$ openstack security group rule create BasicSG --proto tcp --dst-port 22:22
+
++-------------------+--------------------------------------+
+| Field             | Value                                |
++-------------------+--------------------------------------+
+| created_at        | None                                 |
+| description       | None                                 |
+| direction         | ingress                              |
+| ether_type        | IPv4                                 |
+| id                | ccfe-4681-8db0-85e0bfb0c18b          |
+| name              | None                                 |
+| port_range_max    | 22                                   |
+| port_range_min    | 22                                   |
+| project_id        | sdfsfsd72543be89f9d54f8311ad9e       |
+| protocol          | tcp                                  |
+| remote_group_id   | None                                 |
+| remote_ip_prefix  | 0.0.0.0/0                            |
+| revision_number   | None                                 |
+| security_group_id | a0ef-4c93-b768-d11d1027ccce          |
+| updated_at        | None                                 |
++-------------------+--------------------------------------+
+
+- Add rules to allow ping
+
+NOTE: Port '-1' means all ports?
+
+$ openstack security group rule create BasicSG --proto icmp --dst-port -1
++-------------------+--------------------------------------+
+| Field             | Value                                |
++-------------------+--------------------------------------+
+| created_at        | None                                 |
+| description       | None                                 |
+| direction         | ingress                              |
+| ether_type        | IPv4                                 |
+| id                | a29a-481b-a78c-296494d21c45          |  
+| name              | None                                 |
+| port_range_max    | None                                 |
+| port_range_min    | None                                 |
+| project_id        | 098sdfs7ad72543be89f9d54f8311ad9e    |
+| protocol          | icmp                                 |
+| remote_group_id   | None                                 |
+| remote_ip_prefix  | 0.0.0.0/0                            |
+| revision_number   | None                                 |
+| security_group_id | a0ef-4c93-b768-d11d1027ccce          |
+| updated_at        | None                                 |
++-------------------+--------------------------------------+
+
+
+
