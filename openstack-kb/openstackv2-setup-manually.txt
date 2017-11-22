@@ -429,3 +429,22 @@ NOTE:  The --src-ip option is deprecated, please use --remote-ip instead.
 ---------------------------------------
 Create a External-Facing Security Group
 ---------------------------------------
+This is to be used ONLY when you want a VM to directly interact fully with any internal/external machine.
+--> good for quick testing, not good for production
+--> as this will require floating-IP for every machine - even when machines can be clustered and load-balanced
+
+Direction  Ether Type  IP Protocol  Port Range  Remote IP Prefix
+Egress	IPv6	Any	Any	::/0	
+Egress	IPv4	Any	Any	0.0.0.0/0	
+Ingress	IPv4	ICMP	Any	0.0.0.0/0	
+Ingress	IPv4	TCP	1 - 65535	0.0.0.0/0	
+Ingress	IPv4	TCP	22 (SSH)	0.0.0.0/0
+
+- Create the security group 
+$ openstack security group create TCPAllSG --description "All TCP in and out"
+
+- Allow ping ingress on all ports
+$ openstack security group rule create TCPAllSG --proto icmp --dst-port -1
+
+- Allow TCP ingress on all ports
+$ openstack security group rule create TCPAllSG --proto tcp --dst-port 1:65535 --src-ip 0.0.0.0/0
