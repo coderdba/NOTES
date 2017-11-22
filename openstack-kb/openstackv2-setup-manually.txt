@@ -205,3 +205,103 @@ CREATE FLOATING IPs
 | 9720-4d79-a20a-20a7ada67aef | 110.163.71.175        | None             | None | d7f4-49fc-84ea-acfbcab71e9a |  |
 | b337-43e1-b243-82c1d191212a | 110.163.70.47         | None             | None | d7f4-49fc-84ea-acfbcab71e9a |  |
 | d2c9-408d-8ba0-34b566d36405 | 110.163.71.91         | None             | None | d7f4-49fc-84ea-acfbcab71e9a |  |
+
+---------------------------------------
+CREATE A NETWORK 
+---------------------------------------
+This network will network the machines 
+Further, we need to add a router and add a load balancer
+The machines will be inter-networked with a private network 
+ - and one or more will be open to outside world by floating IP(s)
+
+NOTE: neutron is deprecated - use openstack instead
+
+$ neutron net-create MyNetwork   
+- OR - 
+$ openstack network create MyNetwork
+
+---------------------------------------
+CREATE A SUBNET
+---------------------------------------
+$ neutron subnet-create --name MySubNet MyNetwork 192.168.10.0/24
+- OR - 
+$ openstack subnet create MySubNet --network MyNetwork --subnet-range 192.168.10.0/24
+
+---------------------------------------
+ASSOCIATE SUBNET WITH DNS SERVERS
+---------------------------------------
+$ neutron subnet-update MySubNet --dns-nameserver 110.197.140.116 --dns-nameserver 110.164.40.216
+- OR - 
+$ openstack subnet set MySubNet --dns-nameserver 110.197.140.116 --dns-nameserver 110.164.40.216
+
+---------------------------------------
+Verify
+---------------------------------------
+In WebUI go to networks, find the MyNetwork network, click on it to see the subnet and associated ports
+
+(openstack) $ openstack network show MyNetwork
+- OR - 
+$ neutron network show MyNetwork
+
++---------------------------+--------------------------------------+
+| Field                     | Value                                |
++---------------------------+--------------------------------------+
+| admin_state_up            | UP                                   |
+| availability_zone_hints   | None                                 |
+| availability_zones        | None                                 |
+| created_at                | None                                 |
+| description               | None                                 |
+| dns_domain                | None                                 |
+| id                        | d9376-4955-83a6-52627b106dd6         |
+| ipv4_address_scope        | None                                 |
+| ipv6_address_scope        | None                                 |
+| is_default                | None                                 |
+| is_vlan_transparent       | None                                 |
+| mtu                       | 0                                    |
+| name                      | MyNetwork                            |
+| port_security_enabled     | True                                 |
+| project_id                | None                                 |
+| provider:network_type     | None                                 |
+| provider:physical_network | None                                 |
+| provider:segmentation_id  | None                                 |
+| qos_policy_id             | None                                 |
+| revision_number           | None                                 |
+| router:external           | Internal                             |
+| segments                  | None                                 |
+| shared                    | False                                |
+| status                    | ACTIVE                               |
+| subnets                   | fa149712a-7437-4052-b415-267e01fa84a |
+| tags                      | None                                 |
+| updated_at                | None                                 |
++---------------------------+--------------------------------------+
+
+(openstack) $ openstack subnet show MySubNet   
+- OR - 
+$ neutron subnet show MySubNet
+                                                           
++-------------------------+--------------------------------------+
+| Field                   | Value                                |
++-------------------------+--------------------------------------+
+| allocation_pools        | 192.168.10.2-192.168.10.254          |
+| cidr                    | 192.168.10.0/24                      |
+| created_at              | None                                 |
+| description             | None                                 |
+| dns_nameservers         | 10.64.40.216, 10.97.40.216           |
+| enable_dhcp             | True                                 |
+| gateway_ip              | 192.168.10.1                         |
+| host_routes             |                                      |
+| id                      | fa149712a-7437-4052-b415-267e01fa84a |
+| ip_version              | 4                                    |
+| ipv6_address_mode       | None                                 |
+| ipv6_ra_mode            | None                                 |
+| name                    | MySubNet                             |
+| network_id              | d9376-4955-83a6-52627b106dd6         |
+| project_id              | ef64cd7ad72543be89f9d54f8311ad9e     |
+| revision_number         | None                                 |
+| segment_id              | None                                 |
+| service_types           | None                                 |
+| subnetpool_id           | None                                 |
+| tags                    | None                                 |
+| updated_at              | None                                 |
+| use_default_subnet_pool | None                                 |
++-------------------------+--------------------------------------+
