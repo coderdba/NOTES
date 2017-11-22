@@ -336,9 +336,11 @@ Create a Bastion Security Group
 A 'basic' security group which allows only ssh and pings into it
 Usually the 'bastion' host is assigned this - so that one can ping and ssh into it from outside
 
-Ingress - ipv4, TCP on 22(ssh), from any IP
-Ingress - ipv4, ICMP (ping), any port, from any IP
-Egress - ipv4, any protocol (TCP, ICMP, HTTP...), any port, to any IP
+Direction  Ether Type  IP Protocol  Port Range  Remote IP Prefix
+Egress	IPv4	Any	Any	0.0.0.0/0
+Egress	IPv6	Any	Any	::/0
+Ingress	IPv4	ICMP	Any	0.0.0.0/0
+Ingress	IPv4	TCP	22 (SSH)	0.0.0.0/0
 
 - Create the security group
 
@@ -409,4 +411,18 @@ $ openstack security group rule create BasicSG --proto icmp --dst-port -1
 --------------------------------------
 Create a Internal-Only Security Group
 --------------------------------------
+This will be used to communicate within the intenal network 'mynetwork'
+One cannot logon directly to the VM's bound to this security group
+
+Direction  Ether Type  IP Protocol  Port Range  Remote IP Prefix
+Ingress	IPv4	TCP	1 - 65535	192.168.10.0/24
+Egress	IPv6	Any	Any	::/0
+Egress	IPv4	Any	Any	0.0.0.0/0
+
+- CREATE SECURITY GROUP
+$ openstack security group create OpenSG --description "All TCP internal"
+
+- ADD RULE
+$ openstack security group rule create OpenSG --proto tcp --dst-port 1:65535 --src-ip 192.168.10.0/24
+NOTE:  The --src-ip option is deprecated, please use --remote-ip instead.
 
