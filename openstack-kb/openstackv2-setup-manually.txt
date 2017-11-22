@@ -453,6 +453,11 @@ $ openstack security group rule create TCPAllSG --proto tcp --dst-port 1:65535 -
 ==================
 CREATE BASTION VM
 ==================
+Security Group = BasicSG
+Network        = MyNetwork (which has MySubnet)
+Internal IP    = Yes (automatic due to subnet of MyNetwork)
+External IP    = Set manually
+
 - Create the VM
 $ openstack server create --flavor smallmem-4vcpu --image ubuntu-trusty --security-group BasicSG --nic net-id=MyNetwork --key-name MySshKey MyBastionHost
 
@@ -462,10 +467,33 @@ $ openstack floating ip list
 - Associate floating IP
 $ openstack server add floating ip MyBastionHost 101.101.101.11
 
+- Verify
+NOTE: It will have an internal and external (floating) IP
+
+(openstack) $ nova list
++--------------------------------------+------------+--------+------------+-------------+--------------------------------------+
+| ID                                   | Name       | Status | Task State | Power State | Networks                             |
++--------------------------------------+------------+--------+------------+-------------+--------------------------------------+
+| 88e3-4061-9288-skjsdf9812            | MyBastionHost | ACTIVE | -          | Running     | MyNetwork=192.168.10.1, 101.101.101.11 |
+
 - Check logon from external network
 $ ssh ubuntu@101.101.101.11
 $ sudo su - 
 
+=====================
+CREATE APP SERVER VM1
+=====================
 
+- Create the VM
+$ openstack server create --flavor smallmem-4vcpu --image ubuntu-trusty --security-group InternalSG --nic net-id=MyNetwork --key-name MySshKey MyAppSvr1
 
+- Verify
+$ openstack server show MyAppSvr1 -c 'status' -c 'addresses'
+
++-----------+------------------------+
+| Field     | Value                  |
++-----------+------------------------+
+| addresses | MyNetwork=192.168.10.2 |
+| status    | ACTIVE                 |
++-----------+------------------------+
 
