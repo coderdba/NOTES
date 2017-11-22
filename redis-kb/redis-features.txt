@@ -13,6 +13,39 @@ STRINGS
 Upto 512MB
 Can hold strings, images, serialized objects
 
+110.163.108.39:16389> set mykey somevalue
+OK
+(0.64s)
+110.163.108.39:16389> get mykey
+"somevalue"
+110.163.108.39:16389> set mykey value2
+OK
+(0.83s)
+110.163.108.39:16389> get mykey
+"value2"
+
+110.163.108.39:16389> set mykey newval nx --> DO NOT UPDATE IF KEY EXISTS
+(nil)
+110.163.108.39:16389> get mykey
+"value2"
+
+110.163.108.39:16389> set mykey newval xx --> UPDATE ONLY IF KEY EXISTS
+OK
+(0.61s)
+110.163.108.39:16389> get mykey
+"newval"
+
+110.163.108.39:16389> set mykey2 avalue nx --> DO NOT UPDATE IF KEY EXISTS - THAT IS, SETIF IT DOES NOT EXIST
+OK
+(0.90s)
+110.163.108.39:16389> get mykey2
+"avalue"
+
+110.163.108.39:16389> set mykey3 avalue xx --> UPDATE ONLY IF KEY EXISTS - THAT IS, DONT DO ANYTHING IF IT DOES NOT EXIST
+(nil)
+(0.93s)
+110.163.108.39:16389> get mykey3
+
 ---------------
 LISTS
 ---------------
@@ -32,4 +65,31 @@ The max number of members in a set is 232 - 1 (4294967295, more than 4 billion o
 ---------------
 HASHES
 ---------------
+They are keys mapped to multiple key-value pairs.
+Every hash can store up to 232 - 1 field-value pairs (more than 4 billion).
+
+EXAMPLE:
+110.163.108.39:16389> HMSET user:1000 username antirez password P1pp0 age 34
+OK
+(1.00s)
+10.63.108.39:16389> HGETALL user:1000
+1) "username"
+2) "antirez"
+3) "password"
+4) "P1pp0"
+5) "age"
+6) "34"
+
+110.163.108.39:16389> HSET user:1000 password 12345
+(integer) 0
+(0.82s)
+
+110.163.108.39:16389> HGETALL user:1000
+1) "username"
+2) "antirez"
+3) "password"
+4) "12345"
+5) "age"
+6) "34"
+
 
