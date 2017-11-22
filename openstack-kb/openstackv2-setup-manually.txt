@@ -483,6 +483,10 @@ $ sudo su -
 =====================
 CREATE APP SERVER VM1
 =====================
+Security Group = InternalSG
+Network        = MyNetwork (which has MySubnet)
+Internal IP    = Yes (automatic due to subnet of MyNetwork)
+External IP    = NONE (not supposed to have one)
 
 - Create the VM
 $ openstack server create --flavor smallmem-4vcpu --image ubuntu-trusty --security-group InternalSG --nic net-id=MyNetwork --key-name MySshKey MyAppSvr1
@@ -508,3 +512,20 @@ $ sudo apt-get install nginx-full -y
 - Setup nginx with app server name
 $ sudo sed -i 's|<h1>.*</h1>|<h1> App Server 1 </h1>|' /var/www/html/index.nginx-debian.html
 
+------------------------------------------------------------------------------------
+CREATE APP SERVER IMAGE FROM THIS VM - FOR CLONING MORE APP SERVERS OF THE POOL
+------------------------------------------------------------------------------------
+$ openstack server image create --name NgixUbuntuImage MyAppSvr1
+$ openstack image list --private
+
+=====================
+CREATE APP SERVER VM2 - FROM THE IMAGE CREATED FROM VM1
+=====================
+Security Group = InternalSG
+Network        = MyNetwork (which has MySubnet)
+Internal IP    = Yes (automatic due to subnet of MyNetwork)
+External IP    = NONE (not supposed to have one)
+
+$ openstack server create --flavor smallmem-4vcpu --image NgixUbuntuImage --security-group InternalSG --nic net-id=MyNetwork --key-name MySshKey MyAppSvr2
+
+$ openstack server show MyAppSvr2 -c 'status' -c 'addresses'
