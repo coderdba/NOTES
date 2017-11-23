@@ -13,7 +13,7 @@ resource "openstack_compute_instance_v2" "redis" {
   security_groups = ["${var.tenant_security_group}"]
   network {
     #name = "${var.tenant_network}"
-    name = "${var.nw1001_1}"
+    name = "${var.MyNetwork}"
   }
   #user_data = "${file("touch.sh")}"
   user_data = "${file("touch2.sh")}"
