@@ -32,20 +32,31 @@ http://docs.ansible.com/ansible/latest/intro_getting_started.html
 ----------------
 CONTROL MACHINE
 ----------------
+NOTE: Better create a work directory with the following structure:
+      Directory ~/ansible 
+      Directory ~/ansible/sshkeys
+      File ~/ansible/hosts
+
+      File ~/ansible/env - with contents:
+      export ANSIBLE_INVENTORY=/Users/username/ansible/hosts
+      ssh-add /Users/dbgsm0/ansible/sshkeys/ansible.key
+
+
+- Create hosts file
 Edit (or create) /etc/ansible/hosts and put one or more remote systems (managed nodes) in it.
 --> Your public SSH key should be located in authorized_keys on those systems (managed nodes)
 
-  Alternatively: Create a file like ~/ansible_hosts and set environment "export ANSIBLE_INVENTORY=~/ansible_hosts"
+  Alternatively: Create a file like ~/ansible/hosts and set environment "export ANSIBLE_INVENTORY=~/ansible/hosts"
   (from http://docs.ansible.com/ansible/latest/intro_installation.html)
 
 - Add your nodes to the ansible_hosts file
-echo "192.168.10.11" > ~/ansible_hosts (or to /etc/ansible/hosts)
+echo "192.168.10.11" > ~/ansible/hosts (or to /etc/ansible/hosts)
 
 - Do basic verification 
 NOTE: This will ping all machines in the ansible hosts file
 NOTE: This will ask for a password - not yet using the key
 
-$  ansible all -m ping --ask-pass --user vagrant       
+$  ansible all -m ping --ask-pass --user vagrant   (or other user)    
 SSH password: 
 192.168.4.101 | SUCCESS => {
     "changed": false, 
@@ -56,8 +67,24 @@ SSH password:
 ----------------
 ADD KEY
 ----------------
-Generate a key using ssh-keygen
-Option1: Copy the public and private keys as is to ~/.ssh on control machine
-Option2: Create the keys in an ansible folder and use it for ansible only
+- CREATE KEY
+Option1: Copy the public and private keys as is to ~/.ssh/id_rsa and ~/.ssh/id_rsa.pub on control machine
+--> This is a bit problematic as it will overwrite your usually-used keys 
+
+Option2 (preferred): Create the keys in an ansible folder and use it for ansible only
+$ cd ~/ansible/sshkeys
+$ ssh-keygen -t ansible.key
+--> This creates ansible.key and ansible.key.pub
+
+$ ssh-agent (or ssh-agent bash)
+$ ssh-add ~/ansible/sshkeys/ansible.key
+
+- UPDATE MANAGED NODE KNOWN-HOSTS
+Add contents of id_rsa.pub or ansible.key.pub (as appropriate) to known-hosts on the managed nodes
+--> append to ~/.ssh/known-hosts file of the user (like vagrant)
+--> Here, it is assumed that the user is 'vagrant' 
+
+- TEST
+$ ansible all -m ping --user vagrant
 
 
