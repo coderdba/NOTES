@@ -9,10 +9,10 @@ openstack_compute_instance_v2.redis: Creating...
   all_metadata.%:             "" => "<computed>"
   availability_zone:          "" => "<computed>"
   flavor_id:                  "" => "<computed>"
-  flavor_name:                "" => "smem-2vcpu"
+  flavor_name:                "" => "smallmemory-2vcpu"
   force_delete:               "" => "false"
   image_id:                   "" => "<computed>"
-  image_name:                 "" => "redis_ubuntu_2instance_dbpot"
+  image_name:                 "" => "redis_ubuntu_2instance_mypot"
   key_pair:                   "" => "MySshKey"
   name:                       "" => "redistf-01"
   network.#:                  "" => "1"
@@ -28,7 +28,7 @@ openstack_compute_instance_v2.redis: Creating...
   security_groups.#:          "" => "1"
   security_groups.3773427488: "" => "TCPExternalSG"
   stop_before_destroy:        "" => "false"
-  user_data:                  "" => "1502ba977f55d49e2f93de66b19734589fb51f2e"
+  user_data:                  "" => "adas9e2f93de66b19734589fb51f2e"
 openstack_compute_instance_v2.redis: Still creating... (10s elapsed)
 openstack_compute_instance_v2.redis: Still creating... (20s elapsed)
 openstack_compute_instance_v2.redis: Still creating... (30s elapsed)
@@ -44,7 +44,7 @@ openstack_compute_instance_v2.redis: Still creating... (2m0s elapsed)
 openstack_compute_instance_v2.redis: Still creating... (2m10s elapsed)
 openstack_compute_instance_v2.redis: Still creating... (2m20s elapsed)
 openstack_compute_instance_v2.redis: Still creating... (2m30s elapsed)
-openstack_compute_instance_v2.redis: Creation complete after 2m36s (ID: b29140fe-010d-438b-9445-35a7f7aba0ab)
+openstack_compute_instance_v2.redis: Creation complete after 2m36s (ID: dsfssdf-010d-438b-9445-35a7f7aba0ab)
 
 Apply complete! Resources: 1 added, 0 changed, 0 destroyed.
 
