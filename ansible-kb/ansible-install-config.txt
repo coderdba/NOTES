@@ -36,10 +36,13 @@ NOTE: Better create a work directory with the following structure:
       Directory ~/ansible 
       Directory ~/ansible/sshkeys
       File ~/ansible/hosts
+      File ~/ansible/ansible.cfg
 
       File ~/ansible/env - with contents:
       export ANSIBLE_INVENTORY=/Users/username/ansible/hosts
-      ssh-add /Users/dbgsm0/ansible/sshkeys/ansible.key
+      export ANSIBLE_CONFIG=/Users/username/ansible/ansible.cfg
+      export ANSIBLE_HOST_KEY_CHECKING=False
+      ssh-add /Users/username/ansible/sshkeys/ansible.key
 
 
 - Create hosts file
@@ -119,3 +122,18 @@ $ ansible all -m ping -u vagrant --become-user=root
 $ ansible all -a "/bin/echo hello" -u vagrant
 192.168.4.101 | SUCCESS | rc=0 >>
 hello
+
+------------------------
+ADDITIONAL CONFIGURATION
+------------------------
+Create a file /etc/ansible/ansible.cfg
+- OR - /Users/username/ansible/ansible.cfg --> and set ANSIBLE_CONFIG=/Users/username/ansible/ansible.cfg
+
+Content example:
+
+- Set host-key-checking to false - in the case the managed host is rebuilt, ansible connection will not ask y/n
+[defaults]
+host_key_checking = False
+
+Alternatively, this can be set in the environment:
+$ export ANSIBLE_HOST_KEY_CHECKING=False
