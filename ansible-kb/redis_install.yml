@@ -11,10 +11,14 @@
   become: true
 
   tasks:
-  #- name: download redis software
-    #get_url:
-      #url: http://download.redis.io/releases/redis-4.0.2.tar.gz
-      #dest: /var/redis/redis-4.0.2.tar.gz
+
+  - name: create instance base directories
+    file:
+      path: "{{ item.dir }}"
+      state: directory
+      mode: 0700
+    with_items:
+      - { dir: "/var/redis" }
 
   - name: Check if already installed
     stat:
@@ -57,3 +61,40 @@
       - { source: "{{ install_dir }}/src/redis-server", destination: "{{ usr_local_bin }}/redis-server" }
       - { source: "{{ install_dir }}/src/redis-cli", destination: "{{ usr_local_bin }}/redis-cli" }
       - { source: "{{ install_dir }}/src/redis-sentinel", destination: "{{ usr_local_bin }}/redis-sentinel" }
+---
+- hosts: 192.168.4.101
+  vars:
+       tmpdir: "/tmp"
+       redis_zip_url: "http://download.redis.io/releases/redis-4.0.2.tar.gz"
+       zip_dest_dir: "/var/redis"
+       zip_file: "redis-4.0.2.tar.gz"
+       install_dir: "/var/redis/redis-4.0.2"
+       usr_local_bin: "/usr/local/bin"
+       init_dir: "/etc/init.d"
+       init_file: "{{ init_dir }}/init_6379"
+       config_dir: "/etc/redis"
+       config_file: "{{ config_dir }}/redis_6379.conf"
+       config_template: redis_std_config_file_template.jinja2
+       redis_dir_dir: "/var/redis"
+
+  become: true
+
+  tasks:
+
+  - name: check if already installed
+    stat:
+      path: "{{ config_file }}"
+    register: redis_inst_exists
+
+  - name: create instance base directories 
+    file:
+      path: "{{ item.dir }}"
+      state: directory
+      mode: 0700
+    with_items:
+      - { dir: "{{ config_dir }}" }
+      - { dir: "{{ redis_dir_dir }}" }
+
+  - name: copy config file using template
+    copy: src={{ config_template }} dest={{ config_file }}
+    when: redis_inst_exists.stat.exists == False
