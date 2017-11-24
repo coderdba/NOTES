@@ -16,6 +16,11 @@
       #url: http://download.redis.io/releases/redis-4.0.2.tar.gz
       #dest: /var/redis/redis-4.0.2.tar.gz
 
+  - name: Check if already installed
+    stat:
+      path: "{{ install_dir }}/redis-server"
+    register: redis_server_installed
+
   - name: download redis software
     get_url:
       url: "{{ redis_zip_url }}"
@@ -31,6 +36,7 @@
     shell: make
     args:
       chdir: "{{ install_dir }}"
+    when: redis_server_installed.stat.exists == False
 
   #- name: link executables in /usr/local/bin
     #shell: ln -s {{ install_dir }}/src/redis-server {{ usr_local_bin }}
