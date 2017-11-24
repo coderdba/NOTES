@@ -5,6 +5,8 @@
        redis_zip_url: "http://download.redis.io/releases/redis-4.0.2.tar.gz"
        zip_dest_dir: "/var/redis"
        zip_file: "redis-4.0.2.tar.gz"
+       install_dir: "/var/redis/redis-4.0.2"
+       usr_local_bin: "/usr/local/bin"
 
   become: true
 
@@ -23,5 +25,29 @@
   - name: unarchive
     shell: tar xzf {{ zip_dest_dir }}/{{ zip_file }}
     args:
-      #chdir: /var/redis
       chdir: "{{ zip_dest_dir }}"
+
+  - name: build redis with make
+    shell: make
+    args:
+      chdir: "{{ install_dir }}"
+
+  #- name: link executables in /usr/local/bin
+    #shell: ln -s {{ install_dir }}/src/redis-server {{ usr_local_bin }}
+    #ignore_errors: yes
+
+  #- name: link executables in /usr/local/bin 2
+    #file:
+      #src: "{{ install_dir }}/src/redis-cli"
+      #dest: "{{ usr_local_bin }}/redis-cli"
+      #state: link
+
+  - name: link executables in /usr/local/bin
+    file:
+      src: "{{ item.source }}"
+      dest: "{{ item.destination }}"
+      state: link
+    with_items:
+      - { source: "{{ install_dir }}/src/redis-server", destination: "{{ usr_local_bin }}/redis-server" }
+      - { source: "{{ install_dir }}/src/redis-cli", destination: "{{ usr_local_bin }}/redis-cli" }
+      - { source: "{{ install_dir }}/src/redis-sentinel", destination: "{{ usr_local_bin }}/redis-sentinel" }
