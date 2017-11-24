@@ -45,5 +45,33 @@ Note: Some variables in the vars section is not used in this example - they are 
     - name: runs a script - copies from local folder to remote machine and executes it
       script: ./myscript.sh
 
-      
+============
+EXAMPLE 2
+============
+Uses templating and in-built capabilities of 'touch', 'items', 'file'
+http://docs.ansible.com/ansible/latest/playbooks_filters.html
+
+---
+- hosts: 192.168.4.101
+  vars:
+       tmpdir: "/tmp"
+
+  become: true
+
+  tasks:
+    - name: touch files with an optional mode
+      file: dest={{item.path}} state=touch mode={{item.mode|default(omit)}}
+      with_items:
+        - path: /tmp/foo
+        - path: /tmp/bar
+        - path: /tmp/baz
+          mode: "0444"
+
+    - name: touch files with an default and optional mode
+      file: dest={{item.path}} state=touch mode={{item.mode|default(666)}}
+      with_items:
+        - path: /tmp/foo1
+        - path: /tmp/bar1
+        - path: /tmp/baz1
+          mode: "0444"
 
