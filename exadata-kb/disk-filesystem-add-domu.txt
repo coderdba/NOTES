@@ -226,6 +226,10 @@ It is possible to specify specific 'disks' in the VG, specific 'extents' in spec
 USING FULL VG SIZE:
 # lvcreate  -l 255 testvg1 -n testlv1
   Logical volume "testlv1" created.
+  
+Verify:
+# ls -l /dev/testvg1/*
+lrwxrwxrwx 1 root root 7 Nov 29 00:58 /dev/testvg1/testlv1 -> ../dm-9
 
 OTHER OPTIONS:
 Specific disk:
@@ -240,3 +244,27 @@ Striping with specific disk extents mentioned:
 Mirrored:
 lvcreate -L 50G -m1 -n gfslv vg0
 
+-------------------------
+MOUNT THE LOGICAL VOLUME
+-------------------------
+# mkfs /dev/testvg1/testlv1
+
+# mkdir /testmount1
+# mount /dev/testvg1/testlv1 /testmount1
+# df -k
+Filesystem           1K-blocks     Used Available Use% Mounted on
+/dev/mapper/VGExaDb-LVDbSys1
+                      24770940  7557104  15955548  33% /
+tmpfs                 20589568        0  20589568   0% /dev/shm
+....
+...
+/dev/mapper/testvg1-testlv1      1028056     1284    974548   1% /testmount1
+                       
+# df -h
+Filesystem            Size  Used Avail Use% Mounted on
+/dev/mapper/VGExaDb-LVDbSys1
+                       24G  7.3G   16G  33% /
+tmpfs                  20G     0   20G   0% /dev/shm
+...
+...
+/dev/mapper/testvg1-testlv1   1004M  1.3M  952M   1% /testmount1
