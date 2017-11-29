@@ -24,3 +24,33 @@ Formatting '/EXAVMIMAGES/GuestImages/exa01vm01.company.com/pv99_vgexadb.img', fm
 # ls -l /EXAVMIMAGES/GuestImages/exa01vm01.company.com/pv99_vgexadb.img
 -rw-r--r-- 1 root root   1073741824 Nov 28 22:55 pv99_vgexadb.img
 
+---------------------------
+ADD THE NEW DISK TO VM
+---------------------------
+
+- DOMU - FIRST CHECK THE CURRENT LIST OF DEVICES
+# lsblk -id | grep xvd
+xvda 202:0    0   25G  0 disk 
+xvdb 202:16   0   50G  0 disk /u01/app/12.1.0.2/grid
+xvdc 202:32   0   50G  0 disk /u01/app/oracle/product/11.2.0.4/dbhome_1
+xvdd 202:48   0   58G  0 disk 
+xvde 202:64   0   20G  0 disk 
+xvdf 202:80   0  100G  0 disk 
+
+- DOM0 - ATTACH THE FILE IMAGE TO A NEW DEVICE ON DOMU
+NOTE: Use the device serial number/name (xvdg here) not overlapping with the existing ones
+# xm block-attach ed01adm01vm04.target.com file:/EXAVMIMAGES/GuestImages/exa01vm01.company.com/pv99_vgexadb.img /dev/xvdg w
+
+- DOMU - VERIFY
+# lsblk -id | grep xvd
+xvda 202:0    0   25G  0 disk 
+xvdb 202:16   0   50G  0 disk /u01/app/12.1.0.2/grid
+xvdc 202:32   0   50G  0 disk /u01/app/oracle/product/11.2.0.4/dbhome_1
+xvdd 202:48   0   58G  0 disk 
+xvde 202:64   0   20G  0 disk 
+xvdf 202:80   0  100G  0 disk 
+xvdg 202:96   0    1G  0 disk --> NEWLY ADDED
+
+
+
+
