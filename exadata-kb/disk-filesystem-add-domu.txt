@@ -27,17 +27,35 @@ mount point / file system - create by mounting a logical-volume
 ADD DISK AND FILESYSTEM
 ==========================================
 
-In brief:
+----- In brief -----
 ON DOM0
 # cd /EXAVMIMAGES/GuestImages/ed01vm01.company.com/
 # qemu-img create /EXAVMIMAGES/GuestImages/exa01vm01.company.com/testvg1_pv1.img 1G
 # xm block-attach ed01vm01.company.com file:/EXAVMIMAGES/GuestImages/ed01vm01.company.com/testvg1_pv1.img /dev/xvdg w
 # uuidgen | tr -d '-'  
---> Note down the UUID
-# ln -s /EXAVMIMAGES/GuestImages/DomainName/newDiskImage.img /OVS/Repositories/user_domain_uuid/VirtualDisks/new_disk_uuid.img
+--> Note down the UUID (new_disk_uuid)
+# ln -s /EXAVMIMAGES/GuestImages/ed01vm01.company.com/newDiskImage.img /OVS/Repositories/uuid_of_ed01vm01.company.com/VirtualDisks/new_disk_uuid.img
+# Edit vm.cfg and add the following line:
+disk=['file <existing-disks>, \
+'file:/OVS/Repositories/uuid_of_ed01vm01.company.com/VirtualDisks/new_disk_uuid.img,xvdg,w']
 
+On DOMU:
 
+# parted /dev/xvdg mklabel gpt
+# parted -s /dev/xvdg mkpart primary 0 100%
+# parted -s /dev/xvdg set 1 lvm on
+# pvcreate /dev/xvdg1
+# vgcreate testvg1 /dev/xvdg1
+# vgdisplay testvg1
+# lvcreate  -l 255 testvg1 -n testlv1  
+--> Note: this uses all space in the volume group (in this case 255 PE's)
+# mkfs /dev/testvg1/testlv1
+# mkdir /testmount1
+# mount -t ext4 /dev/testvg1/testlv1 /testmount1
+Edit /etc/fstab and add the following entry:
+/dev/testvg1/testlv1 /testmount1  ext4  defaults 1 2
 
+----- In Detail: Use the following detailed steps -----
 ---------------------------
 CHECK SPACE AVAILABILITY
 ---------------------------
