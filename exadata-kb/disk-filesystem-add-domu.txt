@@ -410,3 +410,48 @@ EXTEND VOLUME GROUP
   Alloc PE / Size       31008 / 121.12 GiB
   Free  PE / Size       20828 / 81.36 GiB
   VG UUID               mVmNET-TOrV-OHnT-nfPH-TnE4-avmC-wNDZr1
+  
+  ====================================
+  EXTEND LOGICAL VOLUME AND FILESYSTEM
+  ====================================
+  # lvdisplay /dev/testvg1/testlv1
+  --- Logical volume ---
+  LV Path                /dev/testvg1/testlv1
+  LV Name                testlv1
+  VG Name                testvg1
+  LV UUID                XALe1D-2iaa-fOYl-JQRK-PQqt-3KXp-cRFC5Q
+  LV Write Access        read/write
+  LV Creation host, time ed01vm01.company.com, 2017-12-06 06:06:19 -0600
+  LV Status              available
+  # open                 1
+  LV Size                1020.00 MiB
+  Current LE             255
+  Segments               1
+  Allocation             inherit
+  Read ahead sectors     auto
+  - currently set to     256
+  Block device           252:9
+   
+# lvextend -L+512M /dev/testvg1/testlv1
+  Size of logical volume testvg1/testlv1 changed from 1020.00 MiB (255 extents) to 1.50 GiB (383 extents).
+  Logical volume testlv1 successfully resized
+  
+Alternatively use lvextend -L1532M ... (giving the new size)
+
+# df -k
+Filesystem           1K-blocks     Used Available Use% Mounted on
+... ....
+/dev/mapper/testvg1-testlv1  1028056     1284    974548   1% /testmount1
+
+# resize2fs /dev/testvg1/testlv1
+
+resize2fs 1.43-WIP (20-Jun-2013)
+Filesystem at /dev/testvg1/testlv1 is mounted on /testmount1; on-line resizing required
+old_desc_blocks = 1, new_desc_blocks = 1
+Performing an on-line resize of /dev/testvg1/testlv1 to 392192 (4k) blocks.
+The filesystem on /dev/testvg1/testlv1 is now 392192 blocks long.
+
+[root@ed01adm01vm04 dev]# df -k
+Filesystem           1K-blocks     Used Available Use% Mounted on
+/dev/mapper/testvg1-testlv1 1544144     1536   1464380   1% /testmount1
+  
