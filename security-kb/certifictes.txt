@@ -5,3 +5,42 @@ http://serverfault.com/questions/151157/ubuntu-10-04-curl-how-do-i-fix-update-th
   sudo wget http://curl.haxx.se/ca/cacert.pem
   
   sudo update-ca-certificates
+
+=======
+How to check if tls is supprted or not:  https://serverfault.com/questions/638691/how-can-i-verify-if-tls-1-2-is-supported-on-a-remote-web-server-from-the-rhel-ce
+
+
+down vote
+accepted
+You should use openssl s_client, and the option you are looking for is -tls1_2.
+
+An example command would be:
+
+openssl s_client -connect google.com:443 -tls1_2
+
+If you get the certificate chain and the handshake you know the system in question supports TLS 1.2. If you see don't see the certificate chain, and something similar to "handshake error" you know it does not support TLS 1.2. You can also test for TLS 1 or TLS 1.1 with -tls1 or tls1_1 respectively.
+
+nmap --script ssl-enum-ciphers -p 443 www.example.com
+And then check the output. If it's supported you'll get something like this:
+
+|   TLSv1.2: 
+|     ciphers: 
+|       TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA - strong
+|       TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA - strong
+|       TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256 - strong
+|       TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256 - strong
+|       TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA - strong
+|       TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384 - strong
+|       TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 - strong
+|       TLS_ECDHE_RSA_WITH_RC4_128_SHA - strong
+|       TLS_RSA_WITH_3DES_EDE_CBC_SHA - strong
+|       TLS_RSA_WITH_AES_128_CBC_SHA - strong
+|       TLS_RSA_WITH_AES_128_CBC_SHA256 - strong
+|       TLS_RSA_WITH_AES_128_GCM_SHA256 - strong
+|       TLS_RSA_WITH_AES_256_CBC_SHA - strong
+|       TLS_RSA_WITH_AES_256_CBC_SHA256 - strong
+|       TLS_RSA_WITH_AES_256_GCM_SHA384 - strong
+|       TLS_RSA_WITH_RC4_128_MD5 - strong
+|       TLS_RSA_WITH_RC4_128_SHA - strong
+|     compressors: 
+|       NULL
