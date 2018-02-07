@@ -1,0 +1,207 @@
+How to Reinstall Oracle Grid Infrastructure Without Disturbing RDBMS Installation (Doc ID 1276975.1)	
+
+In this Document
+Goal
+Solution
+References
+APPLIES TO:
+
+Oracle Database - Enterprise Edition - Version 11.2.0.1 and later
+Oracle Solaris on SPARC (64-bit)
+HP-UX PA-RISC (64-bit)
+IBM AIX on POWER Systems (64-bit)
+Linux x86-64
+Microsoft Windows x64 (64-bit)
+GOAL
+
+The goal of this document is to provide a step by step approach to re-install Oracle 11gR2 Grid Infrastructure (for environments where Oracle Clusterware files are stored in ASM) without affecting the RDBMS Installations and configured databases.
+
+Note:  If your Oracle Cluster Registry (OCR) and Voting disk (VD) files are contained in the same ASM diskgroup as your data, please be EXTREMELY careful when executing these steps to avoid potential data loss.
+
+ 
+
+SOLUTION
+
+0)  IF your OCR and VD files are contained in the same ASM diskgroup as your data, allocate/prepare a new disk partition that can be used to make a new ASM diskgroup that will exclusively store the new OCR and VD files upon reinstallation of Grid Infrastructure.
+
+
+1)   Before performing the below steps, please make an export of the OCR contents (if OCR is accessible) which can be used to import the OCR contents once the re-installation is complete
+
+<GRID_HOME>/bin/ocrconfig -export <file_name>
+
+2)   Shutdown all the databases and all other resources running on all the nodes of the cluster
+
+<GRID_HOME>/bin/crsctl stop crs
+ 
+
+3) De-configure the clusterware on the remote nodes (typically 'node2'-'noden')
+
+On all remote nodes, as root on Unix platforms and as the (current) Grid Infrastructure software owner on Windows, execute the following:
+
+Unix example:
+
+#<GRID_HOME>/crs/install/rootcrs.pl -deconfig -force -verbose
+
+Windows Example:
+`set path=%path%;C:\app\11.2.0\grid\perl\bin
+
+perl <GRID_HOME>\crs\install\rootcrs.pl -deconfig -force -verbose
+
+ 
+4) On the local node (typically 'node1'), as root on Unix platforms and as the (current) Grid Infrastructure software owner on Windows, execute the following:
+a)  ONLY EXECUTE THE FOLLOWING COMMAND IF YOUR OCR and VD files ARE CONTAINED WITHIN THEIR OWN DISKGROUP:
+
+Unix example:
+# <GRID_HOME>/crs/install/rootcrs.pl -deconfig -force -verbose -lastnode
+
+Windows example:
+
+set path=%path%;C:\app\11.2.0\grid\perl\bin
+
+perl <GRID_HOME>\crs\install\rootcrs.pl -deconfig -force -verbose -lastnode
+
+NOTE:  Beginning with 11.2.0.3, the '-keepdg' option may be used with rootcrs.pl -deconfig. This will preserve the diskgroup and can be used with the -lastnode option.
+
+ b)  IF YOUR OCR AND VD FILES ARE CONTAINED IN A DISKGROUP THAT ALSO CONTAINS DATA:
+
+Unix example:
+
+#<GRID_HOME>/crs/install/rootcrs.pl -deconfig -force -verbose
+
+Windows Example:
+
+set path=%path%;C:\app\11.2.0\grid\perl\bin
+
+perl <GRID_HOME>\crs\install\rootcrs.pl -deconfig -force -verbose
+
+ 
+
+Note:  By omitting the '-lastnode' flag, you will preserve the entire diskgroup wherein the original OCR and VD files are contained. These must be left in place in order to maintain the integrity of the data that shares the same diskgroup.
+ 
+
+5)  Deinstall Oracle Grid Infrastructure software
+
+Unix example:
+
+<GRID_HOME>/deinstall/deinstall
+
+Windows example:
+
+<GRID_HOME>\deinstall\deinstall
+
+NOTE:  For the most part and in most cases, selecting the default value for all 'deinstall' prompts is sufficient for a thorough deinstall
+
+ 
+
+6)    Once the de-installation is complete, use the Oracle Universal Installer to reinstall Oracle Grid Infrastructure making sure to indicate the new diskgroup name for cases where a new / separate diskgroup will be created for OCR and VD storage
+
+
+7)    As root, Run root.sh on each node (Unix only, you may skip this step for Windows platforms)
+
+<GRID_HOME/bin/root.sh
+ 
+8)    Ensure that the Clusterware is running fine on all the nodes following the installation and after the root.sh execution
+
+Unix: <GRID_HOME>/bin/crsctl check cluster -all 
+Windows: <GRID_HOME>\bin\crsctl check cluster -all
+
+For Grid Infrastructure Standalone: <GRID_HOME>/bin/crsctl check has
+
+For Grid Infrastructure Standalone, it's possible you will need to re-create your ora.asm resource using the following commands:
+
+Unix:
+
+<GRID_HOME>/bin/srvctl add asm
+<GRID_HOME>/bin/srvctl start asm
+
+Windows:
+
+<GRID_HOME>\bin\srvctl add asm
+<GRID_HOME>\bin\srvctl start asm
+
+ 
+
+9)    Run the ASMCA and mount all the database diskgroups
+
+Unix: <GRID_HOME>/bin/asmca
+Windows: <GRID_HOME>\bin\asmca
+
+
+"crsctl stat res -t" command should show all the diskgroups with TARGET and STATE of ONLINE
+
+Note:  Simply mounting the diskgroups (and/or restoring the OCR backup (see next step) will cause the diskgroup resources to be added to the OCR
+
+10)   Once the Clusterware is running on all the nodes, restore the OCR backup that was taken at step 1, to import all the resources, that were configured earlier
+
+
+a)      Shutdown the CRS on all the nodes.
+
+Unix: <GRID_HOME>/bin/crsctl stop crs 
+Windows:<GRID_HOME>\bin\crsctl stop crs
+
+b)      Start CRS on 'node1' in exclusive mode.
+
+Unix: <GRID_HOME>/bin/crsctl start crs -excl
+Windows: <GRID_HOME>\bin\crsctl start crs -excl
+
+
+Note: If we are running 11.2.0.2, please use "<GRID_HOME>/bin/crsctl start crs -excl -nocrs" and move to step (d)
+
+
+c)      Check whether crsd is running. If it is, stop it by running the following command as root
+
+Unix:
+<GRID_HOME>/bin/crsctl stat res -init -t
+<GRID_HOME/bin/crsctl stop res ora.crsd -init
+Windows:
+<GRID_HOME>\bin\crsctl stat res -init -t
+<GRID_HOME\bin\crsctl stop res ora.crsd -init
+
+ 
+
+d)      Import the OCR contents from backup
+
+Unix:
+<GRID_HOME>/bin/ocrconfig -import file_name
+<GRID_HOME>/bin/ocrcheck
+Windows:
+
+<GRID_HOME>\bin\ocrconfig -import file_name
+<GRID_HOME>\bin\ocrcheck
+
+
+e)      Stop the clusterware on 'node1' and start it on all the nodes
+
+Unix:
+<GRID_HOME>/bin/crsctl stop crs -f
+<GRID_HOME>/bin/crsctl start crs
+Windows:
+<GRID_HOME>\bin\crsctl stop crs -f
+<GRID_HOME>\bin\crsctl start crs
+
+Reference:  http://download.oracle.com/docs/cd/E11882_01/rac.112/e16794/votocr.htm#CWADD90977
+
+In 12.2.0.1, below step need to execute to refresh the GUID in each node to avoid repeated ORA-59711 entries in ASM alert log 
+
+# <GRID HOME>/bin/clscfg -localadd -z <old site id>
+where <old site id> can be get from "strings <file_name> | grep SITE_GUID="
+
+ 
+
+11)    If a good OCR backup is not available, we will need to run the SRVCTL commands to add the resources to the OCR. Be sure that we have added all the resources necessary to run the environment
+
+
+srvctl add database -d <database_name> -o <oracle_home> -a "asm diskgroup list"
+srvctl add instance -d <database_name> -i <inst_name> -n <nodename>
+srvctl add service -d <db_unique_name> -s <service_name> -r "<preferred_list>" -a "<available_list>" 
+
+srvctl start database -d <database name> 
+srvctl start service -d <database name> -s <service name>
+
+srvctl status service -d <database name> -s <service name>
+srvctl status database -d <database name>
+
+12)  Confirm that all the resources are running fine
+
+Unix: <GRID_HOME>/bin/crsctl stat res -t
+Windows: <GRID_HOME\bin\crsctl stat res -t
