@@ -1,0 +1,234 @@
+
+
+Click to add to Favorites		How To Clean up After a Failed (or successful) Oracle Clusterware Installation on Windows (Doc ID 341214.1)	To BottomTo Bottom	
+
+In this Document
+Goal
+Solution
+ 	1.  Remove the partitions that have been initialized for ocrcfg and votedsk
+ 	2.  Use the Oracle Universal Installer to remove the software from the CRS home
+ 	3. Use the Oracle Universal Installer to remove the empty CRS home (cleans up the inventory file)
+ 	4. Remove Oracle binaries from the CRS home using Windows explorer.
+ 	5.  Check the registry on each cluster node and ensure that the following services have been removed from:
+ 	6.  Using Windows explorer, remove the following driver files from: %systemroot%\windows\system32\drivers:
+ 	7.  Additional clean-up steps
+ 	8.  Reboot all servers in your RAC configuration
+ 	Database - RAC/Scalability Community
+References
+APPLIES TO:
+
+Oracle Database - Enterprise Edition - Version 10.2.0.1 to 10.2.0.5 [Release 10.2]
+Oracle Database - Standard Edition - Version 10.1.0.2 to 11.1.0.6 [Release 10.1 to 11.1]
+Information in this document applies to any platform.
+IF YOU ARE USING TERMINAL SERVICES TO PERFORM THIS INSTALLATION, BE SURE TO USE EITHER VNC OR TERMINAL SERVICES IN 'CONSOLE' MODE TO PERFORM THIS INSTALLATION. 
+
+INVOKE TERMINAL SERVICES IN 'CONSOLE' MODE WITH THE FOLLOWING COMMAND:
+
+mstsc -v:servername /F /console
+
+OR, for some (newer) versions of Windows: 
+
+mstsc -v:servername /F /admin
+
+
+GOAL
+
+To remove and reinstall Oracle 10gR2 or 11gR1 Clusterware Install on Windows.
+
+To remove and reinstall Oracle 11gR2 Grid Infrastructure or RDBMS / RAC (or even single instance) on Windows, please refer to:
+
+Document 1069034.1 11.2: How to Manually Remove Oracle Server Software on Microsoft Windows Platforms (Doc ID 1069034.1)
+
+SOLUTION
+
+If you have already uninstalled Oracle Clusterware using the Oracle Universal Installer then please download the attached file (cleanup.zip) that contains a copy of the logpartformat.exe and the guioracleobjmanage.exe (plus necessary dll).  You must be viewing this note in Internet Explorer in order to download this file.
+
+Please note that these tools are provided here for the sole (temporary) use as indicated in this note.  Please don't expect these tools to work to their fullest potential at this stage.  For example, when invoking  GUIOracleOBJManager.exe as attached to note, choosing 'Sync Nodes' will result in an error:
+Unable to sync cluster nodes. 
+
+GUIOracleOBJManager.exe is provided solely to remove the symbolic link names and the attached copy works fine for that purpose.
+
+Steps 1a, b and d are only required if you are using RAW devices for your OCR and Votedisk
+If you are using OCFS for these files, skip to step 1c followed by 1e.
+ 
+
+Note:  If needed, you can assign drive letters to the partitions in question for identification by the logpartformat tool.  To do this, invoke diskmgmt.msc and right click on the partition in question and choose 'Change drive letter and paths ...' from the menu.  You can then use this drive letter for the purpose of the logpartformat tool (following instructions 1c and 1e here below).  Be sure to remove the assigned drive letter before proceeding with cluster configuration. 
+ 
+
+1.  Remove the partitions that have been initialized for ocrcfg and votedsk
+
+
+    a. You can view these using the Oracle provided tool: guioracleobjmanager.exe
+
+        Invoke the Oracle tool GuiOracleObjManager.exe to see the link names that have been assigned to    
+        your partitions:
+
+in Windows explorer, navigate to CRS_HOME\bin
+invoke guioracleobjmanager.exe by double clicking it
+this will give you a mapping of Oracle assigned link namesand the physical disks to which they are assigned
+
+
+        b.  Use Services on Windows to stop the following services on each cluster node and set them to      
+            Manual. That way, if the nodes reboot while you are cleaning up, the services will not attempt to 
+            start.
+
+        OracleCSService
+        OracleCRService
+        OracleEVMService
+ 
+
+The OraFenceService should also be stopped. This must be done using the command line utility 'net stop' as follows:
+
+net stop OraFenceService
+
+
+***THE FOLLOWING STEP IS ESSENTIAL FOR SUCCESSFUL SUBSEQUENT RE-INSTALLATIONS AS IT ENSURES CLEAN PARTITION HEADERS***
+
+    c. Remove the formatting on these partitions using the Oracle provided tool: logpartformat.exe.
+        Invoke the Oracle tool logpatformat to reinitialize the headers of the disks you have specified for use as 
+        votedsk1 and ocrcfg
+
+Note that if and only if the OCR and Voting disk are located on disks exclusively for their usage, then one can alternatively use the Windows utility 'diskpart' with the 'clean all' command to clear these disks / prepare them for re-use.
+  
+        ====================
+        Example for RAW partitions: 
+        ====================
+
+Go to a command prompt      
+navigate to CRS_HOME\bin
+run logpartformat /q <link name as shown to you in guioracleobjmanager tool>
+For example if the raw partition has the name 'ocrcfg': 
+
+        logpartformat /q \\.\ocrcfg
+
+        (repeat this step for all link names listed in guioracleobjmanager)
+ 
+
+        ==============
+        Example for OCFS:
+        ==============
+ 
+
+Go to a command prompt
+navigate to CRS_HOME\bin\
+run logpartformat /q <DRIVELETTER>:
+
+For example, if the drive letter for your OCFS partition is ' P ' :
+
+        logpartformat /q P:
+ 
+
+There have been cases reported where Logpartformat can sometimes fail. For example:
+-----------
+D:\product\11.1.0\crs\BIN>logpartformat /q \\.\votedsk1
+Logical Partition Formatter
+Version 2.0
+Copyright 1989-2001 Oracle Corporation. All rights reserved.
+
+
+Unable to validate logical partition for symbolic link votedsk1
+---------------------------
+This is typically an access problem but cleaning up the disks can be problematic in such a case. Physically removing the disks and creating new ones with different sizes has been known to help in some cases.
+ 
+
+    d. Next, remove the assigned link names using the GUIOracleobjmanager.exe tool by clicking / 
+        placing a check mark in the check box for the given partition, then choosing 'Commit' from the             
+        'Options' menu.
+
+  
+
+Go back to the guioracleobjmanager tool and remove all link names:
+place a check mark in the box preceding each link name / physical partition listed
+then go to the Options menu and click 'commit'
+the link names should now be removed
+
+
+    e. It is advisable to remove and recreate your logical drives on top of extended partitions at this time     
+        from Windows Disk Management.
+
+Logpartformat can sometimes fail with a message such as the following: 
+
+"Unable to validate logical partition for symbolic link votedsk1"
+
+This is typically an access problem but cleaning up the disks can be problematic in such a case. 
+Physically removing the disks and creating new ones with different sizes can help.
+ 
+
+2.  Use the Oracle Universal Installer to remove the software from the CRS home
+
+ 
+
+3. Use the Oracle Universal Installer to remove the empty CRS home (cleans up the inventory file)
+
+ 
+
+4. Remove Oracle binaries from the CRS home using Windows explorer.
+
+ 
+
+Note:  ONLY If this is the only Oracle_Home on this cluster, also remove the inventory files located in the following directory.  Be sure to  only remove the inventory files if this is the only Oracle Home on this cluster  
+ 
+
+c:\program files\oracle
+ 
+
+5.  Check the registry on each cluster node and ensure that the following services have been removed from:
+
+ 
+
+HKEY_LOCAL_MACHINE\SYSTEM\%ControlSet% \Services
+
+
+This includes: 
+
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services
+and
+HKEY_LOCAL_MACHINE\SYSTEM\ControlSetXXX\Services
+
+Services to be removed include: 
+
+
+ocfs
+OracleCSService
+OracleEVMService
+OracleCRService
+OracleObjectService
+OracleClusterVolumeService
+OraFenceService
+ 
+
+6.  Using Windows explorer, remove the following driver files from: %systemroot%\windows\system32\drivers:
+
+ 
+
+ocfs.sys
+orafencedrv.sys
+orafenceservice.sys
+ 
+
+7.  Additional clean-up steps
+
+check / modify the PATH Environment Variable for any pointers to the newly removed Oracle home
+clean up the TEMP directory to ensure clean-up of install files and logs from previous Oracle install
+remove relevant entries from 'Start'->'Programs' for the removed software
+8.  Reboot all servers in your RAC configuration
+
+*****
+
+Following reboot, be sure to remove any Windows auto-assigned drive letters from any of the cluster nodes.  Then proceed with Oracle Clusterware re-installation as desired.
+
+*****
+
+Database - RAC/Scalability Community
+
+To discuss this topic further with Oracle experts and industry peers, we encourage you to review, join or start a discussion in the My Oracle Support Database - RAC/Scalability Community.
+
+REFERENCES
+
+NOTE:310791.1 - Windows Pre-11.2: RAC Configuration Assistants Fail During 10g CRS Install
+NOTE:124353.1 - WIN: Manually Removing all Oracle Components on Microsoft Windows Platforms
+NOTE:388730.1 - Oracle RAC Clusterware Installation on Windows Commonly Missed / Misunderstood Prerequisites
+NOTE:557178.1 - CRS on Windows: How To Reinitialize (Accidentally Deleted) OCR and Vote Disk (without a full reinstall of Oracle Clusterware)
+NOTE:1069034.1 - 11.2: How to Manually Remove Oracle Server Software on Microsoft Windows Platforms
+NOTE:1907834.1 - RAC on Windows 2012: Grid Infrastructure Installation Fails With OUI-35024
