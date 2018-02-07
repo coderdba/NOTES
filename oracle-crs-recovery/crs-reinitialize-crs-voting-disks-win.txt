@@ -1,0 +1,387 @@
+
+Click to add to Favorites		CRS on Windows: How To Reinitialize (Accidentally Deleted) OCR and Vote Disk (without a full reinstall of Oracle Clusterware) (Doc ID 557178.1)	To BottomTo Bottom	
+
+In this Document
+Goal
+Solution
+ 	1.  Stop all CRS managed resources 
+ 	2.  Stop all CRS services 
+ 	3.  Reformat ALL partitions for OCR and voting disk files 
+ 	4.  Set TEMP and TMP variables
+ 	5.  Start the OracleObjectService (if using RAW partitions) and/or OracleClusterVolumeService (if using OCFS partitions) on all nodes
+ 	6.   Locate the crssetup.config.bat script
+ 	7.  Execute racgons from $CRS_HOME\bin
+ 	8.  Run oifcfg to configure public and cluster_interconnect
+ 	9.  Run  Virtual IP Configuration Assistant (VIPCA) 
+ 	10.  Run Cluster Verification Uitility (cluvfy)
+ 	11.  Create an export copy of the OCR file
+ 	12.  Check for Oracle Process Manager 
+ 	13.  Reboot all nodes in the cluster, if possible. 
+ 	14.  Run netca to create listener
+ 	15.  Recreate all necessary CRS managed resources
+ 	16.  Start all CRS managed resources
+ 	17.  Run crs_stat -t
+References
+APPLIES TO:
+
+Oracle Database - Enterprise Edition - Version 10.1.0.2 to 11.1.0.7 [Release 10.1 to 11.1]
+Microsoft Windows x64 (64-bit)
+Microsoft Windows (32-bit)
+Oracle Server Enterprise Edition - Version: 10.1.0.2 to 11.1.0.7
+
+
+GOAL
+
+This document presents a step by step approach to reinitialize the OCR and Vote Disks without performing a full reinstallation of the 10gR2 or 11Gr1 Oracle Clusterware binaries on Windows platforms. 
+
+Note that the procedure in this document is only useful in cases where the Oracle Clusterware Services (including:  OracleCSService, OracleEVMService, OracleCRService are intact). If any of these services are missing (such as in the case during a failed upgrade attempt to a higher clusterware version), Oracle Clusterware reinstall will be required.
+ 
+
+These steps may be necessary in the following scenarios: 
+
+1.  To troubleshoot an installation where the Cluster Configuration Assistant (which calls crssetup.config.bat ) has errored out
+
+OR
+
+2.  For a cluster that was running fine, but the OCR and/or Vote disks have become damaged or unusable
+
+ 
+
+SOLUTION
+
+Note:  If you have a OracleCRSToken service configured in this environment, it is advised to remove that service before implementing these steps, then recreate that service once these steps have been completed.  Knowledge Document Note 338000.1 explains OracleCRSToken services including how and why to create them and how to delete them.
+
+
+1.  Stop all CRS managed resources 
+
+Ensure all CRS resources are stopped using the 'crs_stat -t' utility to check the status and the "srvctl" utility to stop as required.
+
+In particular before step 2 below make sure that you stop nodeapps.
+ srvctl stop nodeapps -n <nodename>
+ 
+
+Note: Failure to stop the nodeapps with the above command will result in an error since just stopping the services (as per step 2) does not stop the ons.exe and that will prevent the crssetup.config.bat script from running.
+
+
+2.  Stop all CRS services 
+
+Stop all services running from the CRS home and set them to MANUAL from the Windows Services panel:
+
+Stop OracleCRService and set to "Manual"on ALL nodes
+Stop OracleEVMService and set to "Manual"on ALL nodes
+Stop OracleCSService and set to "Manual" on ALL nodes
+Stop OracleClusterVolumeService and set to "Manual" on ALL nodes
+Stop Oracle Object Service and set to "Manual" on ALL nodes
+Stop Oracle Process Manager Service and set to "Manual" on ALL nodes
+ 
+
+3.  Reformat ALL partitions for OCR and voting disk files 
+
+All partitions that you will reuse for OCR and voting disk information should be reformatted in preparation for their recreation.
+
+Example where OCR and Voting disks are stored on RAW partitions: 
+a.  invoke the guioracleobjmanager.exe utility from $CRS_HOME\bin and note the assigned symbolic link names for ALL of the configured OCR and Voting disk partitions, example:
+
+b.
+-  Go to a command prompt
+-  navigate to $CRS_HOME\bin
+-  run logpartformat /q <link name as shown to you in guioracleobjmanager tool>
+E:\oracle\product\10.2.0\crs\BIN>logpartformat /q \\.\ocrcfg
+E:\oracle\product\10.2.0\crs\BIN>logpartformat /q \\.\votedsk1
+ 
+
+Example where OCR and Voting disks are stored on OCFS partition(s):
+a.  to locate your ocr partition(s) look to the following key by invoking 'regedit'
+HKEY_LOCAL_MACHINE\Software\Oracle\ocr\ocrconfig_loc
+b.  to locate your voting disk partition(s), use the following command:
+$CRS_HOME\bin> crsctl query css votedisk 
+c.  create backups of the existing ocr and voting disk files AND create new 'placeholder' files for the replacement ocr and voting disk files
+Example:
+Rename O:\cdata\clustername\votedsk to O:\cdata\clustername\votedsk.old
+Rename O:\cdata\clustername\ocrcfg to O:\cdata\clustername\ocrcfg.old
+notepad O:\cdata\clustername\votedsk  <=== depending on how the crssetup.config.bat script is populated, this may actually be a folder and not a filename
+notepad O:\cdata\clustername\ocrcfg
+d.
+- Go to a command prompt
+- navigate to $CRS_HOME\bin
+- run logpartformat /q <drive letter to OCFS partition>
+E:\oracle\product\10.2.0\crs\BIN>logpartformat /q F:
+E:\oracle\product\10.2.0\crs\BIN>logpartformat /q G:
+ 
+
+4.  Set TEMP and TMP variables
+
+Open a Windows command prompt and set TEMP and TMP to use c:\temp
+
+set temp=c:\temp 
+set tmp=c:\temp
+
+5.  Start the OracleObjectService (if using RAW partitions) and/or OracleClusterVolumeService (if using OCFS partitions) on all nodes
+
+ 
+
+Note:  As a guide for Steps 6-9 utilize the commands listed in: 
+
+$CRS_HOME\cfgtoollogs\configtoolallcommands 
+OR
+$CRS_HOME\cfgtoollogs\configtoolallcommands.bak
+
+Whichever is correctly populated for your environment.
+ 
+
+6.   Locate the crssetup.config.bat script
+
+From node1 (or whichever node was used to apply the latest patchset to this cluster), locate the crssetup.config.bat script, check that the contents of this .bat file are correct for your environment, and execute this file.
+
+ Example:  assuming your CRS_HOME is e:\oracle\product\10.2.0\crs
+
+cd e:\oracle\product\10.2.0\crs\install
+
+OR
+
+if you have already applied a patchset:
+
+Example: 
+e:\oracle\product\10.2.0\crs\install\prepatch10204\install
+
+Again, execute whichever crssetup.config.bat script is correctly populated for your environment.
+
+
+E:\oracle\product\10.2.0\crs\install\prepatch10204\install>crssetup.config.bat
+Step 1:  checking status of CRS cluster
+Step 2:  creating directories (E:\oracle\product\10.2.0\crs)
+Step 3:  configuring OCR repository
+Successfully accumulated necessary OCR keys.
+Using ports: CSS=49895 CRS=49896 EVMC=49898 and EVMR=49897.
+node <nodenumber>: <nodename> <private interconnect name> <hostname>
+node 1: racnode1 racnode1-p racnode1
+node 2: racnode2 racnode2-p racnode2
+Creating OCR keys for user 'administrator', privgrp ''..
+Operation successful.
+Now formatting voting device: \\.\votedsk1
+Format of 1 voting devices complete.
+Step 4:  configuring safe mode for CRS stack
+Step 5:  Starting up CRS stack on all nodes
+Successfully completed configuration of 2 nodes
+
+Optionally - perform a check to confirm the CRS version as per the OCR file as follows:
+
+E:\oracle\product\10.2.0\crs\BIN>crsctl query crs softwareversion
+Oracle Clusterware version on node [racnode1] is [10.2.0.4.0]
+
+E:\oracle\product\10.2.0\crs\BIN>crsctl query crs activeversion
+Oracle Clusterware active version on the cluster is [10.2.0.4.0]
+
+
+It is important that this step be executed while logged on as the OS user account that you have selected to be the owner of the CRS installation.   In most cases, this will be the same account that did the original installation.   
+
+If you are attempting to change the OCR to run under a different account, you must ensure that you are logged on to the OS under that new account prior to running crssetup.config.bat.  This step will create the OCR and set permissions on certain resources for the account that runs the crssetup.config.bat command.   If that OS user account is deleted in the future, or if that account's access permissions change, then the steps in this note will need to be re-run under a valid user account.  Therefore, using temporary accounts for the installation of CRS should be avoided where possible.
+Upon completion of this step, Oracle Clusterware services should have started automatically.
+ 
+7.  Execute racgons from $CRS_HOME\bin
+
+This step configures / ensures that all nodes are configured with the same port for the ONS
+
+
+racgons.exe add_config <node1>:<port#> <node2>:<port#>
+Example:
+E:\oracle\product\10.2.0\crs\BIN>racgons.exe add_config racnode1:6200 racnode2:6200
+8.  Run oifcfg to configure public and cluster_interconnect
+
+Example: as oracle user:
+
+oifcfg setif -global <if_name>/<subnet>:public
+oifcfg setif -global <if_name>/<subnet>:cluster_interconnect
+
+Example:
+E:\oracle\product\10.2.0\crs\BIN>oifcfg.exe setif -global "Public"/10.143.137.0:public "Private"/10.10.10.0:cluster_interconnect
+9.  Run  Virtual IP Configuration Assistant (VIPCA) 
+
+VIPCA must be run to recreate the nodeapp resources:
+
+a.  to use VIPCA in GUI mode simply type:  'vipca' at the $CRS_HOME\bin prompt
+OR
+b.  to run VIPCA in silent mode, use the command as listed in the configtoolallcommands file
+Example:
+E:\oracle\product\10.2.0\crs\BIN>E:\oracle\product\10.2.0\crs/bin/vipca.bat -silent -nodelist "racnode1,racnode2" -nodevips
+"racnode1/racnode1-vip/255.255.255.0/Public,racnode2/racnode2-vip/255.255.255.0/Public"
+
+Creating VIP application resource on (2) nodes...
+Creating GSD application resource on (2) nodes...
+Creating ONS application resource on (2) nodes...
+Starting VIP application resource on (2) nodes...
+Starting GSD application resource on (2) nodes...
+Starting ONS application resource on (2) nodes...
+
+
+Done.
+Once this step is complete, the output of 'crs_stat -t' should show vip, ons, and gsd resources for all nodes.
+E:\oracle\product\10.2.0\crs\BIN>crs_stat -t
+Name             Type        Target State  Host
+------------------------------------------------------------
+ora.racnode1.gsd application ONLINE ONLINE racnode1
+ora.racnode1.ons application ONLINE ONLINE racnode1
+ora.racnode1.vip application ONLINE ONLINE racnode1
+ora.racnode2.gsd application ONLINE ONLINE racnode2
+ora.racnode2.ons application ONLINE ONLINE racnode2
+ora.racnode2.vip application ONLINE ONLINE racnode2
+10.  Run Cluster Verification Uitility (cluvfy)
+
+Run Cluster Verification Uitility (cluvfy) to confirm post crs installation
+
+cluvfy.bat stage -post crsinst -n "<node1>,<node2>"
+
+Example:
+
+E:\oracle\product\10.2.0\crs\BIN>E:\oracle\product\10.2.0\crs/bin/cluvfy.bat stage -post crsinst -n "racnode1,racnode2"
+
+Performing post-checks for cluster services setup
+
+Checking node reachability...
+Node reachability check passed from node "racnode1".
+
+
+Checking user equivalence...
+User equivalence check passed for user "Administrator".
+
+Checking Cluster manager integrity...
+
+
+Checking CSS daemon...
+Daemon status check passed for "CSS daemon".
+
+Cluster manager integrity check passed.
+
+Checking cluster integrity...
+
+
+Cluster integrity check passed
+
+
+Checking OCR integrity...
+
+Checking the absence of a non-clustered configuration...
+All nodes free of non-clustered, local-only configurations.
+
+Uniqueness check for OCR device passed.
+
+Checking the version of OCR...
+OCR of correct Version "2" exists.
+
+Checking data integrity of OCR...
+Data integrity check for OCR passed.
+
+OCR integrity check passed.
+
+Checking CRS integrity...
+
+Checking daemon liveness...
+Liveness check passed for "CRS daemon".
+
+Checking daemon liveness...
+Liveness check passed for "CSS daemon".
+
+Checking daemon liveness...
+Liveness check passed for "EVM daemon".
+
+Checking CRS health...
+CRS health check passed.
+
+CRS integrity check passed.
+
+Checking node application existence...
+
+Checking existence of VIP node application (required)
+Check passed.
+
+Checking existence of ONS node application (optional)
+Check passed.
+
+Checking existence of GSD node application (optional)
+Check passed.
+
+
+Post-check for cluster services setup was successful.
+11.  Create an export copy of the OCR file
+
+ ocrconfig -export c:\tmp\ocrdump_base.out
+12.  Check for Oracle Process Manager 
+
+Ensure the "Oracle Process Manager" service is set to "Automatic" on ALL nodes
+   
+Oracle Support highly recommends configuring Oracle Process Manager (OPMD) to run in all Windows RAC environments.  Reference Note 358156.1 for full details.
+
+13.  Reboot all nodes in the cluster, if possible. 
+
+A reboot of all nodes will ensure that the clusterware services (including Oracle Process Manager service) are working as expected. 
+
+
+14.  Run netca to create listener
+
+a. rename $ORACLE_HOME/network/admin/listener.ora
+(ASM HOME and/or RDBMS ORACLE_HOME) to any other name on all nodes
+AND
+
+b. From the command prompt, invoke netca from the ASM and/or RDBMS home (on just one node)
+E:\oracle\product\10.2.0\db_1\bin\netca
+
+Note:
+Be sure to select 'Cluster Configuration' and to create a listener with the default name LISTENER
+
+It is necessary to recreate the listener using NETCA at this point, as that is the only way to furnish the reinitialized OCR with .lsnr resource information.
+
+Once these steps are completed, 'crs_stat -t' should show a '.lsnr' resource for all nodes
+
+E:\oracle\product\10.2.0\crs\BIN>crs_stat -t
+Name             Type        Target State  Host
+------------------------------------------------------------
+ora....E1.lsnr   application ONLINE ONLINE racnode1
+ora.racnode1.gsd application ONLINE ONLINE racnode1
+ora.racnode1.ons application ONLINE ONLINE racnode1
+ora.racnode1.vip application ONLINE ONLINE racnode1
+ora....E2.lsnr   application ONLINE ONLINE racnode2
+ora.racnode2.gsd application ONLINE ONLINE racnode2
+ora.racnode2.ons application ONLINE ONLINE racnode2
+ora.racnode2.vip application ONLINE ONLINE racnode2
+15.  Recreate all necessary CRS managed resources
+
+Run the 'srvctl add' command to add asm, database, instance and services resources back into the OCR
+
+For full syntax usage, please execute:
+ srvctl add asm -h
+ srvctl add database -h
+ srvctl add instance -h
+ srvctl add service -h (if needed)
+
+For example: as oracle user:
+srvctl add asm -n <node_name> -i <asm_inst_name> -o <oracle_home>
+srvctl add database -d <db_name> -o <oracle_home>
+srvctl add instance -d <db_name> -i <inst_name> -n <node_name>
+srvctl modify instance -d <db_name> -i <inst_name> -s <asm_name>
+
+*** srvctl modify instance -d racdb -i racdb3 -s asm3 ***
+
+<== repeat as needed to make the database instance resources dependent on their corresponding ASM instance resources in the OCR
+
+Please note, assuming that you are using ASM the asm_inst_name can only be +ASM1, +ASM2 and so on. 
+Failure in providing the correct name could cause an OCR corruption.
+
+
+16.  Start all CRS managed resources
+
+Once all necessary resources have been registered, start them via srvctl commands
+
+For example: as oracle user:
+ srvctl start asm -n <node_name>
+ srvctl start instance -d <db_name> -i <inst_name>
+
+17.  Run crs_stat -t
+
+Check 'crs_stat -t' output, it should show all resources with TARGET and STATUS of ONLINE for all resources on ALL nodes
+
+ 
+REFERENCES
+
+NOTE:358156.1 - Automatic Startup of Cluster Services May Hang or Fail on Windows
+NOTE:338000.1 - RAC on Windows: How to Modify OS User Privileges for Certain Services (Needed for Backup To Network Shares)
+NOTE:341214.1 - How To Clean up After a Failed (or successful) Oracle Clusterware Installation on Windows
