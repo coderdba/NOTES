@@ -1,0 +1,51 @@
+https://startupforce.wordpress.com/2013/08/18/de-configure-de-install-11gr2-grid-infrastucture/
+
+De-configure & Re-configure 11gR2 Grid Infrastucture
+August 18, 2013BharatLeave a commentGo to comments
+      Rate This
+
+Before deconfiguring, collect the following as grid user  to generate a list of user resources to be added back to the cluster after reconfigure finishes:
+
+ $GRID_HOME/bin/crsctl stat res -t
+ $GRID_HOME/bin/crsctl stat res -p
+ $GRID_HOME/bin/crsctl query css votedisk
+ $GRID_HOME/bin/ocrcheck
+ $GRID_HOME/bin/oifcfg getif
+ $GRID_HOME/bin/srvctl config nodeapps -a
+ $GRID_HOME/bin/srvctl config scan
+ $GRID_HOME/bin/srvctl config asm -a
+ $GRID_HOME/bin/srvctl config listener -l <listener-name> -a
+ $DB_HOME/bin/srvctl config database -d <dbname> -a
+ $DB_HOME/bin/srvctl config service -d <dbname> -s <service-name> -v
+To Deconfigure
+If OCR and Voting Disks are NOT on ASM, or If OCR and Voting Disks are on ASM but there’s NO user data in OCR/Voting Disk ASM diskgroup:
+On all nodes except master node, as root execute:
+
+# <$GRID_HOME>/crs/install/rootcrs.pl -deconfig -force -verbose
+Below is the output
+
+deconfig_rac1
+Once the above command finishes on all remote nodes, on local node, as root execute:
+
+# <$GRID_HOME>/crs/install/rootcrs.pl -deconfig -force -verbose -lastnode
+Below is the output
+
+deconfig_rac2
+
+If OCR or Voting Disks are on ASM and there is user data in OCR/Voting Disk ASM diskgroup:
+If GI version is 11.2.0.3 AND fix for bug 13058611 and bug 13001955 has been applied, or GI version is 11.2.0.3.2 GI PSU (includes both fixes) or higher:
+On all nodes except master node, as root execute:
+
+# <$GRID_HOME>/crs/install/rootcrs.pl -deconfig -force -verbose
+Once the above command finishes on all remote nodes, on local node, as root execute:
+
+# <$GRID_HOME>/crs/install/rootcrs.pl -deconfig -force -verbose -keepdg -lastnode
+If fix for bug 13058611 and bug 13001955 has NOT been applied:
+
+On all nodes, as root execute:
+# <$GRID_HOME>/crs/install/rootcrs.pl -deconfig -force -verbose
+
+To reconfigure:
+For 11.2.0.1 – deinstall and reinstall with OCR/Voting Disk on a new ASM diskgroup or supported cluster/network filesystem
+
+For 11.2.0.2 and onward – run $GRID_HOME/crs/config/config.sh and place OCR/Voting Disk on a new ASM diskgroup or support cluster/network filesystem.
