@@ -1,0 +1,138 @@
+How to Proceed From a Failed 10g or 11.1 Oracle Clusterware (CRS) Installation (Doc ID 239998.1)	To BottomTo Bottom	
+
+APPLIES TO:
+
+Oracle Database - Enterprise Edition - Version 10.1.0.2 to 11.1.0.7 [Release 10.1 to 11.1]
+Generic UNIX
+PURPOSE
+
+The purpose of this document is to help DBA's and support analysts understand how
+to clean up a failed CRS (Cluster Ready Services) install for 10g and 11.1 RAC.
+
+For 11.2, see Note: 942166.1 How to Proceed from Failed 11gR2 Grid Infrastructure (CRS) Installation
+
+SCOPE
+
+DBAs and Support Analysts
+
+DETAILS
+
+10g and 11.1 RAC: How to Clean Up After a Failed CRS Install
+------------------------------------------------------------
+
+Not cleaning up a failed CRS install can cause problems like node reboots.
+Follow these steps to clean up a failed CRS install:
+
+
+1. Run the rootdelete.sh script then the rootdeinstall.sh script from the 
+$CRS_HOME/install directory on any nodes you are removing CRS from. Running 
+these scripts should be sufficent to clean up your CRS install. Rootdelete.sh 
+accepts options like nosharedvar/sharedvar, and nosharedhome/sharedhome. Make
+yourself familiar with these options by reading the Oracle Clusterware and 
+Oracle Real Application Clusters Administration and Deployment Guide.
+If you have any problems with these scripts please open a service request. 
+
+
+If for some reason you have to manually remove the install due to problems with the scripts, continue to step 2:
+
+2. Stop the Nodeapps on all nodes:
+
+srvctl stop nodeapps -n
+
+3. Prevent CRS from starting when the node boots. To do this issue the following as root:
+
+Sun:
+rm /etc/init.d/init.cssd 
+rm /etc/init.d/init.crs 
+rm /etc/init.d/init.crsd 
+rm /etc/init.d/init.evmd 
+rm /etc/rc3.d/K96init.crs 
+rm /etc/rc3.d/S96init.crs 
+rm -Rf /var/opt/oracle/scls_scr 
+rm -Rf /var/opt/oracle/oprocd 
+rm /etc/inittab.crs 
+cp /etc/inittab.orig /etc/inittab
+
+Linux: 
+rm /etc/oracle/* 
+rm -f /etc/init.d/init.cssd 
+rm -f /etc/init.d/init.crs 
+rm -f /etc/init.d/init.crsd 
+rm -f /etc/init.d/init.evmd 
+rm -f /etc/rc2.d/K96init.crs 
+rm -f /etc/rc2.d/S96init.crs 
+rm -f /etc/rc3.d/K96init.crs 
+rm -f /etc/rc3.d/S96init.crs 
+rm -f /etc/rc5.d/K96init.crs 
+rm -f /etc/rc5.d/S96init.crs 
+rm -Rf /etc/oracle/scls_scr 
+rm -f /etc/inittab.crs 
+cp /etc/inittab.orig /etc/inittab
+
+HP-UX: 
+rm /sbin/init.d/init.cssd 
+rm /sbin/init.d/init.crs 
+rm /sbin/init.d/init.crsd 
+rm /sbin/init.d/init.evmd 
+rm /sbin/rc2.d/K960init.crs 
+rm /sbin/rc2.d/K001init.crs 
+rm /sbin/rc3.d/K960init.crs 
+rm /sbin/rc3.d/S960init.crs 
+rm -Rf /var/opt/oracle/scls_scr 
+rm -Rf /var/opt/oracle/oprocd 
+rm /etc/inittab.crs 
+cp /etc/inittab.orig /etc/inittab
+
+HP Tru64: 
+rm /sbin/init.d/init.cssd 
+rm /sbin/init.d/init.crs 
+rm /sbin/init.d/init.crsd 
+rm /sbin/init.d/init.evmd 
+rm /sbin/rc3.d/K96init.crs 
+rm /sbin/rc3.d/S96init.crs 
+rm -Rf /var/opt/oracle/scls_scr 
+rm -Rf /var/opt/oracle/oprocd 
+rm /etc/inittab.crs 
+cp /etc/inittab.orig /etc/inittab
+
+IBM AIX: rm /etc/init.cssd
+rm /etc/init.crs 
+rm /etc/init.crsd 
+rm /etc/init.evmd 
+rm /etc/rc.d/rc2.d/K96init.crs 
+rm /etc/rc.d/rc2.d/S96init.crs 
+rm -Rf /etc/oracle/scls_scr 
+rm -Rf /etc/oracle/oprocd 
+rm /etc/inittab.crs 
+cp /etc/inittab.orig /etc/inittab
+
+
+
+4. If they are not already down, kill off EVM, CRS, and CSS processes or reboot the node: ps -ef | grep crs kill ps -ef | grep evm kill ps -ef | grep css kill Do not kill any OS processes, for example icssvr_daemon process !
+
+5. If there is no other Oracle software running (like listeners, DB's, etc...), you can remove the files in /var/tmp/.oracle or /tmp/.oracle. Example: rm -f /var/tmp/.oracle/* or rm -f /tmp/.oracle/*
+
+6. Remove the ocr.loc Usually the ocr.loc can be found at /etc/oracle
+
+7. De-install the CRS home in the Oracle Universal Installer
+
+8. Remove the CRS install location.
+
+9. Clean out the OCR and Voting Files with dd commands. Example:
+
+dd if=/dev/zero of=/dev/rdsk/V1064_vote_01_20m.dbf bs=1M count=256
+dd if=/dev/zero of=/dev/rdsk/ocrV1064_100m.ora bs=1M count=256
+
+See the Clusterware Installation Guide for sizing requirements... 
+
+If you placed the OCR and voting disk on a shared filesystem, remove them.
+
+If you are removing the RDBMS installation, also clean out any ASM disks if 
+they have already been used.
+
+
+10. The /tmp/CVU* dir should be cleaned also to avoid the cluvfy misreporting.
+
+11. It is good practice to reboot the node before starting the next install.
+
+12. If you would like to re-install CRS, follow the steps in the Oracle Clusterware Installation manual.
