@@ -2,6 +2,7 @@
 CELL SHUTDOWN PROCESS
 ======================================
 https://docs.oracle.com/cd/E50790_01/doc/doc.121/e51951/storage.htm#DBMMN21130
+https://oracleracdba1.wordpress.com/2013/08/14/steps-to-shut-down-or-reboot-an-exadata-storage-cell-without-affecting-asm/
 
 If a cell/cell-server has to be shutdown for maintenance, we need to ensure that 
 ASM instances using the cell are not affected.
@@ -49,6 +50,7 @@ Once all disks show asmdeactivationoutcome=Yes, then inactivate the disks
 -------------------------
 SHUTDOWN THE CELL
 -------------------------
+# shutdown -P now
 # shutdown -h now
 # shutdown -F -r now  (this will force a fsck on reboot)
 
@@ -65,6 +67,26 @@ AFTER RESTART
 --> during this process, the extents that were not written to these disks during downtime will be written to them
 --> this does not do a rebalance
 # cellcli -e list griddisk attributes name, asmmodestatus
+--> this may show some disks still offline and some 'synching' - which is ok.
+
+- Check in ASM for the rebalance/resilvering process 
+SQL> select * from gv$asm_operation
+
+
+   INST_ID GROUP_NUMBER OPERA PASS      STAT      POWER     ACTUAL      SOFAR   EST_WORK   EST_RATE EST_MINUTES ERROR_CODE                                       CON_ID
+---------- ------------ ----- --------- ---- ---------- ---------- ---------- ---------- ---------- ----------- -------------------------------------------- ----------
+         3            1 REBAL RESYNC    WAIT          4                                                                                                               0
+         3            1 REBAL RESILVER  WAIT          4                                                                                                               0
+         3            1 REBAL REBALANCE WAIT          4                                                                                                               0
+         3            1 REBAL COMPACT   WAIT          4                                                                                                               0
+         2            1 REBAL RESYNC    WAIT          4                                                                                                               0
+         2            1 REBAL RESILVER  WAIT          4                                                                                                               0
+         2            1 REBAL REBALANCE WAIT          4                                                                                                               0
+         2            1 REBAL COMPACT   WAIT          4                                                                                                               0
+         1            1 REBAL RESYNC    WAIT          4          0          0          0          0           0                                                       0
+         1            1 REBAL RESILVER  WAIT          4          0          0          0          0           0                                                       0
+         1            1 REBAL REBALANCE WAIT          4          0          0          0          0           0                                                       0
+         1            1 REBAL COMPACT   WAIT          4          0          0          0          0           0                                                       0
 
 - List the scsci disks and ensure 12(?) exist
 # lsscsi | grep -i LSI
