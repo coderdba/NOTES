@@ -1,0 +1,55 @@
+http://www.softpanorama.org/Commercial_linuxes/RHEL/rhel_log_rotation.shtml
+
+------------------------
+/etc/logrotate.conf
+------------------------
+# Common options for log rotation.
+# rotate log files weekly
+monthly
+
+# keep 6 months worth of backlogs
+rotate 6
+
+# create new (empty) log files after rotating old ones
+create
+
+# compress logs using gzip -9
+compress
+
+# rotate when size is larger than this no matter whether due for rotating or not
+size 20M
+
+# RPM packages drop log rotation information into this directory
+include /etc/logrotate.d
+
+# no packages own wtmp -- we'll rotate them here
+/var/log/wtmp {
+    monthly
+    minsize 5M
+    create 0664 root utmp
+    rotate 6
+}
+
+/var/log/btmp {
+    missingok
+    monthly
+    minsize 5M
+    create 0600 root utmp
+    rotate 6
+}
+# system-specific logs may be also be configured here.
+
+------------------------
+/etc/logrotate.d/syslog
+------------------------
+/var/log/cron
+/var/log/maillog
+/var/log/messages
+/var/log/secure
+/var/log/spooler
+{
+    sharedscripts
+    postrotate
+	/bin/kill -HUP `cat /var/run/syslogd.pid 2> /dev/null` 2> /dev/null || true
+    endscript
+}
