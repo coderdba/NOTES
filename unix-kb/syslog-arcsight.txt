@@ -6,3 +6,23 @@ For audit.log file:
 https://serverfault.com/questions/202044/sending-audit-logs-to-syslog-server
 http://wiki.rsyslog.com/index.php/Centralizing_the_audit_log
 
+------------------------------------
+On the sending client (rsyslog.conf)
+------------------------------------
+# auditd audit.log  
+$InputFileName /var/log/audit/audit.log  
+$InputFileTag tag_audit_log:  
+$InputFileStateFile audit_log  
+$InputFileSeverity info  
+$InputFileFacility local6  
+$InputRunFileMonitor
+Note that the imfile module will need to have been loaded previously in the rsyslog configuration. This is the line responsible for that:
+
+$ModLoad imfile
+So check if it's in your rsyslog.conf file. If it's not there, add it under the ### MODULES ### section to enable this module; otherwise, the above configuration for auditd logging will not work.
+
+--------------------------------------
+On the receiving server (rsyslog.conf)
+--------------------------------------
+$template HostAudit, "/var/log/rsyslog/%HOSTNAME%/audit_log"  
+local6.*
