@@ -1,0 +1,41 @@
+http://www.gisremotesensing.com/2016/06/solution-vagrant-box-authentication.html
+
+METHOD 1:
+
+2. Login into your guest machine - vagrant ssh , which should prompt you for password, vagrant , the default password for vagrant
+
+3. Then go to - /home/vagrant/.ssh  and remote all the contents inside it, if the path not existed create the directory - mkdir -p /home/vagrant/.ssh
+
+4. Then run following commands
+
+Download the master keys of your box if known:
+
+ wget --no-check-certificate https://raw.github.com/mitchellh/vagrant/master/keys/vagrant.pub -O /home/vagrant/.ssh/authorized_keys  
+ chmod 0700 /home/vagrant/.ssh  
+ chmod 0600 /home/vagrant/.ssh/authorized_keys  
+ chown -R vagrant /home/vagrant/.ssh  
+
+5. Exit from the gust machine and restart it ( vagrant reload) 
+
+METHOD 2:
+Suppress using keys, instead give user and pass in Vagrantfile
+
+Vagrant.configure("2") do |config|  
+      config.vm.box = "package.box"  
+      config.vm.network "private_network", ip: "192.168.33.10"  
+      config.vm.hostname = "development.vm"  
+      config.vm.network "forwarded_port", guest: 80, host: 8080  
+      config.vm.network "forwarded_port", guest: 3000, host: 3000  
+     
+      config.vm.synced_folder ".", "/var/folder_name", :mount_options => ["dmode=777", "fmode=666"]  
+             
+      config.ssh.username = "vagrant"  
+      config.ssh.password = "vagrant"  
+        
+      config.ssh.insert_key = false  
+             
+      config.vm.provider "virtualbox" do |v|  
+      v.memory = 4024  
+      v.cpus = 1  
+   end  
+ end  
