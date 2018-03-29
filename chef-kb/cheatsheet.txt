@@ -1,4 +1,6 @@
+=============================================
 INSERT LINE IF LINE DOES NOT EXIST (CHEF)
+=============================================
 https://gist.github.com/clarkdave/5772940
 
 line = '127.0.0.1 gateway.internal gateway'
@@ -7,5 +9,28 @@ file = Chef::Util::FileEdit.new('/etc/hosts')
 file.insert_line_if_no_match(/#{line}/, line)
 file.write_file
 
+Also, from 
+https://michaelkueller.wordpress.com/2012/09/27/chef-how-to-insert-or-append-a-line-to-a-file/
+
+bash "insert_line" do
+  user "root"
+  code <<-EOS
+  echo "172.22.0.47    www.example.com" >> /etc/hosts
+  EOS
+  not_if "grep -q www.example.com /etc/hosts"
+end
+
+The Chef (or better the Ruby) way to do this is the following:
+
+ruby_block "insert_line" do
+  block do
+    file = Chef::Util::FileEdit.new("/etc/hosts")
+    file.insert_line_if_no_match("/www.example.com/", "www.example.com")
+    file.write_file
+  end
+end
+
+==============================
 APPEND LINE TO FILE (RUBY)
+==============================
 https://www.safaribooksonline.com/library/view/ruby-cookbook/0596523696/ch06s07.html
