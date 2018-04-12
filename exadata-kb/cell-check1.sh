@@ -103,6 +103,10 @@ dcli -l root -g ~/cell_group 'cellcli -e list cell detail' | egrep temperature
 echo "INFO - ---------------------------------------------------------------------------------"
 
 
+echo "INFO - Exadata alert history"
+
+dcli -l root -g ~/cell_group "cellcli -e list alerthistory"
+ 
 
 echo "INFO - Exadata alert history"
 
