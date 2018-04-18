@@ -74,7 +74,10 @@ Successfully installed cx-Oracle-6.2.1
 
 Verify with 'pip list'
 
+--------------------------------------------------------
 - INSTALL ORACLE INSTANT CLIENT (SEE ORACLE-KB for that)
+--------------------------------------------------------
+
 NOTE: DO THIS OUTSIDE OF VIRTUAL-ENV
 
 ==========================================
@@ -132,3 +135,51 @@ gunicorn -w 2 --timeout 60 -b  0.0.0.0:8088 --limit-request-line 0 --limit-reque
 
 # To start a development web server, use the -d switch
 # superset runserver -d
+
+=======================
+TROUBLESHOOTING
+=======================
+---------------------------------------------------------------------
+- IMPORTANT - Superset does not view Oracle views - FIX IT AS FOLLOWS
+---------------------------------------------------------------------
+https://github.com/apache/incubator-superset/issues/3658
+https://github.com/apache/incubator-superset/commit/e96590744f96afb6800fec0f30da51e15612e7fd
+
+Edit the file ~/venv/lib/python2.7/site-packages/superset/connectors/sqla/views.py
+At line 247, right after the comment "# Fail before adding if the table can't be found":
+--> comment out the following line:
+#if not table.database.has_table(table):
+
+--> Add the following lines:
+      try:
+          table.get_sqla_table_object()         
+      except Exception as e:
+
+IMPORTANT- Make sure indentation is correct, otherwise superset runserver gives error on indentation
+REFERENCE INDENTATION FROM MODIFIED FILE:
+
+    def pre_add(self, table):
+        with db.session.no_autoflush:
+            table_query = db.session.query(models.SqlaTable).filter(
+                models.SqlaTable.table_name == table.table_name,
+                models.SqlaTable.schema == table.schema,
+                models.SqlaTable.database_id == table.database.id)
+            if db.session.query(table_query.exists()).scalar():
+                raise Exception(
+                    get_datasource_exist_error_mgs(table.full_name))
+
+        # Fail before adding if the table can't be found
+        #if not table.database.has_table(table):
+        try:
+            table.get_sqla_table_object()
+        except Exception:
+            raise Exception(_(
+                'Table [{}] could not be found, '
+                'please double check your '
+                'database connection, schema, and '
+                'table name').format(table.name))
+
+---------------------------------------------------------------------
+Superset does not recognize DBA_ views even after views fix 
+---------------------------------------------------------------------
+FIX: Provide schema as SYS if the DB connection is not as SYS user
