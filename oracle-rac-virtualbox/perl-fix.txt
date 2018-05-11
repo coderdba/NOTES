@@ -1,5 +1,27 @@
 https://laurent-leturgez.com/2015/05/26/oracle-12c-vmware-fusion-and-the-perl-binarys-segmentation-fault/
 
+export ORACLE_HOME=/u01/app/oracle/product/12.1.0/grid
+cd ~
+rm -rf perl
+mkdir perl
+cd perl/
+curl -O http://www.cpan.org/src/5.0/perl-5.14.1.tar.gz
+tar -xvzf perl-5.14.1.tar.gz
+ 
+cd $ORACLE_HOME
+mv perl/ perl.OLD
+mkdir perl
+cd /home/oracle/perl/perl-5.14.1
+./Configure -des -Dprefix=$ORACLE_HOME/perl -Doptimize=-O3 -Dusethreads -Duseithreads -Duserelocatableinc ; make clean ; make ; make install
+cd $ORACLE_HOME/perl
+rm -rf lib/ man/
+cp -r ../perl.OLD/lib/ .
+cp -r ../perl.OLD/man/ .
+cp ../perl.OLD/bin/dbilogstrip bin/
+cp ../perl.OLD/bin/dbiprof bin/
+cp ../perl.OLD/bin/dbiproxy bin/
+cp ../perl.OLD/bin/ora_explain bin/
+
 -bash-4.2$ cd $ORACLE_HOME/perl
 -bash-4.2$ mv lib lib-installed-dont-use
 -bash-4.2$ mv man man-installed-dont-use
