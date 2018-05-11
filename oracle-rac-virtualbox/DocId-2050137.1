@@ -1,0 +1,155 @@
+	Silent Install: root.sh on the first node fails because asm and haip fail to start (Doc ID 2050137.1)	To BottomTo Bottom	
+
+In this Document
+Symptoms
+Cause
+Solution
+
+APPLIES TO:
+
+Oracle Database - Enterprise Edition - Version 11.2.0.3 and later
+Information in this document applies to any platform.
+SYMPTOMS
+
+Running root.sh on the first node fails with the following error:
+
+CRS-2676: Start of 'ora.cssdmonitor' on 'gtsc4050' succeeded
+CRS-2676: Start of 'ora.gipcd' on 'gtsc4050' succeeded
+CRS-2672: Attempting to start 'ora.cssd' on 'gtsc4050'
+CRS-2672: Attempting to start 'ora.diskmon' on 'gtsc4050'
+CRS-2676: Start of 'ora.diskmon' on 'gtsc4050' succeeded
+CRS-2676: Start of 'ora.cssd' on 'gtsc4050' succeeded
+
+ASM created and started successfully.
+
+Disk Group DATA created successfully.
+
+2015/07/15 23:44:22 CLSRSC-12: The ASM resource ora.asm did not start
+
+2015/07/15 23:44:23 CLSRSC-258: Failed to configure and start ASM
+
+Died at /u01/app/12.1.0.2/grid/crs/install/crsinstall.pm line 2017.
+The command '/u01/app/12.1.0.2/grid/perl/bin/perl -I/u01/app/12.1.0.2/grid/perl/lib -I/u01/app/12.1.0.2/grid/crs/install /u01/app/12.1.0.2/grid/crs/install/rootcrs.pl ' execution failed
+
+The error return code from the script is 25.
+ 
+
+rootcrs log shows:
+
+2015-07-18 01:41:16: Command output:
+>
+>  ASM created and started successfully.
+>
+>  Disk Group DATA created successfully.
+>
+>End Command output
+2015-07-18 01:41:16: Configured CRS Home: /u01/app/12.1.0.2/grid
+2015-07-18 01:41:16: Executing cmd: /u01/app/12.1.0.2/grid/bin/crsctl check resource ora.asm -init
+2015-07-18 01:41:16: Executing cmd: /u01/app/12.1.0.2/grid/bin/crsctl status resource ora.asm -init
+......
+2015-07-18 01:42:48: Checking the status of ora.asm
+2015-07-18 01:42:53: Executing cmd: /u01/app/12.1.0.2/grid/bin/crsctl status resource ora.asm -init
+2015-07-18 01:42:53: Checking the status of ora.asm
+2015-07-18 01:42:58: Executing cmd: /u01/app/12.1.0.2/grid/bin/clsecho -p has -f clsrsc -m 12
+2015-07-18 01:42:58: Command output:
+>  CLSRSC-12: The ASM resource ora.asm did not start
+>End Command output
+ 
+
+asm instance alert log shows:
+
+Public Interface 'bond0.22' configured from GPnP for use as a public interface.
+ [name='bond0.22', type=1, ip=yyy.yyy.25.67, mac=xx-xx-xx-c7-ce-a2, net=yyy.yyy.24.0/23, mask=255.255.254.0, use=public/1]
+ WARNING: No cluster interconnect has been specified. Depending on
+          the communication driver configured Oracle cluster traffic
+          may be directed to the public interface of this machine.
+          Oracle recommends that RAC clustered databases be configured
+          with a private interconnect for enhanced security and
+          performance.
+
+ 
+
+The cluster alert.log shows
+
+2015-07-18 01:39:39.808 [CLSECHO(13774)]CRS-10001: 18-Jul-15 01:39 AFD-9204: false
+2015-07-18 01:40:56.805 [ORAROOTAGENT(13263)]CRS-5818: Aborted command 'start' for resource 'ora.cluster_interconnect.haip'. Details at (:CRSAGF00113:) {0:0:124} in /u01/app/oracle/diag/crs/gtsc4050/crs/trace/ohasd_orarootagent_root.trc.
+2015-07-18 01:40:56.920 [ORAROOTAGENT(13263)]CRS-5017: The resource action "ora.cluster_interconnect.haip start" encountered the following error:
+2015-07-18 01:40:56.920+Start action for HAIP aborted. For details refer to "(:CLSN00107:)" in "/u01/app/oracle/diag/crs/gtsc4050/crs/trace/ohasd_orarootagent_root.trc".
+2015-07-18 01:41:00.809 [OHASD(13140)]CRS-2757: Command 'Start' timed out waiting for response from the resource 'ora.cluster_interconnect.haip'. Details at (:CRSPE00163:) {0:0:124} in /u01/app/oracle/diag/crs/gtsc4050/crs/trace/ohasd.trc.
+2015-07-18 18:03:23.238 [OHASD(16346)]CRS-8500: Oracle Clusterware OHASD process is starting with operating system process ID 16346
+2015-07-18 18:03:23.250 [OHASD(16346)]CRS-0714: Oracle Clusterware Release 12.1.0.2.0.
+2015-07-18 18:03:23.278 [OHASD(16346)]CRS-2112: The OLR service started on node gtsc4050.
+2015-07-18 18:03:23.417 [OHASD(16346)]CRS-1301: Oracle High Availability Service started on node gtsc4050.
+ 
+
+ ohasd_orarootagent_root.trc:
+
+
+2015-07-18 01:39:56.791185 :CLSDYNAM:921974528: [ora.cluster_interconnect.haip]{0:0:124} [start] (:CLSN00107:) clsn_agent::start {
+2015-07-18 01:39:56.791345 :CLSDYNAM:921974528: [ora.cluster_interconnect.haip]{0:0:124} [start] NetworkAgent::init enter {
+......
+2015-07-18 01:39:56.905214 : USRTHRD:915670784: {0:0:124} to verify start completion 0 
+2015-07-18 01:39:56.905231 : USRTHRD:915670784: {0:0:124} Start: 0 HAIP assignment, 0, 0
+2015-07-18 01:40:07.683616 :CLSDYNAM:911468288: [ora.ctssd]{0:0:97} [check] ClsdmClient::sendMessage clsdmc_respget return: status=0, ecode=0
+2015-07-18 01:40:07.683686 :CLSDYNAM:911468288: [ora.ctssd]{0:0:97} [check] translateReturnCodes, return = 0, state detail = OBSERVERCheckcb data [0x7f970808b210]: mode[0xee] offset[0 ms]. 
+
+The above message "Start: 0 HAIP assignment, 0, 0" means that no interconnect suitable for haip is discovered (in other words, 0 interface for HAIP is found)
+ 
+ 
+
+gpnpd.trc also shows that no interconnect for haip is found.
+
+2015-07-18 01:39:22.291600 :    GPNP:2457761376: clsgpnpd_lCheckIpTypes: [at clsgpnpd.c:1714] Profile Networks Definitions - 2 total
+2015-07-18 01:39:22.291794 :    GPNP:2457761376: clsgpnpd_lFilterIpTypes: [at clsgpnpd.c:1615]   - bond0.22/172.18.24.0 public (ip=,mask=,mac=,typ=1)
+2015-07-18 01:39:22.291927 :    GPNP:2457761376: clsgpnpd_lFilterIpTypes: [at clsgpnpd.c:1615]   - bond1/192.168.10.0 cluster_interconnect (ip=,mask=,mac=,typ=1)
+2015-07-18 01:39:22.291935 :    GPNP:2457761376: clsgpnpd_lFilterIpTypes: [at clsgpnpd.c:1636]   of 2 net interfaces, 1 publics (1 ipv4, 0 ipv6), 1 privates (1 ipv4, 0 ipv6).
+2015-07-18 01:39:22.295276 :    GPNP:2457761376: clsgpnpd_lCheckIpTypes: [at clsgpnpd.c:1751] GPnP Node Network Interfaces - 1 total
+2015-07-18 01:39:22.295416 :    GPNP:2457761376: clsgpnpd_lFilterIpTypes: [at clsgpnpd.c:1615]   - bond0.22/172.18.24.0 public (ip=172.18.25.67,mask=255.255.254.0,mac=34-40-b5-c7-ce-a2,typ=1)
+2015-07-18 01:39:22.295523 :    GPNP:2457761376: clsgpnpd_lFilterIpTypes: [at clsgpnpd.c:1636]   of 1 net interfaces, 1 publics (1 ipv4, 0 ipv6), 0 privates (0 ipv4, 0 ipv6).
+2015-07-18 01:39:22.295530 :    GPNP:2457761376: clsgpnpd_lCheckIpTypes: [at clsgpnpd.c:1793] (:GPNPD00123:) Error: No private GPnP network interfaces found on node. Check network setup.
+......
+><gpnp:Network-[cont]
+2015-07-18 01:41:15.164936 :    GPNP:2309469952: clsgpnpd_setBest: Profile><gpnp:HostNetwork id="gen" HostName="*"><gpnp:Network i[cont]
+2015-07-18 01:41:15.164938 :    GPNP:2309469952: clsgpnpd_setBest: d="net1" IP="172.18.24.0" Adapter="bond0.22" Use="public"/><gpn[cont]
+2015-07-18 01:41:15.164940 :    GPNP:2309469952: clsgpnpd_setBest: p:Network id="net2" IP="192.168.10.0" Adapter="bond1" Use="clus[cont]
+ 
+
+CAUSE
+
+The problem is that root.sh thinks the subnet for bond1 is yyy.yyy.10.0, but the actual subnet for bond1 is yyy.yyy.8.0.
+This difference prevented CRS from using bond1 as the private interconnect to start HAIP.
+As a result, asm did not detect haip and failed.
+The reason that the root.sh used incorrect subnet for bond1 is that the netmask for the bond1 is not correct.
+Although the netmask is currently set to 255.255.252.0 (this gives the subnet of yyy.yyy.8.0), the sys admin meant to set the netmask to 255.255.255.0 (this gives the subnet of yyy.yyy.10.0)
+ 
+
+ifconfig shows
+
+bond1     Link encap:Ethernet  HWaddr 34:40:B5:C7:CE:A0
+         inet addr:yyy.yyy.10.3  Bcast:yyy.yyy.11.255  Mask:255.255.252.0
+         UP BROADCAST RUNNING MASTER MULTICAST  MTU:1500  Metric:1
+         RX packets:276 errors:0 dropped:0 overruns:0 frame:0
+         TX packets:48 errors:0 dropped:0 overruns:0 carrier:0
+         collisions:0 txqueuelen:0
+         RX bytes:16560 (16.1 KiB)  TX bytes:9712 (9.4 KiB)
+ 
+
+Installation log shows
+
+INFO:  oracle.install.crs.interfaceList                       {"bond0.22/xxx.xxx.24.0/1","bond1/yyy.yyy.1
+INFO:                                                         0.0/2"}
+
+The above suggests that the subnet for bond1 is provided as 192.168.10.0 during installation.
+ 
+
+"oifcfg iflist" shows
+
+bond1  yyy.yyy.8.0
+bond0.22  xxx.xxx.24.0
+ 
+
+SOLUTION
+
+Set the netmask of bond1 to 255.255.255.0.
+
+If the netmask of the bond1 is set correctly, then the subnet information for bond1 provided in the silent install response file should be 192.168.8.0
