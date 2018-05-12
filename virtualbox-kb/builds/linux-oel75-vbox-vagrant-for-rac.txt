@@ -213,7 +213,6 @@ It ran fine, except for the message:
 Warning: unknown version of the X Window System installed.  Not installing
 X Window System drivers.
 
-
 ----------------------------------------------------------------
 Enable host-guest bidirectional copy-paste and drag-and-drop
 ----------------------------------------------------------------
@@ -296,6 +295,27 @@ fprintd-pam-0.5.0-4.0.el7_0.x86_64
 gnome-keyring-pam-3.20.0-3.el7.x86_64
 pam-1.1.8-22.el7.x86_64
 
+================
+INSTALL CHEF
+================
+# mkdir /root/Downloads/chef_installer
+# cd /root/Downloads/chef_installer
+# curl -LO https://omnitruck.chef.io/install.sh
+# chmod +x install.sh
+
+NOTE - Running install.sh without version installs the latest - which is not always desirable
+Instead, provide a version also "./install.sh -v 13.2.20"
+
+Anyway, ran without version and it installed version 14.1.1
+# ./install.sh
+
+# which chef-client
+/usr/bin/chef-client
+
+# chef-client -v
+Chef: 14.1.1
+
+
 ================================
 VAGRANT - MAKE IT A VAGRANT BOX
 ================================
@@ -326,25 +346,22 @@ Comment out 'Defaults requiretty' --> so that vagrant ssh and sudo does not requ
 Add vagrant to sudoers
 vagrant ALL=(ALL) NOPASSWD: ALL
 
-================
-INSTALL CHEF
-================
-# mkdir /root/Downloads/chef_installer
-# cd /root/Downloads/chef_installer
-# curl -LO https://omnitruck.chef.io/install.sh
-# chmod +x install.sh
+---------------------------------
+CREATE A .BOX IMAGE
+---------------------------------
+$ vboxmanage list vms
+"superset1_default_1524048679899_46686" {1f80bb21-c68b-4037-8588-7efc4e105f1e}
+"oel7racready_default_1525237784095_20908" {3449c8be-d139-42ff-aa9e-55a5ada8f89a}
+"oel75gm" {29233d07-6fd3-44bc-bf06-dca82ef56284} -->>>  THIS IS THE ONE TO CHOOSE
 
-NOTE - Running install.sh without version installs the latest - which is not always desirable
-Instead, provide a version also "./install.sh -v 13.2.20"
+$ vagrant package --base oel75gm /mywork/vagrant/oel75gm_chef.box
+==> oel75gm: Exporting VM...
+==> oel75gm: Compressing package to: /mywork/vagrant/oel75gm_chef.box
 
-Anyway, ran without version and it installed version 14.1.1
-# ./install.sh
-
-# which chef-client
-/usr/bin/chef-client
-
-# chef-client -v
-Chef: 14.1.1
+---------------------------------
+ADD BOX TO VAGRANT
+---------------------------------
+$ vagrant box add oel75gm_chef /mywork/vagrant/oel75gm_chef.box
 
 ================================
 ADDITIONAL ORACLE RELATED STEPS
