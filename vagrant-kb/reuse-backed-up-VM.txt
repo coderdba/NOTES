@@ -1,0 +1,53 @@
+================================
+BACKUP AND REUSE VM's
+================================
+
+https://stackoverflow.com/questions/9434313/how-do-i-associate-a-vagrant-project-directory-with-an-existing-virtualbox-vm#25516777
+
+================================
+BACKUP USING TAR, AND REUSE
+================================
+
+Example - RAC machines at some state
+
+1. Backup the machine main files
+
+$ vagrant halt
+
+$ cd ~/"VirtualBox VMs"
+$ tar cvf rac1_pre_install_vms.tar cbora12crac1rs_rac1n1_1527254481770_76839 cbora12crac1rs_rac1n2_1526127600626_47735
+
+2. Backup the shared disks
+
+$ cd /VboxVMDisks
+$ tar cvf rac1_pre_install_disks.tar rac1
+(where rac1 is the folder with shared disks)
+
+2. Restore
+
+$ cd /mywork/oracle-rac/rac1/cbora12crac1rs
+
+$ cd .vagrant/machines
+$ ls -l
+drwxr-xr-x  3 dbgsm0  DHC\Domain Users  102 Apr 25 10:50 rac1n1
+drwxr-xr-x  3 dbgsm0  DHC\Domain Users  102 Apr 25 10:54 rac1n2
+
+$ cd rac1n1/virtualbox
+$ cp id id.bak
+
+$ cd ../../rac1n2/virtualbox
+$ cp id id.bak
+
+$ cd /mywork/oracle-rac/rac1/cbora12crac1rs
+
+$ vagrant halt
+
+# Optional:
+($ vagrant destroy)
+
+$ cd /VboxVMDisks
+$ tar xvfp rac1_pre_install_disks.tar
+
+$ cd ~/"VirtualBox VMs"
+$ tar xvfp rac1_pre_install_vms.tar
+
