@@ -1,0 +1,32 @@
+============================================
+Guest additions not installing on OEL 6.5: 
+============================================
+
+Building the main guest additions module [FAILED]
+
+
+====
+FIX
+====
+Fix from: https://ecmtech.wordpress.com/2012/05/19/installing-virtualbox-guest-additions-on-oracle-enterprise-linux-6-guest/
+(some other related info - http://www.oraclenerd.com/2011/03/oel-6-virtualbox-guest-additions.html)
+
+- CHECK LOGS
+You are advised to examine the log at /var/log/vboxadd-install.log to figure out the cause, 
+which in my case the log included:
+
+/tmp/vbox.0/Makefile.include.header:97: *** Error: unable to find the sources of your current Linux kernel. 
+Specify KERN_DIR=<directory> and run Make again. Stop.
+
+
+- THIS IS THE FIX
+To resolve this you must install the kernel source which is not there by default. The Guest Additions Installation output suggests you install it via yum and even provides you the command to do so, but not so fast… if you don’t have yum configured yet  that will fail too. And you will also need the gcc package for the installer to update the kernel, but don’t worry, it’s all covered below. If you are running a version of Oracle Linux other than 6, you might visit public-yum.oracle.com first to get the correct URL for the below setup, otherwise:
+# cd /etc/yum.repos.d
+
+# wget http://public-yum.oracle.com/public-yum-ol6.repo
+
+# yum update
+
+# yum install gcc
+# yum install kernel-uek-devel
+If the above installs succeeded, try the Guest Additions installer once again:
