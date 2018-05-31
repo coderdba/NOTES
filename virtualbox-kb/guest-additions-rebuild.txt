@@ -1,0 +1,132 @@
+================================================================================================
+THIS WAS DONE IN THE CONTEXT OF KERNEL MODULE GETTING CHANGED WHEN ORACLEASM WAS INSTALLED
+================================================================================================
+
+https://stackoverflow.com/questions/28328775/virtualbox-mount-vboxsf-mounting-failed-with-the-error-no-such-device#29456128
+
+==> rac1n1: Configuring and enabling network interfaces...
+==> rac1n1: Mounting shared folders...
+    rac1n1: /vagrant => /mywork/oracle-rac/rac1/cbora12crac1rs
+Failed to mount folders in Linux guest. This is usually because
+the "vboxsf" file system is not available. Please verify that
+the guest additions are properly installed in the guest and
+can work properly. The command attempted was:
+
+mount -t vboxsf -o uid=`id -u vagrant`,gid=`getent group vagrant | cut -d: -f3` vagrant /vagrant
+mount -t vboxsf -o uid=`id -u vagrant`,gid=`id -g vagrant` vagrant /vagrant
+
+The error output from the last command was:
+
+/sbin/mount.vboxsf: mounting failed with the error: No such device
+
+FIX:
+
+$ vagrant ssh rac1n1
+Last login: Thu May 31 19:15:27 2018 from 10.0.2.2
+[vagrant@rac1n1 ~]$ sudo su - 
+[root@rac1n1 ~]# cd /opt/VBoxGuestAdditions-*/init
+[root@rac1n1 init]# ls -l
+total 48
+-rwxr-xr-x. 1 root root 15796 Mar  4  2016 vboxadd
+-rwxr-xr-x. 1 root root  4535 Mar  4  2016 vboxadd-service
+-rwxr-xr-x. 1 root root 22252 Mar  4  2016 vboxadd-x11
+[root@rac1n1 init]# ./vboxadd setup
+Removing existing VirtualBox non-DKMS kernel modules       [  OK  ]
+Building the VirtualBox Guest Additions kernel modules
+The headers for the current running kernel were not found. If the following
+module compilation fails then this could be the reason.
+The missing package can be probably installed with
+yum install kernel-uek-devel-3.8.13-118.21.1.el6uek.x86_64
+
+Building the main Guest Additions module                   [FAILED]
+(Look at /var/log/vboxadd-install.log to find out what went wrong)
+Doing non-kernel setup of the Guest Additions              [  OK  ]
+[root@rac1n1 init]# yum install kernel-uek-devel-3.8.13-118.21.1.el6uek.x86_64
+Loaded plugins: refresh-packagekit, security
+public_ol6_UEKR3_latest                                                                                                                                       | 1.2 kB     00:00     
+public_ol6_latest                                                                                                                                             | 1.4 kB     00:00     
+Setting up Install Process
+Resolving Dependencies
+--> Running transaction check
+---> Package kernel-uek-devel.x86_64 0:3.8.13-118.21.1.el6uek will be installed
+--> Processing Dependency: elfutils-libs >= 0.158 for package: kernel-uek-devel-3.8.13-118.21.1.el6uek.x86_64
+--> Processing Dependency: elfutils-libelf >= 0.158 for package: kernel-uek-devel-3.8.13-118.21.1.el6uek.x86_64
+--> Running transaction check
+---> Package elfutils-libelf.x86_64 0:0.152-1.el6 will be updated
+--> Processing Dependency: elfutils-libelf(x86-64) = 0.152-1.el6 for package: elfutils-0.152-1.el6.x86_64
+---> Package elfutils-libelf.x86_64 0:0.164-2.el6 will be an update
+---> Package elfutils-libs.x86_64 0:0.152-1.el6 will be updated
+---> Package elfutils-libs.x86_64 0:0.164-2.el6 will be an update
+--> Running transaction check
+---> Package elfutils.x86_64 0:0.152-1.el6 will be updated
+---> Package elfutils.x86_64 0:0.164-2.el6 will be an update
+--> Finished Dependency Resolution
+
+Dependencies Resolved
+
+=====================================================================================================================================================================================
+ Package                                   Arch                            Version                                            Repository                                        Size
+=====================================================================================================================================================================================
+Installing:
+ kernel-uek-devel                          x86_64                          3.8.13-118.21.1.el6uek                             public_ol6_UEKR3_latest                          9.4 M
+Updating for dependencies:
+ elfutils                                  x86_64                          0.164-2.el6                                        public_ol6_latest                                240 k
+ elfutils-libelf                           x86_64                          0.164-2.el6                                        public_ol6_latest                                197 k
+ elfutils-libs                             x86_64                          0.164-2.el6                                        public_ol6_latest                                229 k
+
+Transaction Summary
+=====================================================================================================================================================================================
+Install       1 Package(s)
+Upgrade       3 Package(s)
+
+Total download size: 10 M
+Is this ok [y/N]: y
+Downloading Packages:
+(1/4): elfutils-0.164-2.el6.x86_64.rpm                                                                                                                        | 240 kB     00:00     
+(2/4): elfutils-libelf-0.164-2.el6.x86_64.rpm                                                                                                                 | 197 kB     00:00     
+(3/4): elfutils-libs-0.164-2.el6.x86_64.rpm                                                                                                                   | 229 kB     00:00     
+(4/4): kernel-uek-devel-3.8.13-118.21.1.el6uek.x86_64.rpm                                                                                                     | 9.4 MB     00:10     
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Total                                                                                                                                                642 kB/s |  10 MB     00:16     
+Running rpm_check_debug
+Running Transaction Test
+Transaction Test Succeeded
+Running Transaction
+  Updating   : elfutils-libelf-0.164-2.el6.x86_64                                                                                                                                1/7 
+  Updating   : elfutils-libs-0.164-2.el6.x86_64                                                                                                                                  2/7 
+  Installing : kernel-uek-devel-3.8.13-118.21.1.el6uek.x86_64                                                                                                                    3/7 
+  Updating   : elfutils-0.164-2.el6.x86_64                                                                                                                                       4/7 
+  Cleanup    : elfutils-0.152-1.el6.x86_64                                                                                                                                       5/7 
+  Cleanup    : elfutils-libs-0.152-1.el6.x86_64                                                                                                                                  6/7 
+  Cleanup    : elfutils-libelf-0.152-1.el6.x86_64                                                                                                                                7/7 
+  Verifying  : kernel-uek-devel-3.8.13-118.21.1.el6uek.x86_64                                                                                                                    1/7 
+  Verifying  : elfutils-libs-0.164-2.el6.x86_64                                                                                                                                  2/7 
+  Verifying  : elfutils-0.164-2.el6.x86_64                                                                                                                                       3/7 
+  Verifying  : elfutils-libelf-0.164-2.el6.x86_64                                                                                                                                4/7 
+  Verifying  : elfutils-libs-0.152-1.el6.x86_64                                                                                                                                  5/7 
+  Verifying  : elfutils-0.152-1.el6.x86_64                                                                                                                                       6/7 
+  Verifying  : elfutils-libelf-0.152-1.el6.x86_64                                                                                                                                7/7 
+
+Installed:
+  kernel-uek-devel.x86_64 0:3.8.13-118.21.1.el6uek                                                                                                                                   
+
+Dependency Updated:
+  elfutils.x86_64 0:0.164-2.el6                           elfutils-libelf.x86_64 0:0.164-2.el6                           elfutils-libs.x86_64 0:0.164-2.el6                          
+
+Complete!
+
+
+[root@rac1n1 ~]# cd /opt/VBoxGuestAdditions-*/init
+[root@rac1n1 init]# ls -l
+total 48
+-rwxr-xr-x. 1 root root 15796 Mar  4  2016 vboxadd
+-rwxr-xr-x. 1 root root  4535 Mar  4  2016 vboxadd-service
+-rwxr-xr-x. 1 root root 22252 Mar  4  2016 vboxadd-x11
+[root@rac1n1 init]# ./vboxadd setup
+Removing existing VirtualBox non-DKMS kernel modules       [  OK  ]
+Building the VirtualBox Guest Additions kernel modules
+Building the main Guest Additions module                   [  OK  ]
+Building the shared folder support module                  [  OK  ]
+Building the OpenGL support module                         [  OK  ]
+Doing non-kernel setup of the Guest Additions              [  OK  ]
+Starting the VirtualBox Guest Additions                    [  OK  ]
