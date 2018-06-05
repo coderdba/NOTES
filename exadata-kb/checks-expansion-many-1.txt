@@ -1,0 +1,356 @@
+
+ 
+1. Hardware/Firmware Profile Check:
+# dcli -l root -g dbs_group "/opt/oracle.SupportTools/CheckHWnFWProfile"
+# dcli -l root -g cell_group "/opt/oracle.SupportTools/CheckHWnFWProfile"
+- Should be SUCCESS
+ 
+2. IBSTAT Check:
+# dcli -l root -g dbs_group "ibstat | grep -i 'state\|rate'"
+# dcli -l root -g cell_group "ibstat | grep -i 'state\|rate'"
+- Should be "Active/LinkUp"
+ 
+3. Harddisk Firmware State Check:
+# dcli -l root -g dbs_group "/opt/MegaRAID/storcli/storcli64 -Pdlist -a0 | grep 'Slot\|Firmware state'"
+# dcli -l root -g cell_group "/opt/MegaRAID/storcli/storcli64 -Pdlist -a0 | grep 'Slot\|Firmware state'"
+- Should be "Online, Spun Up"
+ 
+4. IB Switches (Spine/Leaf) Topology Check (Run on all DB/Storage Cells):
+# /opt/oracle.SupportTools/ibdiagtools/verify-topology -v
+- Make sure both leaf & spine switches are listed
+- Should be SUCCESS or NOT APPLICABLE
+ 
+5. IB connectivity check (From local Node to all other nodes in the frame):
+# dcli -l root -g dbs_group "ibhosts"
+# dcli -l root -g cell_group "ibhosts"
+- Each Host (DB/Cell) should list all other Hosts in the Exadata Frame
+- Below Example shows, Node1 has IB connectivity with all nodes in the frame (4 DB Nodes/7 Cells/2 ZFSSA)
+ [root@exd01dbadm01 ~]# dcli -l root -g dbs_group "ibhosts"
+exd01dbadm01: Ca : 0x0010e0000178dcf0 ports 2 "zfs6a-mgnt PCIe 11"
+exd01dbadm01: Ca : 0x0010e00001787ad0 ports 2 "zfs6b-mgnt PCIe 11"
+exd01dbadm01: Ca : 0x0010e0000109a9b0 ports 2 "exd02dbadm02 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm01: Ca : 0x0010e00001902858 ports 2 "exd02dbadm04 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm01: Ca : 0x0010e00001901198 ports 2 "exd02dbadm03 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm01: Ca : 0x0010e00001892014 ports 2 "exd02dbadm01 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm01: Ca : 0x0010e000010a99c0 ports 2 "exd02celadm07 C 192.168.21.21,192.168.21.22 HCA-1"
+exd01dbadm01: Ca : 0x0010e000010a3190 ports 2 "exd02celadm05 C 192.168.21.17,192.168.21.18 HCA-1"
+exd01dbadm01: Ca : 0x0010e000010a48f0 ports 2 "exd02celadm06 C 192.168.21.19,192.168.21.20 HCA-1"
+exd01dbadm01: Ca : 0x0010e000010ab380 ports 2 "exd02celadm03 C 192.168.21.13,192.168.21.14 HCA-1"
+exd01dbadm01: Ca : 0x0010e000010a97b0 ports 2 "exd02celadm04 C 192.168.21.15,192.168.21.16 HCA-1"
+exd01dbadm01: Ca : 0x0010e000010a3060 ports 2 "exd02celadm01 C 192.168.21.9,192.168.21.10 HCA-1"
+exd01dbadm01: Ca : 0x0010e00001097ce0 ports 2 "exd02celadm02 C 192.168.21.11,192.168.21.12 HCA-1"
+
+ 
+ 
+#1 -------- > check IB links on cells and db nodes
+ 
+[root@exd01dbadm01 ~]# dcli -l root -g cell_group "cellcli -e LIST IBPORT DETAIL | egrep 'name:|physLinkState:' "
+exd01celadm01: name:                   HCA-1:1
+exd01celadm01: physLinkState:          LinkUp
+exd01celadm01: name:                   HCA-1:2
+exd01celadm01: physLinkState:          LinkUp
+exd01celadm02: name:                   HCA-1:1
+exd01celadm02: physLinkState:          LinkUp
+exd01celadm02: name:                   HCA-1:2
+exd01celadm02: physLinkState:          LinkUp
+exd01celadm03: name:                   HCA-1:1
+exd01celadm03: physLinkState:          LinkUp
+exd01celadm03: name:                   HCA-1:2
+exd01celadm03: physLinkState:          LinkUp
+exd01celadm04: name:                   HCA-1:1
+exd01celadm04: physLinkState:          LinkUp
+exd01celadm04: name:                   HCA-1:2
+exd01celadm04: physLinkState:          LinkUp
+exd01celadm05: name:                   HCA-1:1
+exd01celadm05: physLinkState:          LinkUp
+exd01celadm05: name:                   HCA-1:2
+exd01celadm05: physLinkState:          LinkUp
+exd01celadm06: name:                   HCA-1:1
+exd01celadm06: physLinkState:          LinkUp
+exd01celadm06: name:                   HCA-1:2
+exd01celadm06: physLinkState:          LinkUp
+exd01celadm07: name:                   HCA-1:1
+exd01celadm07: physLinkState:          LinkUp
+exd01celadm07: name:                   HCA-1:2
+exd01celadm07: physLinkState:          LinkUp
+[root@exd01dbadm01 ~]#
+ 
+[root@exd01dbadm01 ~]#  dcli -l root -g dbs_group "/usr/sbin/ibstatus | egrep 'state:|phys state:' "
+exd01dbadm01: state:              4: ACTIVE
+exd01dbadm01: phys state:         5: LinkUp
+exd01dbadm01: state:              4: ACTIVE
+exd01dbadm01: phys state:         5: LinkUp
+exd01dbadm02: state:              4: ACTIVE
+exd01dbadm02: phys state:         5: LinkUp
+exd01dbadm02: state:              4: ACTIVE
+exd01dbadm02: phys state:         5: LinkUp
+exd01dbadm03: state:              4: ACTIVE
+exd01dbadm03: phys state:         5: LinkUp
+exd01dbadm03: state:              4: ACTIVE
+exd01dbadm03: phys state:         5: LinkUp
+exd01dbadm04: state:              4: ACTIVE
+exd01dbadm04: phys state:         5: LinkUp
+exd01dbadm04: state:              4: ACTIVE
+exd01dbadm04: phys state:         5: LinkUp
+[root@exd01dbadm01 ~]#
+ 
+ 
+#2 -------- > check eth4/5 and bondeth0 links on db nodes
+ 
+[root@exd01dbadm01 ~]# dcli -l root -g dbs_group "ethtool eth5 | grep 'Link detected'"
+exd01dbadm01: Link detected: yes
+exd01dbadm02: Link detected: yes
+exd01dbadm03: Link detected: yes
+exd01dbadm04: Link detected: yes
+[root@exd01dbadm01 ~]#
+[root@exd01dbadm01 ~]# dcli -l root -g dbs_group "ethtool eth4 | grep 'Link detected'"
+exd01dbadm01: Link detected: yes
+exd01dbadm02: Link detected: yes
+exd01dbadm03: Link detected: yes
+exd01dbadm04: Link detected: yes
+[root@exd01dbadm01 ~]#
+[root@exd01dbadm01 ~]# dcli -l root -g dbs_group "ethtool bondeth0 | grep 'Link detected'"
+exd01dbadm01: Link detected: yes
+exd01dbadm02: Link detected: yes
+exd01dbadm03: Link detected: yes
+exd01dbadm04: Link detected: yes
+[root@exd01dbadm01 ~]#
+ 
+[root@exd01dbadm01 ~]# dcli -l root -g dbs_group "cat /proc/net/bonding/bondeth0 | grep 'Aggregator ID'"
+exd01dbadm01: Aggregator ID: 3
+exd01dbadm01: Aggregator ID: 3
+exd01dbadm01: Aggregator ID: 3
+exd01dbadm02: Aggregator ID: 4
+exd01dbadm02: Aggregator ID: 4
+exd01dbadm02: Aggregator ID: 4
+exd01dbadm03: Aggregator ID: 5
+exd01dbadm03: Aggregator ID: 5
+exd01dbadm03: Aggregator ID: 5
+exd01dbadm04: Aggregator ID: 3
+exd01dbadm04: Aggregator ID: 3
+exd01dbadm04: Aggregator ID: 3
+[root@exd01dbadm01 ~]#
+ 
+ 
+#3. -------- > check CRS online
+ 
+[root@exd01dbadm01 ~]# dcli -l root -g /root/vm_group "/u01/app/12.1.0.2/grid/bin/crsctl check cluster -all"
+exd01adm01vm01: **************************************************************
+exd01adm01vm01: exd01adm01vm01:
+exd01adm01vm01: CRS-4537: Cluster Ready Services is online
+exd01adm01vm01: CRS-4529: Cluster Synchronization Services is online
+exd01adm01vm01: CRS-4533: Event Manager is online
+exd01adm01vm01: **************************************************************
+exd01adm01vm01: exd01adm02vm01:
+exd01adm01vm01: CRS-4537: Cluster Ready Services is online
+exd01adm01vm01: CRS-4529: Cluster Synchronization Services is online
+exd01adm01vm01: CRS-4533: Event Manager is online
+exd01adm01vm01: **************************************************************
+exd01adm01vm02: **************************************************************
+exd01adm01vm02: exd01adm01vm02:
+exd01adm01vm02: CRS-4537: Cluster Ready Services is online
+exd01adm01vm02: CRS-4529: Cluster Synchronization Services is online
+exd01adm01vm02: CRS-4533: Event Manager is online
+exd01adm01vm02: **************************************************************
+exd01adm01vm02: exd01adm02vm02:
+exd01adm01vm02: CRS-4537: Cluster Ready Services is online
+exd01adm01vm02: CRS-4529: Cluster Synchronization Services is online
+exd01adm01vm02: CRS-4533: Event Manager is online
+exd01adm01vm02: **************************************************************
+exd01adm02vm01: **************************************************************
+exd01adm02vm01: exd01adm01vm01:
+exd01adm02vm01: CRS-4537: Cluster Ready Services is online
+exd01adm02vm01: CRS-4529: Cluster Synchronization Services is online
+exd01adm02vm01: CRS-4533: Event Manager is online
+exd01adm02vm01: **************************************************************
+exd01adm02vm01: exd01adm02vm01:
+exd01adm02vm01: CRS-4537: Cluster Ready Services is online
+exd01adm02vm01: CRS-4529: Cluster Synchronization Services is online
+exd01adm02vm01: CRS-4533: Event Manager is online
+exd01adm02vm01: **************************************************************
+exd01adm02vm02: **************************************************************
+exd01adm02vm02: exd01adm01vm02:
+exd01adm02vm02: CRS-4537: Cluster Ready Services is online
+exd01adm02vm02: CRS-4529: Cluster Synchronization Services is online
+exd01adm02vm02: CRS-4533: Event Manager is online
+exd01adm02vm02: **************************************************************
+exd01adm02vm02: exd01adm02vm02:
+exd01adm02vm02: CRS-4537: Cluster Ready Services is online
+exd01adm02vm02: CRS-4529: Cluster Synchronization Services is online
+exd01adm02vm02: CRS-4533: Event Manager is online
+exd01adm02vm02: **************************************************************
+exd01adm03vm01: **************************************************************
+exd01adm03vm01: exd01adm03vm01:
+exd01adm03vm01: CRS-4537: Cluster Ready Services is online
+exd01adm03vm01: CRS-4529: Cluster Synchronization Services is online
+exd01adm03vm01: CRS-4533: Event Manager is online
+exd01adm03vm01: **************************************************************
+exd01adm03vm01: exd01adm04vm01:
+exd01adm03vm01: CRS-4537: Cluster Ready Services is online
+exd01adm03vm01: CRS-4529: Cluster Synchronization Services is online
+exd01adm03vm01: CRS-4533: Event Manager is online
+exd01adm03vm01: **************************************************************
+exd01adm03vm02: **************************************************************
+exd01adm03vm02: exd01adm03vm02:
+exd01adm03vm02: CRS-4537: Cluster Ready Services is online
+exd01adm03vm02: CRS-4529: Cluster Synchronization Services is online
+exd01adm03vm02: CRS-4533: Event Manager is online
+exd01adm03vm02: **************************************************************
+exd01adm03vm02: exd01adm04vm02:
+exd01adm03vm02: CRS-4537: Cluster Ready Services is online
+exd01adm03vm02: CRS-4529: Cluster Synchronization Services is online
+exd01adm03vm02: CRS-4533: Event Manager is online
+exd01adm03vm02: **************************************************************
+exd01adm04vm01: **************************************************************
+exd01adm04vm01: exd01adm03vm01:
+exd01adm04vm01: CRS-4537: Cluster Ready Services is online
+exd01adm04vm01: CRS-4529: Cluster Synchronization Services is online
+exd01adm04vm01: CRS-4533: Event Manager is online
+exd01adm04vm01: **************************************************************
+exd01adm04vm01: exd01adm04vm01:
+exd01adm04vm01: CRS-4537: Cluster Ready Services is online
+exd01adm04vm01: CRS-4529: Cluster Synchronization Services is online
+exd01adm04vm01: CRS-4533: Event Manager is online
+exd01adm04vm01: **************************************************************
+exd01adm04vm02: **************************************************************
+exd01adm04vm02: exd01adm03vm02:
+exd01adm04vm02: CRS-4537: Cluster Ready Services is online
+exd01adm04vm02: CRS-4529: Cluster Synchronization Services is online
+exd01adm04vm02: CRS-4533: Event Manager is online
+exd01adm04vm02: **************************************************************
+exd01adm04vm02: exd01adm04vm02:
+exd01adm04vm02: CRS-4537: Cluster Ready Services is online
+exd01adm04vm02: CRS-4529: Cluster Synchronization Services is online
+exd01adm04vm02: CRS-4533: Event Manager is online
+exd01adm04vm02: **************************************************************
+[root@exd01dbadm01 ~]#
+[root@exd01dbadm01 ~]#
+ 
+ 
+---other show/checks
+[root@exd01dbadm01 ~]# dcli -l root -g dbs_group "/usr/sbin/ibnetdiscover -l"
+exd01dbadm01: Ca  : 0x0010e0000178dcf0 ports 2 devid 0x1003 vendid 0x2c9 "zfs6a-mgnt PCIe 11"
+exd01dbadm01: Ca  : 0x0010e00001787ad0 ports 2 devid 0x1003 vendid 0x2c9 "zfs6b-mgnt PCIe 11"
+exd01dbadm01: Ca  : 0x0010e00001902858 ports 2 devid 0x1003 vendid 0x2c9 "exd02dbadm04 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm01: Ca  : 0x0010e00001901198 ports 2 devid 0x1003 vendid 0x2c9 "exd02dbadm03 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm01: Ca  : 0x0010e0000109a9b0 ports 2 devid 0x1003 vendid 0x2c9 "exd02dbadm02 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm01: Ca  : 0x0010e00001892014 ports 2 devid 0x1003 vendid 0x2c9 "exd02dbadm01 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm01: Ca  : 0x0010e000010a99c0 ports 2 devid 0x1003 vendid 0x2c9 "exd02celadm07 C 192.168.21.21,192.168.21.22 HCA-1"
+exd01dbadm01: Ca  : 0x0010e000010a3190 ports 2 devid 0x1003 vendid 0x2c9 "exd02celadm05 C 192.168.21.17,192.168.21.18 HCA-1"
+exd01dbadm01: Ca  : 0x0010e000010a48f0 ports 2 devid 0x1003 vendid 0x2c9 "exd02celadm06 C 192.168.21.19,192.168.21.20 HCA-1"
+exd01dbadm01: Ca  : 0x0010e000010ab380 ports 2 devid 0x1003 vendid 0x2c9 "exd02celadm03 C 192.168.21.13,192.168.21.14 HCA-1"
+exd01dbadm01: Ca  : 0x0010e000010a97b0 ports 2 devid 0x1003 vendid 0x2c9 "exd02celadm04 C 192.168.21.15,192.168.21.16 HCA-1"
+exd01dbadm01: Ca  : 0x0010e000010a3060 ports 2 devid 0x1003 vendid 0x2c9 "exd02celadm01 C 192.168.21.9,192.168.21.10 HCA-1"
+exd01dbadm01: Ca  : 0x0010e00001097ce0 ports 2 devid 0x1003 vendid 0x2c9 "exd02celadm02 C 192.168.21.11,192.168.21.12 HCA-1"
+exd01dbadm01: Ca  : 0x0010e0000178aaf0 ports 2 devid 0x1003 vendid 0x2c9 "zfs6a-mgnt PCIe 1"
+exd01dbadm01: Ca  : 0x0010e000019065a8 ports 2 devid 0x1003 vendid 0x2c9 "exd01dbadm04 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm01: Ca  : 0x0010e000010ae290 ports 2 devid 0x1003 vendid 0x2c9 "exd01dbadm02 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm01: Ca  : 0x0010e000010ac640 ports 2 devid 0x1003 vendid 0x2c9 "exd01dbadm03 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm01: Ca  : 0x0010e0000109cda0 ports 2 devid 0x1003 vendid 0x2c9 "exd01celadm07 C 192.168.20.21,192.168.20.22 HCA-1"
+exd01dbadm01: Ca  : 0x0010e000010ace20 ports 2 devid 0x1003 vendid 0x2c9 "exd01celadm05 C 192.168.20.17,192.168.20.18 HCA-1"
+exd01dbadm01: Ca  : 0x0010e0000109fd60 ports 2 devid 0x1003 vendid 0x2c9 "exd01celadm06 C 192.168.20.19,192.168.20.20 HCA-1"
+exd01dbadm01: Ca  : 0x0010e0000109e5a0 ports 2 devid 0x1003 vendid 0x2c9 "exd01celadm03 C 192.168.20.13,192.168.20.14 HCA-1"
+exd01dbadm01: Ca  : 0x0010e000010998f0 ports 2 devid 0x1003 vendid 0x2c9 "exd01celadm04 C 192.168.20.15,192.168.20.16 HCA-1"
+exd01dbadm01: Ca  : 0x0010e000010a2fa0 ports 2 devid 0x1003 vendid 0x2c9 "exd01celadm01 C 192.168.20.9,192.168.20.10 HCA-1"
+exd01dbadm01: Ca  : 0x0010e000010a2fb0 ports 2 devid 0x1003 vendid 0x2c9 "exd01celadm02 C 192.168.20.11,192.168.20.12 HCA-1"
+exd01dbadm01: Ca  : 0x0010e00001905278 ports 2 devid 0x1003 vendid 0x2c9 "exd01dbadm01 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm01: Switch      : 0x0010e0b4436ba0a0 ports 36 devid 0xbd36 vendid 0x2c9 "SUN DCS 36P QDR exd01sw-ibb01 10.198.169.184"
+exd01dbadm01: Switch      : 0x0010e0b44a29a0a0 ports 36 devid 0xbd36 vendid 0x2c9 "SUN DCS 36P QDR exd02sw-ibb01 10.198.169.221"
+exd01dbadm01: Switch      : 0x0010e0b45263a0a0 ports 36 devid 0xbd36 vendid 0x2c9 "SUN DCS 36P QDR exd02sw-iba01 10.198.169.220"
+exd01dbadm01: Switch      : 0x0010e0b44148a0a0 ports 36 devid 0xbd36 vendid 0x2c9 "SUN DCS 36P QDR exd02sw-ibs01 10.198.169.222"
+exd01dbadm01: Switch      : 0x0010e0b44a25a0a0 ports 36 devid 0xbd36 vendid 0x2c9 "SUN DCS 36P QDR exd01sw-ibs01 10.198.169.187"
+exd01dbadm01: Switch      : 0x0010e0b4436da0a0 ports 36 devid 0xbd36 vendid 0x2c9 "SUN DCS 36P QDR exd01sw-iba01 10.198.169.183"
+exd01dbadm02: Ca  : 0x0010e0000178dcf0 ports 2 devid 0x1003 vendid 0x2c9 "zfs6a-mgnt PCIe 11"
+exd01dbadm02: Ca  : 0x0010e00001787ad0 ports 2 devid 0x1003 vendid 0x2c9 "zfs6b-mgnt PCIe 11"
+exd01dbadm02: Ca  : 0x0010e00001902858 ports 2 devid 0x1003 vendid 0x2c9 "exd02dbadm04 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm02: Ca  : 0x0010e0000109a9b0 ports 2 devid 0x1003 vendid 0x2c9 "exd02dbadm02 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm02: Ca  : 0x0010e00001901198 ports 2 devid 0x1003 vendid 0x2c9 "exd02dbadm03 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm02: Ca  : 0x0010e00001892014 ports 2 devid 0x1003 vendid 0x2c9 "exd02dbadm01 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm02: Ca  : 0x0010e000010a99c0 ports 2 devid 0x1003 vendid 0x2c9 "exd02celadm07 C 192.168.21.21,192.168.21.22 HCA-1"
+exd01dbadm02: Ca  : 0x0010e000010a3190 ports 2 devid 0x1003 vendid 0x2c9 "exd02celadm05 C 192.168.21.17,192.168.21.18 HCA-1"
+exd01dbadm02: Ca  : 0x0010e000010a48f0 ports 2 devid 0x1003 vendid 0x2c9 "exd02celadm06 C 192.168.21.19,192.168.21.20 HCA-1"
+exd01dbadm02: Ca  : 0x0010e000010ab380 ports 2 devid 0x1003 vendid 0x2c9 "exd02celadm03 C 192.168.21.13,192.168.21.14 HCA-1"
+exd01dbadm02: Ca  : 0x0010e000010a97b0 ports 2 devid 0x1003 vendid 0x2c9 "exd02celadm04 C 192.168.21.15,192.168.21.16 HCA-1"
+exd01dbadm02: Ca  : 0x0010e000010a3060 ports 2 devid 0x1003 vendid 0x2c9 "exd02celadm01 C 192.168.21.9,192.168.21.10 HCA-1"
+exd01dbadm02: Ca  : 0x0010e00001097ce0 ports 2 devid 0x1003 vendid 0x2c9 "exd02celadm02 C 192.168.21.11,192.168.21.12 HCA-1"
+exd01dbadm02: Ca  : 0x0010e0000178aaf0 ports 2 devid 0x1003 vendid 0x2c9 "zfs6a-mgnt PCIe 1"
+exd01dbadm02: Ca  : 0x0010e000019065a8 ports 2 devid 0x1003 vendid 0x2c9 "exd01dbadm04 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm02: Ca  : 0x0010e000010ac640 ports 2 devid 0x1003 vendid 0x2c9 "exd01dbadm03 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm02: Ca  : 0x0010e00001905278 ports 2 devid 0x1003 vendid 0x2c9 "exd01dbadm01 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm02: Ca  : 0x0010e0000109cda0 ports 2 devid 0x1003 vendid 0x2c9 "exd01celadm07 C 192.168.20.21,192.168.20.22 HCA-1"
+exd01dbadm02: Ca  : 0x0010e000010ace20 ports 2 devid 0x1003 vendid 0x2c9 "exd01celadm05 C 192.168.20.17,192.168.20.18 HCA-1"
+exd01dbadm02: Ca  : 0x0010e0000109fd60 ports 2 devid 0x1003 vendid 0x2c9 "exd01celadm06 C 192.168.20.19,192.168.20.20 HCA-1"
+exd01dbadm02: Ca  : 0x0010e0000109e5a0 ports 2 devid 0x1003 vendid 0x2c9 "exd01celadm03 C 192.168.20.13,192.168.20.14 HCA-1"
+exd01dbadm02: Ca  : 0x0010e000010998f0 ports 2 devid 0x1003 vendid 0x2c9 "exd01celadm04 C 192.168.20.15,192.168.20.16 HCA-1"
+exd01dbadm02: Ca  : 0x0010e000010a2fa0 ports 2 devid 0x1003 vendid 0x2c9 "exd01celadm01 C 192.168.20.9,192.168.20.10 HCA-1"
+exd01dbadm02: Ca  : 0x0010e000010a2fb0 ports 2 devid 0x1003 vendid 0x2c9 "exd01celadm02 C 192.168.20.11,192.168.20.12 HCA-1"
+exd01dbadm02: Ca  : 0x0010e000010ae290 ports 2 devid 0x1003 vendid 0x2c9 "exd01dbadm02 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm02: Switch      : 0x0010e0b4436ba0a0 ports 36 devid 0xbd36 vendid 0x2c9 "SUN DCS 36P QDR exd01sw-ibb01 10.198.169.184"
+exd01dbadm02: Switch      : 0x0010e0b44a29a0a0 ports 36 devid 0xbd36 vendid 0x2c9 "SUN DCS 36P QDR exd02sw-ibb01 10.198.169.221"
+exd01dbadm02: Switch      : 0x0010e0b45263a0a0 ports 36 devid 0xbd36 vendid 0x2c9 "SUN DCS 36P QDR exd02sw-iba01 10.198.169.220"
+exd01dbadm02: Switch      : 0x0010e0b44148a0a0 ports 36 devid 0xbd36 vendid 0x2c9 "SUN DCS 36P QDR exd02sw-ibs01 10.198.169.222"
+exd01dbadm02: Switch      : 0x0010e0b44a25a0a0 ports 36 devid 0xbd36 vendid 0x2c9 "SUN DCS 36P QDR exd01sw-ibs01 10.198.169.187"
+exd01dbadm02: Switch      : 0x0010e0b4436da0a0 ports 36 devid 0xbd36 vendid 0x2c9 "SUN DCS 36P QDR exd01sw-iba01 10.198.169.183"
+exd01dbadm03: Ca  : 0x0010e0000178dcf0 ports 2 devid 0x1003 vendid 0x2c9 "zfs6a-mgnt PCIe 11"
+exd01dbadm03: Ca  : 0x0010e00001787ad0 ports 2 devid 0x1003 vendid 0x2c9 "zfs6b-mgnt PCIe 11"
+exd01dbadm03: Ca  : 0x0010e0000109a9b0 ports 2 devid 0x1003 vendid 0x2c9 "exd02dbadm02 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm03: Ca  : 0x0010e00001902858 ports 2 devid 0x1003 vendid 0x2c9 "exd02dbadm04 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm03: Ca  : 0x0010e00001892014 ports 2 devid 0x1003 vendid 0x2c9 "exd02dbadm01 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm03: Ca  : 0x0010e00001901198 ports 2 devid 0x1003 vendid 0x2c9 "exd02dbadm03 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm03: Ca  : 0x0010e000010a99c0 ports 2 devid 0x1003 vendid 0x2c9 "exd02celadm07 C 192.168.21.21,192.168.21.22 HCA-1"
+exd01dbadm03: Ca  : 0x0010e000010a3190 ports 2 devid 0x1003 vendid 0x2c9 "exd02celadm05 C 192.168.21.17,192.168.21.18 HCA-1"
+exd01dbadm03: Ca  : 0x0010e000010a48f0 ports 2 devid 0x1003 vendid 0x2c9 "exd02celadm06 C 192.168.21.19,192.168.21.20 HCA-1"
+exd01dbadm03: Ca  : 0x0010e000010ab380 ports 2 devid 0x1003 vendid 0x2c9 "exd02celadm03 C 192.168.21.13,192.168.21.14 HCA-1"
+exd01dbadm03: Ca  : 0x0010e000010a97b0 ports 2 devid 0x1003 vendid 0x2c9 "exd02celadm04 C 192.168.21.15,192.168.21.16 HCA-1"
+exd01dbadm03: Ca  : 0x0010e00001097ce0 ports 2 devid 0x1003 vendid 0x2c9 "exd02celadm02 C 192.168.21.11,192.168.21.12 HCA-1"
+exd01dbadm03: Ca  : 0x0010e000010a3060 ports 2 devid 0x1003 vendid 0x2c9 "exd02celadm01 C 192.168.21.9,192.168.21.10 HCA-1"
+exd01dbadm03: Ca  : 0x0010e0000178aaf0 ports 2 devid 0x1003 vendid 0x2c9 "zfs6a-mgnt PCIe 1"
+exd01dbadm03: Ca  : 0x0010e000010ae290 ports 2 devid 0x1003 vendid 0x2c9 "exd01dbadm02 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm03: Ca  : 0x0010e000019065a8 ports 2 devid 0x1003 vendid 0x2c9 "exd01dbadm04 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm03: Ca  : 0x0010e00001905278 ports 2 devid 0x1003 vendid 0x2c9 "exd01dbadm01 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm03: Ca  : 0x0010e0000109cda0 ports 2 devid 0x1003 vendid 0x2c9 "exd01celadm07 C 192.168.20.21,192.168.20.22 HCA-1"
+exd01dbadm03: Ca  : 0x0010e000010ace20 ports 2 devid 0x1003 vendid 0x2c9 "exd01celadm05 C 192.168.20.17,192.168.20.18 HCA-1"
+exd01dbadm03: Ca  : 0x0010e0000109fd60 ports 2 devid 0x1003 vendid 0x2c9 "exd01celadm06 C 192.168.20.19,192.168.20.20 HCA-1"
+exd01dbadm03: Ca  : 0x0010e0000109e5a0 ports 2 devid 0x1003 vendid 0x2c9 "exd01celadm03 C 192.168.20.13,192.168.20.14 HCA-1"
+exd01dbadm03: Ca  : 0x0010e000010998f0 ports 2 devid 0x1003 vendid 0x2c9 "exd01celadm04 C 192.168.20.15,192.168.20.16 HCA-1"
+exd01dbadm03: Ca  : 0x0010e000010a2fa0 ports 2 devid 0x1003 vendid 0x2c9 "exd01celadm01 C 192.168.20.9,192.168.20.10 HCA-1"
+exd01dbadm03: Ca  : 0x0010e000010a2fb0 ports 2 devid 0x1003 vendid 0x2c9 "exd01celadm02 C 192.168.20.11,192.168.20.12 HCA-1"
+exd01dbadm03: Ca  : 0x0010e000010ac640 ports 2 devid 0x1003 vendid 0x2c9 "exd01dbadm03 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm03: Switch      : 0x0010e0b4436ba0a0 ports 36 devid 0xbd36 vendid 0x2c9 "SUN DCS 36P QDR exd01sw-ibb01 10.198.169.184"
+exd01dbadm03: Switch      : 0x0010e0b44a29a0a0 ports 36 devid 0xbd36 vendid 0x2c9 "SUN DCS 36P QDR exd02sw-ibb01 10.198.169.221"
+exd01dbadm03: Switch      : 0x0010e0b45263a0a0 ports 36 devid 0xbd36 vendid 0x2c9 "SUN DCS 36P QDR exd02sw-iba01 10.198.169.220"
+exd01dbadm03: Switch      : 0x0010e0b44148a0a0 ports 36 devid 0xbd36 vendid 0x2c9 "SUN DCS 36P QDR exd02sw-ibs01 10.198.169.222"
+exd01dbadm03: Switch      : 0x0010e0b44a25a0a0 ports 36 devid 0xbd36 vendid 0x2c9 "SUN DCS 36P QDR exd01sw-ibs01 10.198.169.187"
+exd01dbadm03: Switch      : 0x0010e0b4436da0a0 ports 36 devid 0xbd36 vendid 0x2c9 "SUN DCS 36P QDR exd01sw-iba01 10.198.169.183"
+exd01dbadm04: Ca  : 0x0010e0000178dcf0 ports 2 devid 0x1003 vendid 0x2c9 "zfs6a-mgnt PCIe 11"
+exd01dbadm04: Ca  : 0x0010e00001787ad0 ports 2 devid 0x1003 vendid 0x2c9 "zfs6b-mgnt PCIe 11"
+exd01dbadm04: Ca  : 0x0010e00001902858 ports 2 devid 0x1003 vendid 0x2c9 "exd02dbadm04 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm04: Ca  : 0x0010e00001901198 ports 2 devid 0x1003 vendid 0x2c9 "exd02dbadm03 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm04: Ca  : 0x0010e0000109a9b0 ports 2 devid 0x1003 vendid 0x2c9 "exd02dbadm02 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm04: Ca  : 0x0010e00001892014 ports 2 devid 0x1003 vendid 0x2c9 "exd02dbadm01 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm04: Ca  : 0x0010e000010a99c0 ports 2 devid 0x1003 vendid 0x2c9 "exd02celadm07 C 192.168.21.21,192.168.21.22 HCA-1"
+exd01dbadm04: Ca  : 0x0010e000010a48f0 ports 2 devid 0x1003 vendid 0x2c9 "exd02celadm06 C 192.168.21.19,192.168.21.20 HCA-1"
+exd01dbadm04: Ca  : 0x0010e000010a3190 ports 2 devid 0x1003 vendid 0x2c9 "exd02celadm05 C 192.168.21.17,192.168.21.18 HCA-1"
+exd01dbadm04: Ca  : 0x0010e000010ab380 ports 2 devid 0x1003 vendid 0x2c9 "exd02celadm03 C 192.168.21.13,192.168.21.14 HCA-1"
+exd01dbadm04: Ca  : 0x0010e000010a97b0 ports 2 devid 0x1003 vendid 0x2c9 "exd02celadm04 C 192.168.21.15,192.168.21.16 HCA-1"
+exd01dbadm04: Ca  : 0x0010e000010a3060 ports 2 devid 0x1003 vendid 0x2c9 "exd02celadm01 C 192.168.21.9,192.168.21.10 HCA-1"
+exd01dbadm04: Ca  : 0x0010e00001097ce0 ports 2 devid 0x1003 vendid 0x2c9 "exd02celadm02 C 192.168.21.11,192.168.21.12 HCA-1"
+exd01dbadm04: Ca  : 0x0010e0000178aaf0 ports 2 devid 0x1003 vendid 0x2c9 "zfs6a-mgnt PCIe 1"
+exd01dbadm04: Ca  : 0x0010e000010ac640 ports 2 devid 0x1003 vendid 0x2c9 "exd01dbadm03 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm04: Ca  : 0x0010e000010ae290 ports 2 devid 0x1003 vendid 0x2c9 "exd01dbadm02 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm04: Ca  : 0x0010e0000109cda0 ports 2 devid 0x1003 vendid 0x2c9 "exd01celadm07 C 192.168.20.21,192.168.20.22 HCA-1"
+exd01dbadm04: Ca  : 0x0010e00001905278 ports 2 devid 0x1003 vendid 0x2c9 "exd01dbadm01 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm04: Ca  : 0x0010e0000109fd60 ports 2 devid 0x1003 vendid 0x2c9 "exd01celadm06 C 192.168.20.19,192.168.20.20 HCA-1"
+exd01dbadm04: Ca  : 0x0010e000010ace20 ports 2 devid 0x1003 vendid 0x2c9 "exd01celadm05 C 192.168.20.17,192.168.20.18 HCA-1"
+exd01dbadm04: Ca  : 0x0010e000010998f0 ports 2 devid 0x1003 vendid 0x2c9 "exd01celadm04 C 192.168.20.15,192.168.20.16 HCA-1"
+exd01dbadm04: Ca  : 0x0010e0000109e5a0 ports 2 devid 0x1003 vendid 0x2c9 "exd01celadm03 C 192.168.20.13,192.168.20.14 HCA-1"
+exd01dbadm04: Ca  : 0x0010e000010a2fa0 ports 2 devid 0x1003 vendid 0x2c9 "exd01celadm01 C 192.168.20.9,192.168.20.10 HCA-1"
+exd01dbadm04: Ca  : 0x0010e000010a2fb0 ports 2 devid 0x1003 vendid 0x2c9 "exd01celadm02 C 192.168.20.11,192.168.20.12 HCA-1"
+exd01dbadm04: Ca  : 0x0010e000019065a8 ports 2 devid 0x1003 vendid 0x2c9 "exd01dbadm04 S 0.0.0.0,0.0.0.0 HCA-1"
+exd01dbadm04: Switch      : 0x0010e0b4436ba0a0 ports 36 devid 0xbd36 vendid 0x2c9 "SUN DCS 36P QDR exd01sw-ibb01 10.198.169.184"
+exd01dbadm04: Switch      : 0x0010e0b44a29a0a0 ports 36 devid 0xbd36 vendid 0x2c9 "SUN DCS 36P QDR exd02sw-ibb01 10.198.169.221"
+exd01dbadm04: Switch      : 0x0010e0b45263a0a0 ports 36 devid 0xbd36 vendid 0x2c9 "SUN DCS 36P QDR exd02sw-iba01 10.198.169.220"
+exd01dbadm04: Switch      : 0x0010e0b44148a0a0 ports 36 devid 0xbd36 vendid 0x2c9 "SUN DCS 36P QDR exd02sw-ibs01 10.198.169.222"
+exd01dbadm04: Switch      : 0x0010e0b44a25a0a0 ports 36 devid 0xbd36 vendid 0x2c9 "SUN DCS 36P QDR exd01sw-ibs01 10.198.169.187"
+exd01dbadm04: Switch      : 0x0010e0b4436da0a0 ports 36 devid 0xbd36 vendid 0x2c9 "SUN DCS 36P QDR exd01sw-iba01 10.198.169.183"
+[root@exd01dbadm01 ~]#
