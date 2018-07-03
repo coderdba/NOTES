@@ -290,7 +290,7 @@ cqlsh:ks0> INSERT INTO users(user_id, age, email, city) VALUES ('jsmith9',32,'jo
 cqlsh:ks0> INSERT INTO users(user_id, age, email, city) VALUES ('jsmith10',32,'john.smith@example.com','Dallas');
 cqlsh:ks0> INSERT INTO users(user_id, age, email, city) VALUES ('jsmith11',32,'john.smith@example.com','Dallas');
 
-CHECK ROW CACHE CHANGES
+CHECK MEMTABLE CHANGES
 $ nodetool cfstats ks0
 Total number of tables: 37
 ----------------
@@ -335,3 +335,167 @@ Keyspace : ks0
 
 ----------------
 
+FLUSH
+$ nodetool flush
+
+CHECK MEMTABLE CHANGES
+$ nodetool cfstats ks0
+Total number of tables: 37
+----------------
+Keyspace : ks0
+	Read Count: 0
+	Read Latency: NaN ms
+	Write Count: 11
+	Write Latency: 0.08963636363636364 ms
+	Pending Flushes: 0
+		Table: users
+		SSTable count: 2
+		Space used (live): 10313
+		Space used (total): 10313
+		Space used by snapshots (total): 0
+		Off heap memory used (total): 86
+		SSTable Compression Ratio: 0.3795918367346939
+		Number of partitions (estimate): 11
+		Memtable cell count: 0
+		Memtable data size: 0
+		Memtable off heap memory used: 0
+		Memtable switch count: 5
+		Local read count: 0
+		Local read latency: NaN ms
+		Local write count: 11
+		Local write latency: NaN ms
+		Pending flushes: 0
+		Percent repaired: 0.0
+		Bloom filter false positives: 0
+		Bloom filter false ratio: 0.00000
+		Bloom filter space used: 40
+		Bloom filter off heap memory used: 24
+		Index summary off heap memory used: 38
+		Compression metadata off heap memory used: 24
+		Compacted partition minimum bytes: 61
+		Compacted partition maximum bytes: 72
+		Compacted partition mean bytes: 72
+		Average live cells per slice (last five minutes): NaN
+		Maximum live cells per slice (last five minutes): 0
+		Average tombstones per slice (last five minutes): NaN
+		Maximum tombstones per slice (last five minutes): 0
+		Dropped Mutations: 0
+
+----------------
+
+$ cqlsh
+Connected to Test Cluster at 127.0.0.1:9042.
+[cqlsh 5.0.1 | Cassandra 3.11.2 | CQL spec 3.4.4 | Native protocol v4]
+Use HELP for help.
+
+cqlsh> use ks0 ;
+cqlsh:ks0> INSERT INTO users(user_id, age, email, city) VALUES ('jsmith9',32,'john.smith@example.com','Dallas');
+cqlsh:ks0> INSERT INTO users(user_id, age, email, city) VALUES ('jsmith10',32,'john.smith@example.com','Dallas');
+cqlsh:ks0> INSERT INTO users(user_id, age, email, city) VALUES ('jsmith11',32,'john.smith@example.com','Dallas');
+
+$ nodetool cfstats ks0
+Total number of tables: 46
+----------------
+Keyspace : ks0
+	Read Count: 0
+	Read Latency: NaN ms
+	Write Count: 13
+	Write Latency: 0.08592307692307692 ms
+	Pending Flushes: 0
+		Table: emp
+		SSTable count: 2
+		Space used (live): 10499
+		Space used (total): 10499
+		Space used by snapshots (total): 0
+		Off heap memory used (total): 80
+		SSTable Compression Ratio: 0.5707692307692308
+		Number of partitions (estimate): 10
+		Memtable cell count: 1
+		Memtable data size: 112
+		Memtable off heap memory used: 0
+		Memtable switch count: 4
+		Local read count: 0
+		Local read latency: NaN ms
+		Local write count: 13
+		Local write latency: 0.219 ms
+		Pending flushes: 0
+		Percent repaired: 0.0
+		Bloom filter false positives: 0
+		Bloom filter false ratio: 0.00000
+		Bloom filter space used: 40
+		Bloom filter off heap memory used: 24
+		Index summary off heap memory used: 32
+		Compression metadata off heap memory used: 24
+		Compacted partition minimum bytes: 51
+		Compacted partition maximum bytes: 60
+		Compacted partition mean bytes: 60
+		Average live cells per slice (last five minutes): NaN
+		Maximum live cells per slice (last five minutes): 0
+		Average tombstones per slice (last five minutes): NaN
+		Maximum tombstones per slice (last five minutes): 0
+		Dropped Mutations: 0
+
+----------------
+$ nodetool compactionstats
+pending tasks: 0
+
+$
+$ ls /var/lib/cassandra/data/ks0/users-c0d79fb05d7a11e8a4c9d52e94b3f8eb/
+backups                      mc-4-big-Index.db            mc-5-big-Data.db        mc-5-big-Summary.db
+mc-4-big-CompressionInfo.db  mc-4-big-Statistics.db       mc-5-big-Digest.crc32   mc-5-big-TOC.txt
+mc-4-big-Data.db             mc-4-big-Summary.db          mc-5-big-Filter.db
+mc-4-big-Digest.crc32        mc-4-big-TOC.txt             mc-5-big-Index.db
+mc-4-big-Filter.db           mc-5-big-CompressionInfo.db  mc-5-big-Statistics.db
+
+$ nodetool compactionstats
+pending tasks: 0
+
+$ sudo nodetool compact
+
+$ sudo nodetool compact
+$ nodetool compactionstats
+pending tasks: 0
+
+$ nodetool gcstats
+       Interval (ms) Max GC Elapsed (ms)Total GC Elapsed (ms)Stdev GC Elapsed (ms)   GC Reclaimed (MB)         Collections      Direct Memory Bytes
+            80388500                 199                1557                  22          5920033952                  72                       -1
+
+$ nodetool tpstats
+Pool Name                         Active   Pending      Completed   Blocked  All time blocked
+ReadStage                              0         0            376         0                 0
+MiscStage                              0         0              0         0                 0
+CompactionExecutor                     0         0          50080         0                 0
+MutationStage                          0         0             20         0                 0
+MemtableReclaimMemory                  0         0            134         0                 0
+PendingRangeCalculator                 0         0              1         0                 0
+GossipStage                            0         0              0         0                 0
+SecondaryIndexManagement               0         0              0         0                 0
+HintsDispatcher                        0         0              0         0                 0
+RequestResponseStage                   0         0              0         0                 0
+Native-Transport-Requests              0         0           2116         0                 0
+ReadRepairStage                        0         0              0         0                 0
+CounterMutationStage                   0         0              0         0                 0
+MigrationStage                         0         0             21         0                 0
+MemtablePostFlush                      0         0            379         0                 0
+PerDiskMemtableFlushWriter_0           0         0            134         0                 0
+ValidationExecutor                     0         0              0         0                 0
+Sampler                                0         0              0         0                 0
+MemtableFlushWriter                    0         0            134         0                 0
+InternalResponseStage                  0         0              0         0                 0
+ViewMutationStage                      0         0              0         0                 0
+AntiEntropyStage                       0         0              0         0                 0
+CacheCleanupExecutor                   0         0              0         0                 0
+
+Message type           Dropped
+READ                         0
+RANGE_SLICE                  0
+_TRACE                       0
+HINT                         0
+MUTATION                     0
+COUNTER_MUTATION             0
+BATCH_STORE                  0
+BATCH_REMOVE                 0
+REQUEST_RESPONSE             0
+PAGED_RANGE                  0
+READ_REPAIR                  0
+$
