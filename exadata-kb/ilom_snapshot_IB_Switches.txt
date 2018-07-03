@@ -1,0 +1,103 @@
+How to Generate iLOM Snapshot on Infiniband Switches (Doc ID 1594992.1)	To BottomTo Bottom	
+
+APPLIES TO:
+
+Oracle Virtual Compute Appliance X3-2 Hardware - Version All Versions and later
+Big Data Appliance Hardware - Version All Versions and later
+Sun Datacenter InfiniBand Switch 36 - Version All Versions and later
+Exalogic Elastic Cloud X4-2 Full Rack - Version X4 to X4 [Release X4]
+Exalogic Elastic Cloud X4-2 Hardware - Version X4 and later
+Information in this document applies to any platform.
+GOAL
+
+Exadata IB NM2 36Port Switches contain an iLOM Daemon that runs within the IB host as opposed to the separate iLOM chipset available on DB and Cell Storage nodes.
+
+When you connect to the iLOM on IB Switches it relies on the iLOM daemon running and you do this as the ilom-admin user.
+
+By Default the iLOM daemon will be running,  if for some reason it is not then you'll need to start this as the root user.
+
+
+
+
+SOLUTION
+
+Confirm ILOM daemon on IB is up
+
+[root@exasw-ib2 ~]# service ilom status
+ILOM stack stopped
+
+If its down start it
+
+[root@exasw-ib2 ~]# service ilom start
+Stopping any already executing ILOM daemons
+Starting event manager
+Starting log manager
+Starting ILOM IPMI stack
+Started ILOM IPMI stack
+Starting lumain
+Starting luproxy
+Starting ealertd
+Starting web server
+Starting SNMP
+ 
+
+
+[root@exasw-ib2 ~]# service ilom status
+ILOM stack running
+
+
+By default the ilom daemon should always be running.
+Lets now generate an iLOM snapshot..
+
+
+Option 1 - Command line interface
+
+
+[root@exasw-ib2 ~]# su - ilom-admin
+
+Oracle(R) Integrated Lights Out Manager
+
+Version ILOM 3.0 r47111
+
+Copyright (c) 2010, Oracle and/or its affiliates. All rights reserved.
+
+
+-> set /X/diag/snapshot dataset=normal
+Set 'dataset' to 'normal'
+
+
+-> set /X/diag/snapshot dump_uri=sftp://root@apactest/tmp
+Enter remote user password: ********
+Set 'dump_uri' to 'sftp://root@AAA.BBB.CCC.DDD/tmp'
+to check the completion of snapshot file transfer:
+-> show /SP/diag/snapshot result
+ 
+NOTE: In this example,   We write the log to /tmp on host # apactest with the IP address AAA.BBB.CCC.DDD
+
+
+OR
+
+
+Option 2  Web User Interface
+
+From a browser interface connect to the IP# address or the Hostname.
+
+Java needs to be enabled in the browser.
+
+Steps...
+
+- the web ILOM interface at: http://<hostname of switch>
+- go to 'Maintenance' tab
+- go to 'Snaphost' tab
+- Select Data Set=normal & choose preferred Transfer Method
+- select 'run'
+
+ 
+
+
+
+
+REFERENCES
+
+NOTE:1020204.1 - Collecting snapshot on ILOM 3.x and later platforms
+NOTE:1053498.1 - Network Diagnostics information for Oracle Database Machine Environments
