@@ -101,6 +101,9 @@ Checks whether the node owns the data or not (in key-cache) - then checks in mem
 Gets, misses
 LRU row-cache
 
+MONITORING
+
+
 =========================
 TECHNICAL THINGS
 =========================
@@ -197,4 +200,88 @@ cqlsh:ks0> select * from users;
 
 (1 rows)
 cqlsh:ks0> 
+
+$ nodetool status
+Datacenter: datacenter1
+=======================
+Status=Up/Down
+|/ State=Normal/Leaving/Joining/Moving
+--  Address    Load       Tokens       Owns (effective)  Host ID                               Rack
+UN  127.0.0.1  200.17 KiB  256          100.0%            5975effd-cd85-4f8e-a83c-c66bf7840689  rack1
+
+$ nodetool status admatic24
+
+Error: The keyspace admatic24, does not exist
+
+$ nodetool status ks0
+Datacenter: datacenter1
+=======================
+Status=Up/Down
+|/ State=Normal/Leaving/Joining/Moving
+--  Address    Load       Tokens       Owns (effective)  Host ID                               Rack
+UN  127.0.0.1  200.17 KiB  256          100.0%            5975effd-cd85-4f8e-a83c-c66bf7840689  rack1
+
+$ nodetool info
+ID                     : 5975effd-cd85-4f8e-a83c-c66bf7840689
+Gossip active          : true
+Thrift active          : false
+Native Transport active: true
+Load                   : 200.17 KiB
+Generation No          : 1530523374
+Uptime (seconds)       : 83348
+Heap Memory (MB)       : 224.70 / 990.00
+Off Heap Memory (MB)   : 0.00
+Data Center            : datacenter1
+Rack                   : rack1
+Exceptions             : 0
+Key Cache              : entries 27, size 2.34 KiB, capacity 49 MiB, 130 hits, 168 requests, 0.774 recent hit rate, 14400 save period in seconds
+Row Cache              : entries 0, size 0 bytes, capacity 0 bytes, 0 hits, 0 requests, NaN recent hit rate, 0 save period in seconds
+Counter Cache          : entries 0, size 0 bytes, capacity 24 MiB, 0 hits, 0 requests, NaN recent hit rate, 7200 save period in seconds
+Chunk Cache            : entries 20, size 1.25 MiB, capacity 215 MiB, 222 misses, 542 requests, 0.590 recent hit rate, NaN microseconds miss latency
+Percent Repaired       : 100.0%
+Token                  : (invoke with -T/--tokens to see all 256 tokens)
+
+$ nodetool cfstats ks0
+Total number of tables: 37
+----------------
+Keyspace : ks0
+	Read Count: 0
+	Read Latency: NaN ms
+	Write Count: 8
+	Write Latency: 0.09575 ms
+	Pending Flushes: 0
+		Table: users
+		SSTable count: 1
+		Space used (live): 5237
+		Space used (total): 5237
+		Space used by snapshots (total): 0
+		Off heap memory used (total): 51
+		SSTable Compression Ratio: 0.31970260223048325
+		Number of partitions (estimate): 8
+		Memtable cell count: 0
+		Memtable data size: 0
+		Memtable off heap memory used: 0
+		Memtable switch count: 4
+		Local read count: 0
+		Local read latency: NaN ms
+		Local write count: 8
+		Local write latency: NaN ms
+		Pending flushes: 0
+		Percent repaired: 0.0
+		Bloom filter false positives: 0
+		Bloom filter false ratio: 0.00000
+		Bloom filter space used: 24
+		Bloom filter off heap memory used: 16
+		Index summary off heap memory used: 19
+		Compression metadata off heap memory used: 16
+		Compacted partition minimum bytes: 61
+		Compacted partition maximum bytes: 72
+		Compacted partition mean bytes: 72
+		Average live cells per slice (last five minutes): NaN
+		Maximum live cells per slice (last five minutes): 0
+		Average tombstones per slice (last five minutes): NaN
+		Maximum tombstones per slice (last five minutes): 0
+		Dropped Mutations: 0
+
+----------------
 
