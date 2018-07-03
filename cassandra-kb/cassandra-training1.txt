@@ -105,8 +105,9 @@ MONITORING
 tpstatus
 
 =========================
-MULTINODE
+MULTINODE CLUSTER
 =========================
+NOTE: For steps, see CREATE CLUSTER section
 /etc/cassandra/cassandra.yaml
 Bootstrapping
 
@@ -516,3 +517,55 @@ REQUEST_RESPONSE             0
 PAGED_RANGE                  0
 READ_REPAIR                  0
 $
+
+=======================
+CREATE CLUSTER
+=======================
+
+--------------------------------
+CREATE WITH ONLY ONE SEED
+--------------------------------
+
+- Configure
+On each node, edit /etc/cassandra/cassandra.yml.
+Give the private IP of the seed node against seeds.
+Give the private IP of the local node against listen_address and rpc_address.
+
+# diff cassandra.yaml.orig cassandra.yaml
+10c10
+< cluster_name: 'Test Cluster'
+---
+> cluster_name: 'Team4Cluster'
+425c425
+<           - seeds: "127.0.0.1"
+---
+>           - seeds: "172.31.84.180"
+599c599
+< listen_address: localhost
+---
+> listen_address: 172.31.85.72
+676c676
+< rpc_address: localhost
+---
+> rpc_address: 172.31.85.72
+949c949
+< endpoint_snitch: SimpleSnitch
+---
+> endpoint_snitch: GossipingPropertyFileSnitch
+1237a1238,1239
+> #
+> auto_bootstrap: false
+
+- Remove the folder /var/lib/cassandra/data
+
+- Verify
+# nodetool status godisgreat
+Datacenter: dc1
+===============
+Status=Up/Down
+|/ State=Normal/Leaving/Joining/Moving
+--  Address        Load       Tokens       Owns (effective)  Host ID                               Rack
+UN  172.31.85.72   170.09 KiB  256          25.2%             b23352ce-bd97-4713-983a-a0715620a4d7  rack1
+UN  172.31.92.87   135.23 KiB  256          24.8%             8f2f9d78-a33c-47f9-90b5-811d9670d410  rack1
+UN  172.31.82.133  142.94 KiB  256          24.1%             da0d2899-c2c2-4bb3-8267-a590c0ea12ff  rack1
+UN  172.31.84.180  143.17 KiB  256          25.8%             3b6e8368-9274-4238-8a6c-3ff1fb7bd4b1  rack1
