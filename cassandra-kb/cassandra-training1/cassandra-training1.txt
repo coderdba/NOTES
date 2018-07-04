@@ -62,6 +62,7 @@ The cluster is the collection of many data centers.
 Commit Log
 Every write operation is written to Commit Log. Commit log is used for crash recovery.
 - durable-writes=true is the setting that provides this.  True is default for a keyspace
+- once flushed to sstable, corresponding commit-log record is set to null/zero (something like that)
 
 Memtable
 After data written in Commit log, data is written in Memtable. Data is written in Memtable temporarily (like buffer pool)
@@ -306,7 +307,24 @@ memtables, key caches, row caches
 - DISK
 commit logs, sstables, hints (2.2+)
 
+=========================
+CACHING
+=========================
+Key Cache
+- Partition key to row matching
 
+Row Cache
+- Rows still available in memory per LRU
+
+Counter Cache
+- Counter (like sequence) cache
+
+Hinted Handoff
+- If a replica node is not reachable, then a 'hinted handoff' can happen 
+- handoff a write to a neighboring node - and then when replica comes up, then synch with it
+
+Lightweight Transactions and Paxos
+- 
 
 == ********* ==
 ====================================================================================================
