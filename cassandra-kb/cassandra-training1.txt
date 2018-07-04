@@ -121,7 +121,9 @@ Autobootstrap = off means it starts as a single node, but ready for bootstrappin
 Snitch:
 Discover topology of the network (like racks, data centers etc)
 
+============
 PARTITIONER
+============
 Murmur3 partition hashes everything into a key of 64bit integer - which will be based on the PK of the record itself.
 Then it will distribute it to nodes based on the tokens allocated of each node and some token-range algorithm.
 To find where a row actually sits:  nodetool ring <keyspace name>
@@ -162,6 +164,9 @@ Default configuration dc1,rack1 - one data center, one rack
 Cassandra tries to store data across data centers for HADR - partition tolerance
 - and tries to route queries to local data centers
 
+--------------
+GOSSIP
+--------------
 Gossip protocol - failure detection - allows each node to keep track of state info about other nodes in the cluster
 - runs every second on a timer
 - just keeps track of metadata of node-alive - and does not bother about which data is stored where
@@ -169,6 +174,24 @@ Gossip protocol - failure detection - allows each node to keep track of state in
 Seed node knows everything about all nodes
 Gossip looks for info in 3 neighboring nodes - and those nodes connect with three other
 Gossip verifies for up/down kind of info
+
+Every second a node returns GossipDigestAckMessage and then a return-message is received
+- Phi Accrual Failure Detection
+- Nodes not responding compared to previously acknowledging-nodes list are considered down
+
+Threshold is possible (like 3 gossips) before declaring a node is down
+
+--------------
+SNITCH
+--------------
+Snitches gather info about network topology
+- figure out where nodes are in relation to other nodes
+
+Different snitches for Amazon EC2, Google Cloud, Apache Cloudstack etc
+
+Package org.apache.cassandra.locator
+- IEndpointSnitch interface
+
 
 ====================================================================================================
 =========================
