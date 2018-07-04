@@ -111,12 +111,19 @@ public class CreateAndPopulateKeyspaceLoop {
     UUID uuidAlbum = UUID.randomUUID();
     String uuidAlbumString = uuidAlbum.toString();
 
-    for(int i=1; i<100; i++){
+    for(int i=1; i<1000000; i++){
+
+              int modulo = i % 1000;
+
+              if (modulo == 0) {
+            
+                  System.out.println ("Inserted " + i + " rows");
+              }
 
               UUID uuidSong = UUID.randomUUID();
               String uuidSongString = uuidSong.toString();
 
-              System.out.println (uuidAlbumString + ", " + uuidSongString);
+              //System.out.println (uuidAlbumString + ", " + uuidSongString);
 
               session.execute(
                 "INSERT INTO simplex.songs (id, title, album, artist, tags) " +
