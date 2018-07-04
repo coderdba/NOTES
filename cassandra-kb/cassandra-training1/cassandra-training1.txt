@@ -226,12 +226,28 @@ The QUORUM consistency level requires response from a majority of the replica no
 Write - default consistency is one - so it writes to one node only - and wait for only one node to respond
 - fails if that node is down
 - (and replication happens in the background)
+- have higher consistency for writes so that write to at least one node is successful
 
 Read - default consistency is one - so, if the node is down, reads fail
 - if level is higher than one, there could be data mismatch
 
 Replication factor = 1 and consistency > 1 is not possible
 
+Cases:
+wc=1, rc=1 - fastest as read is from one node, but may return inconsistent data
+wc=1, rc=2 - reads will wait for two replicas to give response - what if 
+
+Questions:
+1. If can write to any, but data will sit some place in the ring based on token of the key
+- Right
+
+2. Does cassandra have a concept of virtual/scan-ip for the whole cluster, 
+   which can avoid us giving multiple-IPs as contact points 
+- No, that has to be done by an extenral load-balancer or Fastly and such
+
+3. In reads - instead of giving contact points of local data center - can we give a virtual IP for the whole cluster
+   and the cluster can figure out where the query is coming from and direct to local datacenter
+- No, that has to be done by an extenral load-balancer or Fastly and such
 
 
 == ********* ==
