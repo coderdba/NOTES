@@ -84,8 +84,12 @@ Replication is for a keyspace - not a table or a node
 WRITES HOW IT WORKS
 First writes go to memory - as a 'memtable'
 After the memory threshold is reached - it gets flushed to disk
-Then it writes to commit logs and then to table 'sstable'
+Then it writes to commit logs and then to table 'sstable' (one sstable for each table - multiple copies per each flush)
 sstable compacts periodically (can be set) to compact fragmentation
+-- that is, every flush creates a new sstable file - and compact combines all of them into one file with next serial number
+-- this is something like - all new rows, and updates between two flushes is parked in intermediate sstables
+-- upon compactions mulitple parked sets are merged to get a final view of all rows in those parking spaces
+-- each sstable file before compact may have same rows also (different incarnations - insert, update, update... delete)
 
 If memtable threshold is increased much - then if node fails then that much data will be lost and needs recovery
 
