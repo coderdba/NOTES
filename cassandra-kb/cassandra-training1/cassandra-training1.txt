@@ -358,6 +358,9 @@ File - cassandra-env.sh:
 JVM_OPTS="$JVM_OPTS -Dcassandra.ignore_dc=true"
 --> This is required in the case we had this machine in a different DC before and now changing to a new DC
 
+Then, to actually use all this, create or alter keyspace to use NetworkTopologyStrategy and N1 and N2 nodes in each DC.
+--> See technical things section for the steps
+
 == ********* ==
 ====================================================================================================
 =========================
@@ -867,4 +870,25 @@ cqlsh:godisgreat> select token(user_id), user_id from users;
  - To know which row is in which node
  $ nodetool getendpoints keyspace_name table_name key_column_value
 172.31.92.87
+
+--------------------------
+MULTI DATACENTER
+--------------------------
+https://docs.datastax.com/en/cassandra/3.0/cassandra/operations/opsChangeKSStrategy.html
+
+cqlsh> SELECT * FROM system_schema.keyspaces; 
+
+ keyspace_name      | durable_writes | replication
+--------------------+----------------+-------------------------------------------------------------------------------------
+        system_auth |           True | {'class': 'org.apache.cassandra.locator.SimpleStrategy', 'replication_factor': '1'}
+      system_schema |           True |                             {'class': 'org.apache.cassandra.locator.LocalStrategy'}
+ system_distributed |           True | {'class': 'org.apache.cassandra.locator.SimpleStrategy', 'replication_factor': '3'}
+             system |           True |                             {'class': 'org.apache.cassandra.locator.LocalStrategy'}
+       testkeyspace |           True | {'class': 'org.apache.cassandra.locator.SimpleStrategy', 'replication_factor': '1'}
+      system_traces |           True | {'class': 'org.apache.cassandra.locator.SimpleStrategy', 'replication_factor': '2'}
+            simplex |           True | {'class': 'org.apache.cassandra.locator.SimpleStrategy', 'replication_factor': '1'}
+           cyclingx |           True | {'class': 'org.apache.cassandra.locator.SimpleStrategy', 'replication_factor': '1'}
+
+
+cqlsh> alter keyspace simplex WITH REPLICATION = {'class' : 'NetworkTopologyStrategy', 'DC1' : 2, 'DC2' : 2};
 
