@@ -410,7 +410,35 @@ Creates a keyspace called keyspace1 with single-DC - and emulates some load.
 
 cassandra-stress.yaml
 
+===================
+TIME TO LIVE
+===================
+Columns and tables support an optional expiration period called TTL (time-to-live); 
+TTL is not supported on counter columns. Define the TTL value in seconds. 
+Data expires once it exceeds the TTL period and is then marked with a tombstone. 
+Expired data continues to be available for read requests during the grace period, see gc_grace_seconds. 
+Normal compaction and repair processes automatically remove the tombstone data.
 
+Both the INSERT and UPDATE commands support setting a time for data in a column to expire. Use CQL to set the expiration time (TTL).
+
+Procedure
+
+Use the INSERT command to set calendar listing in the calendar table to expire in 86400 seconds, or one day.
+
+cqlsh> INSERT INTO cycling.calendar (race_id, race_name, race_start_date, race_end_date) VALUES (200, 'placeholder', '2015-05-27', '2015-05-27') USING TTL 86400;
+
+Extend the expiration period to three days by using the UPDATE command and change the race name.
+
+cqlsh> UPDATE cycling.calendar USING TTL 259200 
+  SET race_name = 'Tour de France - Stage 12' 
+  WHERE race_id = 200 AND race_start_date = '2015-05-27' AND race_end_date = '2015-05-27';
+  
+Delete a column's existing TTL by setting its value to zero.
+
+cqlsh> UPDATE cycling.calendar USING TTL 0 
+  SET race_name = 'Tour de France - Stage 12' 
+  WHERE race_id = 200 AND race_start_date = '2015-05-27' AND race_end_date = '2015-05-27';
+You can set a default TTL for an entire table by setting the table's default_time_to_live property. If you try to set a TTL for a specific column that is longer than the time defined by the table TTL, Cassandra returns an error.
 
 == ********* ==
 ====================================================================================================
