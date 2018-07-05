@@ -936,3 +936,146 @@ Warning: schema version mismatch detected; check the schema versions of your nod
 To remove a node temporarily - when it does not bootstrap properly:
 # nodetool removenme node_ID 
 --> After that, restart cassandra on that offending node and it should come up properly
+
+CONSISTENCY LEVELS
+
+Consistency=1 fast
+Consistency=quorum medium
+Consistency=all slow
+
+cqlsh> create keyspace ks1 WITH REPLICATION = {'class' : 'NetworkTopologyStrategy', 'DC1' : 2, 'DC2' : 2} ;
+cqlsh> use ks1;
+cqlsh:ks1> create table tester (id int PRIMARY KEY, col1 int, col2 int);
+
+cqlsh> CREATE KEYSPACE cycling_alt WITH replication = {'class':'SimpleStrategy', 'replicati
+on_factor':3};
+cqlsh> USE cycling_alt;
+cqlsh> CREATE TABLE cycling_alt.tester (id int PRIMARY KEY, col1 int, col2 int);
+cqlsh> INSERT INTO cycling_alt.tester(id, col1, col2) VALUES(0, 0, 0);
+InvalidRequest: Error from server: code=2200 [Invalid query] message="You must use c
+onditional updates for serializable writes"
+
+cqlsh> TRACING on;
+cqlsh> CONSISTENCY ONE;
+cqlsh:cycling_alt> consistency;
+Current consistency level is ONE.
+cqlsh:cycling_alt> SELECT * FROM cycling_alt.tester WHERE id = 0;
+
+ id | col1 | col2
+----+------+------
+  0 |    0 |    0
+
+(1 rows)
+
+Tracing session: ef2a62e0-8033-11e8-8621-0f4156f9c36b
+
+ activity                                                                             | timestamp                  | source       | source_elapsed | client
+--------------------------------------------------------------------------------------+----------------------------+--------------+----------------+--------------
+                                                                   Execute CQL3 query | 2018-07-05 09:15:17.902000 | 172.31.85.72 |              0 | 172.31.85.72
+ Parsing SELECT * FROM cycling_alt.tester WHERE id = 0; [Native-Transport-Requests-1] | 2018-07-05 09:15:17.903000 | 172.31.85.72 |            614 | 172.31.85.72
+                                    Preparing statement [Native-Transport-Requests-1] | 2018-07-05 09:15:17.903000 | 172.31.85.72 |            772 | 172.31.85.72
+                             Executing single-partition query on tester [ReadStage-2] | 2018-07-05 09:15:17.904000 | 172.31.85.72 |           1347 | 172.31.85.72
+                                           Acquiring sstable references [ReadStage-2] | 2018-07-05 09:15:17.904000 | 172.31.85.72 |           1401 | 172.31.85.72
+                                              Merging memtable contents [ReadStage-2] | 2018-07-05 09:15:17.904000 | 172.31.85.72 |           1437 | 172.31.85.72
+                                 Read 1 live rows and 0 tombstone cells [ReadStage-2] | 2018-07-05 09:15:17.904000 | 172.31.85.72 |           1591 | 172.31.85.72
+                                                                     Request complete | 2018-07-05 09:15:17.904345 | 172.31.85.72 |           2345 | 172.31.85.72
+
+
+cqlsh:cycling_alt> 
+cqlsh:cycling_alt> 
+cqlsh:cycling_alt> CONSISTENCY quorum;
+Consistency level set to QUORUM.
+cqlsh:cycling_alt> SELECT * FROM cycling_alt.tester WHERE id = 0;
+
+ id | col1 | col2
+----+------+------
+  0 |    0 |    0
+
+(1 rows)
+
+Tracing session: 0bab71c0-8034-11e8-8621-0f4156f9c36b
+
+ activity                                                                                          | timestamp                  | source        | source_elapsed | client
+---------------------------------------------------------------------------------------------------+----------------------------+---------------+----------------+--------------
+                                                                                Execute CQL3 query | 2018-07-05 09:16:05.724000 |  172.31.85.72 |              0 | 172.31.85.72
+              Parsing SELECT * FROM cycling_alt.tester WHERE id = 0; [Native-Transport-Requests-1] | 2018-07-05 09:16:05.724000 |  172.31.85.72 |            166 | 172.31.85.72
+                                                 Preparing statement [Native-Transport-Requests-1] | 2018-07-05 09:16:05.724000 |  172.31.85.72 |            290 | 172.31.85.72
+                                  reading digest from /172.31.95.127 [Native-Transport-Requests-1] | 2018-07-05 09:16:05.725000 |  172.31.85.72 |            631 | 172.31.85.72
+                                          Executing single-partition query on tester [ReadStage-2] | 2018-07-05 09:16:05.725000 |  172.31.85.72 |            927 | 172.31.85.72
+                                                        Acquiring sstable references [ReadStage-2] | 2018-07-05 09:16:05.725000 |  172.31.85.72 |            994 | 172.31.85.72
+                                                           Merging memtable contents [ReadStage-2] | 2018-07-05 09:16:05.729000 |  172.31.85.72 |           4398 | 172.31.85.72
+                                              Read 1 live rows and 0 tombstone cells [ReadStage-2] | 2018-07-05 09:16:05.729000 |  172.31.85.72 |           4569 | 172.31.85.72
+                            speculating read retry on /172.31.82.133 [Native-Transport-Requests-1] | 2018-07-05 09:16:05.729000 |  172.31.85.72 |           4932 | 172.31.85.72
+           Sending READ message to /172.31.95.127 [MessagingService-Outgoing-/172.31.95.127-Small] | 2018-07-05 09:16:05.729000 |  172.31.85.72 |           5048 | 172.31.85.72
+           Sending READ message to /172.31.82.133 [MessagingService-Outgoing-/172.31.82.133-Small] | 2018-07-05 09:16:05.729000 |  172.31.85.72 |           5273 | 172.31.85.72
+                READ message received from /172.31.85.72 [MessagingService-Incoming-/172.31.85.72] | 2018-07-05 09:16:05.730000 | 172.31.95.127 |             13 | 172.31.85.72
+                READ message received from /172.31.85.72 [MessagingService-Incoming-/172.31.85.72] | 2018-07-05 09:16:05.731000 | 172.31.82.133 |             29 | 172.31.85.72
+  REQUEST_RESPONSE message received from /172.31.95.127 [MessagingService-Incoming-/172.31.95.127] | 2018-07-05 09:16:05.731000 |  172.31.85.72 |           7273 | 172.31.85.72
+                                          Executing single-partition query on tester [ReadStage-1] | 2018-07-05 09:16:05.731000 | 172.31.95.127 |            647 | 172.31.85.72
+                                                        Acquiring sstable references [ReadStage-1] | 2018-07-05 09:16:05.731000 | 172.31.95.127 |            716 | 172.31.85.72
+                                                           Merging memtable contents [ReadStage-1] | 2018-07-05 09:16:05.731000 | 172.31.95.127 |            765 | 172.31.85.72
+                                              Read 1 live rows and 0 tombstone cells [ReadStage-1] | 2018-07-05 09:16:05.731000 | 172.31.95.127 |            980 | 172.31.85.72
+                                              Read 1 live rows and 0 tombstone cells [ReadStage-1] | 2018-07-05 09:16:05.731000 | 172.31.95.127 |           1038 | 172.31.85.72
+                                                 Enqueuing response to /172.31.85.72 [ReadStage-1] | 2018-07-05 09:16:05.731000 | 172.31.95.127 |           1072 | 172.31.85.72
+ Sending REQUEST_RESPONSE message to /172.31.85.72 [MessagingService-Outgoing-/172.31.85.72-Small] | 2018-07-05 09:16:05.731001 | 172.31.95.127 |           1367 | 172.31.85.72
+                                          Executing single-partition query on tester [ReadStage-1] | 2018-07-05 09:16:05.732000 | 172.31.82.133 |           1543 | 172.31.85.72
+                                  Processing response from /172.31.95.127 [RequestResponseStage-3] | 2018-07-05 09:16:05.732000 |  172.31.85.72 |           7386 | 172.31.85.72
+                                                        Acquiring sstable references [ReadStage-1] | 2018-07-05 09:16:05.732000 | 172.31.82.133 |           1612 | 172.31.85.72
+                                                           Merging memtable contents [ReadStage-1] | 2018-07-05 09:16:05.733000 | 172.31.82.133 |           1646 | 172.31.85.72
+  REQUEST_RESPONSE message received from /172.31.82.133 [MessagingService-Incoming-/172.31.82.133] | 2018-07-05 09:16:05.733000 |  172.31.85.72 |           8446 | 172.31.85.72
+                                              Read 1 live rows and 0 tombstone cells [ReadStage-1] | 2018-07-05 09:16:05.733000 | 172.31.82.133 |           1847 | 172.31.85.72
+                                  Processing response from /172.31.82.133 [RequestResponseStage-2] | 2018-07-05 09:16:05.733000 |  172.31.85.72 |           8610 | 172.31.85.72
+                                              Read 1 live rows and 0 tombstone cells [ReadStage-1] | 2018-07-05 09:16:05.733000 | 172.31.82.133 |           1917 | 172.31.85.72
+                                                   Initiating read-repair [RequestResponseStage-2] | 2018-07-05 09:16:05.733000 |  172.31.85.72 |           8677 | 172.31.85.72
+                                                 Enqueuing response to /172.31.85.72 [ReadStage-1] | 2018-07-05 09:16:05.733001 | 172.31.82.133 |           1965 | 172.31.85.72
+ Sending REQUEST_RESPONSE message to /172.31.85.72 [MessagingService-Outgoing-/172.31.85.72-Small] | 2018-07-05 09:16:05.733001 | 172.31.82.133 |           2213 | 172.31.85.72
+                                                                                  Request complete | 2018-07-05 09:16:05.733119 |  172.31.85.72 |           9119 | 172.31.85.72
+
+
+cqlsh:cycling_alt> CONSISTENCY ALL;
+Consistency level set to ALL.
+cqlsh:cycling_alt> SELECT * FROM cycling_alt.tester WHERE id = 0;
+
+ id | col1 | col2
+----+------+------
+  0 |    0 |    0
+
+(1 rows)
+
+Tracing session: 26463470-8034-11e8-8621-0f4156f9c36b
+
+ activity                                                                                          | timestamp                  | source        | source_elapsed | client
+---------------------------------------------------------------------------------------------------+----------------------------+---------------+----------------+--------------
+                                                                                Execute CQL3 query | 2018-07-05 09:16:50.359000 |  172.31.85.72 |              0 | 172.31.85.72
+              Parsing SELECT * FROM cycling_alt.tester WHERE id = 0; [Native-Transport-Requests-1] | 2018-07-05 09:16:50.360000 |  172.31.85.72 |            357 | 172.31.85.72
+                                                 Preparing statement [Native-Transport-Requests-1] | 2018-07-05 09:16:50.360000 |  172.31.85.72 |            462 | 172.31.85.72
+                                    reading data from /172.31.82.133 [Native-Transport-Requests-1] | 2018-07-05 09:16:50.360000 |  172.31.85.72 |            719 | 172.31.85.72
+                                  reading digest from /172.31.95.127 [Native-Transport-Requests-1] | 2018-07-05 09:16:50.360000 |  172.31.85.72 |            813 | 172.31.85.72
+                                          Executing single-partition query on tester [ReadStage-2] | 2018-07-05 09:16:50.360000 |  172.31.85.72 |            925 | 172.31.85.72
+                                                        Acquiring sstable references [ReadStage-2] | 2018-07-05 09:16:50.360000 |  172.31.85.72 |            968 | 172.31.85.72
+                                                           Merging memtable contents [ReadStage-2] | 2018-07-05 09:16:50.360001 |  172.31.85.72 |            998 | 172.31.85.72
+                                              Read 1 live rows and 0 tombstone cells [ReadStage-2] | 2018-07-05 09:16:50.360001 |  172.31.85.72 |           1160 | 172.31.85.72
+           Sending READ message to /172.31.82.133 [MessagingService-Outgoing-/172.31.82.133-Small] | 2018-07-05 09:16:50.361000 |  172.31.85.72 |           1484 | 172.31.85.72
+           Sending READ message to /172.31.95.127 [MessagingService-Outgoing-/172.31.95.127-Small] | 2018-07-05 09:16:50.361000 |  172.31.85.72 |           1638 | 172.31.85.72
+                READ message received from /172.31.85.72 [MessagingService-Incoming-/172.31.85.72] | 2018-07-05 09:16:50.362000 | 172.31.82.133 |             15 | 172.31.85.72
+                READ message received from /172.31.85.72 [MessagingService-Incoming-/172.31.85.72] | 2018-07-05 09:16:50.362000 | 172.31.95.127 |             14 | 172.31.85.72
+                                          Executing single-partition query on tester [ReadStage-1] | 2018-07-05 09:16:50.362000 | 172.31.95.127 |            488 | 172.31.85.72
+                                                        Acquiring sstable references [ReadStage-1] | 2018-07-05 09:16:50.362000 | 172.31.95.127 |            542 | 172.31.85.72
+                                                           Merging memtable contents [ReadStage-1] | 2018-07-05 09:16:50.362000 | 172.31.95.127 |            581 | 172.31.85.72
+                                          Executing single-partition query on tester [ReadStage-2] | 2018-07-05 09:16:50.363000 | 172.31.82.133 |            905 | 172.31.85.72
+                                              Read 1 live rows and 0 tombstone cells [ReadStage-1] | 2018-07-05 09:16:50.363000 | 172.31.95.127 |            739 | 172.31.85.72
+                                                        Acquiring sstable references [ReadStage-2] | 2018-07-05 09:16:50.363000 | 172.31.82.133 |            967 | 172.31.85.72
+                                              Read 1 live rows and 0 tombstone cells [ReadStage-1] | 2018-07-05 09:16:50.363000 | 172.31.95.127 |            827 | 172.31.85.72
+                                                           Merging memtable contents [ReadStage-2] | 2018-07-05 09:16:50.363000 | 172.31.82.133 |           1003 | 172.31.85.72
+                                                 Enqueuing response to /172.31.85.72 [ReadStage-1] | 2018-07-05 09:16:50.363000 | 172.31.95.127 |            864 | 172.31.85.72
+                                              Read 1 live rows and 0 tombstone cells [ReadStage-2] | 2018-07-05 09:16:50.363000 | 172.31.82.133 |           1137 | 172.31.85.72
+                                                 Enqueuing response to /172.31.85.72 [ReadStage-2] | 2018-07-05 09:16:50.363000 | 172.31.82.133 |           1173 | 172.31.85.72
+  REQUEST_RESPONSE message received from /172.31.95.127 [MessagingService-Incoming-/172.31.95.127] | 2018-07-05 09:16:50.364000 |  172.31.85.72 |           4336 | 172.31.85.72
+ Sending REQUEST_RESPONSE message to /172.31.85.72 [MessagingService-Outgoing-/172.31.85.72-Small] | 2018-07-05 09:16:50.364000 | 172.31.95.127 |           1835 | 172.31.85.72
+                                  Processing response from /172.31.95.127 [RequestResponseStage-3] | 2018-07-05 09:16:50.364000 |  172.31.85.72 |           4442 | 172.31.85.72
+  REQUEST_RESPONSE message received from /172.31.82.133 [MessagingService-Incoming-/172.31.82.133] | 2018-07-05 09:16:50.364000 |  172.31.85.72 |           4713 | 172.31.85.72
+                                  Processing response from /172.31.82.133 [RequestResponseStage-3] | 2018-07-05 09:16:50.364000 |  172.31.85.72 |           4853 | 172.31.85.72
+ Sending REQUEST_RESPONSE message to /172.31.85.72 [MessagingService-Outgoing-/172.31.85.72-Small] | 2018-07-05 09:16:50.365000 | 172.31.82.133 |           2324 | 172.31.85.72
+                                                                                  Request complete | 2018-07-05 09:16:50.364168 |  172.31.85.72 |           5168 | 172.31.85.72
+
+
