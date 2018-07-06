@@ -524,6 +524,176 @@ At table level
 Default is 0 - then it lushes in shutdown, flush, and when memtable memory space becomes full
 Change it to enable flush at that desired periodicity
 
+===========================
+MONITORING
+===========================
+Datadog, Prometheus+Grafana
+
+- CASSANDRA MONITORING COMMANDS
+
+# nodetool proxyhistograms --> shows the network statistics in a cluster.
+# nodetool proxyhistograms
+proxy histograms
+Percentile       Read Latency      Write Latency      Range Latency   CAS Read Latency  CAS Write Latency View Write Latency
+                     (micros)           (micros)           (micros)           (micros)           (micros)           (micros)
+50%                      0.00               0.00               0.00               0.00               0.00               0.00
+75%                      0.00               0.00               0.00               0.00               0.00               0.00
+95%                      0.00               0.00               0.00               0.00               0.00               0.00
+98%                      0.00               0.00               0.00               0.00               0.00               0.00
+99%                      0.00               0.00               0.00               0.00               0.00               0.00
+Min                      0.00               0.00               0.00               0.00               0.00               0.00
+Max                      0.00               0.00               0.00               0.00               0.00               0.00
+
+# nodetool tablestats
+Total number of tables: 47
+----------------
+----------------
+Keyspace : cyclingx
+	Read Count: 0
+	Read Latency: NaN ms
+	Write Count: 0
+	Write Latency: NaN ms
+	Pending Flushes: 0
+		Table: cyclist_name
+		SSTable count: 0
+		Space used (live): 0
+		Space used (total): 0
+		Space used by snapshots (total): 0
+		Off heap memory used (total): 0
+		SSTable Compression Ratio: -1.0
+		Number of partitions (estimate): 0
+		Memtable cell count: 0
+		Memtable data size: 0
+		Memtable off heap memory used: 0
+		Memtable switch count: 0
+		Local read count: 0
+		Local read latency: NaN ms
+		Local write count: 0
+		Local write latency: NaN ms
+		Pending flushes: 0
+		Percent repaired: 100.0
+		Bloom filter false positives: 0
+		Bloom filter false ratio: 0.00000
+		Bloom filter space used: 0
+		Bloom filter off heap memory used: 0
+		Index summary off heap memory used: 0
+		Compression metadata off heap memory used: 0
+		Compacted partition minimum bytes: 0
+		Compacted partition maximum bytes: 0
+		Compacted partition mean bytes: 0
+		Average live cells per slice (last five minutes): NaN
+		Maximum live cells per slice (last five minutes): 0
+		Average tombstones per slice (last five minutes): NaN
+		Maximum tombstones per slice (last five minutes): 0
+		Dropped Mutations: 0
+		
+# nodetool netstats -H
+Mode: NORMAL
+Not sending any streams.
+Read Repair Statistics:
+Attempted: 0
+Mismatch (Blocking): 0
+Mismatch (Background): 0
+Pool Name                    Active   Pending      Completed   Dropped
+Large messages                  n/a         0              0         0
+Small messages                  n/a         0             10         0
+Gossip messages                 n/a         0          34760         0
+
+# nodetool tablehistograms simplex songs
+simplex/songs histograms
+Percentile  SSTables     Write Latency      Read Latency    Partition Size        Cell Count
+                              (micros)          (micros)           (bytes)                  
+50%             0.00              0.00              0.00               124                 5
+75%             0.00              0.00              0.00               124                 5
+95%             0.00              0.00              0.00               124                 5
+98%             0.00              0.00              0.00               124                 5
+99%             0.00              0.00              0.00               124                 5
+Min             0.00              0.00              0.00               104                 5
+Max             0.00              0.00              0.00               124                 5
+
+# nodetool status
+Datacenter: dc1
+===============
+Status=Up/Down
+|/ State=Normal/Leaving/Joining/Moving
+--  Address        Load       Tokens       Owns    Host ID                               Rack
+UN  172.31.90.156  10.76 MiB  256          ?       6570d39b-3af4-4d5a-9c21-ab694f563f4b  rack1
+UN  172.31.92.87   10.84 MiB  256          ?       8f2f9d78-a33c-47f9-90b5-811d9670d410  rack1
+Datacenter: dc2
+===============
+Status=Up/Down
+|/ State=Normal/Leaving/Joining/Moving
+--  Address        Load       Tokens       Owns    Host ID                               Rack
+UN  172.31.95.127  10.64 MiB  256          ?       66002181-ba36-4cfe-9b3a-d165139440ff  rack1
+UN  172.31.85.72   10.85 MiB  256          ?       b23352ce-bd97-4713-983a-a0715620a4d7  rack1
+UN  172.31.82.133  10.81 MiB  256          ?       6e78e72c-b585-4d9a-861f-62d4dd693a31  rack1
+UN  172.31.84.180  11.22 MiB  256          ?       b8b5514e-6a64-45b8-a150-b700769063ab  rack1
+
+Note: Non-system keyspaces don't have the same replication settings, effective ownership information is meaningless
+
+# nodetool info
+ID                     : b23352ce-bd97-4713-983a-a0715620a4d7
+Gossip active          : true
+Thrift active          : false
+Native Transport active: true
+Load                   : 10.85 MiB
+Generation No          : 1530857131
+Uptime (seconds)       : 10061
+Heap Memory (MB)       : 107.76 / 990.00
+Off Heap Memory (MB)   : 0.25
+Data Center            : dc2
+Rack                   : rack1
+Exceptions             : 0
+Key Cache              : entries 58, size 4.59 KiB, capacity 49 MiB, 79 hits, 143 requests, 0.552 recent hit rate, 14400 save period in seconds
+Row Cache              : entries 0, size 0 bytes, capacity 0 bytes, 0 hits, 0 requests, NaN recent hit rate, 0 save period in seconds
+Counter Cache          : entries 0, size 0 bytes, capacity 24 MiB, 0 hits, 0 requests, NaN recent hit rate, 7200 save period in seconds
+Chunk Cache            : entries 10, size 640 KiB, capacity 215 MiB, 64 misses, 234 requests, 0.726 recent hit rate, NaN microseconds miss latency
+Percent Repaired       : 0.03129704148589808%
+Token                  : (invoke with -T/--tokens to see all 256 tokens)
+
+# nodetool tpstats (Thread Pools Statistics)
+# nodetool tpstats
+Pool Name                         Active   Pending      Completed   Blocked  All time blocked
+ReadStage                              0         0              6         0                 0
+MiscStage                              0         0              0         0                 0
+CompactionExecutor                     0         0           7575         0                 0
+MutationStage                          0         0             65         0                 0
+MemtableReclaimMemory                  0         0             27         0                 0
+PendingRangeCalculator                 0         0              6         0                 0
+GossipStage                            0         0          32683         0                 0
+SecondaryIndexManagement               0         0              0         0                 0
+HintsDispatcher                        0         0              0         0                 0
+RequestResponseStage                   0         0              5         0                 0
+Native-Transport-Requests              0         0              0         0                 0
+ReadRepairStage                        0         0              0         0                 0
+CounterMutationStage                   0         0              0         0                 0
+MigrationStage                         0         0              0         0                 0
+MemtablePostFlush                      0         0             28         0                 0
+PerDiskMemtableFlushWriter_0           0         0             27         0                 0
+ValidationExecutor                     0         0              0         0                 0
+Sampler                                0         0              0         0                 0
+MemtableFlushWriter                    0         0             27         0                 0
+InternalResponseStage                  0         0              0         0                 0
+ViewMutationStage                      0         0              0         0                 0
+AntiEntropyStage                       0         0              0         0                 0
+CacheCleanupExecutor                   0         0              0         0                 0
+
+Message type           Dropped
+READ                         0
+RANGE_SLICE                  0
+_TRACE                       0
+HINT                         0
+MUTATION                     0
+COUNTER_MUTATION             0
+BATCH_STORE                  0
+BATCH_REMOVE                 0
+REQUEST_RESPONSE             0
+PAGED_RANGE                  0
+READ_REPAIR                  0
+
+
+
+
 
 
 == ********* == == ********* == == ********* == == ********* == == ********* == == ********* == 
