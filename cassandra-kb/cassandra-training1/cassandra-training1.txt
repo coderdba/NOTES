@@ -387,6 +387,7 @@ Partition key - for distributing by needed category
 
 Clustering key - for 'order by'
 - It further places data in order in a given partition
+- Clustering  keys  are  responsible  for  sorting  data  within  a  partition. 
 
 Syntax quirks:
 PRIMARY KEY (a) --> a is the PK as well as partition-key
@@ -398,6 +399,19 @@ In PRIMARY KEY ((a, b), c,d,e) -
 - Default ordering of c,d,e is DESC order
 - To customize ordering - add this in create table - WITH CLUSTERING ORDER BY (c desc, d asc, d asc)
 
+CAUTION 1:  
+PK becomes partitioning key or a combination of partitioning key and clustering key
+And, it is geared towards lookup speed by paritioning and ordering, than maintaining uniqueness 
+For example, category in a 'products' table can be a primary key where lookup by 'category' is main thing to achieve
+- In such table it is possible to have duplicates on 'product id'
+
+CAUTION 2:
+When a key is set, then queries based on non-key columns will not be fast
+For such queries, it is advised to create a second table with SAME DATA - but keys for that query
+--> This means duplication of data
+- but that is to be expected - as Cassandra is not to be used as a single source of truth like ACID RDBMS
+
+EAMPLES OF KEYS:
 Example: (bad example)
 Product table - make productId as parition key (and PK)
 - Uniformly spreads the table
