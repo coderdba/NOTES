@@ -60,6 +60,31 @@ MAC ALGORITHMS
 ------------------
 https://www.ssh.com/manuals/server-zos-admin/64/ConfiguringMACalgorithms.html
 
+
+
+In /etc/ssh/sshd_config add/modify as follows.
+(Most probably you can leave /etc/ssh/ssh_config without adding these lines – see test and caution sections below)
+ 
+For kex_algorithms add this line (or if a line already exists with ‘KexAlgorithms’ keyword, add the additional algorithm with a comma)
+KexAlgorithms diffie-hellman-group-exchange-sha256
+ 
+For mac_algoritms add a new line, or add the new algorithm with a comma:
+sshd_config:MACs hmac-sha2-256,hmac-sha1
+
+Restart sshd:
+After modifying sshd_config do a ‘service sshd restart’
+ 
+Test:
+If kex algorithm & MAC of client and server does not match, then ssh/sftp connections fail.
+So, once you modify these, keep the window open,
+and try logging on to the machine using putty in a different session
+try logging on from a different machine using ssh
+à if these longs fail, then the putty/other machine’s ssh client may not have the right ‘kex’ – then we have to figure out what to do – because ssh/sftp from other machines also may fail
+ 
+Caution:
+Different KEX & MAC between client and server can cause issues – HOWEVER, if KEX and MAC are NOT ENTERED in client (ssh_config) then connection from client to server work
+So, check if that affects traffic between nodes of RAC cluster, cell to Dom0/DomU, putty and so on
+
 =====================================
 TEST - WHICH PROTOCOL, CIPHERS ETC
 =====================================
