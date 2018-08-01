@@ -144,5 +144,24 @@ NOTE: When messages are typed in, you may see errors as the following:
    https://stackoverflow.com/questions/35788697/leader-not-available-kafka-in-console-producer
    port = 9092
    advertised.host.name = localhost 
+   
+$ bin/kafka-console-producer.sh --broker-list localhost:9092 --topic topic1
+aaa --> this is a message typed in
 
+- Start a consumer
+Command: bin/kafka-console-consumer.sh --zookeeper localhost:2181 —topic topic-name --from-beginning --blacklist topicx
+NOTE: Got error "Exactly one of whitelist/blacklist/topic is required." when --blacklist was not used
+      Therefore, added a dummy "--blacklist topicx"
+      
+$ bin/kafka-console-consumer.sh --zookeeper localhost:2181 —topic topic1 --from-beginning --blacklist topicx
+aaa -->> this was the message sent to producer
 
+- Type in another message in the producer console:
+$ bin/kafka-console-producer.sh --broker-list localhost:9092 --topic topic1
+aaa --> previously typed message
+bbb --> newly typed message
+--> Now, go and look in the consumer console and you will find bbb has appeared there
+(no need to re-type the consumer.sh command)
+$ bin/kafka-console-consumer.sh --zookeeper localhost:2181 —topic topic1 --from-beginning --blacklist topicx
+aaa
+bbb
