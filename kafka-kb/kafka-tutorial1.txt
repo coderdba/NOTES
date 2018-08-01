@@ -80,6 +80,17 @@ $ cd opt
 $ tar -zxf ~/Downloads/kafka_2.10-0.10.0.0.tgz 
 $ cd kafka_2.10-0.10.0.0
 
+- Add the following lines to config/server.properties
+Otherwise, you get errors when messages are sent (see producer section further below):
+
+WARN Error while fetching metadata with correlation id 39 : 
+
+To avoid them, enter the two lines in server.properties as in this site:
+https://stackoverflow.com/questions/35788697/leader-not-available-kafka-in-console-producer
+
+port = 9092
+advertised.host.name = localhost 
+
 - Start Kafka
 NOTE: Before this, start zookeeper - FROM KAFKA BIN FOLDER - NOT ZOOKEEPER BIN FOLDER
 $ bin/zookeeper-server-start.sh config/zookeeper.properties
@@ -120,5 +131,18 @@ Created topic "topic1".
 - Verify
 $ bin/kafka-topics.sh --list --zookeeper localhost:2181
 topic1
+
+- Start Producer to Send Messages
+Command: bin/kafka-console-producer.sh --broker-list localhost:9092 --topic topic-name
+
+$ bin/kafka-console-producer.sh --broker-list localhost:9092 --topic topic1
+<< This stays foreground and you can type in messages as stdin >>
+NOTE: When messages are typed in, you may see errors as the following:
+   WARN Error while fetching metadata with correlation id 39 : 
+
+   To avoid them, enter the two lines in server.properties as in this site:
+   https://stackoverflow.com/questions/35788697/leader-not-available-kafka-in-console-producer
+   port = 9092
+   advertised.host.name = localhost 
 
 
