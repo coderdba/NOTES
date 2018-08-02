@@ -1,0 +1,42 @@
+https://stackoverflow.com/questions/5757189/how-do-i-run-java-class-files
+
+java -classpath /path/to/jars;/path/to/dependency-jars <packageName>.<MainClassName>
+$ java com.foo.app.App
+
+If your class doesn't have any package name defined, simply run as: java App.
+
+If you've any other jar dependencies, make sure you specified your classpath parameter either with -cp/-classpath 
+or using CLASSPATH variable which points to the folder with your jar/war/ear/zip/class files. 
+So on Linux you can prefix the command with: CLASSPATH=/path/to/jars, on Windows you need to add the folder 
+into system variable. If not set, the user class path consists of the current directory (.).
+
+Practical example
+
+Given we've created sample project using Maven as:
+
+$ mvn archetype:generate -DgroupId=com.foo.app -DartifactId=my-app -DarchetypeArtifactId=maven-archetype-quickstart -DinteractiveMode=false 
+
+and we've compiled our project by mvn compile in our my-app/ dir, it'll generate our class file is in  target/classes/com/foo/app/App.class.
+
+To run it, we can either specify class path via -cp or going to it directly, check examples below:
+
+$ find . -name "*.class"
+./target/classes/com/foo/app/App.class
+$ CLASSPATH=target/classes/ java com.foo.app.App
+Hello World!
+$ java -cp target/classes com.foo.app.App
+Hello World!
+$ java -classpath .:/path/to/other-jars:target/classes com.foo.app.App
+Hello World!
+$ cd target/classes && java com.foo.app.App
+Hello World!
+To double check your class and package name, you can use Java class file disassembler tool, e.g.:
+
+$ javap target/classes/com/foo/app/App.class
+Compiled from "App.java"
+public class com.foo.app.App {
+  public com.foo.app.App();
+  public static void main(java.lang.String[]);
+}
+Note: javap won't work if the compiled file has been obfuscated.
+
