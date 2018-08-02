@@ -1,0 +1,117 @@
+==================================
+ARTIFACTORY OPERATION
+==================================
+
+============
+SETUP JFROG (optional)
+============
+NOTE: Jfrog or curl can be used for upload/download - curl can be used depending upon whether API's are enabled
+
+- INSTALL
+Linux install:
+Download jfrog client (FOR LINUX) from https://bintray.com/jfrog/jfrog-cli-go/jfrog-cli-linux-amd64
+Copy it to a directory, say /root/artifactory
+
+Mac install:
+brew install jfrog-cli-go -> command to run in mack
+
+- INITIAL SETUP
+Artifactory URL - 
+Secure network - https://artifactorysecure.mycompany.com/artifactory/
+Core network - https://artifactory.mycompany.com/artifactory/
+
+$ jfrog rt config
+Artifactory server ID [artifactorylx1001]:
+Artifactory URL [https://artifactory.mycompany.com/artifactory/]:
+API key (leave empty for basic authentication):
+User [username]:
+Password: [Info] Encrypting password...
+
+NOW, YOUR PASSWORD IS KNOWN TO JFROG - LOOKS LIKE IT WONT ASK AGAIN UNTIL YOUR LAPTOP RESTARTS
+
+==================================
+UPLOAD 
+==================================
+
+-------------------------
+UPLOAD USING JFROG
+-------------------------
+https://www.jfrog.com/confluence/display/CLI/CLI+for+JFrog+Artifactory#CLIforJFrogArtifactory-UploadingFiles
+
+$  jfrog rt u README.txt oracle/Patching
+[Info] [Thread 2] Uploading artifact: README.txt
+ 
+{
+  "status": "success",
+  "totals": {
+    "success": 1,
+    "failure": 0
+  }
+}
+
+-------------------------
+UPLOAD USING CURL
+-------------------------
+NOTE: 
+Syntax:
+curl -k -X PUT https://artifactory.mycompany.com/artifactory/<YourRepository>/<FolderStructureIfAny>/<Filename> --upload-file <LocalFilePath/LocalFilename> -u <YourUserID>
+ 
+Example:
+curl -k -X PUT https://artifactorysecure.target.com/artifactory/oracle/Patching/ --upload-file ./testfile.txt -u myusername
+
+-- MESSAGES:
+
+SUCCESS MESSAGE IN CORE SEGMENT (laptop):
+Enter host password for user 'myusername':
+{
+  "repo" : "oracle",
+  "path" : "/Patching/testfile.txt",
+  "created" : "2018-08-02T05:36:33.317Z",
+  "createdBy" : "myusername",
+  "downloadUri" : "https://artifactory.mycompany.com/artifactory/oracle/Patching/testfile.txt",
+  "mimeType" : "text/plain",
+  "size" : "0",
+  "checksums" : {
+    "sha1" : "sdfsdfsfddsfsdfsf",
+    "md5" : "sdfsdfsdfsdfsdfsdfsdfs",
+    "sha256" : "sdfsfsfsdfsdfsdfds"
+  },
+  "originalChecksums" : {
+    "sha256" : "fsffsdfsdfsdfsd"
+  },
+  "uri" : "https://artifactory.mycompany.com/artifactory/oracle/Patching/testfile.txt"
+}
+
+ERROR IN SECURE ZONE:
+Enter host password for user 'myusername':
+{
+  "errors" : [ {
+    "status" : 401,
+    "message" : "Artifactory configured to accept only encrypted passwords but received a clear text password, getting the encrypted password can be done via the WebUI."
+  } ]
+}[
+
+==================================
+DOWNLOAD
+==================================
+-------------------------
+DOWNLOAD USING CURL
+-------------------------
+In non-secure environments:
+$ curl -k -O https://artifactory.mycompany.com/artifactory/oracle/Patches/README.txt
+
+In secure environments:
+$ curl -k -O https://artifactorysecure.mycompany.com/artifactory/oracle/Patches/README.txt
+
+-------------------------
+DOWNLOAD USING JFROG
+-------------------------
+https://www.jfrog.com/confluence/display/CLI/CLI+for+JFrog+Artifactory#CLIforJFrogArtifactory-DownloadingFiles
+
+$ jfrog rt dl my-local-repo/cool-froggy.zip
+
+$ jfrog rt dl oracle/Patching/README.txt
+
+==================================
+LIST CONTENTS
+==================================
