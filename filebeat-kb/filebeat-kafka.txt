@@ -5,3 +5,34 @@ https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-configuration.ht
 
 https://www.elastic.co/guide/en/beats/filebeat/master/kafka-output.html
 https://discuss.elastic.co/t/filebeat-send-data-to-kafka/46620
+
+
+===============
+===============
+- type: log
+  enabled: true
+  paths:
+     - /tmp/testfile.txt
+    #- /var/log/*.log
+    #- c:\programdata\elasticsearch\logs\*
+
+setup.kibana:
+  host: "localhost:5601"
+
+output.kafka:
+  # initial brokers for reading cluster metadata
+  hosts: ["localhost:9092", "kafka2:9092", "kafka3:9092"]
+
+  # message topic selection + partitioning
+  #topic: '%{[fields.log_topic]}'
+  topic: 'topic2'
+  partition.round_robin:
+    reachable_only: false
+
+  required_acks: 1
+  compression: gzip
+  max_message_bytes: 1000000
+  
+===========
+===========
+./filebeat -e -c filebeat.yml -d "publish"
