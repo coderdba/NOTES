@@ -1,0 +1,1 @@
+jfrog rt config
