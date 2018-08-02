@@ -1,0 +1,48 @@
+https://stackoverflow.com/questions/16222748/building-a-fat-jar-using-maven#16222971
+
+Add following plugin to your pom.xml The latest version can be found at 
+https://mvnrepository.com/artifact/org.apache.maven.plugins/maven-assembly-plugin
+
+      ... 
+      <build>
+      <plugins>
+      <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-assembly-plugin</artifactId>
+            <version>CHOOSE LATEST VERSION HERE</version>
+            <configuration>
+                <descriptorRefs>
+                    <descriptorRef>jar-with-dependencies</descriptorRef>
+                </descriptorRefs>
+
+            </configuration>
+            <executions>
+                <execution>
+                    <id>assemble-all</id>
+                    <phase>package</phase>
+                    <goals>
+                        <goal>single</goal>
+                    </goals>
+                </execution>
+            </executions>
+        </plugin>
+        </plugins>
+        </build>
+After configuring this plug-in, running mvn package will produce two jars: one containing just the project classes, 
+and a second fat jar with all dependencies with the suffix "-jar-with-dependencies".
+
+
+if you want correct classpath setup at runtime then also add following plugin
+
+    <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <configuration>
+            <archive>
+                <manifest>
+                    <addClasspath>true</addClasspath>
+                    <mainClass>fully.qualified.MainClass</mainClass>
+                </manifest>
+            </archive>
+        </configuration>
+    </plugin>
