@@ -15,9 +15,24 @@ To set up a Yum repository, follow these steps:
 yum install createrepo
 
 - Copy all packages that you want to have in your repository into one directory, such as /mnt/local_repo/
+NOTE:  If you add, remove RPMs in this directory then do 
 
 - Change to this directory and run the following command:
 createrepo --database /mnt/local_repo
+or
+createrepo -v /patches/yumrepo
+
+# createrepo --database /patches/yumrepo
+1/1 - auditbeat-6.2.4-x86_64.rpm                                                
+Saving Primary metadata
+Saving file lists metadata
+Saving other metadata
+
+# createrepo -v /patches/yumrepo
+1/1 - auditbeat-6.2.4-x86_64.rpm
+Saving Primary metadata
+Saving file lists metadata
+Saving other metadata
 
 - This creates the necessary metadata for your Yum repository, as well as the sqlite database for speeding up yum operations
 It will create a subdirectory 'repodata' with files as follows:
@@ -31,9 +46,33 @@ It will create a subdirectory 'repodata' with files as follows:
 
 - When finished, add the repository to your yum config, e.g put the following to /etc/yum.repos.d/local.repo
 
-[local]
+[localrepo]
 name=Local Repository Demo
 baseurl=file:///mnt/local_repo 
 enabled=1
 gpgcheck=0
 protect=1
+
+- Optional??
+yum clean all
+yum update
+
+- Verify
+# yum repolist
+Loaded plugins: downloadonly
+Excluding Packages in global exclude list
+Finished
+repo id                                                                       repo name                                                                                             status
+localrepo                                                                     Local Repository Demo                                                                                   0
+ovm3_latest                                                                   Oracle VM Server 3 Latest (x86_64)                                                                    849
+repolist: 849
+
+- To install a package SPECIFICALLY from the local repo
+
+yum install --disablerepo="*" --enablerepo="localrepo" <package name>
+
+# yum install --disablerepo="*" --enablerepo="localrepo" auditbeat
+
+If the mention of 'auditbeat' or other package errors, try full package name or wildcard
+auditbeat-6.2.4-x86_64.rpm
+auditbeat*
