@@ -1,15 +1,44 @@
 ====================================================================================
 VIRTUALBOX MACHINE FOR RAC AND GENERAL PURPOSE - AND PACKAGE AS VAGRANT BOX
 ====================================================================================
-
+----------------
 Role separation:
+----------------
 https://oracle-base.com/articles/12c/administrative-privileges-and-job-role-separation-12cr1
 https://docs.oracle.com/database/121/CWLIN/usrgrps.htm
 
+The secondary groups must include the OSASM group, whose members are granted the SYSASM privilege to administer the 
+Oracle ASM instance. You can designate a unique group for the SYSASM system privilege, separate from 
+database administrator groups, or you can designate one group as the OSASM and OSDBA group, so that members of 
+that group are granted the SYSASM and SYSDBA privilege to grant system privileges to administer both the 
+Oracle ASM instances and Oracle Database instances. In code examples, this group is asmadmin.
+
+If you are creating this user to own both Oracle Grid Infrastructure and an Oracle Database installation, then this user 
+must have the OSDBA for ASM group as a secondary group. In code examples, this group name is asmdba. Members of the OSDBA 
+for ASM group are granted access to Oracle ASM storage. You must create an OSDBA for ASM group if you plan to have multiple
+databases accessing Oracle ASM storage, or you must use the same group as the OSDBA for all databases, and for the OSDBA for 
+ASM group. You are also prompted during installation to assign operating system groups for several other Oracle Database 
+system administrative privileges.
+
+Use the usermod command to change existing user ID numbers and groups.
+
+For example:
+
+# id oracle
+uid=1101(oracle) gid=1000(oinstall) groups=1200(dba)
+# /usr/sbin/usermod -u 54421 -g 54331 -G 54321,54322,54327 oracle
+# id oracle
+uid=54321(oracle) gid=54321(oinstall) groups=54321(oinstall),54322(dba),54327 (asmdba)
+
+--------------------
+Removing hard drive
+--------------------
 vboxmanage list hdds
 vboxmanage closemedium disk 69c2aec6-551e-4863-8eae-7f4af8a47217 --delete
 
+----------------------------------------------------------------
 Disabling Kdump - if forgot to disable during install
+----------------------------------------------------------------
 https://www.tuxfixer.com/manage-and-configure-kdump-service-on-centos-7-red-hat-7/#more-2284
 Check kdump service status:
 [root@tuxfixer ~]# systemctl status kdump
