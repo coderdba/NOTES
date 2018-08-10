@@ -7,6 +7,68 @@ Role separation:
 https://oracle-base.com/articles/12c/administrative-privileges-and-job-role-separation-12cr1
 https://docs.oracle.com/database/121/CWLIN/usrgrps.htm
 
+DETAIL1
+
+6.1.8.2 Standard Oracle Database Groups for Job Role Separation
+The following is a list of standard Oracle Database groups. These groups provide operating system authentication for database administration system privileges:
+
+OSDBA group (typically, dba)
+
+You must create this group the first time you install Oracle Database software on the system. This group identifies operating system user accounts that have database administrative privileges (the SYSDBA privilege). If you do not create separate OSDBA, OSOPER and OSASM groups for the Oracle ASM instance, then operating system user accounts that have the SYSOPER and SYSASM privileges must be members of this group. The name used for this group in Oracle code examples is dba. If you do not designate a separate group as the OSASM group, then the OSDBA group you define is also by default the OSASM group.
+
+To specify a group name other than the default dba group, you must either choose the Advanced installation type to install the software, or you start Oracle Universal Installer (OUI) as a user that is not a member of this group. If you start OUI with a user that is not a member of a group called dba, then OUI prompts you to specify the name of the OSDBA group.
+
+Members of the OSDBA group formerly were granted SYSASM privilege on Oracle ASM instances, including mounting and dismounting disk groups. This privileges grant is removed with Oracle Grid Infrastructure 11g Release 2 (11.2), if different operating system groups are designated as the OSDBA and OSASM groups. If the same group is used for both OSDBA and OSASM, then the privileges are retained.
+
+OSOPER group for Oracle Database (typically, oper)
+
+You can choose to create this group if you want a separate group of operating system users to have a limited set of database administrative privileges for starting up and shutting down the database (the SYSOPER privilege).
+
+6.1.8.3 Extended Oracle Database Groups for Job Role Separation
+Starting with Oracle Database 12c Release 1 (12.1), in addition to the OSOPER privileges to start up and shut down the database, you can create new administrative privileges that are more task-specific and less privileged than the OSDBA/SYSDBA system privileges to support specific administrative privileges tasks required for everyday database operation Users granted these system privileges are also authenticated through operating system group membership.
+
+You do not have to create these specific group names, but during installation you are prompted to provide operating system groups whose members are granted access to these system privileges. You can assign the same group to provide authentication for these privileges, but Oracle recommends that you provide a unique group to designate each privilege.
+
+The OSDBA subset job role separation privileges and groups consist of the following:
+
+OSBACKUPDBA group for Oracle Database (typically, backupdba)
+
+Create this group if you want a separate group of operating system users to have a limited set of database backup and recovery related administrative privileges (the SYSBACKUP privilege).
+
+OSDGDBA group for Oracle Data Guard (typically, dgdba)
+
+Create this group if you want a separate group of operating system users to have a limited set of privileges to administer and monitor Oracle Data Guard (the SYSDG privilege).
+
+OSKMDBA group for encryption key management (typically, kmdba)
+
+Create this group if you want a separate group of operating sytem users to have a limited set of privileges for encryption key management such as Oracle Wallet Manager management (the SYSKM privilege).
+
+6.1.8.4 Oracle ASM Groups for Job Role Separation
+The SYSASM, SYSOPER for ASM, and SYSDBA for ASM system privileges enables the separation of the Oracle ASM storage administration privileges from SYSDBA. Members of operating systems you designate are granted the system privileges for these roles. Select separate operating system groups as the operating system authentication groups for privileges on Oracle ASM.
+
+Before you start OUI, create the following OS groups and users for Oracle ASM, whose members are granted the corresponding SYS privileges:
+
+OSASM Group for Oracle ASM Administration (typically asmadmin)
+
+Create this group as a separate group if you want to have separate administration privileges groups for Oracle ASM and Oracle Database administrators. Members of this group are granted the SYSASM system privileges to administer Oracle ASM. In Oracle documentation, the operating system group whose members are granted privileges is called the OSASM group, and in code examples, where there is a group specifically created to grant this privilege, it is referred to as asmadmin.
+
+Oracle ASM can support multiple databases. If you have multiple databases on your system, and use multiple OSDBA groups so that you can provide separate SYSDBA privileges for each database, then you should create a group whose members are granted the OSASM/SYSASM administrative privileges, and create a grid infrastructure user (grid) that does not own a database installation, so that you separate Oracle Grid Infrastructure SYSASM administrative privileges from a database administrative privileges group.
+
+Members of the OSASM group can use SQL to connect to an Oracle ASM instance as SYSASM using operating system authentication. The SYSASM privileges permit mounting and dismounting disk groups, and other storage administration tasks. SYSASM privileges provide no access privileges on an RDBMS instance.
+
+OSDBA for ASM Database Administrator group for ASM, typically asmdba)
+
+Members of the ASM Database Administrator group (OSDBA for ASM) are granted read and write access to files managed by Oracle ASM. The Oracle Grid Infrastructure installation owner and all Oracle Database software owners must be a member of this group, and all users with OSDBA membership on databases that have access to the files managed by Oracle ASM must be members of the OSDBA group for ASM.
+
+OSOPER for ASM Group for ASM Operators (OSOPER for ASM, typically asmoper)
+
+This is an optional group. Create this group if you want a separate group of operating system users to have a limited set of Oracle ASM instance administrative privileges (the SYSOPER for ASM privilege), including starting up and stopping the Oracle ASM instance. By default, members of the OSASM group also have all privileges granted by the SYSOPER for ASM privilege.
+
+To use the Oracle ASM Operator group to create an Oracle ASM administrator group with fewer privileges than the default asmadmin group, then you must choose the Advanced installation type to install the software, In this case, OUI prompts you to specify the name of this group. In code examples, this group is asmoper.
+
+
+DETAIL2
+
 The secondary groups must include the OSASM group, whose members are granted the SYSASM privilege to administer the 
 Oracle ASM instance. You can designate a unique group for the SYSASM system privilege, separate from 
 database administrator groups, or you can designate one group as the OSASM and OSDBA group, so that members of 
