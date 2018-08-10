@@ -1,0 +1,494 @@
+==================================================
+       ORACLE RAC 12.2 ON VIRTUALBOX VMs
+==================================================
+
+https://oracle-base.com/articles/12c/oracle-db-12cr2-rac-installation-on-oracle-linux-6-using-virtualbox
+https://docs.oracle.com/pls/topic/choose?ctx=db122&ids=CWLIN+CWSOL+CWAIX+CWHPX+CWWIN
+--> platform specific
+
+https://emilianofusaglia.net/2017/03/06/installing-oracle-grid-infrastrucure-12c-r2/
+12.2 Grid Infrastructure and Database Upgrade steps for Exadata Database Machine running 11.2.0.3 and later on Oracle Linux (Doc ID 2111010.1)
+
+https://docs.oracle.com/en/database/oracle/oracle-database/12.2/tdprc/installing-oracle-grid.html#GUID-986CA7AA-DA09-4261-866A-D08CD7A3E689
+
+Silent install:
+https://pierreforstmanndotcom.wordpress.com/2017/03/04/grid-infrastructure-12-2-0-1-silent-installation-on-oracle-linux-7/
+
+Deinstall:
+https://community.toadworld.com/platforms/oracle/b/weblog/archive/2017/08/08/deinstall-oracle-grid-infrastructure-12-2-failed-installation
+
+Deinstall old version:
+https://jameshuangsj.wordpress.com/2018/02/12/deinstall-12-1-0-2-grid-infrastructure-home-after-being-upgraded-to-12-2-0-1/
+
+=========================
+GRID INSTALL
+=========================
+
+MEMORY REQUIRED
+8GB min - but 6gb gave only a warning during gridsetup.sh
+
+ASM DISK REQUIRED
+Min 40GB
+Cookbook vagrantfile does not have that sized disks single or total all disks
+Added one asm0 disk of 40gb to Vagrantfile
+
+Once vagrant up is complete, configure the disk as asmdisk:
+
+[root@rac1n1 proc]# blockdev --getsize64 /dev/sdb
+42949672960
+
+[root@rac1n1 proc]# fdisk /dev/sdb
+
+Command (m for help): p
+
+Disk /dev/sdb: 42.9 GB, 42949672960 bytes, 83886080 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disk label type: dos
+Disk identifier: 0xcc1201e7
+
+   Device Boot      Start         End      Blocks   Id  System
+
+Command (m for help): n
+Partition type:
+   p   primary (0 primary, 0 extended, 4 free)
+   e   extended
+Select (default p): p
+Partition number (1-4, default 1): 
+First sector (2048-83886079, default 2048): 
+Using default value 2048
+Last sector, +sectors or +size{K,M,G} (2048-83886079, default 83886079): 
+Using default value 83886079
+Partition 1 of type Linux and of size 40 GiB is set
+
+Command (m for help): w
+The partition table has been altered!
+
+# oracleasm createdisk DISK00 /dev/sdb1
+
+# oracleasm listdisks
+DISK00 --> the newly added one
+DISK01
+DISK02
+DISK03
+DISK04
+DISK05
+
+On node2:
+# oracleasm scandisks
+
+# oracleasm listdisks
+DISK00 --> the newly added one
+DISK01
+DISK02
+DISK03
+DISK04
+DISK05
+
+
+CREATE USERS
+# id oracle
+uid=54321(oracle) gid=54321(oinstall) groups=54321(oinstall),54322(dba),54334(asmdba)
+
+# id grid
+uid=54323(grid) gid=54321(oinstall) groups=54321(oinstall),54333(asmadmin),54334(asmdba)
+
+groupadd -g 54333 asmdba
+groupadd -g 54334 asmadmin
+
+useradd -u 54323 -g oinstall -G asmdba,asmadmin grid
+
+
+CREATE DIRECTORIES
+/u01 - oracle:oinstall, 755
+/u01/app - oracle:oinstall, 777
+
+/u01/app/gridbase - grid:oinstall, 755
+/u01/app/gridhome12cr2 - grid:oinstall, 755
+/u01/app/oracle - oracle:oinstall, 755
+/u01/app/oraInventory - grid:oinstall, 775
+
+# ls -ld /u01/app/*
+drwxr-xr-x. 2 grid   oinstall 6 Aug  9 22:28 /u01/app/gridbase
+drwxr-xr-x. 2 grid   oinstall 6 Aug  9 22:28 /u01/app/gridhome12cr2
+drwxr-xr-x. 2 oracle oinstall 6 Aug  9 22:28 /u01/app/oracle
+drwxrwxr-x. 2 grid   oinstall 6 Aug  9 22:28 /u01/app/oraInventory
+
+
+DOWNLOAD GRID ZIP FILE
+linuxx64_12201_grid_home.zip
+
+UNZIP TO GRID HOME
+$ sudo su - grid
+$ cd /u01/app/gridhome12cr2
+$ unzip /stage_host/oracle12cR2/linuxx64_12201_grid_home.zip
+
+CREATE RESPONSE FILE
+$ cp /u01/app/gridhome12cr2/install/response/gridsetup.rsp /home/grid/grid_rac1.rsp
+
+oracle.install.responseFileVersion=/oracle/install/rspfmt_crsinstall_response_schema_v12.2.0
+INVENTORY_LOCATION=/u01/app/oraInventory
+oracle.install.option=CRS_CONFIG
+ORACLE_BASE=/u01/app/gridbase
+oracle.install.asm.OSDBA=asmdba
+oracle.install.asm.OSOPER=asmdba
+oracle.install.asm.OSASM=asmadmin
+oracle.install.crs.config.gpnp.scanName=rac1-scan
+oracle.install.crs.config.gpnp.scanPort=1521
+oracle.install.crs.config.ClusterConfiguration=
+oracle.install.crs.config.configureAsExtendedCluster=
+oracle.install.crs.config.memberClusterManifestFile=
+oracle.install.crs.config.clusterName=rac1
+oracle.install.crs.config.gpnp.configureGNS=
+oracle.install.crs.config.autoConfigureClusterNodeVIP=
+oracle.install.crs.config.gpnp.gnsOption=
+oracle.install.crs.config.gpnp.gnsClientDataFile=
+oracle.install.crs.config.gpnp.gnsSubDomain=
+oracle.install.crs.config.gpnp.gnsVIPAddress=
+oracle.install.crs.config.sites=
+#oracle.install.crs.config.clusterNodes=rac1n1:rac1n1-vip,rac1n2:rac1n2-vip
+oracle.install.crs.config.clusterNodes=rac1n1:rac1n1-vip:HUB,rac1n2:rac1n2-vip:HUB
+#oracle.install.crs.config.networkInterfaceList=enp0s8:192.168.0.0:1,enp0s9:10.10.10.0:2
+oracle.install.crs.config.networkInterfaceList=enp0s8:192.168.0.0:1,enp0s9:10.10.10.0:5
+oracle.install.asm.configureGIMRDataDG=
+oracle.install.crs.config.storageOption=
+oracle.install.crs.config.useIPMI=
+oracle.install.crs.config.ipmi.bmcUsername=
+oracle.install.crs.config.ipmi.bmcPassword=
+oracle.install.asm.storageOption=ASM
+oracle.install.asmOnNAS.ocrLocation=
+oracle.install.asmOnNAS.configureGIMRDataDG=
+oracle.install.asmOnNAS.gimrLocation=
+oracle.install.asm.SYSASMPassword=oracle
+oracle.install.asm.diskGroup.name=DATA
+oracle.install.asm.diskGroup.redundancy=EXTERNAL
+oracle.install.asm.diskGroup.AUSize=
+oracle.install.asm.diskGroup.FailureGroups=
+oracle.install.asm.diskGroup.disksWithFailureGroupNames=
+oracle.install.asm.diskGroup.disks=ORCL:DISK01,ORCL:DISK02,ORCL:DISK03
+oracle.install.asm.diskGroup.quorumFailureGroupNames=
+oracle.install.asm.diskGroup.diskDiscoveryString='ORCL:*'
+oracle.install.asm.monitorPassword=oracle
+oracle.install.asm.gimrDG.name=
+oracle.install.asm.gimrDG.redundancy=
+oracle.install.asm.gimrDG.AUSize=
+oracle.install.asm.gimrDG.FailureGroups=
+oracle.install.asm.gimrDG.disksWithFailureGroupNames=
+oracle.install.asm.gimrDG.disks=
+oracle.install.asm.gimrDG.quorumFailureGroupNames=
+oracle.install.asm.configureAFD=
+oracle.install.crs.configureRHPS=
+oracle.install.crs.config.ignoreDownNodes=
+oracle.install.config.managementOption=
+oracle.install.config.omsHost=
+oracle.install.config.omsPort=
+oracle.install.config.emAdminUser=
+oracle.install.config.emAdminPassword=
+oracle.install.crs.rootconfig.executeRootScript=
+oracle.install.crs.rootconfig.configMethod=
+oracle.install.crs.rootconfig.sudoPath=
+oracle.install.crs.rootconfig.sudoUserName=
+oracle.install.crs.config.batchinfo=
+oracle.install.crs.app.applicationAddress=
+
+INSTALL CVQDISK PACKAGE - on both nodes
+]# CVUQDISK_GRP=oinstall; export CVUQDISK_GRP
+# cd cv/rpm
+# ls -l
+-rw-r--r--. 1 grid oinstall 8860 Jan  5  2017 cvuqdisk-1.0.10-1.rpm
+
+# rpm -iv cvuqdisk-1.0.10-1.rpm
+Preparing packages...
+cvuqdisk-1.0.10-1.x86_64
+
+INSTALL NECESSARY PACKAGES (according to Oracle manuals - platform specific)
+
+bc
+binutils-2.23.52.0.1-12.el7 (x86_64)
+compat-libcap1-1.10-3.el7 (x86_64)
+compat-libstdc++-33-3.2.3-71.el7 (i686)
+compat-libstdc++-33-3.2.3-71.el7 (x86_64)
+glibc-2.17-36.el7 (i686)
+glibc-2.17-36.el7 (x86_64)
+glibc-devel-2.17-36.el7 (i686)
+glibc-devel-2.17-36.el7 (x86_64)
+ksh
+libaio-0.3.109-9.el7 (i686)
+libaio-0.3.109-9.el7 (x86_64)
+libaio-devel-0.3.109-9.el7 (i686)
+libaio-devel-0.3.109-9.el7 (x86_64)
+libX11-1.6.0-2.1.el7 (i686)
+libX11-1.6.0-2.1.el7 (x86_64)
+libXau-1.0.8-2.1.el7 (i686)
+libXau-1.0.8-2.1.el7 (x86_64)
+libXi-1.7.2-1.el7 (i686)
+libXi-1.7.2-1.el7 (x86_64)
+libXtst-1.2.2-1.el7 (i686)
+libXtst-1.2.2-1.el7 (x86_64)
+libgcc-4.8.2-3.el7 (i686)
+libgcc-4.8.2-3.el7 (x86_64)
+libstdc++-4.8.2-3.el7 (i686)
+libstdc++-4.8.2-3.el7 (x86_64)
+libstdc++-devel-4.8.2-3.el7 (i686)
+libstdc++-devel-4.8.2-3.el7 (x86_64)
+libxcb-1.9-5.el7 (i686)
+libxcb-1.9-5.el7 (x86_64)
+make-3.82-19.el7 (x86_64)
+nfs-utils-1.3.0-0.21.el7.x86_64 (for Oracle ACFS)
+net-tools-2.0-0.17.20131004git.el7 (x86_64) (for Oracle RAC and Oracle Clusterware)
+smartmontools-6.2-4.el7 (x86_64)
+sysstat-10.1.5-1.el7 (x86_64)
+
+Script:
+yum install bc -y
+yum install binutils -y
+yum install compat-libcap1 -y
+yum install compat-libstdc++-33.i686 -y
+yum install compat-libstdc++-33 -y
+yum install glibc.i686 -y
+yum install glibc -y
+yum install glibc-devel.i686 -y
+yum install glibc-devel -y
+yum install ksh -y
+yum install libaio.i686 -y
+yum install libaio -y
+yum install libaio-devel.i686 -y
+yum install libaio-devel -y
+yum install libX11.i686 -y
+yum install libX11 -y
+yum install libXau.i686 -y
+yum install libXau -y
+yum install libXi.i686 -y
+yum install libXi -y
+yum install libXtst.i686 -y
+yum install libXtst -y
+yum install libgcc.i686 -y
+yum install libgcc -y
+yum install libstdc++.i686 -y
+yum install libstdc++ -y
+yum install libstdc++-devel.i686 -y
+yum install libstdc++-devel -y
+yum install libxcb.i686 -y
+yum install libxcb -y
+yum install make -y
+yum install nfs-utils -y
+yum install net-tools -y
+yum install smartmontools -y
+yum install sysstat -y
+
+
+INSTALL NECESSARY PACKAGES (according to oracle-base article)
+yum install binutils -y
+yum install compat-libcap1 -y
+yum install compat-libstdc++-33 -y
+yum install compat-libstdc++-33.i686 -y
+yum install e2fsprogs -y
+yum install e2fsprogs-libs -y
+yum install glibc -y
+yum install glibc.i686 -y
+yum install glibc-devel -y
+yum install glibc-devel.i686 -y
+yum install ksh -y
+yum install libgcc -y
+yum install libgcc.i686 -y
+yum install libs -y
+yum install libstdc++ -y
+yum install libstdc++.i686 -y
+yum install libstdc++-devel -y
+yum install libstdc++-devel.i686 -y
+yum install libaio -y
+yum install libaio.i686 -y
+yum install libaio-devel -y
+yum install libaio-devel.i686 -y
+yum install libXtst -y
+yum install libXtst.i686 -y
+yum install libX11 -y
+yum install libX11.i686 -y
+yum install libXau -y
+yum install libXau.i686 -y
+yum install libxcb -y
+yum install libxcb.i686 -y
+yum install libXi -y
+yum install libXi.i686 -y
+yum install net-tools -y
+yum install nfs-utils -y
+yum install sysstat -y
+yum install smartmontools -y
+yum install unixODBC -y
+yum install unixODBC-devel -y
+
+INSTALL PREREQUISITE RPM
+yum install oracle-database-server-12cR2-preinstall
+
+IF PREREQUISITE RPM NOT INSTALLED, CHECK/SET THESE
+Add the following lines to the "/etc/sysctl.conf" file, or in a file called "/etc/sysctl.d/98-oracle.conf".
+
+fs.file-max = 6815744
+kernel.sem = 250 32000 100 128
+kernel.shmmni = 4096
+kernel.shmall = 1073741824
+kernel.shmmax = 4398046511104
+kernel.panic_on_oops = 1
+net.core.rmem_default = 262144
+net.core.rmem_max = 4194304
+net.core.wmem_default = 262144
+net.core.wmem_max = 1048576
+net.ipv4.conf.all.rp_filter = 2
+net.ipv4.conf.default.rp_filter = 2
+fs.aio-max-nr = 1048576
+net.ipv4.ip_local_port_range = 9000 65500
+
+Run the following command to change the current kernel parameters.
+
+/sbin/sysctl -p
+
+Add the following lines to a file called "/etc/security/limits.d/oracle-database-server-12cR2-preinstall.conf" file.
+
+oracle   soft   nofile    1024
+oracle   hard   nofile    65536
+oracle   soft   nproc    16384
+oracle   hard   nproc    16384
+oracle   soft   stack    10240
+oracle   hard   stack    32768
+oracle   hard   memlock    134217728
+oracle   soft   memlock    134217728
+
+grid   soft   nofile    1024
+grid   hard   nofile    65536
+grid   soft   nproc    16384
+grid   hard   nproc    16384
+grid   soft   stack    10240
+grid   hard   stack    32768
+grid   hard   memlock    134217728
+grid   soft   memlock    134217728
+
+START THE INSTALL
+-bash-4.2$ ./gridSetup.sh -silent -responseFile /home/grid/grid_rac1.rsp
+Launching Oracle Grid Infrastructure Setup Wizard...
+
+-bash-4.2$ ./gridSetup.sh -silent -responseFile /home/grid/grid_rac1.rsp
+Launching Oracle Grid Infrastructure Setup Wizard...
+
+[WARNING] [INS-30011] The SYS password entered does not conform to the Oracle recommended standards.
+   CAUSE: Oracle recommends that the password entered should be at least 8 characters in length, contain at least 1 uppercase character, 1 lower case character and 1 digit [0-9].
+   ACTION: Provide a password that conforms to the Oracle recommended standards.
+[WARNING] [INS-30011] The ASMSNMP password entered does not conform to the Oracle recommended standards.
+   CAUSE: Oracle recommends that the password entered should be at least 8 characters in length, contain at least 1 uppercase character, 1 lower case character and 1 digit [0-9].
+   ACTION: Provide a password that conforms to the Oracle recommended standards.
+[WARNING] [INS-41811] OSDBA for ASM and OSOPER for ASM groups are the same OS group.
+   CAUSE: The groups you selected granting the OSDBA for ASM and OSOPER for ASM system privileges are the same group.
+   ACTION: Oracle recommends that you designate different OS groups to grant the OSDBA for ASM and OSOPER for ASM system privileges.
+[WARNING] [INS-32018] The selected Oracle home is outside of Oracle base.
+   ACTION: Oracle recommends installing Oracle software within the Oracle base directory. Adjust the Oracle home or Oracle base accordingly.
+[WARNING] [INS-13014] Target environment does not meet some optional requirements.
+   CAUSE: Some of the optional prerequisites are not met. See logs for details. gridSetupActions2018-08-09_04-11-17PM.log
+   ACTION: Identify the list of failed prerequisite checks from the log: gridSetupActions2018-08-09_04-11-17PM.log. Then either from the log file or from installation manual find the appropriate configuration to meet the prerequisites and fix it manually.
+You can find the log of this install session at:
+ /tmp/GridSetupActions2018-08-09_04-11-17PM/gridSetupActions2018-08-09_04-11-17PM.log
+
+As a root user, execute the following script(s):
+	1. /u01/app/oraInventory/orainstRoot.sh
+	2. /u01/app/gridhome12cr2/root.sh
+
+Execute /u01/app/gridhome12cr2/root.sh on the following nodes: 
+[rac1n1]
+
+Successfully Setup Software.
+As install user, execute the following command to complete the configuration.
+	/u01/app/gridhome12cr2/gridSetup.sh -executeConfigTools -responseFile /home/grid/grid_rac1.rsp [-silent]
+
+Moved the install session logs to:
+ /u01/app/oraInventory/logs/GridSetupActions2018-08-09_04-11-17PM
+
+=============================================
+ERRORS AND WARNINGS (from multiple runs)
+=============================================
+
+[WARNING] [INS-30011] The SYS password entered does not conform to the Oracle recommended standards.
+   CAUSE: Oracle recommends that the password entered should be at least 8 characters in length, contain at least 1 uppercase character, 1 lower case character and 1 digit [0-9].
+   ACTION: Provide a password that conforms to the Oracle recommended standards.
+[WARNING] [INS-30011] The ASMSNMP password entered does not conform to the Oracle recommended standards.
+   CAUSE: Oracle recommends that the password entered should be at least 8 characters in length, contain at least 1 uppercase character, 1 lower case character and 1 digit [0-9].
+   ACTION: Provide a password that conforms to the Oracle recommended standards.
+[WARNING] [INS-41811] OSDBA for ASM and OSOPER for ASM groups are the same OS group.
+   CAUSE: The groups you selected granting the OSDBA for ASM and OSOPER for ASM system privileges are the same group.
+   ACTION: Oracle recommends that you designate different OS groups to grant the OSDBA for ASM and OSOPER for ASM system privileges.
+[WARNING] [INS-32018] The selected Oracle home is outside of Oracle base.
+   ACTION: Oracle recommends installing Oracle software within the Oracle base directory. Adjust the Oracle home or Oracle base accordingly.
+[FATAL] [INS-13013] Target environment does not meet some mandatory requirements.
+   CAUSE: Some of the mandatory prerequisites are not met. See logs for details. /tmp/GridSetupActions2018-08-09_03-08-30PM/gridSetupActions2018-08-09_03-08-30PM.log
+   ACTION: Identify the list of failed prerequisite checks from the log: /tmp/GridSetupActions2018-08-09_03-08-30PM/gridSetupActions2018-08-09_03-08-30PM.log. Then either from the log file or from installation manual find the appropriate configuration to meet the prerequisites and fix it manually.
+
+- - - 
+
+INFO:  [Aug 9, 2018 3:55:57 PM] ------------------List of failed Tasks------------------
+INFO:  [Aug 9, 2018 3:55:57 PM] *********************************************
+INFO:  [Aug 9, 2018 3:55:57 PM] Physical Memory: This is a prerequisite condition to test whether the system has at least 8GB (8388608.0KB) of total physical memory.
+INFO:  [Aug 9, 2018 3:55:57 PM] Severity:IGNORABLE
+INFO:  [Aug 9, 2018 3:55:57 PM] OverallStatus:VERIFICATION_FAILED
+INFO:  [Aug 9, 2018 3:55:57 PM] *********************************************
+INFO:  [Aug 9, 2018 3:55:57 PM] Hard Limit: maximum open file descriptors: This is a prerequisite condition to test whether the hard limit for maximum open file descriptors is set correctly.
+INFO:  [Aug 9, 2018 3:55:57 PM] Severity:CRITICAL
+INFO:  [Aug 9, 2018 3:55:57 PM] OverallStatus:VERIFICATION_FAILED
+INFO:  [Aug 9, 2018 3:55:57 PM] *********************************************
+INFO:  [Aug 9, 2018 3:55:57 PM] Soft Limit: maximum stack size: This is a prerequisite condition to test whether the soft limit for maximum stack size is set correctly.
+INFO:  [Aug 9, 2018 3:55:57 PM] Severity:CRITICAL
+INFO:  [Aug 9, 2018 3:55:57 PM] OverallStatus:VERIFICATION_FAILED
+INFO:  [Aug 9, 2018 3:55:57 PM] -----------------End of failed Tasks List----------------
+
+- - -
+
+REMOVED UNZIPPED FILES IN GRID-HOME ON SECOND NODE FOR THIS ERROR:
+-bash-4.2$ ./gridSetup.sh -silent -responseFile /home/grid/grid_install_12cR2.rsp
+Launching Oracle Grid Infrastructure Setup Wizard...
+
+[WARNING] [INS-30011] The SYS password entered does not conform to the Oracle recommended standards.
+   CAUSE: Oracle recommends that the password entered should be at least 8 characters in length, contain at least 1 uppercase character, 1 lower case character and 1 digit [0-9].
+   ACTION: Provide a password that conforms to the Oracle recommended standards.
+[WARNING] [INS-30011] The ASMSNMP password entered does not conform to the Oracle recommended standards.
+   CAUSE: Oracle recommends that the password entered should be at least 8 characters in length, contain at least 1 uppercase character, 1 lower case character and 1 digit [0-9].
+   ACTION: Provide a password that conforms to the Oracle recommended standards.
+[WARNING] [INS-41811] OSDBA for ASM and OSOPER for ASM groups are the same OS group.
+   CAUSE: The groups you selected granting the OSDBA for ASM and OSOPER for ASM system privileges are the same group.
+   ACTION: Oracle recommends that you designate different OS groups to grant the OSDBA for ASM and OSOPER for ASM system privileges.
+[FATAL] [INS-44002] The Oracle home location contains directories or files on following remote nodes: 
+ [rac1n2]. 
+ 
+ These nodes will be ignored and not participate in the configured Grid Infrastructure.
+
+- - - -
+TBD - LATEST SET OF ERRORS
+
+/tmp/GridSetupActions2018-08-09_07-17-42PM/gridSetupActions2018-08-09_07-17-42PM.log
+
+INFO:  [Aug 9, 2018 7:19:45 PM] Using default Validator configured in the Action class oracle.install.ivw.crs.action.PrereqAction
+INFO:  [Aug 9, 2018 7:19:45 PM] ------------------List of failed Tasks------------------
+INFO:  [Aug 9, 2018 7:19:45 PM] *********************************************
+INFO:  [Aug 9, 2018 7:19:45 PM] Physical Memory: This is a prerequisite condition to test whether the system has at least 8GB (8388608.0KB) of total physical memory.
+INFO:  [Aug 9, 2018 7:19:45 PM] Severity:IGNORABLE
+INFO:  [Aug 9, 2018 7:19:45 PM] OverallStatus:VERIFICATION_FAILED
+INFO:  [Aug 9, 2018 7:19:45 PM] *********************************************
+INFO:  [Aug 9, 2018 7:19:45 PM] Device Checks for ASM: This is a prerequisite check to verify that the specified devices meet the requirements for ASM.
+INFO:  [Aug 9, 2018 7:19:45 PM] Severity:CRITICAL
+INFO:  [Aug 9, 2018 7:19:45 PM] OverallStatus:OPERATION_FAILED
+INFO:  [Aug 9, 2018 7:19:45 PM] *********************************************
+INFO:  [Aug 9, 2018 7:19:45 PM] Daemon "avahi-daemon" not configured and running: This test checks that the "avahi-daemon" daemon is not configured and running on the cluster nodes.
+INFO:  [Aug 9, 2018 7:19:45 PM] Severity:IGNORABLE
+INFO:  [Aug 9, 2018 7:19:45 PM] OverallStatus:VERIFICATION_FAILED
+INFO:  [Aug 9, 2018 7:19:45 PM] *********************************************
+INFO:  [Aug 9, 2018 7:19:45 PM] Network Time Protocol (NTP): This task verifies cluster time synchronization on clusters that use Network Time Protocol (NTP).
+INFO:  [Aug 9, 2018 7:19:45 PM] Severity:CRITICAL
+INFO:  [Aug 9, 2018 7:19:45 PM] OverallStatus:VERIFICATION_FAILED
+INFO:  [Aug 9, 2018 7:19:45 PM] *********************************************
+INFO:  [Aug 9, 2018 7:19:45 PM] resolv.conf Integrity: resolv.conf Integrity
+INFO:  [Aug 9, 2018 7:19:45 PM] Severity:CRITICAL
+INFO:  [Aug 9, 2018 7:19:45 PM] OverallStatus:VERIFICATION_FAILED
+INFO:  [Aug 9, 2018 7:19:45 PM] *********************************************
+INFO:  [Aug 9, 2018 7:19:45 PM] (Linux) resolv.conf Integrity: This task checks consistency of file /etc/resolv.conf file across nodes
+INFO:  [Aug 9, 2018 7:19:45 PM] Severity:CRITICAL
+INFO:  [Aug 9, 2018 7:19:45 PM] OverallStatus:VERIFICATION_FAILED
+INFO:  [Aug 9, 2018 7:19:45 PM] *********************************************
+INFO:  [Aug 9, 2018 7:19:45 PM] DNS/NIS name service: This test verifies that the Name Service lookups for the Distributed Name Server (DNS) and the Network Information Service (NIS) match for the SCAN name entries.
+INFO:  [Aug 9, 2018 7:19:45 PM] Severity:CRITICAL
+INFO:  [Aug 9, 2018 7:19:45 PM] OverallStatus:VERIFICATION_FAILED
