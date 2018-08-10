@@ -1,0 +1,644 @@
+====================================================================================
+VIRTUALBOX MACHINE FOR RAC AND GENERAL PURPOSE - AND PACKAGE AS VAGRANT BOX
+====================================================================================
+
+vboxmanage list hdds
+vboxmanage closemedium disk 69c2aec6-551e-4863-8eae-7f4af8a47217 --delete
+
+Disabling Kdump - if forgot to disable during install
+https://www.tuxfixer.com/manage-and-configure-kdump-service-on-centos-7-red-hat-7/#more-2284
+Check kdump service status:
+[root@tuxfixer ~]# systemctl status kdump
+
+Start kdump service:
+[root@tuxfixer ~]# systemctl start kdump
+
+Stop kdump service:
+[root@tuxfixer ~]# systemctl stop kdump
+
+Enable kdump service (persistent after reboot):
+[root@tuxfixer ~]# systemctl enable kdump
+
+Disable kdump service (persistent after reboot):
+[root@tuxfixer ~]# systemctl disable kdump
+
+=============
+DOWNLOAD
+=============
+- Download OEL 75 ISO from https://edelivery.oracle.com/osdc/faces/SoftwareDelivery#
+
+=============
+INSTALL
+=============
+
+------------------------
+BASIC MACHINE SETTINGS
+------------------------
+- Memory = 6GB --> DO NOT KEEP THIS TOO LOW - LOW MEMORY MAKES INSTALL VERY SLOW 
+  (6gb was chosen to accomodate a 2 node RAC on a 16GB laptop)
+- Video Memory = 24MB
+- Disk size = 80GB, VDI, AutoExtend
+- Time Zone = India
+- Name oel75rac12cr2model
+
+- Network
+-- adapter 1 = NAT
+-- adapter 2 = internal
+-- adapter 3 = internal
+
+------------------------
+- Software options:
+------------------------
+MAIN:
+Server with GUI
+
+Add-On OPTIONS:
+DNS Name Server
+FTP Server
+Hardware Monitoring Utilities
+(did not choose) KDE (newly selected though GUI already chosen)
+Large Systems Performance
+NFS Client
+Performance Tools
+Remote management for linux (like SNMP)
+Compatibility Libraries
+Development Tools
+Security Tools
+System Administration Tools
+
+------------------------------------------------------------------------
+- Installation Destination (partitioninig of disk)
+------------------------------------------------------------------------
+--> Initially default is set as 'automatic partitioning selected' --> click that and modify as follows
+--> It will use LVM
+
+Choose 'configure automatically' - and then modify
+
+Home - remove this one
+Boot - 1GB (default) - standard parition 
+Root - remaining disk space (about 73 GB) - xfs
+Swap - 6GB (increased from default 4GB) - xfs
+
+Change the volume group name so that boot, root and swap look like the following: (remove reference to hostname)
+/boot 
+sda1
+
+/
+ol-root
+
+/swap
+ol-swap
+
+Save changes by pressing 'Done'
+
+------------------------
+OTHER SETTINGS
+------------------------
+Disable Kdump
+Enable network, and set hostname (from localhost.localdomain to oel75rac12cr2model)
+
+------------------------
+- BEGIN INSTALLATION
+------------------------
+It starts install, and also shows 'Root Password' and 'User Creation' option in that screen
+--> Set root password to 'oracle' or 'root'
+--> Did not opt to create any other users at this time
+
+------------------------------------------------
+- Reboot (at end of installation)
+------------------------------------------------
+It shows multiple boot options (3 in my case) - chose the first one which is UEK kernel 
+
+------------------------
+UPON REBOOT
+------------------------
+- Accept license
+- Network/Hostname - did not change anything
+  --> did not change any network settings also - left as is
+  
+- Privacy
+Chose not to allow location access
+
+- Time Zone
+Chose my city
+
+- About 'myself' (if asked)
+Gave name, username and password as 'myself'
+
+------------------------
+LOGON
+------------------------
+It already logs on you as 'myself' user
+The myself user can sudo to root as well immediately
+
+- REBOOT AGAIN
+It gives login screen, with user 'myself' showing up - click it and enter password
+
+--------------------------------
+ENABLE BIDIRECTIONAL COPY-PASTE
+--------------------------------
+In virtualbox toolbar:
+
+Devices --> Shared Clipboard --> Bidirectional
+Devices --> Drag and Drop --> Bidirectional
+
+------------------------
+CHECK A FEW THINGS
+------------------------
+# hostname
+oel75rac12cr2model
+
+# uname -r
+4.1.12-112.16.4.el7uek.x86_64
+(kernel version)
+(note - uek-devel kernel may be needed for guest-additions - see guest-additions section in this doc)
+
+# ip addr list
+If network not enabled during install - does not show any IP addresses - except for NAT
+(because we did not set them)
+
+- start networking
+
+FOR EACH INTERFACE - Use GUI to enable:
+Applications --> System Tools --> Settings --> Network --> Wired --> set slider to ON.
+
+NAT:
+Also, click the settings icon in that screen and make sure  that it is set to 'connect automatically'.
+Do an ifconfig, find out the newly popped up network with 10.0.2.15 , and check if the sysconnfig file has onboot=yes in it:
+	/etc/sysconfig/network-scripts/ifcfg-$IFNAME
+  
+INTNET:
+192.168.0.10 --> to use as public
+10.10.10.10 --> to use as private & ASM 
+
+# ifconfig -a
+
+[root@oel75rac12cr2model ~]# ifconfig -a
+enp0s3: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 10.0.2.15  netmask 255.255.255.0  broadcast 10.0.2.255
+        inet6 fe80::a3a0:ff9b:56b:f271  prefixlen 64  scopeid 0x20<link>
+        ether 08:00:27:6b:45:22  txqueuelen 1000  (Ethernet)
+        RX packets 5220  bytes 5615209 (5.3 MiB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 3085  bytes 263695 (257.5 KiB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+enp0s8: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.0.10  netmask 255.255.255.0  broadcast 192.168.0.255
+        inet6 fe80::328c:79c3:fe84:1d80  prefixlen 64  scopeid 0x20<link>
+        ether 08:00:27:2e:5d:49  txqueuelen 1000  (Ethernet)
+        RX packets 39  bytes 9327 (9.1 KiB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 75  bytes 11817 (11.5 KiB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+enp0s9: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 10.10.10.10  netmask 255.255.255.0  broadcast 10.10.10.255
+        inet6 fe80::bd23:7d05:7e8b:eacd  prefixlen 64  scopeid 0x20<link>
+        ether 08:00:27:91:26:39  txqueuelen 1000  (Ethernet)
+        RX packets 18  bytes 4864 (4.7 KiB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 76  bytes 12153 (11.8 KiB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 0  (Local Loopback)
+        RX packets 2168  bytes 166044 (162.1 KiB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 2168  bytes 166044 (162.1 KiB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+virbr0: flags=4099<UP,BROADCAST,MULTICAST>  mtu 1500
+        inet 192.168.122.1  netmask 255.255.255.0  broadcast 192.168.122.255
+        ether 52:54:00:97:ba:f0  txqueuelen 0  (Ethernet)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+virbr0-nic: flags=4098<BROADCAST,MULTICAST>  mtu 1500
+        ether 52:54:00:97:ba:f0  txqueuelen 500  (Ethernet)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+
+# hostname
+<hostname that was set during install>
+
+====================
+NEXT STEPS
+====================
+
+Install guest additions
+Enable host-guest bidirectional copy-paste and drag-and-drop
+Stop NTP
+Stop firewall (for RAC install firewall may have to be stopped)
+Disable SELinux
+Increase screen resolution - https://unix.stackexchange.com/questions/25236/increasing-screen-size-resolution-on-a-virtualbox-instance-of-centos
+
+Install sshpass
+PAM modules
+Vagrant
+Chef
+
+OPTIONAL:
+Check if open-jdk is good enough (and version) and install Oracle's JDK if that is better
+Install oracle preinstall rpm / validation rpm
+Install other required rpms (not all are installed with preinstall rpm)
+Install oracleasm modules
+
+------------------------
+INSTALL GUEST ADDITIONS
+------------------------
+
+NOTE: This may need kernel uek-devel 
+--> which seemed to be installed automatically or otherwise while installing OS or Guest Additions
+
+When checked after installing guest-additions:
+# rpm -qa|grep uek
+kernel-uek-devel-4.1.12-112.16.4.el7uek.x86_64
+kernel-uek-firmware-4.1.12-112.16.4.el7uek.noarch
+kernel-uek-4.1.12-112.16.4.el7uek.x86_64
+
+- STEPS
+Logon as root
+Click Devices --> Insert Guest Additions CD Image
+
+This asked if it can be installed and automatically installed whatever was necessary.
+
+It ran fine, except for the message:
+
+Warning: unknown version of the X Window System installed.  Not installing
+X Window System drivers.
+
+----------------------------------------------------------------
+Enable host-guest bidirectional copy-paste and drag-and-drop
+----------------------------------------------------------------
+https://www.howtogeek.com/187535/how-to-copy-and-paste-between-a-virtualbox-host-machine-and-a-guest-machine/
+In Virtualbox menu, 
+choose the machine -> settings -> Advanced -> 
+- Shared Clipboard -> Bidirectional
+- Drag'n'Drop -> Bidirectional
+
+-------------
+Stop NTP
+-------------
+NTP did not seem to be installed
+First install ntp - in the case we want to use it sometime (https://www.tecmint.com/install-ntp-server-in-centos/)
+
+# yum install ntp
+# service ntpd status
+(this shows as inactive - leave as is)
+
+here
+-------------
+STOP FIREWALL
+-------------
+[root@localhost network-scripts]# service firewalld stop
+Redirecting to /bin/systemctl stop firewalld.service
+
+[root@localhost network-scripts]# chkconfig firewalld off
+Note: Forwarding request to 'systemctl disable firewalld.service'.
+Removed symlink /etc/systemd/system/multi-user.target.wants/firewalld.service.
+Removed symlink /etc/systemd/system/dbus-org.fedoraproject.FirewallD1.service.
+
+-----------------
+DISABLE SELINUX
+-----------------
+
+Edit the file /etc/sysconfig/selinux (which is symlink to /etc/selinux/config) 
+and set SELINUX=permissive (or disabled) instead of 'enforcing'
+
+# This file controls the state of SELinux on the system.
+# SELINUX= can take one of these three values:
+#     enforcing - SELinux security policy is enforced.
+#     permissive - SELinux prints warnings instead of enforcing.
+#     disabled - No SELinux policy is loaded.
+SELINUX=permissive
+# SELINUXTYPE= can take one of three two values:
+#     targeted - Targeted processes are protected,
+#     minimum - Modification of targeted policy. Only selected processes are protected.
+#     mls - Multi Level Security protection.
+SELINUXTYPE=targeted
+
+
+---------------------------
+INCREASE SCREEN RESOLUTION
+---------------------------
+TBD
+
+----------------------------
+INSTALL SSHPASS
+----------------------------
+This is a utility that allows providing password to ssh commands.
+
+- Download 
+# wget ftp://rpmfind.net/linux/dag/redhat/el7/en/x86_64/dag/RPMS/sshpass-1.05-1.el7.rf.x86_64.rpm
+- Install
+# rpm -Uvh sshpass-1.05-1.el7.rf.x86_64.rpm
+
+---------------------
+INSTALL ORACLEASM
+---------------------
+http://www.oracle.com/technetwork/server-storage/linux/downloads/index.html
+http://www.oracle.com/technetwork/server-storage/linux/asmlib/index-101839.html
+
+FOR ORACLE LINUX 7:
+
+NOTE: This installs as /sbin/oracleasm and /usr/sbin/oracleasm --> same files in both
+(/etc/init.d/oracleasm is deprecated)
+
+STEPS:
+
+A. ASMLIB (/sbin/oracleasm will appear only after installing oracleasm-support)
+# wget http://download.oracle.com/otn_software/asmlib/oracleasmlib-2.0.12-1.el7.x86_64.rpm
+# rpm -Uvh ./oracleasmlib-2.0.12-1.el7.x86_64.rpm
+# rpm -qa|grep -i oracleasmlib
+oracleasmlib-2.0.12-1.el7.x86_64
+
+B. ORACLEASM-SUPPORT (/sbin/oracleasm will appear after this is installed)
+# yum install oracleasm-support
+# rpm -qa|grep -i oracleasm-support
+oracleasm-support-2.1.11-2.el7.x86_64
+
+C. KMOD-ORACLEASM
+The oracleasm kernel driver is built into the Unbreakable Enterprise Kernel for Oracle Linux 7 and does not need to be installed manually. 
+
+# yum install kmod-oracleasm
+--> THIS FAILED, LEFT THIS AS IS
+
+Reference - sites/help on oracleasm -->
+DETAILED ORACLEASM PAGE:
+http://www.oracle.com/technetwork/server-storage/linux/asmlib/ol7-2352094.html
+
+FOR RHEL:
+http://www.oracle.com/technetwork/topics/linux/install-082632.html
+--> http://www.oracle.com/technetwork/server-storage/linux/downloading-asmlib-176895.html
+
+HELP:
+https://oracle-base.com/articles/10g/asm-using-asmlib-and-raw-devices
+
+--------------------------
+CONFIGURE ORACLEASM
+--------------------------
+NOTE: Use /sbin/oracleasm or /usr/sbin/oracleasm --> /etc/init.d/oracleasm is deprecated
+
+# oracleasm init
+Creating /dev/oracleasm mount point: /dev/oracleasm
+Loading module "oracleasm": oracleasm
+Configuring "oracleasm" to use device physical block size
+Mounting ASMlib driver filesystem: /dev/oracleasm
+
+# oracleasm configure -i
+(NOTE: This "-i" option is new probably in asmlib 2.0)
+NOTE--> did not do this, as the cookbook has this recipe
+
+
+------------------------------------------------------------------------------
+FAILED IGNORE THIS - INSTALL ORACLEASM / ASMLIB - FAILED - IGNORE THIS
+------------------------------------------------------------------------------
+Yum: http://www.oracle.com/technetwork/server-storage/linux/uln-095759.html
+--> via unbreakable linux network
+
+(Manual: http://www.oracle.com/technetwork/server-storage/linux/downloading-asmlib-176895.html)
+
+NOTE: This did not install oracleasmlib and oracleasm packages (tbd)
+(see further down for yum install oracleasm)
+# yum install oracleasm-support oracleasmlib oracleasm-`uname -r`
+Loaded plugins: langpacks, ulninfo
+No package oracleasmlib available.
+No package oracleasm-4.1.12-112.16.4.el7uek.x86_64 available.
+Resolving Dependencies
+--> Running transaction check
+---> Package oracleasm-support.x86_64 0:2.1.11-2.el7 will be installed
+--> Finished Dependency Resolution
+
+Dependencies Resolved
+
+===========================================================================================================
+ Package                       Arch               Version                     Repository              Size
+===========================================================================================================
+Installing:
+ oracleasm-support             x86_64             2.1.11-2.el7                ol7_latest              85 k
+
+Transaction Summary
+===========================================================================================================
+Install  1 Package
+
+Total download size: 85 k
+Installed size: 266 k
+Is this ok [y/d/N]: y
+Downloading packages:
+oracleasm-support-2.1.11-2.el7.x86_64.rpm                                           |  85 kB  00:00:02     
+Running transaction check
+Running transaction test
+Transaction test succeeded
+Running transaction
+Warning: RPMDB altered outside of yum.
+  Installing : oracleasm-support-2.1.11-2.el7.x86_64                                                   1/1 
+Note: Forwarding request to 'systemctl enable oracleasm.service'.
+Created symlink from /etc/systemd/system/multi-user.target.wants/oracleasm.service to /usr/lib/systemd/system/oracleasm.service.
+  Verifying  : oracleasm-support-2.1.11-2.el7.x86_64                                                   1/1 
+
+Installed:
+  oracleasm-support.x86_64 0:2.1.11-2.el7                                                                  
+
+Complete!
+
+[root@oel75rac12cr2model ~]# which oracleasm
+/usr/sbin/oracleasm
+
+NOTE: This next yum installed latest uek kernel - but did not seem to install oracleasm
+# yum install oracleasm
+  Installing : kernel-uek-firmware-4.1.12-124.17.2.el7uek.noarch                                       1/2 
+  Installing : kernel-uek-4.1.12-124.17.2.el7uek.x86_64                                                2/2 
+  
+--------------------
+PAM MODULES
+--------------------
+Latest PAM modules should already be there
+
+[root@localhost pam.d]# yum list pam
+Loaded plugins: langpacks, ulninfo
+Installed Packages
+pam.x86_64                      1.1.8-22.el7                       @anaconda/7.5
+Available Packages
+pam.i686                        1.1.8-22.el7                       ol7_latest   
+
+[root@localhost pam.d]# rpm -qa |grep pam
+fprintd-pam-0.5.0-4.0.el7_0.x86_64
+gnome-keyring-pam-3.20.0-3.el7.x86_64
+pam-1.1.8-22.el7.x86_64
+
+================================
+ORACLE PREREQUISITES
+================================
+
+
+================
+INSTALL CHEF
+================
+# mkdir /root/Downloads/chef_installer
+# cd /root/Downloads/chef_installer
+# curl -LO https://omnitruck.chef.io/install.sh
+# chmod +x install.sh
+
+NOTE - Running install.sh without version installs the latest - which is not always desirable
+Instead, provide a version also "./install.sh -v 13.2.20"
+
+Anyway, ran without version and it installed version 14.1.1
+# ./install.sh
+
+# which chef-client
+/usr/bin/chef-client
+
+# chef-client -v
+Chef: 14.1.1
+
+
+================================
+VAGRANT - MAKE IT A VAGRANT BOX
+================================
+http://www.oaktable.net/content/preparing-oracle-linux-vagrant-box
+
+Create vagrant user:
+# useradd vagrant
+
+Set its password to vagrant:
+# passwd vagrant (and then give vagrant as password)
+
+Download its insecure authorized keys from Vagrant git:
+# sudo su - vagrant
+As vagrant user:
+$ mkdir ~/.ssh
+$ curl -k https://raw.githubusercontent.com/mitchellh/vagrant/master/keys/vagrant.pub > .ssh/authorized_keys
+(you can use wget also)
+$ chmod 600 ~/.ssh/authorized_keys
+
+---------------------------------
+Add vagrant to sudoers file
+---------------------------------
+Edit /etc/sudoers:
+
+Comment out 'Defaults requiretty' --> so that vagrant ssh and sudo does not require a terminal
+#Defaults    requiretty
+
+Add vagrant to sudoers
+vagrant ALL=(ALL) NOPASSWD: ALL
+
+---------------------------------
+CREATE A .BOX IMAGE
+---------------------------------
+$ vboxmanage list vms
+"superset1_default_1524048679899_46686" {1f80bb21-c68b-4037-8588-7efc4e105f1e}
+"oel7racready_default_1525237784095_20908" {3449c8be-d139-42ff-aa9e-55a5ada8f89a}
+"oel75gm" {29233d07-6fd3-44bc-bf06-dca82ef56284} -->>>  THIS IS THE ONE TO CHOOSE
+
+$ vagrant package --base oel75gm /mywork/vagrant/oel75gm_chef.box
+==> oel75gm: Exporting VM...
+==> oel75gm: Compressing package to: /mywork/vagrant/oel75gm_chef.box
+
+---------------------------------
+ADD BOX TO VAGRANT
+---------------------------------
+$ vagrant box add oel75gm_chef /mywork/vagrant/oel75gm_chef.box
+
+---------------------------------
+TEST BRINGING UP WITH VAGRANT
+---------------------------------
+
+- CREATE A Vagrantfile in /mywork/vagrant/oel75gm1
+
+Vagrant.configure("2") do |config|
+
+  config.vm.box = "oel75gm_chef"
+  # This is the hostname of the VM
+  config.vm.hostname = 'oel75gm1'
+  config.ssh.password = 'vagrant'
+
+  config.vm.provider :virtualbox do |vb|
+    # This is the name that appears in virtualbox - not the vm hostname
+    vb.name = "oel75gm1"
+  end
+
+end
+
+- BRING UP THE MACHINE
+$ vagrant up
+Bringing machine 'default' up with 'virtualbox' provider...
+==> default: Clearing any previously set forwarded ports...
+==> default: Clearing any previously set network interfaces...
+==> default: Preparing network interfaces based on configuration...
+    default: Adapter 1: nat
+==> default: Forwarding ports...
+    default: 22 (guest) => 2222 (host) (adapter 1)
+==> default: Booting VM...
+==> default: Waiting for machine to boot. This may take a few minutes...
+    default: SSH address: 127.0.0.1:2222
+    default: SSH username: vagrant
+    default: SSH auth method: password
+    default: 
+    default: Inserting generated public key within guest...
+    default: Removing insecure key from the guest if it's present...
+    default: Key inserted! Disconnecting and reconnecting using new SSH key...
+==> default: Machine booted and ready!
+==> default: Checking for guest additions in VM...
+==> default: Mounting shared folders...
+    default: /vagrant => /mywork/vagrant/oel75gm1
+
+- VERIFY
+$ vagrant ssh
+Last login: Sat May 12 13:54:40 2018
+
+[vagrant@oel75gm ~]$ id
+uid=1000(vagrant) gid=1000(vagrant) groups=1000(vagrant) context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023
+
+[vagrant@oel75gm ~]$ sudo su - root
+Last login: Sat May 12 13:54:46 IST 2018 on pts/1
+
+[root@oel75gm ~]# id
+uid=0(root) gid=0(root) groups=0(root) context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023
+
+[root@oel75gm ~]# exit
+logout
+
+[vagrant@oel75gm ~]$ ping www.google.com
+PING www.google.com (172.217.5.4) 56(84) bytes of data.
+64 bytes from 172.217.5.4 (172.217.5.4): icmp_seq=1 ttl=63 time=500 ms
+64 bytes from 172.217.5.4 (172.217.5.4): icmp_seq=2 ttl=63 time=1091 ms
+64 bytes from 172.217.5.4 (172.217.5.4): icmp_seq=3 ttl=63 time=251 ms
+
+- MODIFY VAGRANTFILE TO NOW USE KEY INSTEAD OF PASSWORD
+Vagrant.configure("2") do |config|
+
+  config.vm.box = "oel75gm_chef"
+  # This is the hostname of the VM
+  config.vm.hostname = 'oel75gm1'
+  #config.ssh.password = 'vagrant' --  COMMENTED OUT
+
+  config.vm.provider :virtualbox do |vb|
+    # This is the name that appears in virtualbox - not the vm hostname
+    vb.name = "oel75gm1"
+  end
+
+end
+
+- RETEST
+$ vagrant halt
+$ vagrant up
+$ vagrant ssh
+Last login: Sat May 12 14:40:27 2018 from gateway
+[vagrant@oel75gm ~]$ 
+
+================================
+ADDITIONAL ORACLE RELATED STEPS
+================================
+
+-----------------------------------------
+INSTALL ORACLE PREINSTALL RPM - for 12cR1
+-----------------------------------------
+# yum install oracle-rdbms-server-12cR1-preinstall
