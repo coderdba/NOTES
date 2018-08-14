@@ -16,8 +16,10 @@ LOGICAL VOLUME --> FILESYSTEM --> MOUNTED TO A DIRECTORY
 
 - PARTITION THE DISKS
 NOTE: This is optional. However, leaving disks with names /dev/sda as is may make admin think that they are unused
+
 Here, we are partitioning 2 disks - 15 GB each - /dev/sdd, /dev/sde
 --> The output will be /dev/sdd1, /dev/sde1
+--> We are using the whole disk as one partition - though we can split it into multiple partitions
 
 [root@oraclenr1 work]# fdisk /dev/sdd
 Welcome to fdisk (util-linux 2.23.2).
@@ -56,6 +58,88 @@ The partition table has been altered!
 
 Calling ioctl() to re-read partition table.
 Syncing disks.
+
+- CREATE PHYSICAL VOLUMES
+
+[root@oraclenr1 dev]# pvcreate /dev/sdd1
+  Physical volume "/dev/sdd1" successfully created.
+  
+[root@oraclenr1 dev]# pvcreate /dev/sde1
+  Physical volume "/dev/sde1" successfully created.
+  
+-- VERIFY
+[root@oraclenr1 dev]# pvscan
+  PV /dev/sda2   VG ol              lvm2 [<79.00 GiB / 0    free]
+  PV /dev/sde1                      lvm2 [<15.00 GiB]
+  PV /dev/sdd1                      lvm2 [<15.00 GiB]
+  Total: 3 [108.99 GiB] / in use: 1 [<79.00 GiB] / in no VG: 2 [<30.00 GiB]
+
+-- VERIFY
+# pvdisplay
+[root@oraclenr1 dev]# pvdisplay
+  --- Physical volume ---
+  PV Name               /dev/sda2
+  VG Name               ol
+  PV Size               <79.00 GiB / not usable 3.00 MiB
+  Allocatable           yes (but full)
+  PE Size               4.00 MiB
+  Total PE              20223
+  Free PE               0
+  Allocated PE          20223
+  PV UUID               egF7SG-wM3q-9rns-UpJ5-CCP4-o2oF-ybES0a
+   
+  "/dev/sde1" is a new physical volume of "<15.00 GiB"
+  --- NEW Physical volume ---
+  PV Name               /dev/sde1
+  VG Name               
+  PV Size               <15.00 GiB
+  Allocatable           NO
+  PE Size               0   
+  Total PE              0
+  Free PE               0
+  Allocated PE          0
+  PV UUID               hIcupD-VMkX-aB8Y-Lkei-94dU-3eI6-mxeLRZ
+   
+  "/dev/sdd1" is a new physical volume of "<15.00 GiB"
+  --- NEW Physical volume ---
+  PV Name               /dev/sdd1
+  VG Name               
+  PV Size               <15.00 GiB
+  Allocatable           NO
+  PE Size               0   
+  Total PE              0
+  Free PE               0
+  Allocated PE          0
+  PV UUID               f8Xac4-yC1M-dJWi-UpBn-QLzC-Aj65-hHhylb
+
+- CREATE VOLUME GROUP
+
+[root@oraclenr1 dev]# vgcreate vg_u01 /dev/sdd1 /dev/sde1
+  Volume group "vg_u01" successfully created
+
+-- VERIFY
+[root@oraclenr1 dev]# vgdisplay vg_u01
+  --- Volume group ---
+  VG Name               vg_u01
+  System ID             
+  Format                lvm2
+  Metadata Areas        2
+  Metadata Sequence No  1
+  VG Access             read/write
+  VG Status             resizable
+  MAX LV                0
+  Cur LV                0
+  Open LV               0
+  Max PV                0
+  Cur PV                2
+  Act PV                2
+  VG Size               29.99 GiB
+  PE Size               4.00 MiB
+  Total PE              7678
+  Alloc PE / Size       0 / 0   
+  Free  PE / Size       7678 / 29.99 GiB
+  VG UUID               6Hl4a6-lqu4-1fnB-k4cL-YKvT-sp05-KSEQu7
+
 
 
 ==================================================================
