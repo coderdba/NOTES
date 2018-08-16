@@ -93,9 +93,13 @@ system administrative privileges.
 Use the usermod command to change existing user ID numbers and groups.
 
 For example:
-
+NOTE: 'oracle' user would already be there if it is Oracle Enterprise Linux.  
+	SEE SECTION ON USER-CREATION IN THIS DOCUMENT FOR PROPER STEPS
+	--> below is only an example
+	
 # id oracle
 uid=1101(oracle) gid=1000(oinstall) groups=1200(dba)
+
 # /usr/sbin/usermod -u 54421 -g 54331 -G 54321,54322,54327 oracle
 # id oracle
 uid=54321(oracle) gid=54321(oinstall) groups=54321(oinstall),54322(dba),54327 (asmdba)
@@ -358,18 +362,39 @@ Install oracleasm modules
 ------------------------
 CREATE USERS
 ------------------------
-Already created:  user 'oracle'
-[root@oel75rac12cr2model ~]# id oracle
-uid=54321(oracle) gid=54321(oinstall) groups=54321(oinstall),54322(dba),54323(oper),54324(backupdba),54325(dgdba),54326(kmdba),54330(racdba)
 
-Create the 'grid' user:
+If using Oracle Enterprise Linux - 'oracle' user is already created
+
+- ASM GROUPS FOR ASM/RAC
 # groupadd -g 54333 asmdba
 # groupadd -g 54334 asmadmin
 
-# useradd -u 54323 -g oinstall -G asmdba,asmadmin grid
+- ORACLE USER
+[root@oel75rac12cr2model ~]# id oracle
+uid=54321(oracle) gid=54321(oinstall) groups=54321(oinstall),54322(dba),54323(oper),54324(backupdba),54325(dgdba),54326(kmdba),54330(racdba)
 
-Modify Oracle user: (to have additional group 'asmdba')
-TBD
+# id oracle
+uid=1101(oracle) gid=1000(oinstall) groups=1200(dba)
+
+-- add 'vboxsf' and 'asmdba' groups to 'oracle'
+NOTE: DO NOT FORGET '-a' option
+
+--- vboxsf group
+# grep vboxsf /etc/group
+vboxsf:x:982:
+# usermod  -a -G 982 oracle
+# id oracle
+uid=54321(oracle) gid=54321(oinstall) groups=54321(oinstall),982(vboxsf),54322(dba),54323(oper),54324(backupdba),54325(dgdba),54326(kmdba),54330(racdba)
+
+--- asmdba group
+# /usr/sbin/usermod  -a -G 54333 oracle
+# id oracle
+uid=54321(oracle) gid=54321(oinstall) groups=54321(oinstall),982(vboxsf),54322(dba),54323(oper),54324(backupdba),54325(dgdba),
+54326(kmdba),54330(racdba),54333(asmdba)
+
+- GRID USER
+Create the 'grid' user:
+# useradd -u 54323 -g oinstall -G asmdba,asmadmin grid
 
 [root@oel75rac12cr2model ~]# id grid
 uid=54323(grid) gid=54321(oinstall) groups=54321(oinstall),54333(asmdba),54334(asmadmin)
