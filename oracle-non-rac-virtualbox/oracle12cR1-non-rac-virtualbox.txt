@@ -15,6 +15,12 @@ If using 'virtualbox' logon as root and add 'vboxsf' group to Oracle as addition
 =======================
 INSTALL SOFTWARE
 =======================
+Stop the VM
+
+If Virtualbox VM - Add additional VM settings as described under "PERL ERROR" section down below
+
+Start the VM
+
 Logon directly as 'oracle' user - not as 'root' or 'vagrant' and then su to oracle
 --> otherwise, xterm will throw java or other error
 
@@ -55,6 +61,11 @@ Choose the following:
 --> SEE APPENDIX FOR THAT SAVED RESPONSE FILE
 
 RUN INSTALLER IN SILENT MODE
+NOTE: Somehow, this did not go well - it produced zero size 'oracle' executable and with setuid bits not correctly set
+--> Finally, cleaned this up and insalled using GUI 
+    - with fix in between as in the section "IRMAN ORACLE LJAVAVM12 ERROR" down below
+ 
+- Just for reference - silent install method:
 Logon on as 'oracle'  (this can be first to 'root' or 'vagrant' and then su or sudo to 'oracle' - as no Xterm needed)
 
 $ ./runInstaller -silent -ignoreSysPrereqs -showProgress -responseFile /home/oracle/response/db.rsp.from_runInstaller.rsp
@@ -74,6 +85,12 @@ Successfully Setup Software.
 Logon as 'root' user, execute the following script(s):
 	1. /u01/app/oraInventory/orainstRoot.sh
 	2. /u01/app/oracle/product/12.1.0/dbhome_1/root.sh
+
+-- VERIFY
+Verify size of $ORACLE_HOME/bin/oracle executable
+Verify setuid bits on the same
+
+If size is odd or setuid is not set, check if "IRMAN ORACLE LJAVAVM12 ERROR" section down below is relevant
 
 -- SET BASH-PROFILE OF ORACLE USER
 export ORACLE_BASE=/u01/app/oracle
@@ -156,9 +173,16 @@ Choose 'Generate database creation scripts' - and leave the folder as default /u
 
 View the summary and proceed
 Ignore TNS error
-<< TBD - ERRORED OUT IN RMAN STEP >>
+ERRORED OUT IN RMAN STEP
+-- This is due to software install error which went unnoticed
+-- 'oracle' executable had zero size and no SETUID bits were set
+-- see solution in section below: "IRMAN ORACLE LJAVAVM12 ERROR"
 
+Once this issue was resolved, it worked pretty well, but encountered a perl error
+--> except that there was a perl error which stopped database creation - see "PERL ERROR" section
 
+	Apply the perl-error fix before starting the server
+	Set PATH=$ORACLE_HOME/perl/bin:$PATH:$ORACLE_HOME/bin
 
 ============================================================================
 APPENDIX - RESPONSE FILE - SOFTWARE INSTALL - SAVED RESPONSE FILE FROM GUI
@@ -684,6 +708,8 @@ cp /u01/app/oracle/product/12.1.0/dbhome_1/javavm/jdk/<jdk6 or jdk7>/lib/libjava
 ============================
 PERL ERROR
 ============================
+
+During DB creation using silent/gui method encountered a perl related error.
 
 Follow document perl-fix2.txt
 (taken from http://robertcrames.blogspot.com/2017/06/dbca-db-creation-stops-with-dbmssmlsql.html 
