@@ -1,0 +1,31 @@
+http://robertcrames.blogspot.com/2017/06/dbca-db-creation-stops-with-dbmssmlsql.html
+--> https://dbaontap.com/2016/01/13/vbox5/  (this has the fix)
+
+PROBLEM
+Oracle_home/perl/bin/perl -v --> gives segmentation fault
+--> dbca GUI fails with dbmssml.sql error
+
+FIX
+--> https://dbaontap.com/2016/01/13/vbox5/  (this has the fix)
+
+What is really going on here?  According to my friends on the Virtual Box team:
+“It appears that there maybe a bug in the intel-compiler that is not able to leverage 4th cache-level available on some modern CPUs. Very recent Intel CPUs have 4 cache descriptors and VBox 5.0.x passes this information to the guest. For those of you that  are still running VBox 4.3.x, “this problem was not triggered on VBox 4.3.x because this version did not pass the full CPUID cache line information to the guest.”
+
+In order to correct this issue, 
+you must execute the following series of commands PRIOR to running your VM where <VM name> is the name of the VBox VM.
+
+These commands tweak the CPUID bits passed to the guest:
+
+ VBoxManage setextradata <VM name> "VBoxInternal/CPUM/HostCPUID/Cache/Leaf" "0x4"
+ VBoxManage setextradata <VM name> "VBoxInternal/CPUM/HostCPUID/Cache/SubLeaf" "0x4"
+ VBoxManage setextradata <VM name> "VBoxInternal/CPUM/HostCPUID/Cache/eax" "0"
+ VBoxManage setextradata <VM name> "VBoxInternal/CPUM/HostCPUID/Cache/ebx" "0"
+ VBoxManage setextradata <VM name> "VBoxInternal/CPUM/HostCPUID/Cache/ecx" "0"
+ VBoxManage setextradata <VM name> "VBoxInternal/CPUM/HostCPUID/Cache/edx" "0"
+ VBoxManage setextradata <VM name> "VBoxInternal/CPUM/HostCPUID/Cache/SubLeafMask" "0xffffffff"
+
+If you need to figure out the VM name, you can execute VBoxManage list vms at your command prompt.
+
+Note, this fix is on a per virtual machine basis. I will continue to work with Oracle and hopefully we will see a more permanent solution.
+
+Enjoy!
