@@ -100,9 +100,9 @@ export ORACLE_HOME=/u01/app/oracle/product/12.1.0/dbhome_1
 export PATH=$PATH:$ORACLE_HOME/bin
 export LD_LIBRARY_PATH=$ORACLE_HOME/lib
 
-=======================
-CREATE DATABASE
-=======================
+==========================
+CREATE DATABASE - DBCA GUI
+==========================
 Logon to machine directly as 'oracle' - xterm needs us to logon that way
 Start xterm
 Invoke dbca
@@ -185,6 +185,51 @@ Once this issue was resolved, it worked pretty well, but encountered a perl erro
 
 	Apply the perl-error fix before starting the server
 	Set PATH=$ORACLE_HOME/perl/bin:$PATH:$ORACLE_HOME/bin
+	
+==============================
+CREATE DATABASE - DBCA SILENT
+==============================
+See more at: https://github.com/coderdba/NOTES/blob/master/oracle-12c-kb/create_db_scripts/create_db_12c_non_rac_fs.sh
+
+SCRIPT:
+export DBNAME=ORANR2
+export SID=ORANR2
+export DBNAME_UNIQUE=ORANR2_SITE1
+export PDBNAME=PDB1
+
+export ORACLE_HOME=/u01/app/oracle/product/12.1.0/dbhome_1
+export LD_LIBRARY_PATH=$ORACLE_HOME/lib
+
+export PATH=/u01/app/oracle/product/12.1.0/dbhome_1/perl/bin:/usr/lib64/qt-3.3/bin:/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/home/oracle/.local/bin:/home/oracle/bin:/u01/app/oracle/product/12.1.0/dbhome_1/bin
+
+# This seemed to work
+# This is a combination of http://www.br8dba.com/dbca-silent-mode/ and items from above two commands
+dbca -silent -createDatabase -templateName General_Purpose.dbc -gdbName $DBNAME_UNIQUE -sid $SID -sysPassword Oracle_123 -systemPassword Oracle_123 -emConfiguration NONE -datafileDestination /oradata/data -recoveryAreaDestination /oradata/fra -storageType FS -characterSet AL32UTF8 -nationalCharacterSet AL16UTF16 -createAsContainerDatabase true -numberOfPdbs 1 -pdbName $PDBNAME -pdbAdminUserName PDBADMIN -pdbAdminPassword Oracle_123 -sampleSchema false
+
+VERIFY
+
+$ sqlplus / as sysdba
+
+SQL> show parameter memory
+
+NAME				     TYPE	 VALUE
+------------------------------------ ----------- ------------------------------
+hi_shared_memory_address	     integer	 0
+inmemory_clause_default 	     string
+inmemory_force			     string	 DEFAULT
+inmemory_max_populate_servers	     integer	 0
+inmemory_query			     string	 ENABLE
+inmemory_size			     big integer 0
+inmemory_trickle_repopulate_servers_ integer	 1
+percent
+memory_max_target		     big integer 1584M
+memory_target			     big integer 1584M
+optimizer_inmemory_aware	     boolean	 TRUE
+
+NAME				     TYPE	 VALUE
+------------------------------------ ----------- ------------------------------
+shared_memory_address		     integer	 0
+
 
 ============================================================================
 APPENDIX - RESPONSE FILE - SOFTWARE INSTALL - SAVED RESPONSE FILE FROM GUI
