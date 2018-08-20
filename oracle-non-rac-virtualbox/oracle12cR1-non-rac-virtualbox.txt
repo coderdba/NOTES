@@ -634,4 +634,39 @@ PROXY_PWD=
 #------------------------------------------------------------------------------
 COLLECTOR_SUPPORTHUB_URL=[
 
+=============================
+APPENDIX - ERRORS
+=============================
+GUI based install, says - Error in invoking target 'irman ioracle' of makefile - and asks to look into log file like:
+/u01/app/oraInventory/logs/installActions2018-08-20_06-10-16PM.log
+
+That log file shows: "cannot find -ljavavm12" which is the key issue:
+INFO: /usr/bin/ld: cannot find -ljavavm12
+collect2: error: ld returned 1 exit status
+
+INFO: make: *** [/u01/app/oracle/product/12.1.0/dbhome_1/rdbms/lib/oracle] Error 1
+
+INFO: End output from spawned process.
+INFO: ----------------------------------
+INFO: Exception thrown from action: make
+Exception Name: MakefileException
+Exception String: Error in invoking target 'irman ioracle' of makefile '/u01/app/oracle/product/12.1.0/dbhome_1/rdbms/lib/ins_rdbms.mk'. See '/u01/app/oraInventory/logs/installActions2018-08-20_06-10-16PM.log' for details.
+
+SOLUTION: http://www.dba-oracle.com/t_error_invoking_target_irman_ioracle_of_makefile.html
+Sample copy command:
+cp /u01/app/oracle/product/12.1.0/dbhome_1/javavm/jdk/<jdk6 or jdk7>/lib/libjavavm12.a /u01/app/oracle/product/12.1.0/dbhome_1/lib/.
+
+[oracle@oraclenr1 jdk]$ pwd
+/u01/app/oracle/product/12.1.0/dbhome_1/javavm/jdk
+
+[oracle@oraclenr1 jdk]$ ls -l */lib/libjavavm12*a
+-rw-r--r-- 1 oracle oinstall 28589614 Jun 30  2014 jdk6/lib/libjavavm12.a
+-rw-r--r-- 1 oracle oinstall 32244110 Jun 30  2014 jdk7/lib/libjavavm12.a
+
+[oracle@oraclenr1 lib]$ pwd
+/u01/app/oracle/product/12.1.0/dbhome_1/lib
+[oracle@oraclenr1 lib]$ cp /u01/app/oracle/product/12.1.0/dbhome_1/javavm/jdk/jdk7/lib/libjavavm12.a /u01/app/oracle/product/12.1.0/dbhome_1/lib/.
+
+
+
 
