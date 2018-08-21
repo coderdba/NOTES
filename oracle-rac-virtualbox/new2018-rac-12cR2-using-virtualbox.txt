@@ -1,0 +1,88 @@
+==================================================
+       ORACLE RAC 12.2 ON VIRTUALBOX VMs
+==================================================
+https://oracle-base.com/articles/12c/oracle-db-12cr2-rac-installation-on-oracle-linux-6-using-virtualbox
+https://docs.oracle.com/pls/topic/choose?ctx=db122&ids=CWLIN+CWSOL+CWAIX+CWHPX+CWWIN
+--> platform specific
+
+https://emilianofusaglia.net/2017/03/06/installing-oracle-grid-infrastrucure-12c-r2/
+12.2 Grid Infrastructure and Database Upgrade steps for Exadata Database Machine running 11.2.0.3 and later on Oracle Linux (Doc ID 2111010.1)
+
+https://docs.oracle.com/en/database/oracle/oracle-database/12.2/tdprc/installing-oracle-grid.html#GUID-986CA7AA-DA09-4261-866A-D08CD7A3E689
+
+Silent install:
+https://pierreforstmanndotcom.wordpress.com/2017/03/04/grid-infrastructure-12-2-0-1-silent-installation-on-oracle-linux-7/
+
+Deinstall:
+https://community.toadworld.com/platforms/oracle/b/weblog/archive/2017/08/08/deinstall-oracle-grid-infrastructure-12-2-failed-installation
+
+Deinstall old version:
+https://jameshuangsj.wordpress.com/2018/02/12/deinstall-12-1-0-2-grid-infrastructure-home-after-being-upgraded-to-12-2-0-1/
+
+=========================
+CREATE VMs
+=========================
+
+-----------------------
+CREATE VM1 - MODEL VM
+-----------------------
+Create a VM as in Virtualbox-kb/builds folder document
+- Install OS
+- Install Oracle Grid 12cR2 Prerequisite RPM
+- Install other required RPMs
+- Create users and group
+- Perl fix
+- ... etc
+
+-----------------------
+PREPARE NODE1 - rac1n1
+-----------------------
+- Clone the model VM
+
+- Change hostname to rac1n1
+# hostnamectl set-hostname rac1n1
+
+- Setup network IPs
+Edit network settings in GUI: system-tools --> network 
+Public - 192.168.0.101
+Private - 10.10.10.101
+Virtual (just set in /etc/hosts) - 192.168.0.111
+
+Restart network interfaces
+-- Private
+# ifdown enp0s8
+# ifup enp0s8
+
+-- Public
+# ifdown enp0s9
+# ifup enp0s9
+
+-- Verify
+# ip addr list
+
+3: enp0s8: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:7b:13:15 brd ff:ff:ff:ff:ff:ff
+    inet 10.10.10.101/24 brd 10.10.10.255 scope global noprefixroute enp0s8
+
+4: enp0s9: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:ca:34:38 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.0.101/24 brd 192.168.0.255 scope global noprefixroute enp0s9
+
+
+=========================
+GRID INSTALL
+=========================
+
+MEMORY REQUIRED
+8GB min - but 6gb gave only a warning during gridsetup.sh
+
+ASM DISK REQUIRED
+
+If adding this disk without Chef, add a 'non-dynamically-extending' disk - AND - make it 'shareable'
+--> To make it shareable, use VboxManage command:  VBoxManage modifyhd asm0.vmdk --type shareable
+--> or
+--> File --> Virtual Media Manager --> choose the disk --> right click --> Modify
+
+Min 40GB (mounted a 50GB one - when did without Chef)
+Cookbook vagrantfile does not have that sized disks single or total all disks
+Added one asm0 disk of 40gb to Vagrantfile
