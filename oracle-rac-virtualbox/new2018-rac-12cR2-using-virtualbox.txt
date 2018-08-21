@@ -80,6 +80,37 @@ $ VBoxManage modifyhd rac1_asmdata03.vmdk --type shareable
 $ VBoxManage modifyhd rac1_asmdata04.vmdk --type shareable
 
 - -------------------------
+- Partition the new disks
+- -------------------------
+https://superuser.com/questions/332252/how-to-create-and-format-a-partition-using-a-bash-script#984637
+
+echo -e "n\np\n1\n\n\nw" | fdisk /dev/sdb
+echo -e "n\np\n1\n\n\nw" | fdisk /dev/sdc
+echo -e "n\np\n1\n\n\nw" | fdisk /dev/sdd
+echo -e "n\np\n1\n\n\nw" | fdisk /dev/sde
+
+# ls -l /dev/sd* 
+--> should show /dev/sdb1 through /dev/sde1
+
+-> which is equivalent to 
+(note: \n is for newline or 'enter' key)
+n=new
+p=partition
+Two \n's for accepting default first and last sector
+w=write to partition table
+
+Alternative:
+(
+#echo o # Create a new empty DOS partition table
+echo n # Add a new partition
+echo p # Primary partition
+echo 1 # Partition number
+echo   # First sector (Accept default: 1)
+echo   # Last sector (Accept default: varies)
+echo w # Write changes
+) | sudo fdisk /dev/sdb
+
+- -------------------------
 - Change hostname to rac1n1
 - -------------------------
 # hostnamectl set-hostname rac1n1
