@@ -22,7 +22,6 @@ https://jameshuangsj.wordpress.com/2018/02/12/deinstall-12-1-0-2-grid-infrastruc
 =========================
 CREATE VMs
 =========================
-
 -----------------------
 CREATE MODEL VM
 -----------------------
@@ -34,109 +33,18 @@ Create a VM as in Virtualbox-kb/builds folder document
 - Perl fix
 - ... etc
 
------------------------
-PREPARE NODE1 - rac1n1
------------------------
-
-- -------------------
-- Clone the model VM
-- -------------------
+- --------------------------------------
+- Create node machines cloning model VM
+- --------------------------------------
+-node1
 Clone the model vm onto new vm rac1n1
 
-- --------------------
-- Add disks for ASM
-- --------------------
-Minimum 40GB is needed
-Add 4 disks of 12GB each
--> for 'data' diskgroup
--> for now, let us keep OCR and Voting disks in data diskgroup itself
+-node2
+Clone the model vm onto new vm rac1n2
 
-Shutdown VM
-Attach four disks to the SATA controller 
-       - 12GB each
-       - Assuming diskgroup name to be data
-       - Naming - rac1_asmdata01 through rac1_asmdata05
-       - Create as 'fixed size' - NOT 'dynamically allocated' - only 'fixed' sized disks are shareable between nodes
-
-$ mkdir -p /VboxVMDisks/rac1
-$ cd /VboxVMDisks/rac1
-
-$ # Create the disks and associate them with VirtualBox as virtual media.
-$ VBoxManage createhd --filename rac1_asmdata01.vmdk --size 12288 --format VMDK --variant Fixed
-$ VBoxManage createhd --filename rac1_asmdata02.vmdk --size 12288 --format VMDK --variant Fixed
-$ VBoxManage createhd --filename rac1_asmdata03.vmdk --size 12288 --format VMDK --variant Fixed
-$ VBoxManage createhd --filename rac1_asmdata04.vmdk --size 12288 --format VMDK --variant Fixed
-
-$ # Connect them to the VM.
-$ VBoxManage storageattach rac1n1 --storagectl "SATA" --port 1 --device 0 --type hdd --medium rac1_asmdata01.vmdk --mtype shareable
-$ VBoxManage storageattach rac1n1 --storagectl "SATA" --port 2 --device 0 --type hdd --medium rac1_asmdata02.vmdk --mtype shareable
-$ VBoxManage storageattach rac1n1 --storagectl "SATA" --port 3 --device 0 --type hdd --medium rac1_asmdata03.vmdk --mtype shareable
-$ VBoxManage storageattach rac1n1 --storagectl "SATA" --port 4 --device 0 --type hdd --medium rac1_asmdata04.vmdk --mtype shareable
-$
-$ # Make shareable.
-$ VBoxManage modifyhd rac1_asmdata01.vmdk --type shareable
-$ VBoxManage modifyhd rac1_asmdata02.vmdk --type shareable
-$ VBoxManage modifyhd rac1_asmdata03.vmdk --type shareable
-$ VBoxManage modifyhd rac1_asmdata04.vmdk --type shareable
-
-- -------------------------
-- Partition the new disks
-- -------------------------
-https://superuser.com/questions/332252/how-to-create-and-format-a-partition-using-a-bash-script#984637
-
-echo -e "n\np\n1\n\n\nw" | fdisk /dev/sdb
-echo -e "n\np\n1\n\n\nw" | fdisk /dev/sdc
-echo -e "n\np\n1\n\n\nw" | fdisk /dev/sdd
-echo -e "n\np\n1\n\n\nw" | fdisk /dev/sde
-
-# ls -l /dev/sd* 
---> should show /dev/sdb1 through /dev/sde1
-
--> which is equivalent to 
-(note: \n is for newline or 'enter' key)
-n=new
-p=partition
-Two \n's for accepting default first and last sector
-w=write to partition table
-
-Alternative:
-(
-#echo o # Create a new empty DOS partition table
-echo n # Add a new partition
-echo p # Primary partition
-echo 1 # Partition number
-echo   # First sector (Accept default: 1)
-echo   # Last sector (Accept default: varies)
-echo w # Write changes
-) | sudo fdisk /dev/sdb
-
-- -----------------------------
-- Create ASM disks using ASMLIB
-- -----------------------------
-# oracleasm createdisk DATA01 /dev/sdb1
-# oracleasm createdisk DATA02 /dev/sdc1
-# oracleasm createdisk DATA03 /dev/sdd1
-# oracleasm createdisk DATA04 /dev/sde1
-
--- Verify
-# ls -l /dev/oracleasm/disks
-total 0
-brw-rw----. 1 grid asmadmin 8, 17 Aug 21 17:30 DATA01
-brw-rw----. 1 grid asmadmin 8, 33 Aug 21 17:32 DATA02
-brw-rw----. 1 grid asmadmin 8, 49 Aug 21 17:32 DATA03
-brw-rw----. 1 grid asmadmin 8, 65 Aug 21 17:32 DATA04
-
--- Verify
-# oracleasm listdisks
-DATA01
-DATA02
-DATA03
-DATA04
-
-
-- -------------------------
-- Change hostnames of VMs  
-- -------------------------
+- -------------------------------
+- Change hostnames and IPs of VMs  
+- -------------------------------
 
 - NODE1 - rac1n1
 # hostnamectl set-hostname rac1n1
@@ -197,7 +105,110 @@ Virtual (just set in /etc/hosts) - 192.168.0.112
 4: enp0s9: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
     link/ether 08:00:27:ca:34:38 brd ff:ff:ff:ff:ff:ff
     inet 192.168.0.102/24 brd 192.168.0.255 scope global noprefixroute enp0s9
-    
+
+======================
+ADD ASM DISKS
+======================
+Minimum 40GB is needed
+Add 4 disks of 12GB each
+-> for 'data' diskgroup
+-> for now, let us keep OCR and Voting disks in data diskgroup itself
+
+--------
+NODE1
+--------
+
+- Shutdown VM
+
+- Attach four disks to the SATA controller 
+       - 12GB each
+       - Assuming diskgroup name to be data
+       - Naming - rac1_asmdata01 through rac1_asmdata05
+       - Create as 'fixed size' - NOT 'dynamically allocated' - only 'fixed' sized disks are shareable between nodes
+
+$ mkdir -p /VboxVMDisks/rac1
+$ cd /VboxVMDisks/rac1
+
+$ # Create the disks and associate them with VirtualBox as virtual media.
+$ VBoxManage createhd --filename rac1_asmdata01.vmdk --size 12288 --format VMDK --variant Fixed
+$ VBoxManage createhd --filename rac1_asmdata02.vmdk --size 12288 --format VMDK --variant Fixed
+$ VBoxManage createhd --filename rac1_asmdata03.vmdk --size 12288 --format VMDK --variant Fixed
+$ VBoxManage createhd --filename rac1_asmdata04.vmdk --size 12288 --format VMDK --variant Fixed
+
+$ # Connect them to the VM.
+$ VBoxManage storageattach rac1n1 --storagectl "SATA" --port 1 --device 0 --type hdd --medium rac1_asmdata01.vmdk --mtype shareable
+$ VBoxManage storageattach rac1n1 --storagectl "SATA" --port 2 --device 0 --type hdd --medium rac1_asmdata02.vmdk --mtype shareable
+$ VBoxManage storageattach rac1n1 --storagectl "SATA" --port 3 --device 0 --type hdd --medium rac1_asmdata03.vmdk --mtype shareable
+$ VBoxManage storageattach rac1n1 --storagectl "SATA" --port 4 --device 0 --type hdd --medium rac1_asmdata04.vmdk --mtype shareable
+$
+$ # Make shareable.
+$ VBoxManage modifyhd rac1_asmdata01.vmdk --type shareable
+$ VBoxManage modifyhd rac1_asmdata02.vmdk --type shareable
+$ VBoxManage modifyhd rac1_asmdata03.vmdk --type shareable
+$ VBoxManage modifyhd rac1_asmdata04.vmdk --type shareable
+
+- Restart the VM
+
+- -------------------------
+- NODE1 - Partition the new disks
+- -------------------------
+https://superuser.com/questions/332252/how-to-create-and-format-a-partition-using-a-bash-script#984637
+
+echo -e "n\np\n1\n\n\nw" | fdisk /dev/sdb
+echo -e "n\np\n1\n\n\nw" | fdisk /dev/sdc
+echo -e "n\np\n1\n\n\nw" | fdisk /dev/sdd
+echo -e "n\np\n1\n\n\nw" | fdisk /dev/sde
+
+# ls -l /dev/sd* 
+--> should show /dev/sdb1 through /dev/sde1
+
+-> which is equivalent to 
+(note: \n is for newline or 'enter' key)
+n=new
+p=partition
+Two \n's for accepting default first and last sector
+w=write to partition table
+
+Alternative:
+(
+#echo o # Create a new empty DOS partition table
+echo n # Add a new partition
+echo p # Primary partition
+echo 1 # Partition number
+echo   # First sector (Accept default: 1)
+echo   # Last sector (Accept default: varies)
+echo w # Write changes
+) | sudo fdisk /dev/sdb
+
+- -------------------------------------
+- NODE1 - Create ASM disks using ASMLIB
+- -------------------------------------
+# oracleasm createdisk DATA01 /dev/sdb1
+# oracleasm createdisk DATA02 /dev/sdc1
+# oracleasm createdisk DATA03 /dev/sdd1
+# oracleasm createdisk DATA04 /dev/sde1
+
+-- Verify
+# ls -l /dev/oracleasm/disks
+total 0
+brw-rw----. 1 grid asmadmin 8, 17 Aug 21 17:30 DATA01
+brw-rw----. 1 grid asmadmin 8, 33 Aug 21 17:32 DATA02
+brw-rw----. 1 grid asmadmin 8, 49 Aug 21 17:32 DATA03
+brw-rw----. 1 grid asmadmin 8, 65 Aug 21 17:32 DATA04
+
+-- Verify
+# oracleasm listdisks
+DATA01
+DATA02
+DATA03
+DATA04
+
+- -------------------------------------
+- NODE2 - Attach shared disks
+- -------------------------------------
+
+- Shutdown node2 - rac1n2
+
 =========================
 GRID INSTALL
 =========================
