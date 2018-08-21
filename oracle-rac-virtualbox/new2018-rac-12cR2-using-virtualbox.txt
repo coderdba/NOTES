@@ -135,8 +135,10 @@ DATA04
 
 
 - -------------------------
-- Change hostname to rac1n1
+- Change hostnames of VMs  
 - -------------------------
+
+- NODE1 - rac1n1
 # hostnamectl set-hostname rac1n1
 
 - Setup network IPs
@@ -145,13 +147,14 @@ Public - 192.168.0.101
 Private - 10.10.10.101
 Virtual (just set in /etc/hosts) - 192.168.0.111
 
-Restart network interfaces
 -- Private
 # ifdown enp0s8
+# ifconfig enp0s8 10.10.10.101 netmask 255.255.255.0
 # ifup enp0s8
 
 -- Public
 # ifdown enp0s9
+# ifconfig enp0s9 192.168.0.101 netmask 255.255.255.0
 # ifup enp0s9
 
 -- Verify
@@ -165,7 +168,36 @@ Restart network interfaces
     link/ether 08:00:27:ca:34:38 brd ff:ff:ff:ff:ff:ff
     inet 192.168.0.101/24 brd 192.168.0.255 scope global noprefixroute enp0s9
 
+- NODE2 - rac1n2
+# hostnamectl set-hostname rac1n2
 
+- Setup network IPs
+Edit network settings in GUI: system-tools --> network 
+Public - 192.168.0.102
+Private - 10.10.10.102
+Virtual (just set in /etc/hosts) - 192.168.0.112
+
+-- Private
+# ifdown enp0s8
+# ifconfig enp0s8 10.10.10.102 netmask 255.255.255.0
+# ifup enp0s8
+
+-- Public
+# ifdown enp0s9
+# ifconfig enp0s9 192.168.0.102 netmask 255.255.255.0
+# ifup enp0s9
+
+-- Verify
+# ip addr list
+
+3: enp0s8: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:7b:13:15 brd ff:ff:ff:ff:ff:ff
+    inet 10.10.10.102/24 brd 10.10.10.255 scope global noprefixroute enp0s8
+
+4: enp0s9: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:ca:34:38 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.0.102/24 brd 192.168.0.255 scope global noprefixroute enp0s9
+    
 =========================
 GRID INSTALL
 =========================
