@@ -24,7 +24,7 @@ CREATE VMs
 =========================
 
 -----------------------
-CREATE VM1 - MODEL VM
+CREATE MODEL VM
 -----------------------
 Create a VM as in Virtualbox-kb/builds folder document
 - Install OS
@@ -38,9 +38,14 @@ Create a VM as in Virtualbox-kb/builds folder document
 PREPARE NODE1 - rac1n1
 -----------------------
 
+- -------------------
 - Clone the model VM
+- -------------------
+Clone the model vm onto new vm rac1n1
 
+- --------------------
 - Add disks for ASM
+- --------------------
 Minimum 40GB is needed
 Add 4 disks of 12GB each
 -> for 'data' diskgroup
@@ -53,7 +58,30 @@ Attach four disks to the SATA controller
        - Naming - rac1_asmdata01 through rac1_asmdata05
        - Create as 'fixed size' - NOT 'dynamically allocated' - only 'fixed' sized disks are shareable between nodes
 
+$ mkdir -p /VboxVMDisks/rac1
+$ cd /VboxVMDisks/rac1
+
+$ # Create the disks and associate them with VirtualBox as virtual media.
+$ VBoxManage createhd --filename rac1_asmdata01.vmdk --size 20480 --format VMDK --variant Fixed
+$ VBoxManage createhd --filename rac1_asmdata02.vmdk --size 20480 --format VMDK --variant Fixed
+$ VBoxManage createhd --filename rac1_asmdata03.vmdk --size 20480 --format VMDK --variant Fixed
+$ VBoxManage createhd --filename rac1_asmdata04.vmdk --size 20480 --format VMDK --variant Fixed
+
+$ # Connect them to the VM.
+$ VBoxManage storageattach rac1n1 --storagectl "SATA" --port 1 --device 0 --type hdd --medium rac1_asmdata01.vmdk --mtype shareable
+$ VBoxManage storageattach rac1n1 --storagectl "SATA" --port 2 --device 0 --type hdd --medium rac1_asmdata02.vmdk --mtype shareable
+$ VBoxManage storageattach rac1n1 --storagectl "SATA" --port 3 --device 0 --type hdd --medium rac1_asmdata03.vmdk --mtype shareable
+$ VBoxManage storageattach rac1n1 --storagectl "SATA" --port 4 --device 0 --type hdd --medium rac1_asmdata04.vmdk --mtype shareable
+$
+$ # Make shareable.
+$ VBoxManage modifyhd rac1_asmdata01.vmdk --type shareable
+$ VBoxManage modifyhd rac1_asmdata02.vmdk --type shareable
+$ VBoxManage modifyhd rac1_asmdata03.vmdk --type shareable
+$ VBoxManage modifyhd rac1_asmdata04.vmdk --type shareable
+
+- -------------------------
 - Change hostname to rac1n1
+- -------------------------
 # hostnamectl set-hostname rac1n1
 
 - Setup network IPs
