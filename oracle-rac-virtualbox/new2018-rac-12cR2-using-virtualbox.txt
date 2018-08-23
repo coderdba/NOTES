@@ -204,40 +204,10 @@ echo   # Last sector (Accept default: varies)
 echo w # Write changes
 ) | sudo fdisk /dev/sdb
 
-============================================================
-CONFIGURE ASM DISKS - USING NEW Oracle ASM Filter Driver
-============================================================
-
-NOTE: NEED TO DO A 'CONFIGURE' FIRST??
-https://dbamarco.wordpress.com/2016/06/13/using-asm-filter-driver-right-from-the-beginning/
-
-Node1:
-
-- Logon as root
-
-- SET ENVIRONMENT
-# export ORACLE_HOME=/u01/app/gridhome12cr2
-# export ORACLE_BASE=/u01/app/gridbase
-
-- CONFIGURE
-# $ORACLE_HOME/bin/asmcmd afd_label DATA01 /dev/sdb1 --init
-# $ORACLE_HOME/bin/asmcmd afd_label DATA02 /dev/sdc1 --init
-# $ORACLE_HOME/bin/asmcmd afd_label DATA03 /dev/sdd1 --init
-# $ORACLE_HOME/bin/asmcmd afd_label DATA04 /dev/sde1 --init
-
-- VERIFY
-# $ORACLE_HOME/bin/asmcmd afd_lslbl /dev/sdb1
---------------------------------------------------------------------------------
-Label                     Duplicate  Path
-================================================================================
-DATA01                                /dev/sdb1
-...
-...
-
-
 ====================================================================================================
 ====================================================================================================
-       DEPRECATED ASMLIB STEPS - INSTEAD, USE Oracle ASM Filter Driver
+TRADITIONAL ASMLIB STEPS - 
+(IF INSTEAD, USED Oracle ASM Filter Driver - somehow that conflicted with installed ASMLIB drivers and did not work)
 - -------------------------------------
 - NODE1 - Create ASM disks using ASMLIB
 - -------------------------------------
@@ -293,6 +263,58 @@ brw-rw----. 1 grid asmadmin 8, 33 Aug 21 18:50 /dev/oracleasm/disks/DATA02
 brw-rw----. 1 grid asmadmin 8, 49 Aug 21 18:50 /dev/oracleasm/disks/DATA03
 brw-rw----. 1 grid asmadmin 8, 65 Aug 21 18:50 /dev/oracleasm/disks/DATA04
 
+
+====================================================================================================
+====================================================================================================
+
+==========================================================================================================
+OPTIONAL - DID NOT WORK WELL - CONFIGURE ASM DISKS - USING NEW Oracle ASM Filter Driver
+==========================================================================================================
+NOTE: The steps until adding labels worked 
+- but, could not enable AFD driver in GUI - it errored out conflicting with ASMLIB drivers
+
+NOTE: NEED TO DO A 'CONFIGURE' FIRST??
+https://dbamarco.wordpress.com/2016/06/13/using-asm-filter-driver-right-from-the-beginning/
+
+Node1:
+
+- Logon as root
+
+- SET ENVIRONMENT
+# export ORACLE_HOME=/u01/app/gridhome12cr2
+# export ORACLE_BASE=/u01/app/gridbase
+
+- CONFIGURE
+# $ORACLE_HOME/bin/asmcmd afd_label DATA01 /dev/sdb1 --init
+# $ORACLE_HOME/bin/asmcmd afd_label DATA02 /dev/sdc1 --init
+# $ORACLE_HOME/bin/asmcmd afd_label DATA03 /dev/sdd1 --init
+# $ORACLE_HOME/bin/asmcmd afd_label DATA04 /dev/sde1 --init
+
+- VERIFY
+# $ORACLE_HOME/bin/asmcmd afd_lslbl /dev/sdb1
+--------------------------------------------------------------------------------
+Label                     Duplicate  Path
+================================================================================
+DATA01                                /dev/sdb1
+...
+...
+
+FAILED HERE (as below): (in the gridSetup.sh GUI)
+
+- Create ASM Diskgroup
+Redundancy = external
+Allocation unit size = 4MB (default)
+Select disks = choose the four disks that should show up now as we have configured them using ASMCMD
+Check the option Configure Oracle ASM Filter Driver.
+--> pressing next with checking the ASM Filter Driver option gave error:
+--> AFD9201, AFD9202 --> AFD Cannot be installed/loaded because asmlib is installed
+
+       On both nodes: Remove the ASM libraries:
+       # rpm -qa|grep asm
+       oracleasm-support-2.1.11-2.el7.x86_64
+       oracleasmlib-2.0.12-1.el7.x86_64
+       # rpm -e oracleasm-support
+       # rpm -e oracleasmlib
 
 ====================================================================================================
 ====================================================================================================
@@ -372,18 +394,26 @@ Choose 'no' for 'separate disk group for grid infra management (ocr, voting)'
 - Create ASM Diskgroup
 Redundancy = external
 Allocation unit size = 4MB (default)
+Change discovery path = /dev/oracleasm/disks/*
 Select disks = choose the four disks that should show up now as we have configured them using ASMCMD
-Check the option Configure Oracle ASM Filter Driver.
---> pressing next with checking the ASM Filter Driver option gave error:
---> AFD9201, AFD9202 --> AFD Cannot be installed/loaded because asmlib is installed
 
-       On both nodes: Remove the ASM libraries:
-       # rpm -qa|grep asm
-       oracleasm-support-2.1.11-2.el7.x86_64
-       oracleasmlib-2.0.12-1.el7.x86_64
-       # rpm -e oracleasm-support
-       # rpm -e oracleasmlib
+- ASM Password
+Used 'oracle' as password for 
+
+- Failure isolation
+--> did not choose IPMI
+
+- Management options
+--> did not choose EM registration
+
+- Operating System Groups
+ASM Administration (OSASM) = ASMADMIN
+ASM DBA (OSDBA) = ASMDBA
+ASM Operator (OSOPER) = NULL (optional)
+
+- Installation Location
+Oracle Base = /u01/app/gridbase
+Oracle Grid Infra home (aka software location = /u01/app/gridhome12cr2 (already chosen and greyed)
 
 
-  
   
