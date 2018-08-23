@@ -24,3 +24,14 @@ Oracle ASMLib 2.0
 Intel EM64T (x86_64) Architecture
 Library and Tools
 oracleasmlib-2.0.12-1.el7.x86_64.rpm
+
+= = = 
+MORE INFO
+
+According to 2day DBA +  RAC 11g document,
+https://docs.oracle.com/cd/E11882_01/rac.112/e17264/preparing.htm#TDPRC145
+
+The following RPMs are needed:
+# rpm -Uvh oracleasm-support-2.1.3-1.el4.x86_64.rpm
+# rpm -Uvh oracleasmlib-2.0.4-1.el4.x86_64.rpm
+# rpm -Uvh oracleasm-2.6.9-55.0.12.ELsmp-2.0.3-1.x86_64.rpm
