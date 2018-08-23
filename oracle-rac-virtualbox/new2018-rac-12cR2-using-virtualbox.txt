@@ -2,6 +2,8 @@
        ORACLE RAC 12.2 ON VIRTUALBOX VMs
 ==================================================
 https://oracle-base.com/articles/12c/oracle-db-12cr2-rac-installation-on-oracle-linux-6-using-virtualbox
+https://docs.oracle.com/en/database/oracle/oracle-database/12.2/tdprc/installing-oracle-grid.html#GUID-72D1994F-E838-415A-8E7D-30EA780D74A8
+--> 2 day + RAC
 https://docs.oracle.com/pls/topic/choose?ctx=db122&ids=CWLIN+CWSOL+CWAIX+CWHPX+CWWIN
 --> platform specific
 
@@ -202,6 +204,37 @@ echo   # Last sector (Accept default: varies)
 echo w # Write changes
 ) | sudo fdisk /dev/sdb
 
+============================================================
+CONFIGURE ASM DISKS - USING NEW Oracle ASM Filter Driver
+============================================================
+
+Node1:
+
+- Logon as root
+
+- SET ENVIRONMENT
+# export ORACLE_HOME=/u01/app/gridhome12cr2
+# export ORACLE_BASE=/u01/app/gridbase
+
+- CONFIGURE
+# $ORACLE_HOME/bin/asmcmd afd_label DATA01 /dev/sdb1 --init
+# $ORACLE_HOME/bin/asmcmd afd_label DATA02 /dev/sdc1 --init
+# $ORACLE_HOME/bin/asmcmd afd_label DATA03 /dev/sdd1 --init
+# $ORACLE_HOME/bin/asmcmd afd_label DATA04 /dev/sde1 --init
+
+- VERIFY
+# $ORACLE_HOME/bin/asmcmd afd_lslbl /dev/sdb1
+--------------------------------------------------------------------------------
+Label                     Duplicate  Path
+================================================================================
+DATA01                                /dev/sdb1
+...
+...
+
+
+====================================================================================================
+====================================================================================================
+       DEPRECATED ASMLIB STEPS - INSTEAD, USE Oracle ASM Filter Driver
 - -------------------------------------
 - NODE1 - Create ASM disks using ASMLIB
 - -------------------------------------
@@ -257,6 +290,9 @@ brw-rw----. 1 grid asmadmin 8, 33 Aug 21 18:50 /dev/oracleasm/disks/DATA02
 brw-rw----. 1 grid asmadmin 8, 49 Aug 21 18:50 /dev/oracleasm/disks/DATA03
 brw-rw----. 1 grid asmadmin 8, 65 Aug 21 18:50 /dev/oracleasm/disks/DATA04
 
+
+====================================================================================================
+====================================================================================================
 
 =========================
 GRID INSTALL
