@@ -475,6 +475,95 @@ Then, remount /dev/shm
 
 - Then retry the operation in GUI
 
+- Finally, it may error out for NTP settings 
+-- then enably chrony
+# systemctl enable chronyd.service
+# systemctl start chronyd.service
+
+-- Still, it will error out saying NTP servers are not configured
+Dont worry about it, say ok or whatever and close the installer
+---- at this point all is well
+
+==========================================
+VERIFY
+==========================================
+Logon as grid user
+
+[grid@rac1n1 ~]$ . oraenv
+ORACLE_SID = [grid] ? +ASM1
+The Oracle base has been set to /u01/app/gridbase
+
+[grid@rac1n1 ~]$ crsctl stat res -t
+--------------------------------------------------------------------------------
+Name           Target  State        Server                   State details       
+--------------------------------------------------------------------------------
+Local Resources
+--------------------------------------------------------------------------------
+ora.ASMNET1LSNR_ASM.lsnr
+               ONLINE  ONLINE       rac1n1                   STABLE
+               ONLINE  ONLINE       rac1n2                   STABLE
+ora.DATA.dg
+               ONLINE  ONLINE       rac1n1                   STABLE
+               ONLINE  ONLINE       rac1n2                   STABLE
+ora.LISTENER.lsnr
+               ONLINE  ONLINE       rac1n1                   STABLE
+               ONLINE  ONLINE       rac1n2                   STABLE
+ora.chad
+               ONLINE  ONLINE       rac1n1                   STABLE
+               ONLINE  ONLINE       rac1n2                   STABLE
+ora.net1.network
+               ONLINE  ONLINE       rac1n1                   STABLE
+               ONLINE  ONLINE       rac1n2                   STABLE
+ora.ons
+               ONLINE  ONLINE       rac1n1                   STABLE
+               ONLINE  ONLINE       rac1n2                   STABLE
+ora.proxy_advm
+               OFFLINE OFFLINE      rac1n1                   STABLE
+               OFFLINE OFFLINE      rac1n2                   STABLE
+--------------------------------------------------------------------------------
+Cluster Resources
+--------------------------------------------------------------------------------
+ora.LISTENER_SCAN1.lsnr
+      1        ONLINE  ONLINE       rac1n2                   STABLE
+ora.LISTENER_SCAN2.lsnr
+      1        ONLINE  ONLINE       rac1n1                   STABLE
+ora.LISTENER_SCAN3.lsnr
+      1        ONLINE  ONLINE       rac1n1                   STABLE
+ora.MGMTLSNR
+      1        ONLINE  ONLINE       rac1n1                   169.254.214.30 10.10
+                                                             .10.101,STABLE
+ora.asm
+      1        ONLINE  ONLINE       rac1n1                   Started,STABLE
+      2        ONLINE  ONLINE       rac1n2                   Started,STABLE
+      3        OFFLINE OFFLINE                               STABLE
+ora.cvu
+      1        ONLINE  ONLINE       rac1n1                   STABLE
+ora.mgmtdb
+      1        ONLINE  ONLINE       rac1n1                   Open,STABLE
+ora.qosmserver
+      1        ONLINE  ONLINE       rac1n1                   STABLE
+ora.rac1n1.vip
+      1        ONLINE  ONLINE       rac1n1                   STABLE
+ora.rac1n2.vip
+      1        ONLINE  ONLINE       rac1n2                   STABLE
+ora.scan1.vip
+      1        ONLINE  ONLINE       rac1n2                   STABLE
+ora.scan2.vip
+      1        ONLINE  ONLINE       rac1n1                   STABLE
+ora.scan3.vip
+      1        ONLINE  ONLINE       rac1n1                   STABLE
+--------------------------------------------------------------------------------
+
+
+[grid@rac1n1 ~]$ asmcmd
+ASMCMD> lsdg
+State    Type    Rebal  Sector  Logical_Sector  Block       AU  Total_MB  Free_MB  Req_mir_free_MB  Usable_file_MB  Offline_disks  Voting_files  Name
+MOUNTED  EXTERN  N         512             512   4096  4194304     49136    15084                0           15084              0             Y  DATA/
+ASMCMD> exit
+
+
+
+====================================================================================================
 ==========================================
 APPENDIX - RESPONSE FILE - SAVED FROM GUI
 ==========================================
