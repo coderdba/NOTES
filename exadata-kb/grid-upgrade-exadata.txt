@@ -1,0 +1,1499 @@
+http://bbs.cqsztech.com/forum.php?mod=viewthread&tid=17301
+
+COPIED AS IS FROM THE WEBSITE ABOVE
+
+12.2 Grid Infrastructure and Database Upgrade steps for Exadata Database Mach... [复制链接]
+郑全
+
+电梯直达
+跳转到指定楼层 楼主
+ 发表于 2017-6-23 11:16:33 | 只看该作者 回帖奖励
+
+12.2 Grid Infrastructure and Database Upgrade steps for Exadata Database Machine running 11.2.0.3 and later on Oracle Linux (文档 ID 2111010.1)
+In this Document
+
+Purpose 
+Details 
+  Oracle Exadata Database Machine Maintenance 
+  Overview 
+  Conventions 
+  Assumptions 
+  References 
+  Oracle Documentation 
+  My Oracle Support Documents 
+  Prepare the Existing Environment 
+  Planning 
+  Testing on non-production first 
+  SQL Plan Management 
+  Recoverability 
+  Account Access 
+  Preparations for upgrades on Exadata Bare Metal configuration 
+  Review 12.2.0.1 Upgrade Prerequisites 
+  Exadata Storage Server  and Database Server version 12.2.1.1.0 
+  Sun Datacenter InfiniBand Switch 36 is running software release 2.1.6-2 or later 
+  Grid Infrastructure and Database Software 
+  Generic Requirements 
+  Do not place the new ORACLE_HOME under /opt/oracle. 
+  Data Guard only - If there is a physical standby database associated with the databases being upgraded, then the following must be true 
+  Download and staging Required Files 
+  Apply required patches / updates where required before upgrading proceeds 
+  Update OPatch in existing 11.2 and 12.1 Grid Home and Database Homes on All Database Servers: 
+  For Exadata Storage Servers and Database Servers on releases earlier than Exadata 12.1.2.2.1 
+  For 11.2.0.3 Grid Infrastructure and Database 
+  For 11.2.0.4 Grid Infrastructure and Database 
+  For 12.1.0.1 Grid Infrastructure and Database 
+  For 12.1.0.2 Grid Infrastructure and Database 
+  Prepare installation software 
+  Create the new Grid Infrastructure (GI_HOME) directory where 12.2.0.1 will be installed 
+  Unzip installation software 
+  Unzip  Patch 25556203 into the staging area 
+  Preparations for upgrade on Exadata Oracle Virtual Machine (OVM) 
+  Download the most recent gold images patch sets for 12.2 
+  Prepare the gold disk image 
+  Create User Domain(domU) specific reflinks 
+  Add new devices to vm.cfg 
+  Setup up Software on each domU before clusterware upgrade 
+  Perform the exact steps as described below on the installer screens: 
+  Adding devices to additional clusters in dom0 
+  Validate Environment 
+  Run Exachk 
+  Early stage pre-upgrade check: analyze your databases to be upgraded with the Pre-Upgrade Information Tool 
+  Validate Readiness for Oracle Clusterware upgrade using CVU 
+  Upgrade Grid Infrastructure to 12.2.0.1 
+  MGMTDB 
+  No hugepage configuration for MGMTDB 
+  Validate memory configuration for new ASM SGA requirements 
+  Create a snapshot based backup of the database server partitions 
+  Perform the 12.2.0.1 Grid Infrastructure software upgrade using Oracle Grid Infrastructure Setup wizard 
+  If available: Apply recommended patches to the Grid Infrastructure before running gridSetup.sh 
+  If available: Apply 12.2.0.1 Bundle Patch Overlay Patches to the Grid Infrastructure Home as Specified in Document 888828.1 
+  Apply Customer-specific 12.2.0.1 One-Off Patches to the Grid Infrastructure Home 
+  Change SGA memory settings for ASM 
+  Verify values for memory_target, memory_max_target and use_large_pages 
+  Reset CSS misscount on RAC Cluster 
+  Actions to take before executing gridSetup.sh on each database server 
+  Exadata Bare Metal configurations 
+  Perform the exact steps as described below on the installer screens: 
+  Exadata Oracle Virtual Machine (OVM) 
+  Perform the exact steps as described below on the installer screens: 
+  If necessary: Install Latest OPatch 12.2 
+  Execute rootupgrade.sh on each database server 
+  Continue with 12.2.0.1 GI installation in wizard 
+  Verify cluster status 
+  Verify Flex ASM Cardinality is set to "ALL" 
+  Change Custom Scripts and environment variables to Reference the 12.1.0.2 Grid Home 
+  Modify the dbfs_mount cluster resource 
+  Using earlier Oracle Database Releases with Oracle Grid Infrastructure 12.2 
+  Install Database 12.2.0.1 Software 
+  Exadata Bare Metal configuration 
+  Prepare Installation Software 
+  Create the new Oracle DB Home directory on all primary and standby database server nodes 
+  Perform 12.2.0.1 Database Software Installation with the Oracle Universal Installer (OUI) 
+  Perform the exact actions as described below on the installer screens: 
+  If necessary: Install Latest OPatch 12.2 in the Database Home on All Database Servers 
+  When available: Install the latest 12.2.0.1 GI PSU (which includes the DB PSU) to the Database Home when available - Do Not Perform Post-Installation Steps 
+  Stage the patch 
+  OCM response file not required 
+  Patch 12.2.0.1 database home 
+  Skip patch post-installation steps 
+  When available: Apply 12.2.0.1 Patch Overlay Patches to the Database Home as Specified in Document 888828.1 
+  Apply Customer-specific 12.2.0.1 One-Off Patches 
+  Exadata Oracle Virtual Machine (OVM) 
+  Upgrade Database to 12.2.0.1 
+  Backing up the database and creating a Guaranteed Restore Point 
+  Analyze the Database to Upgrade with the Pre-Upgrade Information Tool 
+  Run Pre-Upgrade Information Tool for Non-CDB or CDB database 
+  Handle obsolete and underscore parameters 
+  Review pre-upgrade information tool output 
+  Requirements for Upgrading Databases That Use Oracle Label Security and Oracle Database Vault 
+  Data Guard only - Synchronize Standby and Change the Standby Database to use the new 12.2.0.1 Database Home 
+  Flush all redo generated on the primary and disable the broker 
+  Data Guard only - Disable Fast-Start Failover and Data Guard Broker 
+  Shutdown the primary database. 
+  Shutdown the standby database and restart it in the 12.2.0.1 database home 
+  Start all Non-CDB primary instances in restricted mode 
+  Start all Container databases(CDB) primary in normal Read/Write mode 
+  Change preference for concurrent statistics gathering 
+  Before starting the Database Upgrade Assistant (DBUA) stop and disable all services with PRECONNECT as option for 'TAF Policy specification' 
+  Upgrade the Database with Database Upgrade Assistant (DBUA) 
+  Running DBUA on Non-CDB, Container database(CDB), and Pluggable database (PDB) :   
+
+  Complete the steps on Non-CDB  database, required by the pre-upgrade information tool. Take action on areas identified in the output. 
+  Complete the steps on a Container database (CDB), required by the pre-upgrade information tool.Take action on areas identified in the output. 
+  Pluggable database(PDB) sequential upgrades using Unplug/Plug (Optional) 
+  Review and perform steps in Oracle Upgrade Guide, Chapter 4 'Post-Upgrade Tasks for Oracle Database' 
+  Change Custom Scripts and environment variables to Reference the 12.2.0.1 Database Home 
+   Initialization Parameters  
+  When available: run 12.2.0.1 Bundle Patch Post-Installation Steps 
+  Data Guard only - Enable Fast-Start Failover and Data Guard Broker 
+  Post-upgrade Steps 
+  Remove Guaranteed Restore Point  
+  Disable Diagsnap for Exadata 
+  Deconfigure MGMTDB 
+  DBFS only - Perform DBFS Required Updates 
+  Obtain latest mount-dbfs.sh script from Document 1054431.1 
+  Edit mount-dbfs.sh script and Oracle Net files for the new 12.2.0.1 environment 
+  Run Exachk 
+  Optional: Deinstall the 11.2.0.3, 11.2.0.4, 12.1.0.1 or 12.1.0.2 Database and Grid Homes 
+  Exadata Bare Metal configurations 
+  Exadata Oracle Virtual Machine (OVM) 
+  Re-configure RMAN Media Management Library 
+  Restore settings for concurrent statistics gathering 
+  Advance COMPATIBLE.ASM diskgroup attribute  
+  Using earlier Oracle Database Releases with Oracle Grid Infrastructure 12.2 
+  Installing earlier version of Oracle Database 
+  Performing Inventory update 
+  Troubleshooting 
+  Revision History 
+References 
+
+
+Applies to: 
+Exadata X6-8 Hardware - Version All Versions to All Versions [Release All Releases]
+Exadata X6-2 Hardware - Version All Versions to All Versions [Release All Releases]
+Exadata Database Machine V2 - Version All Versions to All Versions [Release All Releases]
+Exadata X3-8 Hardware - Version All Versions to All Versions [Release All Releases]
+Exadata Database Machine X2-8 - Version All Versions to All Versions [Release All Releases]
+Information in this document applies to any platform.
+Purpose
+This document provides step-by-step instructions for upgrading Oracle Database and Oracle Grid Infrastructure on Oracle Exadata Bare Metal configuration and Oracle Exadata Oracle Virtual Machine (OVM). The minimum version required to upgrade to Oracle 12.2.0.1 is 11.2.0.3 on Oracle Exadata Database Machine running Oracle Linux.
+This document may also be used in conjunction with Document 2186095.1 for upgrade of Oracle Database and Oracle Grid Infrastructure to 12.2.0.1 on Oracle Exadata Database Machine running Oracle Solaris x86-64 and Oracle SuperCluster running Oracle Solaris SPARC. Document 2186095.1 contains Solaris-specific requirements, recommendations, guidelines, and workarounds that pertain to upgrade of Oracle Database and Oracle Grid Infrastructure to 12.2.0.1.
+
+Details
+Oracle Exadata Database Machine Maintenance
+11.2.0.3, 11.2.0.4, 12.1.0.1 or 12.1.0.2 to 12.2.0.1 Upgrade for Oracle Linux
+Overview
+This document provides step-by-step instructions for upgrading Oracle Database and Oracle Grid Infrastructure from release 11.2.0.3, 11.2.0.4, 12.1.0.1 or 12.1.0.2 to 12.2.0.1 on Oracle Exadata Bare Metal configuration and Oracle Exadata Oracle Virtual Machine (OVM). Updates and additional patches may be required for your existing installation before upgrading to Oracle Database 12.2.0.1 (12cR2) and Oracle Grid Infrastructure 12.2.0.1 (12cR2).  The note box below provides a summary of the software requirements to upgrade.
+
+Summary of software requirements to upgrade to Oracle Database 12c and Oracle Grid Infrastructure 12c
+1.Current Oracle Database and Grid Infrastructure version must be 11.2.0.3, 11.2.0.4, 12.1.0.1 or 12.1.0.2.  Upgrades from 11.2.0.1 or 11.2.0.2 directly to 12.2.0.1 are not supported.
+2.Exadata Storage Server version 12.2.1.1.0 will be required for full Exadata functionality including  'Smart Scan offloaded filtering', 'storage indexes' and' I/O Resource Management' (IORM).
+?When not able to upgrade to Exadata 12.2.1.1.0, a minimum version of 12.1.2.2.1 or later (kernel 2.6.39-400.264.6.el6uek (OL 6.7) on Exadata Storage Servers and Database Servers.
+?See document 1537407.1 for restrictions when running Oracle Database 12c in combination with Exadata releases earlier than 12.2.1.1.0
+3.When available: GI PSU 12.2.0.1.1 or later (which includes DB PSU 12.2.0.1.1). To be applied: ?As part of the upgrade process
+?after installing the new Database home, before upgrading the database.
+4.Fix for  bug 17617807 and bug 21255373 is required to successfully upgrade to 12.2.0.1 from  11.2.0.3.28, 11.2.0.4.160419 and 12.1.0.1.160419. The fix is already contained in 11.2.0.4.160419 and 12.1.0.2.160419.
+5.Fix for bug 25556203 is required on top of the 12.2.0.1 Grid Infrastructure home before running rootupgrade.sh
+6.UEK4 Support:
+o With Exadata Storage Server version 12.2.1.1.0 the Linux Kernel is upgraded to Oracle Unbreakable Enterprise Kernel (UEK4).
+o Database support for releases 11.2.0.3, 11.2.0.4 , 12.1.0.1, 12.1.0.2 and 12.2.0.1 exists for Exadata configurations running UEK2 and/or UEK4 on database nodes and/or Storage Servers.
+Refer to the preparing your environment section for details.
+Solaris only: Review Document 2186095.1 section Oracle Solaris-specific software requirements and recommendations.
+NOTE: Do not take action yet to meet these requirements.  Follow the detailed steps later in this document.
+
+There are six main sections to the upgrade:
+Section Overview 
+Prepare the Existing Environment  
+The software releases and patches installed in the current environment must be at certain minimum levels before upgrading to 12.2.0.1 can begin. Depending on the existing software installed, updates performed during this section may be performed in a rolling manner or may require database-wide downtime. In this section recommendations for storing baseline execution plans will be done as well as the advice to make sure database restores can be done in case there is a need to rollback. The preparation phase will detail on the required patches, where to download and stage them.
+
+Upgrade Grid Infrastructure to 12.2.01 Grid Infrastructure upgrades from 11.2.0.3, 11.2.0.4, 12.1.0.1 or 12.1.0.2  to 12.2.0.1 are always performed out of place and in a RAC rolling manner. 
+Install Database 12.2.0.1 Software Database 12.2.0.1 software installation is performed into a new ORACLE_HOME directory.  The installation is performed with no impact to running applications 
+Upgrade Database to 12.2.0.1  
+Database upgrades from 11.2.0.3, 11.2.0.4, 12.1.0.1 or 12.1.0.2 to 12.2.0.1 requires database-wide downtime.
+To reduce database downtime, rolling upgrade with (Transient) Logical Standby or Golden Gate may be used. Rolling upgrade with (Transient) Logical Standby or Golden Gate is not covered in this document. 
+
+For Transient Logical: ?
+?Please refer to http://www.oracle.com/technetwork/database/availability/database-rolling-upgrade Oracle Database Rolling Upgrades
+For Golden Gate:
+?Please refer to Golden Gate documentation
+?Please refer to MAA OTN www.oracle.com/goto/maa for GoldenGate MAA Best practices
+
+Post-upgrade steps  
+Includes suggestions on required and optional next steps to perform following the upgrade, such as updating DBFS, performing a general health check, re-configuring for Cloud Control, and cleaning up the old, unused home areas. Instructions to re-configure Cloud Control are out of scope for this document.
+
+Troubleshooting  
+Links to helpful troubleshooting documents
+
+
+
+Conventions
+?The steps documented apply to 11.2.0.3, 11.2.0.4, 12.1.0.1 and 12.1.0.2 upgrades to 12.2.0.1 unless specified differently
+?New database home will be /u01/app/oracle/product/12.2.0.1/dbhome_1
+?New grid home will be /u01/app/12.2.0.1/grid
+?For recommended patches on top of 12.2.0.1 document 888828.1 needs to be consulted.
+Assumptions
+?The database and grid software owner is oracle.
+?The Oracle inventory group is oinstall.
+?The files ~oracle/dbs_group and ~root/dbs_group exist and contain the names of all database servers.
+?Current Database Home  can be either an 11.2.0.3, 11.2.0.4, 12.1.0.1 or a 12.1.0.2 database home
+?Current Grid Infrastructure home can be either an 11.2.0.3, 11.2.0.4, 12.1.0.1 or 12.1.0.2 Grid Infrastructure home
+?The primary database to be upgraded is named PRIM.
+?The standby database associated with primary database PRIM is named STBY.
+?Additional to the Exadata specific steps mentioned in this document the user takes care of site specific database upgrade steps.
+?All Exachk recommended best practices, for example memory management (huge pages) and interconnect settings (not using HAIP) are implemented prior to the beginning of the upgrade. ?See Oracle Sun Database Machine Setup/Configuration Best Practices
+
+References
+Oracle Documentation
+?Database Upgrade Guide
+?Grid Infrastructure Installation Guide
+?Oracle Data Guard Broker
+?Oracle Data Guard Concepts and Administration
+?Oracle Automatic Storage Management Administrator's Guide
+?Database Administrator Guide
+?Database Reference
+My Oracle Support Documents
+?Document 888828.1 -  Database Machine and Exadata Storage Server Supported Releases
+?Document 1537407.1 - Requirements and restrictions when using Oracle Database 12c on Exadata Database Machine
+?Document 1270094.1 - Exadata Critical Issues
+?Document 1070954.1 - Oracle Exadata Database Machine Exachk
+?Document 1054431.1 - Configuring DBFS on Oracle Database Machine
+?Document 361468.1 -   HugePages on Oracle Linux 64-bit
+?Document 1284070.1 - Updating key software components on database hosts to match those on the cells
+?Document 1281913.1 - Root Script Fails if ORACLE_BASE is set to /opt/oracle
+?Document 1050908.1 - Troubleshoot Grid Infrastructure Startup Issues
+?Document 1410202.1 - How to Apply a Grid Infrastructure Patch Before root script (root.sh or rootupgrade.sh) is Executed
+
+Prepare the Existing Environment
+Oracle Exadata machine supports both "bare metal" and Oracle Virtual Machine (OVM) deployments. Preparation of existing environment will vary depending upon whether the deployment is bare metal or a Oracle Virtual Machine (OVM). In the bare metal deployment the standard release media files are used while in the Oracle Virtual Machine (OVM), a gold image is used. A gold image is a copy of a software-only, installed Oracle home. It is used to copy a new version of an Oracle home to a new host on a new file system to serve as an active, usable Oracle home.
+Here are the steps performed in this section.
+?Planning
+?Preparations for upgrades on Exadata Bare Metal configuration
+?Preparations for upgrades on Exadata Oracle Virtual Machine (OVM)
+?Validate Environment
+Planning
+The planning section applies to both bare metal or a Oracle Virtual Machine (OVM) environments. In relation to planning the following items are recommended:
+Testing on non-production first
+Upgrades or patches should always be applied first on test environments. Testing on non-production environments allows operators to become familiar with the patching steps and learn how the patching will impact system and applications. You need a series of carefully designed tests to validate all stages of the upgrade process. Executed rigorously and completed successfully, these tests ensure that the process of upgrading the production database is well understood, predictable, and successful. Perform as much testing as possible before upgrading the production database. Do not underestimate the importance of a complete and repeatable testing process. The types of tests to perform are the same whether you use Real Application Testing features like Database Replay or SQL Performance Analyzer, or perform testing manually. 
+There is an estimated downtime required of 30-90 minutes for the Non-CDB database upgrade. If the database uses multitenant architecture container database (CDB) then depending on the number of PDB's the downtime could be longer. This varies on factors such as the amount of PL/SQL that requires recompilation. Additional downtime maybe required for post upgrade steps. 
+Resource management plans are expected to be persistent after the upgrade.
+SQL Plan Management
+SQL plan management prevents performance regressions resulting from sudden changes to the execution plan of a SQL statement by providing components for capturing, selecting, and evolving SQL plan information. SQL plan management is a preventative mechanism that records and evaluates the execution plans of SQL statements over time, and builds SQL plan baselines composed of a set of existing plans known to be efficient. The SQL plan baselines are then used to preserve performance of corresponding SQL statements, regardless of changes occurring to the system. See the Database Performance Tuning Guide for more information about using SQL Plan Management
+Recoverability
+The ultimate success of your upgrade depends greatly on the design and execution of an appropriate backup strategy. Even though the Database Home and Grid Infrastructure Home will be upgraded out of place and therefore make rollback easier, the database and the filesystem should both be backed-up before committing the upgrade. See the Database Backup and Recovery Users Guide for information on database backups. For database servers running Oracle Linux, a procedure for creating a snapshot based backup of the database server partitions is documented in the Oracle Exadata Database Machine Maintenance Guide, "Recovering a Linux-Based Database Server Using the Most-Recent Backup", however existing custom backup procedures can also be used.
+NOTE: Additional to having a backup of the database it is recommended to create a Guaranteed Restore Point (GRP). As long as the database COMPATIBLE parameter is not changed after creating the GRP, the database can easily be flashed back after a (failed) upgrade. The database upgrade assistant (dbua) will also offer an option to create Guaranteed Restore Points or a database backup before proceeding the upgrade. Flashing back to a Guaranteed Restore Point will back out all changes in the database made after the creation of the Guaranteed Restore Point. If transactions are made after this point, then alternative methods must be employed to restore these transactions. Refer to the section 'Performing a Flashback Database Operation' in the 'Database Backup and Recovery User's Guide' for more information on flashing back a database. After a flashback the database needs to be opened in the 'Oracle home' from where the database was running before the upgrade.
+Account Access
+During the upgrade procedure access to database SYS account and operating system root and oracle user is required. Depending on what other components are upgraded access to ASMSNMP and DBSNMP is also required. Passwords in the password file are expected to be the same for all instances.
+Preparations for upgrades on Exadata Bare Metal configuration
+Here are the steps performed in this section.
+?Review Database 12.2.0.1 Upgrade Prerequisites
+?Download and distribution of the required Files
+?Apply required patches
+?Prepare Installation software.
+Review 12.2.0.1 Upgrade Prerequisites
+NOTE: Solaris only: Review Document 2186095.1 section Oracle Solaris-specific software requirements and recommendations.
+The following prerequisites must be in place prior to performing the steps in this document to upgrade Database or Grid Infrastructure to 12.2.0.1 without failures.
+Exadata Storage Server  and Database Server version 12.2.1.1.0
+?Exadata Storage Server version 12.2.1.1.0 is required for full Exadata functionality including 'Smart Scan offloaded filtering', 'storage indexes' and' I/O Resource Management' (IORM).
+?You must be at a minimum of Exadata 12.1.2.2.1 or later (kernel 2.6.39-400.264.6.el6uek (OL 6.7) on Exadata Storage Servers and Database Servers.
+Sun Datacenter InfiniBand Switch 36 is running software release 2.1.6-2 or later
+?If you must update InfiniBand switch software to meet this requirement, then it's recommended to apply to the most recent update in Document 888828.1.
+?Exadata releases 12.2.1.1.0 runs Infiniband Switch software 2.2.4-3.
+Grid Infrastructure and Database Software
+For 11.2.0.3
+?If you must update the Grid Infrastructure software to 12.2.0.1, then it's recommended to apply to the most recent update indicated in Document 888828.1.
+?You must be at a minimum of Exadata Database patch 11.2.0.3.28 - Jul 2015 QDPE
+?If you want to upgrade to database release 12.2.0.1 then database home should be at a minimum of Database Release 11.2.0.3.28.
+?If you are at database release 11.2.0.3 and plan to create additional 11.2.0.3 databases then must apply patch 23186035 to the 11.2.0.3 database home.
+For 11.2.0.4
+?If you must update the Grid Infrastructure software to 12.2.0.1, then it's recommended to apply to the most recent update indicated in Document 888828.1.
+?You must be at a minimum of Exadata Database patch 11.2.0.4.160419 - Apr 2016 QDPE
+?If you want to upgrade to database release 12.2.0.1 then database home should be at a minimum of Database Release 11.2.0.4.160419.
+?If you are at database release 11.2.0.4 and plan to create additional 11.2.0.4 databases then must apply patch 23186035 to the 11.2.0.4 database home.
+For 12.1.0.1
+?If you must update the Grid Infrastructure software to 12.2.0.1, then it's recommended to apply to the most recent update indicated in Document 888828.1.
+?You must be at a minimum of Exadata Database patch 12.1.0.1.160419 - Apr 2016
+?If you want to upgrade to database release 12.2.0.1 then database home should be at a minimum of Database Release 12.1.0.1.160419.
+?If you are at database release 12.1.0.1 and plan to create additional 12.1.0.1 databases then must apply patch 23186035 to the 12.1.0.1 database home.
+For 12.1.0.2
+?If you must update the Grid Infrastructure software to 12.2.0.1, then it's recommended to apply to the most recent update indicated in Document 888828.1.
+?You must be at a minimum of Exadata Database patch 12.1.0.2.160419 - Apr 2016
+?If you want to upgrade to database release 12.2.0.1 then database home should be at a minimum of Database Release 12.1.0.2.160419.
+?If you are at database release 12.1.0.2 and plan to create additional 12.1.0.2 databases then must apply patch 21626377 to the 12.1.0.2 database home.
+Generic Requirements
+?Fix for bug 25556203 is required for the 12.2.0.1 Grid Infrastructure home.
+?If you must update 11.2.0.3, 11.2.0.4, 12.1.0.1 or 12.1.0.2 databases or Grid Infrastructure software to meet the patching requirements then install the most recent release indicated in document 888828.1.
+?Apply all overlay and additional patches for the installed Bundle Patch when required. The list of required overlay and additional patches can be found in Document 888828.1 and Exadata Critical Issues Document 1270094.1.
+?Verify that one-off patches currently installed on top of  11.2.0.3, 11.2.0.4, 12.1.0.1 or 12.1.0.2 are fixed in 12.2.0.1. Review the list of fixes provided with 12.2.0.1. For a list of provided fixes on top of 12.2.0.1 review the README. 
+?If you are unable to determine if a one-off patch is still required on top of 12.2.0.1 then contact Oracle Support.
+Do not place the new ORACLE_HOME under /opt/oracle.
+?If this is done then see Document 1281913.1 for additional steps required after software is installed.
+Data Guard only - If there is a physical standby database associated with the databases being upgraded, then the following must be true
+?The standby database is running in real-time apply mode as determined by querying v$archive_dest_status and verifying recovery_mode='MANAGED REAL TIME APPLY' for the local archive destination on the standby database. If there is a delay or real-time apply is not enabled then see Data Guard Concepts and Administration guide on how to configure these setting and remove the delay.
+Download and staging Required Files
+(oracle)$ dcli -l oracle -g ~/dbs_group mkdir /u01/app/oracle/patchdepot
+  Files are to be downloaded from e-delivery https://edelivery.oracle.com/osdc/faces/Home.jspx to be staged on first database server only:
+?Oracle Database 12c, Release 1 (12.2.0.1)
+?"Oracle Database", typically the installation media for the database comes with one zip file.
+?"Oracle Grid Infrastructure" comes with one Oracle Grid Infrastructure image file.
+?V840012-01.zip Oracle Database 12c Release 2 Grid Infrastructure (12.2.0.1.0) for Linux x86-64
+?V839960-01.zip Oracle Database 12c Release 2 (12.2.0.1.0) for Linux x86-64
+?Patch 25556203 - Required on top of 12.2.0.1 Grid Infrastructure home
+?Exadata Storage Server Software 12.2.1.1.0
+?When not able to upgrade to Exadata 12.2.1.1.0, a minimum version of 12.1.2.2.1 or later (kernel 2.6.39-400.264.6.el6uek (OL 6.7) on Exadata Storage Servers and Database Servers.
+?When available use latest GI PSU 12.2.0.1 patch 
+?To be applied on the 12.2.0.1 Grid Infrastructure home before running rootupgrade.sh, or
+?To be applied on the new database home before upgrading the database.
+?Patch 6880880 - OPatch latest update for 11.2, 12.1 and 12.2
+?Obtain the most recent OPatch 11.2 version for 11.2 Oracle Homes
+?Obtain the most recent OPatch 12.1 version for 12.1 Oracle Homes
+?Obtain the most recent OPatch 12.2 version for 12.2 Oracle Homes
+Apply required patches / updates where required before upgrading proceeds
+Solaris only: Review Document 2186095.1 section Oracle Solaris-specific software requirements and recommendations.
+Update OPatch in existing 11.2 and 12.1 Grid Home and Database Homes on All Database Servers:
+If the latest OPatch release is not in place and (bundle) patches need to be applied to an existing 11.2.0.3, 11.2.0.4, 12.1.0.1 or 12.1.0.2 Grid Infrastructure and Database homes before upgrading, then first update OPatch to the latest version. Execute the following command from one databases server to distribute OPatch to a staging area on all database servers and then to the Oracle Homes.
+(oracle)$ dcli -l oracle -g ~/dbs_group -f p6880880_121020_Linux-x86-64.zip -d /u01/app/oracle/patchdepot
+
+NOTE: OPatch for 12.2.0.1 can also be distributed but not yet copied to the 12.2.0.1 Oracle homes at this stage
+Data Guard - If there is a standby database, then run these commands on the standby database servers also, as follows:
+(oracle)$ dcli -l oracle -g ~/dbs_group unzip -oq -d /u01/app/12.1.0.2/grid \
+/u01/app/oracle/patchdepot/p6880880_121020_Linux-x86-64.zip 
+(oracle)$ dcli -l oracle -g ~/dbs_group unzip -oq -d /u01/app/oracle/product/12.1.0.2/dbhome_1 \
+/u01/app/oracle/patchdepot/p6880880_121020_Linux-x86-64.zip
+For Exadata Storage Servers and Database Servers on releases earlier than Exadata 12.1.2.2.1
+?Exadata Storage Server version 12.2.1.1.0 is required for full Exadata functionality (including Smart Scan offloaded filtering and storage indexes and I/O Resource Management (IORM)).
+?Those not able to upgrade to Exadata 12.2.1.1.0 require a minimum version of 12.1.2.2.1 on Exadata Storage Servers and Database Servers.
+For 11.2.0.3 Grid Infrastructure and Database
+?A fix for unpublished bug 17617807 and bug 21255373 requires a one off patch on top of 11.2.0.3.28 - Jul 2015 and later.
+For 11.2.0.4 Grid Infrastructure and Database
+?A fix for unpublished bug 17617807 and bug 21255373 requires the combo Grid Infrastructure and database at 11.2.0.4.160419 - Apr 2016 and later.
+For 12.1.0.1 Grid Infrastructure and Database
+?A fix for unpublished bug 17617807 and bug 21255373 requires a one off patch on top of 12.1.0.1.160419 - Apr 2016 and later.
+For 12.1.0.2 Grid Infrastructure and Database
+?A fix for unpublished bug 17617807 and bug 21255373 requires the combo Grid Infrastructure and database at 12.1.0.2.160419-April 2016 and later.
+NOTE: The Cluster verification Utility and gridSetup wizard will flag for patch 17617807 if its not installed.
+Prepare installation software
+Create the new Grid Infrastructure (GI_HOME) directory where 12.2.0.1 will be installed
+In this document the new Grid Infrastructure home /u01/app/12.2.0.1/grid is used in all examples.  It is recommended that the new Grid Infrastructure home NOT be located under /opt/oracle.  If it is, then review Document 1281913.1. To create the new Grid Infrastructure home, run the following commands from the first database server.  You will need to substitute your Grid Infrastructure owner username and Oracle inventory group name in place of oracle and oinstall, respectively. 
+
+
+(root)# dcli -g ~/dbs_group -l root mkdir -p /u01/app/12.2.0.1/grid
+(root)# dcli -g ~/dbs_group -l root chown oracle:oinstall /u01/app/12.2.0.1/grid
+Unzip installation software
+The 12.2.0.1 Grid Software is extracted directly to the Grid Home. The grid runInstaller option is no longer supported. Run the following command on the database server where the software is staged. 
+
+
+(oracle)$ unzip -q /u01/app/oracle/patchdepot/grid_home.zip -d /u01/app/12.2.0.1/grid
+Obtain and Apply latest OPatch to the target 12.2.0.1 Grid Infrastructure home.
+(oracle)$ unzip -oq -d /u01/app/12.2.0.1/grid /u01/app/oracle/patchdepot/p6880880_122010_Linux-x86-64.zip
+Unzip the 12.2.0.1 Database software. The software is extracted to the staging directory.
+(oracle)$ unzip -q /u01/app/oracle/patchdepot/database.zip -d /u01/app/oracle/patchdepot/
+Unzip  Patch 25556203 into the staging area
+(oracle)$ unzip -q p25556203_122010_Linux-x86-64.zip -d /u01/app/oracle/patchdepot/
+
+NOTE: Preparations for Exadata Bare Metal configuration is completed.
+Preparations for upgrade on Exadata Oracle Virtual Machine (OVM)
+Here are the steps to be performed in this section.
+?Download the gold images patch sets
+?Prepare the gold disk image. This is the "gold" image to be used by all VM's.
+?Create domU-specific reflinks.
+?Add new devices to vm.cfg
+?Mount the new devices in domU
+?Adding devices to additional clusters in dom0.
+NOTE: All subsequent steps in Management Domain (dom0) until and unless otherwise noted.
+Download the most recent gold images patch sets for 12.2
+Patch for grid: Patch 25528839
+Patch for database: Patch 25528830
+Prepare the gold disk image
+The below procedure is executed only once in each dom0.
+1. Create a disk image file and partition it.
+(root)# qemu-img create /EXAVMIMAGES/db-klone-Linux-x86-64-122010.iso 50G
+(root)# parted /EXAVMIMAGES/db-klone-Linux-x86-64-122010.iso mklabel gpt
+Query the next available loop device. In this case it returns /dev/loop3.
+(root)# losetup -f
+/dev/loop3
+Setup the disk image as the loop device.
+(root)# losetup /dev/loop3 /EXAVMIMAGES/db-klone-Linux-x86-64-122010.iso
+Find the last sector of the loop device. In this case it returns  104857599s.
+(root)# parted -s /dev/loop3 unit s print
+Disk /dev/loop3: 104857599s
+Partition the loop device until the last sector obtained from the command output above.
+(root)# parted -s /dev/loop3 mkpart primary 64s 104857599s set 1
+Update the Linux Kernel with the new loop device.
+(root)# partprobe -d /dev/loop3
+Create a file system and set its attributes.
+NOTE: Depending upon the Operating system and kernel version either tune2fs or tune4fs command should be used. Use the following command to determine which one should be used
+tune_fs=$(which tune4fs 2>/dev/null)
+[ -z "$tune_fs" ] && tune_fs=$(which tune2fs 2>/dev/null)
+[ -z "$tune_fs" ] && tune_fs=tune2fs
+echo $tune_fs
+
+(root)# mkfs -t ext4 -b 4096 /dev/loop3
+(root)# /sbin/tune2fs -c 0 -i 0 /dev/loop3
+Unmount the loop device.
+(root)# losetup -d /dev/loop3
+(root)# sync
+Create a temporary mount point and mount the gold disk image on it.
+(root)# mkdir -p /mnt/db-klone-Linux-x86-64-122010
+(root)# mount -o loop /EXAVMIMAGES/db-klone-Linux-x86-64-122010.iso /mnt/db-klone-Linux-x86-64-122010
+Unzip the cloned home into the filesystem of the mounted disk device.
+(root)# unzip -q -d /mnt/db-klone-Linux-x86-64-122010 /EXAVMIMAGES/db-klone-Linux-x86-64-122010.zip
+Unmount and remove the temporary mount point.
+(root#) umount /mnt/db-klone-Linux-x86-64-122010
+(root)# rm -rf /mnt/db-klone-Linux-x86-64-122010
+2. Create a disk image file and partition it.
+(root)# qemu-img create /EXAVMIMAGES/grid-klone-Linux-x86-64-122010.iso 50G
+(root)# parted /EXAVMIMAGES/grid-klone-Linux-x86-64-122010.iso mklabel gpt
+Query the next available loop device. In this case it returns /dev/loop3.
+(root)# losetup -f
+/dev/loop3
+Setup the disk image as the loop device.
+(root)# losetup /dev/loop3 /EXAVMIMAGES/grid-klone-Linux-x86-64-122010.iso
+Find the last sector of the loop device. In this case it returns 104857599s.
+(root)# parted -s /dev/loop3 unit s print
+Disk /dev/loop3: 104857599s
+Partition the loop device until the last sector obtained from the command output above.
+(root)# parted -s /dev/loop3 mkpart primary 64s 104857599s set 1
+Update the Linux Kernel with the new loop device.
+(root)# partprobe -d /dev/loop3
+Create a file system and set its attributes.
+(root)# mkfs -t ext4 -b 4096 /dev/loop3
+(root)# /sbin/tune2fs -c 0 -i 0 /dev/loop3
+Unmount the loop device.
+(root)# losetup -d /dev/loop3
+(root)$ sync
+Create a temporary mount point and mount the disk image on it.
+(root)# mkdir -p /mnt/grid-klone-Linux-x86-64-122010
+(root)# mount -o loop /EXAVMIMAGES/grid-klone-Linux-x86-64-122010.iso /mnt/grid-klone-Linux-x86-64-122010
+Unzip the cloned home into the filesystem of the mounted disk device.
+(root)# unzip -q -d /mnt/grid-klone-Linux-x86-64-122010 /EXAVMIMAGES/grid-klone-Linux-x86-64-122010.zip
+Unmount and remove the temporary mount point.
+(root)# umount /mnt/grid-klone-Linux-x86-64-122010
+(root)# rm -rf /mnt/grid-klone-Linux-x86-64-122010
+
+NOTE: Repeat Steps 1-2 for every member of the Management domain(dom0) of Oracle Virtual Machine configuration.
+Create User Domain(domU) specific reflinks
+Create domU-specific reflinks - use disk image name like (grid|db)${ver}-${seq}.img - e.g. db12.2.0.1.0.img, grid12.2.0.1.0.img.
+(root)# reflink /EXAVMIMAGES/db-klone-Linux-x86-64-122010.iso /EXAVMIMAGES/GuestImages/domain-name/db12.2.0.1.0.img
+(root)# reflink /EXAVMIMAGES/grid-klone-Linux-x86-64-122010.iso /EXAVMIMAGES/GuestImages/domain-name/grid12.2.0.1.0.img
+Add new devices to vm.cfg
+Execute on Node-1 User Domain(domU) - determine unused disk device name (e.g. xvde)
+(root)# lsblk -id
+Block attach the disk to Use Domain(domU).
+(root)# xm block-attach domain-name file:/EXAVMIMAGES/GuestImages/domain-name/db12.2.0.1.0.img /dev/xvde w
+(root)# xm block-attach domain-name file:/EXAVMIMAGES/GuestImages/domain-name/grid12.2.0.1.0.img /dev/xvdf w
+Execute on Node-1 Use Domain(domU) - Verify new devices are available.
+(root)# lsblk -id
+For the first device xvde, determine domU UUID. Example shown could differ from your environment.
+(root)# grep ^uuid /EXAVMIMAGES/GuestImages/domain-name/vm.cfg
+uuid = 'e6b97843a4044d8f9e54148d803ae640'
+Create a new UUID for new disk.
+(root)# uuidgen | tr -d '-'
+c240ffe6736147de8e065b102c4e72cb
+Create symbolic links back to standard /OVS location.
+(root)# ln -sf /EXAVMIMAGES/GuestImages/domain-name/db12.2.0.1.0.img /OVS/Repositories/e6b97843a4044d8f9e54148d803ae640/VirtualDisks/c240ffe6736147de8e065b102c4e72cb.img
+For the second device xvdef, determine domU UUID. Example shown could differ from your environment.
+(root)# grep ^uuid /EXAVMIMAGES/GuestImages/domain-name/vm.cfg
+uuid = 'e6b97843a4044d8f9e54148d803ae640'
+Create new UUID for new disk.
+(root)# uuidgen | tr -d '-'
+e3e58f0c1d3446a7bc3452ae8515a959
+Create symlinks back to standard /OVS location.
+(root)# ln -sf /EXAVMIMAGES/GuestImages/domain-name/grid12.2.0.1.0.img /OVS/Repositories/e6b97843a4044d8f9e54148d803ae640/VirtualDisks/e3e58f0c1d3446a7bc3452ae8515a959.img
+Backup copy of vm.cfg file found under /EXAVMIMAGES/GuestImages/domain-name/.
+(root)# cp -p /EXAVMIMAGES/GuestImages/domain-name/vm.cfg /EXAVMIMAGES/GuestImages/domain-name/vm.cfg.orig
+Edit the vm.cfg file found under /EXAVMIMAGES/GuestImages/domain-name/. The content shows two disks xvde, xvdf are added to the configuration.
+disk =
+['file:/OVS/Repositories/e6b97843a4044d8f9e54148d803ae640/VirtualDisks/
+f9044b18530e4346845f01451f09a2c1.img,xvda,w',
+'file:/OVS/Repositories/e6b97843a4044d8f9e54148d803ae640/VirtualDisks/
+8608bb6db4dc4b719cb84bec4caaf462.img,xvdb,w',
+'file:/OVS/Repositories/e6b97843a4044d8f9e54148d803ae640/VirtualDisks/
+230acfd245bc41c798b7ad145731e470.img,xvdc,w',
+'file:/OVS/Repositories/e6b97843a4044d8f9e54148d803ae640/VirtualDisks/
+e6c8be441ff34961a1784a01dc3591a9.img,xvdd,w',
+'file:/OVS/Repositories/e6b97843a4044d8f9e54148d803ae640/VirtualDisks/
+c240ffe6736147de8e065b102c4e72cb.img,xvde,w',
+'file:/OVS/Repositories/e6b97843a4044d8f9e54148d803ae640/VirtualDisks/
+e3e58f0c1d3446a7bc3452ae8515a959.img,xvdf,w']
+
+NOTE: All subsequent steps in User Domain(domU) until and unless otherwise noted.
+Execute on Node-1 User Domain(domU). Create mount point and mount disks.
+(root)# mkdir -p /u01/app/oracle/product/12.2.0.1/dbhome_1
+(root)# mkdir -p /u01/app/12.2.0.1/grid
+(root)# mount /dev/xvde /u01/app/oracle/product/12.2.0.1/dbhome_1
+(root)# mount /dev/xvdf /u01/app/12.2.0.1/grid
+Execute on Node-1 User Domain(domU). Use df-h to verify new FS are mounted.
+(root)# df -h
+Filesystem Size Used Avail Use% Mounted on
+/dev/mapper/VGExaDb-LVDbSys1
+24G 5.2G 18G 24% /
+tmpfs 24G 0 24G 0% /dev/shm
+/dev/xvda1 496M 30M 441M 7% /boot
+/dev/mapper/VGExaDb-LVDbOra1
+20G 224M 19G 2% /u01
+/dev/xvdb 50G 7.6G 40G 17% /u01/app/11.2.0.4/grid
+/dev/xvdc 50G 6.1G 41G 13% /u01/app/oracle/product/11.2.0.4/dbhome_1
+/dev/xvde 50G 8.0G 39G 17% /u01/app/oracle/product/12.2.0.1/dbhome_1
+/dev/xvdf 50G 7.2G 40G 16% /u01/app/12.2.0.1/grid
+Execute on Node-1 User Domain(domU). Add entries to /etc/fstab. They should look like below.
+/dev/xvde /u01/app/oracle/product/12.2.0.1/dbhome_1 ext4 defaults 1 1
+/dev/xvdf /u01/app/12.2.0.1/grid ext4 defaults 1 1
+Execute on Node-1 User Domain(domU). Change ownership of files to oracle:oinstall.
+(root)# chown -R oracle:oinstall /u01/app/12.2.0.1/grid
+(root)# chown -R oracle:oinstall /u01/app/oracle/product/12.2.0.1/dbhome_1
+This completes creation of two new file systems on Node-1 User Domain(domU).
+NOTE: Repeat steps starting at step: Create User Domain(domU) specific reflinks to all nodes of User Domain(domU). eg. Node-2 User Domain(domU).
+Setup up Software on each domU before clusterware upgrade
+NOTE: Software setup needs to be executed in each domU, before running the actual cluster upgrade.
+Determine the groups from exiting Grid Infrastructure home. We need the OSDBA and OSOPER groups .Please note it down. This information will be used in Software setup for the new GI_HOME in next step.
+(oracle)$ /u01/app/12.1.0.2/grid/bin/osdbagrp -d
+(oracle)$ /u01/app/12.1.0.2/grid/bin/osdbagrp -o
+Execute Software Setup on each domU.
+(oracle)$ unset ORACLE_HOME ORACLE_BASE ORACLE_SID
+(oracle)$ export DISPLAY=<your_xserver>:0
+(oracle)$ cd /u01/app/12.2.0.1/grid
+(oracle)$ ./gridSetup.sh
+Launching Oracle Grid Infrastructure Setup Wizard...
+Perform the exact steps as described below on the installer screens:
+1.On "Select Configuration Options" screen, select "Setup Software Only , and then click Next.
+2.On "Cluster Node Selection" screen, verify only the current node is shown and selected, and then click Next.
+3.On "Privileged Operating System Groups" screen, do not accept defaults, enter group names gathered in previous step, and then click Next.
+If presented with warning: INS-41808, INS-41809, INS-41812 OSDBA for ASM,OSOPER for ASM, and OSASM are the same group. Are you sure you want to continue? Click Yes
+4.On "Root script execution" screen, do not check the box. Keep root execution in your own control
+5.On "Prerequisite Checks" screen, resolve any failed checks or warnings before continuing. ignore the stack size warning, it will be done later.
+6.On "Summary" screen, verify the plan and click 'Install' to start the installation (recommended to save a response file for the next time).
+7.On "Install Product" screen monitor the install, until you are requested to run root.sh.
+8.On "Finish" screen verify the message: The registration of Oracle Grid Infrastructure for a cluster was successful.
+Adding devices to additional clusters in dom0
+If the Management Domain(dom0) has more that one Oracle RAC cluster, then the preparation of Exadata Oracle Virtual Machine (OVM) gold image devices in earlier steps can be reused for the new cluster.
+NOTE: For upgrading additional Oracle RAC clusters in Management domain(dom0), repeat steps starting at step: Create User Domain(domU) specific reflinks for the additional clusters in Management Domain (dom0).
+
+NOTE: Preparations for Exadata Oracle Virtual Machine (OVM) are completed.
+Validate Environment
+?Run Exachk
+?Using Pre-Upgrade Information Tool
+?Validate Readiness for Oracle Clusterware upgrade
+NOTE: For Exadata Bare Metal configuration execute the validations on the compute nodes. For Exadata Oracle Virtual Machine (OVM) the validations need to be executed in User Domain(domU).
+Run Exachk
+For Exadata Database Machines V2 or later: run the latest release of Exachk to validate software, hardware, firmware, and configuration best practices. Resolve any issues identified by Exachk before proceeding with the upgrade. Review Document 1070954.1 for details.
+
+NOTE: It is recommended to run Exachk before and after the upgrade. When doing this, Exachk may find recommendations for the compatible settings for database, ASM, and diskgroup. At some point it is recommended to change compatible settings, but a conservative approach is advised. This is because changing compatible settings can result in not being able to downgrade/rollback later. It is therefore recommended to revisit compatible parameters some time after the upgrade has finished, when there is no chance for any downgrade and the system has been running stable for a longer period.
+
+Early stage pre-upgrade check: analyze your databases to be upgraded with the Pre-Upgrade Information Tool
+Oracle Database 12c release 2 introduces the preupgrade.jar Pre-Upgrade Information Tool. It is recommended to do a first run of the Pre-Upgrade Information Tool so there is time to anticipate on possible required steps before proceeding the upgrade. The Pre-Upgrade Information Tool is provided with the 12.2.0.1 software but since that is not installed at this moment the tool can be downloaded also via document 884522.1 -  How to Download and Run Oracle's Database Pre-Upgrade Utility. Run this tool to analyze the 11.2.0.3, 11.2.0.4, 12.1.0.1 or 12.1.0.2 databases prior to the upgrade.
+When you define an ORACLE_BASE environment variable, then the generated scripts and log files are created in the file path $ORACLE_BASE/cfgtoollogs/dbunique_name/preupgrade.
+Data Guard - If there is a standby database, run the command on one of the nodes of the standby database cluster also.
+Validate Readiness for Oracle Clusterware upgrade using CVU
+Use the Cluster Verification Utility (CVU) to validate readiness for the Oracle Clusterware upgrade. Review the Oracle 12.2 Grid Infrastructure Installation Guide sections, 'Upgrading Oracle Grid Infrastructure' and 'Using CVU to Validate Readiness for Oracle Clusterware Upgrades'. Unzip the Clusterware installation zip file to the staging area. Before executing CVU as the owner of the Grid Infrastructure unset ORACLE_HOME, ORACLE_BASE and ORACLE_SID.
+An example of running the pre-upgrade check, as follows:
+(oracle)$ /u01/app/12.2.0.1/grid/runcluvfy.sh stage -pre crsinst -upgrade -rolling \
+-src_crshome /u01/app/12.1.0.2/grid \
+-dest_crshome /u01/app/12.2.0.1/grid \
+-dest_version 12.2.0.1.0 -fixupnoexec -verbose
+
+NOTE: When finding are discovered after running Cluster Verification Utility (CVU) , a runfixup.sh script is generated. Pls. be aware, this script makes chanegs to your environment. You will be given the oppurtunity to do it later in the section "Actions to take before executing gridSetup.sh on each database server".
+
+NOTE: ?Prerequisite checks may fail due to Unpublished bug 17617807. This can be addressed by making sure the prerequisites are met which contain minimum software release recommended and if needed applying the one-off patch.
+?Cluster Verification Uility (CVU) may fail due to an Unpublished bug 25795447 - verifying Multicast check ...FAILED (PRVG-11137, PRVG-2045, PRVG-2046,PRVF-4060, PRVG-11356). This error can be ignored.
+
+
+NOTE: Solaris only: Review Document 2186095.1 Oracle Solaris-specific guidelines for GI software installation prerequisite check failure.
+When hugepages are configured on the system, verify the value for memlock (in /etc/security/limits.conf) is set to at least 90% of physical memory. See the Oracle Database Installation Guide 12c Release 2 (12.2) for Linux for more details
+
+
+Upgrade Grid Infrastructure to 12.2.0.1
+The instructions in this section will perform the Grid Infrastructure software upgrade to 12.2.0.1.  The Grid Infrastructure upgrade is performed in a RAC rolling fashion, this procedure does not require downtime.
+Data Guard - If there is a standby database, then run these commands on the standby system separately to upgrade the standby system Grid Infrastructure.  The standby Grid Infrastructure upgrade can be performed in parallel with the primary if desired. However, the Grid Infrastructure home always needs to be on later or equal level than the Database home. Therefore upgrading Grid Infrastructure home needs to be done before a database upgrade can be performed.
+
+Here are the steps performed in this section.
+?MGMTDB
+?Hugepage configuration for MGMTDB
+?Validate memory configuration for new ASM SGA requirements
+?Create a snapshot based backup of the database server partitions
+?Perform 12.2.0.1 Grid Infrastructure software upgrade using OUI
+?Apply latest Bundle Patch contents to Grid Infrastructure Home using 'opatch napply' (when available)
+?Change Custom Scripts and environment variables to Reference the 12.2.0.1 Grid Home
+MGMTDB
+Upgrades to 12.2.0.1 will see a 'management database' (MGMTDB) added to the Grid Infrastructure installation by default. However, with new Exadata deployments Oracle chooses to not configure MGMTDB by default. For this reason a similar approach will be used and not configure MGMTDB at upgrade time. When deciding to configure MGMTDB regardless, this is still supported, however, Exachk will flag a warning stating MGMTDB is configured on your system, which is not the default. To deconfigure MGMTDB please see Post Upgrade section.
+Note: MGMTDB is required when using Rapid Host Provisioning. The Cluster Health Monitor functionality will not work without MGMTDB configured.
+No hugepage configuration for MGMTDB
+Upon upgrade MGMTDB is configured to use 1G of SGA and 325 MB of PGA. MGMTDB SGA will not be allocated in hugepages (this is because it's init.ora setting 'use_large_pages' is set to false.)
+Validate memory configuration for new ASM SGA requirements
+With Oracle 12.2 as part of the Grid Infrastructure upgrade, the ASM SGA_TARGET will be set to a value of 3 GB if not already set.  The new setting will require additional hugepages from the operating system. Make sure at least 1500 hugepages are configured for ASM to start during the upgrade process with the new value. If less than 1500 hugepages are configured the upgrade will fail. The extra hugepages should be added to the number of hugepages required for the existing databases to run. If not enough hugepages are configured to hold both ASM and databases (database configured to use hugepages only) the rootupgrade.sh script may not finish successfully. See document 361468.1 and document 401749.1 for more details on hugepages.
+Create a snapshot based backup of the database server partitions
+Even while the Grid Infrastructure is being upgraded out-of-place, it is recommended to create a filesystem backup of the database server before proceeding. For database servers running Oracle Linux, steps for creating a snapshot based backup of the database server partitions are documented in the Exadata Database Machine Maintenance Guide, "Recovering a Linux-Based Database Server Using the Most-Recent Backup". Existing custom backup procedures can of also be used as an alternative.
+Perform the 12.2.0.1 Grid Infrastructure software upgrade using Oracle Grid Infrastructure Setup wizard
+Perform these instructions as the Grid Infrastructure software owner (which is oracle in this document) to install the 12.2.0.1 Grid Infrastructure software and upgrade Oracle Clusterware and ASM from 11.2.0.3,11.2.0.4, 12.1.0.1 or 12.1.0.2 to 12.2.0.1. The upgrade begins with Oracle Clusterware and ASM running and is performed in a rolling fashion.  The upgrade process manages stopping and starting Oracle Clusterware and ASM and making the new 12.2.0.1 Grid Infrastructure Home the active Grid Infrastructure Home. For systems with a standby database in place this step can be performed either before, at the same time or after extracting the Grid image file on the primary system.
+If available: Apply recommended patches to the Grid Infrastructure before running gridSetup.sh
+Review Document 888828.1 to identify and apply patches that must be installed on top of the Grid Infrastructure home just installed.
+For this step autopatch cannot be used and individual patches contained in the main patch zip-file need to be applied individually using napply.
+For instructions: see the section 'Patching a Software Only GI Home Installation or Before the GI Home Is Configured' in Document 1591616.1 (Supplemental Readme - Patch Installation and Deinstallation For 12.2.0.1.x GI PSU)
+If available: Apply 12.2.0.1 Bundle Patch Overlay Patches to the Grid Infrastructure Home as Specified in Document 888828.1
+Review Document 888828.1 to identify and apply patches that must be installed on top of the Bundle Patch just installed.
+Apply Customer-specific 12.2.0.1 One-Off Patches to the Grid Infrastructure Home
+If there are one-offs that need to be applied to the environment and they are approved by Oracle Support, then apply them now.
+Change SGA memory settings for ASM
+As SYSASM, adjust sga_max_size and sga_target to a (minimum) value of 3G if not already done. The values will become active with a next start of the ASM instances.
+SYS@+ASM1> alter system set sga_max_size = 3G scope=spfile sid='*';
+SYS@+ASM1> alter system set sga_target = 3G scope=spfile sid='*';
+Verify values for memory_target, memory_max_target and use_large_pages
+Values should be as follows:
+
+SYS@+ASM1> col sid format a5
+SYS@+ASM1> col name format a30
+SYS@+ASM1> col value format a30
+SYS@+ASM1> set linesize 200
+SYS@+ASM1> select sid, name, value from v$spparameter
+where name in ('memory_target','memory_max_target','use_large_pages');
+SID         NAME                          VALUE
+--------    -------------------------     -----------------------------------
+*           use_large_pages               TRUE
+*           memory_target                 0            
+*           memory_max_target
+
+When the values are not as expected, change them as follows:
+SYS@+ASM1> alter system set memory_target=0 sid='*' scope=spfile;
+SYS@+ASM1> alter system set memory_max_target=0 sid='*' scope=spfile /* required workaround */;
+SYS@+ASM1> alter system reset memory_max_target sid='*' scope=spfile;
+SYS@+ASM1> alter system set use_large_pages=true sid='*' scope=spfile /* 11.2.0.2 and later(Linux only) */;
+
+NOTE: Increasing the SGA size will cause more hugepages to be used by ASM on a next instance startup. At this point it is assumed at least 1500 hugepages are configured for ASM to start properly during the upgrade process. Hugepages required for databases remain the same and need to be added to the value of 1500. Note that  MGMGTDB will not use huge pages since its parameter Use_large_pages=false.
+Reset CSS misscount on RAC Cluster
+Change css misscount setting back to default before upgrading
+Before proceeding the upgrade css miscount setting should be set to the default (of 30 seconds). The following command needs to be executed as oracle from the 11.2/12.1 Grid Infrastructure home before proceeding the upgrade:
+
+(oracle)$ crsctl unset css misscount
+
+Actions to take before executing gridSetup.sh on each database server
+1.  Verify no active rebalance is running
+Query gv$asm_operation to verify no active rebalance is running. A rebalance is running when the result of the following query is not equal to zero :
+
+SYS@+ASM1> select count(*) from gv$asm_operation;
+COUNT(*)
+----------
+0
+2.  Verify stack size setting for owner of GI_HOME. Without role separation the owner is oracle and if role separation is used then the owner is grid. 
+If the value is less than 10240, update the (soft) value of stack size configured in /etc/security/limits.conf as root . See the Oracle Grid Infrastructure Installation Guide for more details.
+NOTE: Set it for only the current owner of GI_HOME either oracle or grid and not both.
+The values in /etc/security/limits.conf should look like as shown below.
+oracle soft stack 10240
+grid   soft stack 10240
+After updating the value on each node, logout and login back for changes to take effect. Then validate as follows:
+(oracle)$ ulimit -Ss
+10240
+3. Verify the stack size setting for owner of ORACLE_HOME, typically user oracle.
+If the value is less than 10240, update the (soft) value of stack size configured in /etc/security/limits.conf as root . See the Oracle Grid Infrastructure Installation Guide for more details.
+The values in /etc/security/limits.conf should look like as shown below.
+oracle soft stack 10240
+After updating the value on each node, logout and login back for changes to take effect. Then validate as follows:
+(oracle)$ ulimit -Ss
+10240
+
+
+NOTE: The installation log is located at /u01/app/oraInventory/logs. For OUI installations or execution of critical scripts it is recommend to use VNC to avoid problems in case connection with the server is lost.
+
+
+Set the environment then execute, depending upon your deployment:
+Exadata Bare Metal configurations
+Configure Grid Infrastructure and apply patch 25556203 in same step;
+
+(oracle)$ unset ORACLE_HOME ORACLE_BASE ORACLE_SID
+(oracle)$ export DISPLAY=<your_xserver>:0
+(oracle)$ cd /u01/app/12.2.0.1/grid
+(oracle)$ gridSetup.sh -applyOneOffs /u01/app/oracle/patchdepot/25556203/25556203/ -J-Doracle.install.mgmtDB=false -J-Doracle.install.crs.enableRemoteGIMR=false
+Launching Oracle Grid Infrastructure Setup Wizard...
+
+NOTE:The above command will first apply the patch 25556203 and then proceed to the configuration screen.
+
+Perform the exact steps as described below on the installer screens:
+1.On "Select Configuration Options" screen, select "Upgrade Oracle Grid Infrastructure , and then click Next.
+2.On "Grid Infrastructure Node Selection" screen, verify all database nodes are shown and selected, and then click Next.
+3.On "Specify Management Options" screen, specify Enterprise Management details when choosing for Cloud Control registration.
+4.On "Privileged Operating System Groups" screen, verify group names and change if desired, and then click Next.
+If presented with warning: IINS-41808, INS-41809, INS-41812 OSDBA for ASM,OSOPER for ASM, and OSASM are the same group Are you sure you want to
+continue? Click Yes
+5.On "Specify Installation Location" screen, choose "Oracle Base" and change the software location.
+The GI_HOME directory cant be chosen. It shows software location: /u01/app/12.2.0.1/grid from where you started gridSetup.sh
+6.If prompted "The Installer has detected that the specified Oracle Base location is not empty on this and remote servers!"
+Are you sure you want to continue? Click Yes
+7.On "Root script execution" screen, do not check the box. Keep root execution in your own control
+8.On "Prerequisite Checks" screen, resolve any failed checks or warnings before continuing.
+9.Solaris only: Solaris only: Review Document <2186095.1> Oracle Solaris-specific guidelines for GI software installation prerequisite check failure.
+10.On "Summary" screen, verify the plan and click 'Install' to start the installation (recommended to save a response file for the next time)
+11.On "Install Product" screen monitor the install, until you are requested to run rootupgrade.sh (recommended to save a response file for the next time)
+Before executing the last steps (rootupgrade.sh) of the installation process an additional step is required. rootupgrade.sh execution will happen after next two steps.
+Update OPatch and when available apply the latest Bundle Patch on top of the 12.2.0.1 Grid Infrastructure Installation.
+Exadata Oracle Virtual Machine (OVM)
+
+(oracle)$ unset ORACLE_HOME ORACLE_BASE ORACLE_SID
+(oracle)$ export DISPLAY=<your_xserver>:0
+(oracle)$ cd /u01/app/12.2.0.1/grid
+(oracle)$ ./gridSetup.sh -skipRemoteCopy -J-Doracle.install.mgmtDB=false -J-Doracle.install.crs.enableRemoteGIMR=false
+Launching Oracle Grid Infrastructure Setup Wizard...
+
+Perform the exact steps as described below on the installer screens:
+1.On "Select Configuration Options" screen, select "Upgrade Oracle Grid Infrastructure , and then click Next.
+2.On "Grid Infrastructure Node Selection" screen, verify all database nodes are shown and selected, and then click Next.
+3.On "Specify Management Options" screen, specify Enterprise Management details when choosing for Cloud Control registration.
+4.On "Root script execution" screen, do not check the box. Keep root execution in your own control
+5.On "Prerequisite Checks" screen, resolve any failed checks or warnings before continuing.a.Solaris only: Solaris only: Review Document <2186095.1> Oracle Solaris-specific guidelines for GI software installation prerequisite check failure.
+6.On "Summary" screen, verify the plan and click 'Install' to start the installation (recommended to save a response file for the next time)
+7.On "Install Product" screen monitor the install, until you are requested to run rootupgrade.sh (recommended to save a response file for the next time)
+Before executing the last steps (rootupgrade.sh) of the installation process an additional step is required. rootupgrade.sh execution will happen after next two steps.
+Update OPatch and when available apply the latest Bundle Patch on top of the 12.2.0.1 Grid Infrastructure Installation.
+If necessary: Install Latest OPatch 12.2
+Now the 12.2.0.1 Grid Home directories are available. If recommended patches or bundles will be installed in the 12.2.0.1 Grid Home in the next step, then first update OPatch to the latest 12.2 version:
+
+(oracle)$ dcli -l oracle -g ~/dbs_group unzip -oq -d /u01/app/12.2.0.1/grid \
+/u01/app/oracle/patchdepot/p6880880_122010_Linux-x86-64.zip
+
+NOTE: If Automatic Storage Management Cluster File System (Oracle ACFS) is configured for your environment then an additional step needs to be executed on each node of the cluster before running rootupgrade.sh.
+If the example below , we have 2-node cluster and ACFS mounts points are called /acfs: 
+1.Node1: Unmount /acfs
+2. Run rootupgrade on node 1.
+Upon successful completion:Mount /acfs
+1. Node2: Unmount /acfs
+2. Run rootupgrade on node 2
+Upon successful completion:Mount /acfs
+Repeat for all nodes in the cluster.
+
+Execute rootupgrade.sh on each database server
+Execute rootupgrade.sh on each database server, as indicated in the Execute Configuration scripts screen the script must be executed on the local node first. The rootupgrade script shuts down the earlier release Grid Infrastructure installation, updates configuration details, and starts the new Grid Infrastructure installation. 
+
+NOTE: When rootupgrade fails it is recommended to check the following output first to get more details :
+output of rootupgrade script itself
+ASM alert.log
+/u01/app/oracle/crsdata/<node_name>/crsconfig/rootcrs_<node_name>_<date_time>.log
+/u01/app/12.2.0.1/grid/install
+
+NOTE: After rootupgrade.sh completes successfully on the local node, you can run the script in parallel on other nodes except for the last node. When the script has completed successfully on all the nodes except the last node, run the script on the last node.  Do not run rootupgrade.sh on the last node until the script has run successfully on all other nodes.
+
+First node rootupgrade.sh will complete with output similar to this example.
+Last node rootupgrade.sh will complete with this output similar to this example.
+Continue with 12.2.0.1 GI installation in wizard
+11. On: "Execute configuration scripts" screen, when done press "OK"
+12. On: "Finish", click "close"
+Verify cluster status
+Perform an extra check on the status of the Grid Infrastructure post upgrade by executing the following command from one of the compute nodes:
+
+(root)# /u01/app/12.2.0.1/grid/bin/crsctl check cluster -all
+**************************************************************
+node-1:
+CRS-4537: Cluster Ready Services is online
+CRS-4529: Cluster Synchronization Services is online
+CRS-4533: Event Manager is online
+**************************************************************
+node-2:
+CRS-4537: Cluster Ready Services is online
+CRS-4529: Cluster Synchronization Services is online
+CRS-4533: Event Manager is online
+**************************************************************
+
+When the cluster is not showing an online status for any of the components on any of the nodes, the issue needs to be researched before continuing. For troubleshooting see the MOS notes in the reference section of this note.
+
+NOTE: To downgrade Oracle Clusterware back to the previous release: See "Downgrading Oracle Clusterware After an Upgrade" in the Oracle Grid Infrastructure Installation Guide.
+Verify Flex ASM Cardinality is set to "ALL"
+Starting release 12.2 ASM will be configured as "Flex ASM". By default Flex ASM cardinality is set to 3. This means configurations with four or more database nodes in the cluster might only see ASM instances on three nodes. Nodes without an ASM instance running on it will use an ASM instance on a remote node within the cluster. Only when the cardinality is set to “ALL”, ASM will bring up the additional instances required to fulfill the cardinality setting. 
+(oracle)$ srvctl modify asm -count ALL
+
+NOTE: After finishing the Grid Infrastructure and Database upgrade it's highly recommended to review the "Advance COMPATIBLE.ASM diskgroup attribute" steps in the "Post-Upgrade Steps" section on advancing the compatible.asm attribute.
+Change Custom Scripts and environment variables to Reference the 12.1.0.2 Grid Home
+Customized administration, login scripts, static instance registrations in listener.ora files and CRS resources that reference the previous Grid Infrastructure Home should be updated to refer to new Grid infrastructure home '/u01/app/12.2.0.1/grid'. 
+
+Modify the dbfs_mount cluster resource
+Update the mount-dbfs.sh script and the ACTION_SCRIPT attribute of the dbfs-mount cluster resource to refer to the new location of mount-dbfs.sh. See section 'Post-Upgrade Steps'.
+Using earlier Oracle Database Releases with Oracle Grid Infrastructure 12.2
+To use earlier versions of Oracle Database with Oracle Grid Infrastructure 12.2, please see section 'Post Upgrade Steps'.
+
+Install Database 12.2.0.1 Software
+Exadata Bare Metal configuration
+The steps in this section will perform the Database software installation of 12.2.0.1 into a new directory. 
+
+This section only installs Database 12.2.0.1 software into a new directory, this does not affect currently running databases, hence all the steps below can be done without downtime.
+Data Guard - If there is a separate system running a standby database and that system already has Grid Infrastructure upgraded to 12.2.0.1, then run these steps on the standby system separately to install the Database 12.2.0.1 software.  The steps in this section can be performed in any of the following ways:
+?Install Database 12.2.0.1 software on the primary system first then the standby system.
+?Install Database 12.2.0.1 software on the standby system first then the primary system.
+?Install Database 12.2.0.1 software on both the primary and standby systems simultaneously.
+Here are the steps performed in this section.
+?Prepare Installation Software
+?Perform 12.2.0.1 Database Software Installation with OUI
+?Update OPatch in the new Grid Infrastructure home and New Database Home on All Database Servers
+?When available: Install Latest 12.2.0.1 Bundle Patch available for your operating system - Do Not Perform Post-Installation Steps
+?When available: Apply 12.2.0.1 Bundle Patch Overlay Patches as Specified in Document 888828.1
+?When available: Apply Customer-specific 12.2.0.1 One-Off Patches
+Prepare Installation Software
+Unzip the 12.2.0.1 database software.  Run the following command on the primary and standby database servers where the software is staged.
+(oracle)$ unzip -q /u01/app/oracle/patchdepot/database.zip -d /u01/app/oracle/patchdepot
+Create the new Oracle DB Home directory on all primary and standby database server nodes
+(oracle)$ dcli -l oracle -g ~/dbs_group mkdir -p /u01/app/oracle/product/12.2.0.1/dbhome_1  
+Perform 12.2.0.1 Database Software Installation with the Oracle Universal Installer (OUI)
+Perform the installation on the Primary and the standby sites.
+Set the environment then run the installer, as follows:
+(oracle)$ unset ORACLE_HOME ORACLE_BASE ORACLE_SID
+(oracle)$ export DISPLAY=<your_xserver>:0
+(oracle)$ cd /u01/app/oracle/patchdepot/database
+(oracle)$ ./runInstaller
+Perform the exact actions as described below on the installer screens:
+1.On "Configure Security Updates" screen, fill in required fields, and 1. then click Next.
+2.On "Select Installation Option" screen, select 'Install database software only', and then click Next.
+3.On "Grid Installation Option", select "Oracle Real Application Clusters database installation" and click Next
+4.On "Node Selection" screen, verify all database servers in your cluster are present in the list and are selected, and then click Next.
+5.On "Select Database Edition", select 'Enterprise Edition',  then click Next.
+6.On "Installation Location", enter /u01/app/oracle as Oracle base and /u01/app/oracle/product/12.2.0.1/dbhome_1 as the Software Location for the Database home, and then click Next.
+7.On "Operating System Groups" screen, verify group names, and then click Next.
+8.On "Prerequisite Checks" screen, verify there are no failed checks or warnings.a.Solaris only: Review Document <2186095.1> Oracle Solaris-specific guidelines for GI software installation prerequisite check failure.
+9.On "Summary" screen, verify information presented about installation, and then click Install.
+10.On "Execute Configuration scripts screen, execute root.sh on each database server as instructed, and then click OK
+11.On "Finish screen", click Close. 
+If necessary: Install Latest OPatch 12.2 in the Database Home on All Database Servers
+If recommended patches or bundles will be installed in the 12.2.0.1 Database Home in the next step, then first update OPatch to the latest 12.2 version:
+
+oracle)$ dcli -l oracle -g ~/dbs_group unzip -oq \
+-d /u01/app/oracle/product/12.2.0.1/dbhome_1 \
+/u01/app/oracle/patchdepot/p6880880_122010_Linux-x86-64.zip
+
+When available: Install the latest 12.2.0.1 GI PSU (which includes the DB PSU) to the Database Home when available - Do Not Perform Post-Installation Steps
+At the time of writing this note 12.2.0.1 PSU's were not available. Review Document 888828.1 for the latest release information and most recent patches and apply when available. Applying the latest PSU always requires the latest OPatch to be installed. 
+Below is an example of the high level steps, always consult the specific patch README for current instructions.
+Stage the patch
+When patch is available, unzip the patch on all database servers, as follows:
+(oracle)$ dcli -l oracle -g ~/dbs_group unzip -oq -d /u01/app/oracle/patchdepot \
+          /u01/app/oracle/patchdepot/pxxxxxxxxx_122010_Linux-x86-64_XofY.zip 
+OCM response file not required
+OCM is no longer packaged with OPatch. In the past, when a "silent" installation was executed, it was necessary to generate a response file using -ocmrf and include it in the command line of the OPatch apply. This enhancement to OPatch exists in 12.2.0.1.5 release and later.
+Patch 12.2.0.1 database home
+Run the following command as root user only on the local node. Note there are no databases running out of this home yet. It is recommended to run this command from is a new session to make sure no settings from previous steps remain. Example as follows:
+(root)# export PATH=$PATH:/u01/app/oracle/product/12.2.0.1/dbhome_1/OPatch
+(root)# opatchauto apply <PATH_TO_PATCH_DIRECTORY> -oh <Comma separated Oracle home paths>
+Skip patch post-installation steps
+Do not perform patch post-installation. Patch post-installation steps will be run after the database is upgraded.
+When available: Apply 12.2.0.1 Patch Overlay Patches to the Database Home as Specified in Document 888828.1
+Review Document 888828.1 to identify and apply patches that must be installed on top of the new Grid Infrastructure with the current Bundle Patch. If there are SQL command that must be run against the database as part of the patch application, postpone running the SQL commands until after the database is upgraded.
+Apply Customer-specific 12.2.0.1 One-Off Patches
+If there are one-offs that need to be applied to the environment and they are approved by Oracle Support, then apply them now.  If there are SQL statements that must be run against the database as part of the patch application, postpone running the SQL commands until after the database is upgraded.
+Exadata Oracle Virtual Machine (OVM)
+The steps in this section will perform the Database software preparation of 12.2.0.1 using cloning technique.
+?Detemine the OSDBA and OSPER roles from existing database home.
+?Run the clone.pl to setup software.
+?relink Oracle Home
+Determine the groups from exiting Oracle Database home. We need the OSDBA and OSOPER groups .Please note it down. This information will be used in software setup for the new ORACLE_HOME in next step.
+(oracle)$ /u01/app/oracle/product/12.1.0.2/dbhome_1/bin/osdbagrp -d
+(oracle)$ /u01/app/oracle/product/12.1.0.2/dbhome_1/bin/osdbagrp -o
+
+NOTE: Software setup needs to be executed in each domU, before running the actual database upgrade. Example shows two domU's.
+Run the following command as user oracle only on Node1-domU. Use the OSDBA and OSOPER groups that were gathered in previuos step.  In the example below we are using dba for both OSDBA ands OSOPER.
+(oracle)$ /u01/app/oracle/product/12.2.0.1/dbhome_1/perl/bin/perl /u01/app/oracle/product/12.2.0.1/dbhome_1/clone/bin/clone.pl ORACLE_HOME=/u01/app/oracle/product/12.2.0.1/dbhome_1 LOCAL_NODE=Node1-domU ORACLE_BASE=/u01/app/oracle ORACLE_HOME_NAME=c3_DbHome_0 INVENTORY_LOCATION=/u01/app/oraInventory OSDBA_GROUP=dba OSOPER_GROUP=dba
+Relink the Oracle Home with rac_on option on Node1-domU.
+(oracle)$ export ORACLE_BASE=/u01/app/oracle
+(oracle)$ export ORACLE_HOME=/u01/app/oracle/product/12.2.0.1/dbhome_1
+(oracle)$ cd /u01/app/oracle/product/12.2.0.1/dbhome_1/rdbms/lib
+(oracle)$ make -f ins_rdbms.mk rac_on ioracle
+Run the following command as user oracle only on Node2-domU. Use the OSDBA and OSOPER groups that were gathered in previuos step. In the example below we are using dba for both OSDBA ands OSOPER.
+(oracle)$ /u01/app/oracle/product/12.2.0.1/dbhome_1/perl/bin/perl /u01/app/oracle/product/12.2.0.1/dbhome_1/clone/bin/clone.pl ORACLE_HOME=/u01/app/oracle/product/12.2.0.1/dbhome_1 LOCAL_NODE=Node2-domU ORACLE_BASE=/u01/app/oracle ORACLE_HOME_NAME=c3_DbHome_0 INVENTORY_LOCATION=/u01/app/oraInventory OSDBA_GROUP=dba OSOPER_GROUP=dba
+Relink the Oracle Home with rac_on option on Node2-domU.
+(oracle)$ export ORACLE_BASE=/u01/app/oracle
+(oracle)$ export ORACLE_HOME=/u01/app/oracle/product/12.2.0.1/dbhome_1
+(oracle)$ cd /u01/app/oracle/product/12.2.0.1/dbhome_1/rdbms/lib
+(oracle)$ make -f ins_rdbms.mk rac_on ioracle
+
+NOTE: Preparations for Orcale Home on Exadata Oracle Virtual Machine (OVM) are completed.
+
+
+Upgrade Database to 12.2.0.1
+The commands in this section will perform the database upgrade to 12.2.0.1.
+For Data Guard configurations, unless otherwise indicated, run these steps only on the primary database.
+
+NOTE: FOR Exadata Oracle Virtual Machine (OVM). All subsequent steps in User Domain(domU) until and unless otherwise noted.
+
+Here are the steps performed in this section.
+?Backing up the database and creating a Guaranteed Restore Point
+?Analyze the Database to Upgrade with the Pre-Upgrade Information Tool (if not done earlier)
+?Data Guard only - Synchronize Standby and Switch to 12.2.0.1
+?Data Guard only - Disable Fast-Start Failover and Data Guard Broker
+?Change preference for concurrent statistics gathering
+?Before starting the Database Upgrade Assistant (DBUA) stop and disable all services with PRECONNECT as option for 'TAF Policy specification'
+?Upgrade the Database with Database Upgrade Assistant
+?Review and perform steps in Oracle Upgrade Guide, 'Post-Upgrade Tasks for Oracle Database'
+?Change Custom Scripts and Environment Variables to Reference the 12.2.0.1 Database Home
+?When available: run 12.2.0.1 Bundle Patch Post-Installation Steps
+?Data Guard only - Enable Fast-Start Failover and Data Guard Broker
+
+The database will be inaccessible to users and applications during the upgrade (DBUA) steps. Course estimate of actual application downtime is 30-90 minutes. If the database uses multitenant architecture container database (CDB) then depending on the number of PDB's the downtime could be longer, but required downtime may depend on factors such as the amount of PL/SQL that needs recompilation. Note that it is not a requirement all databases are upgraded to the latest release. It is possible to have multiple releases of Oracle Database Homes running on the same system. The benefit of having multiple Oracle Homes is that multiple releases of different databases can run. The disadvantage is that more planned maintenance is required in terms of patching. Older database releases may lapse out of the regular patching lifecycle policy in time. Having multiple Oracle homes on the same node requires more disk space.
+Backing up the database and creating a Guaranteed Restore Point
+If not done already, before proceeding with the upgrade a full backup of the database should be made. Additional to this full back backup it is recommended to create a Guaranteed Restore Point (GRP). As long as the database COMPATIBLE parameter is not changed after creating the GRP, the database can be flashed back after a failed upgrade. In order to create a GRP the database must be in Archive Redo Log mode. The GRP can be created when the database is in OPEN mode as follows:
+SYS@PRIM1> CREATE RESTORE POINT grpt_bf_upgr GUARANTEE FLASHBACK DATABASE; 
+After creating the GRP, verify status as follows:
+SYS@PRIM1> SELECT * FROM V$RESTORE_POINT where name = 'GRPT_BF_UPGR';
+
+NOTE: After a successful upgrade the GRP should be deleted.
+Analyze the Database to Upgrade with the Pre-Upgrade Information Tool
+Oracle Database 12c release 2 introduces the preupgrade.jar, Pre-Upgrade Information Tool. The Pre-Upgrade Information Tool is provided with the 12.2.0.1 software. Run this tool to analyze the  11.2.0.3, 11.2.0.4, 12.1.0.2 or 12.1.0.2 databases prior to upgrade.
+Run Pre-Upgrade Information Tool for Non-CDB or CDB database
+At this point the database is still running with 11.2.0.3, 11.2.0.4, 12.1.0.1 or 12.1.0.2 software. Connect to the database with your environment set to 11.2.0.3, 11.2.0.4, 12.1.0.1 or 12.1.0.2 and run the Pre-Upgrade Information Tool that is located in the 12.2.0.1 database home, as follows:
+If the database is a Multitenant Container CDB database ensure all PDB'S are open:
+SQL> alter pluggable database all open;
+
+Before you run the Pre-Upgrade Information Tool, you must set up the environment variables for the Oracle user that runs the tool.
+(oracle)$ export ORACLE_BASE=/u01/app/oracle
+(oracle)$ export ORACLE_HOME=/u01/app/oracle/product/12.1.0.2/dbhome_1
+(oracle)$ export ORACLE_SID=prim1
+(oracle)$ export PATH=$ORACLE_HOME/bin:$PATH
+(oracle)$ /u01/app/oracle/product/12.1.0.2/dbhome_1/jdk/bin/java -jar /u01/app/oracle/product/12.2.0.1/dbhome_1/rdbms/admin/preupgrade.jar
+When you define an ORACLE_BASE environment variable, then the generated scripts and log files are created in the file path $ORACLE_BASE/cfgtoollogs/dbunique_name/preupgrade.
+Handle obsolete and underscore parameters
+Obsolete and underscore parameters will be identified by the Pre-Upgrade information tool. If found, follow the Pre-Upgrade information tools recommendation to take them out prior the upgrade. The below parameters were identified for our example database but can be different in your environment.
+When not already done, during the upgrade, the Database Upgrade Assistant will remove all remaining obsolete and underscore parameters from the primary database initialization parameter file. Contact Oracle Support if unsure the underscore parameters you are using are still needed with Oracle 12.2. Only if Oracle Support says so, these underscore parameters can be manually added back after the Database Upgrade Assistant completes the upgrade.
+SYS@PRIM1> alter system reset "_smm_auto_max_io_size" scope=spfile;
+SYS@PRIM1> alter system reset parallel_adaptive_multi_user scope=spfile;
+Data Guard only - DBUA will not affect parameters set on the standby, hence obsolete parameters and some underscore parameters must be removed manually if set. Typical values that need to be unset before starting the upgrade are as follows:
+SYS@STBY1> alter system reset "_smm_auto_max_io_size" scope=spfile;
+SYS@STBY1> alter system reset parallel_adaptive_multi_user scope=spfile;
+Review pre-upgrade information tool output
+Review the remaining output of the pre-upgrade information tool. Take action on areas identified in the output. Ensure no object has invalid status. For Mutitenant the preupgrade may list as "information only" to upgrade APEX manually, before the database upgrade. This procedure upgrades APEX as part of database upgrade. No additional prior steps are required.
+(oracle)$ cd $ORACLE_BASE/cfgtoollogs/prim/preupgrade
+(oracle)$ sqlplus / as sysdba
+SQL> purge recyclebin;
+SQL> @?/rdbms/admin/utlrp.sql
+SQL> @preupgrade_fixups.sql
+Requirements for Upgrading Databases That Use Oracle Label Security and Oracle Database Vault
+NOTE: If you are upgrading from a database that uses Oracle Label Security (OLS) and/or Oracle Database Vault, please refer to Database Upgrade guide how to disable before the upgrade.
+Data Guard only - Synchronize Standby and Change the Standby Database to use the new 12.2.0.1 Database Home
+Perform these steps only if there is a physical standby database associated with the database being upgraded.
+As indicated in the prerequisites section above, the following must be true:
+?The standby database is running in real-time apply mode.
+?The value of the LOG_ARCHIVE_DEST_n database initialization parameter on the primary database that corresponds to the standby database must contain the DB_UNIQUE_NAME attribute, and the value of that attribute must match the DB_UNIQUE_NAME of the standby database.
+Flush all redo generated on the primary and disable the broker
+To ensure all redo generated by the primary database running 11.2.0.3, 11.2.0.4, 12.1.0.1 or 12.1.0.2 is applied to the standby database running 11.2.0.3, 11.2.0.4, 12.1.0.1 or 12.1.0.2 all redo must be flushed from the primary to the standby.
+
+NOTE: If there are cascaded standbys in your configuration then those cascaded standbys must follow the same rules as any other standby but should be shut down last and restarted in the new home first.
+
+First, verify the standby database is running recovery in real-time apply. Run the following query connected to the standby database.  If this query returns no rows, then real-time apply is not running. Example as follows:
+
+SYS@STBY1> select dest_name from v$archive_dest_status
+where recovery_mode = 'MANAGED REAL TIME APPLY'; 
+DEST_NAME
+------------------------------
+LOG_ARCHIVE_DEST_2
+
+Shutdown the primary database and restart just one instance in mount mode, as follows:
+
+(oracle)$ srvctl stop database -d PRIM -o immediate
+(oracle)$ srvctl start instance -d PRIM -n dm01db01 -o mount
+
+Data Guard only - Disable Fast-Start Failover and Data Guard Broker
+Disable Data Guard broker if it is configured as Data Guard broker is incompatible with running from different releases. If fast-start failover is configured, it must be disabled before broker configuration is disabled. Example as follows:
+DGMGRL> disable fast_start failover;
+DGMGRL> disable configuration;
+
+Also, disable the init.ora setting dg_broker_start in both primary and standby as follows:
+SYS@PRIM1> alter system set dg_broker_start = false;
+SYS@STBY1> alter system set dg_broker_start = false;
+
+
+NOTE: When using net_timeout in the log_archive_dest_2 on primary, upgrade will fail with : ORA-16025: parameter LOG_ARCHIVE_DEST_2 contains repeated or conflicting attributes
+
+Remove the net_timeout setting, verify the primary database has specified db_unique_name of the standby database in the log_archive_dest_n parameter setting as follows:
+
+SYS@PRIM1> select value from v$parameter where name = 'log_archive_dest_2'; 
+VALUE
+-------------------------------------------------------------------------------
+service="gih_stby" LGWR SYNC AFFIRM delay=0 optional compression=disable max_fa
+ilure=0 max_connections=1 reopen=300 db_unique_name="STBY" net_timeout=30 valid
+_for=(all_logfiles,primary_role)
+SYS@PRIM1> alter system set log_archive_dest_2='service="gih_stby" LGWR SYNC AFFIRM delay=0 optional compression=disable max_failure=0 max_connections=1 reopen=300 db_unique_name="STBY" valid_for=(all_logfiles,primary_role)' scope=both sid='*';
+
+
+Flush all redo to the standby database using the following command. Standby database db_unique_name in this example is 'STBY'. Monitor the alert.log of the standby database to verify for the  'End-of-Redo' message. Example as follows:
+  
+SYS@PRIM1> alter system flush redo to 'STBY';
+
+Shutdown the primary database.
+Wait until the 'Physical Standby applied all the redo from the primary' on the standby is confirmed, as follows:
+
+Identified standby redo log 10 for flush redo EOR receival
+RFS[23]: Assigned to RFS process 243804
+RFS[23]: Selected log 10 for thread 1 sequence 42 dbid 1115394937 branch 911049657
+Wed May 25 13:19:14 2016
+Archived Log entry 67 added for thread 1 sequence 42 ID 0x427bbe79 dest 1:
+Identified standby redo log 20 for flush redo EOR receival
+RFS[23]: Selected log 20 for thread 2 sequence 38 dbid 1115394937 branch 911049657
+Wed May 25 13:19:14 2016
+Archived Log entry 68 added for thread 2 sequence 38 ID 0x427bbe79 dest 1:
+Wed May 25 13:19:14 2016
+Resetting standby activation ID 1115405945 (0x427bbe79)
+Media Recovery Waiting for thread 2 sequence 39
+Wed May 25 13:19:15 2016
+Standby switchover readiness check: Checking whether recoveryapplied all redo..
+Physical Standby applied all the redo from the primary.
+Standby switchover readiness check: Checking whether recoveryapplied all redo..
+Physical Standby applied all the redo from the primary.
+
+Then shutdown the primary database, as follows:
+
+(oracle)$ srvctl stop database -d PRIM -o immediate
+Shutdown the standby database and restart it in the 12.2.0.1 database home
+Perform the following steps on the standby database server:
+Shutdown the standby database, as follows:
+
+(oracle)$ srvctl stop database -d stby
+Copy required files from 11.2.0.3, 11.2.0.4, 12.1.0.1 or 12.1.0.2 database home to the 12.2.0.1 database home. The following example shows the copying of the password file and init.ora files.
+(oracle)$ dcli -l oracle -g ~/dbs_group \
+'cp /u01/app/oracle/product/12.1.0.2/dbhome_1/dbs/orapwstby* \
+/u01/app/oracle/product/12.2.0.1/dbhome_1/dbs'
+
+(oracle)$ dcli -l oracle -g ~/dbs_group \
+'cp /u01/app/oracle/product/12.1.0.2/dbhome_1/dbs/initstby*.ora /u01/app/oracle/product/12.2.0.1/dbhome_1/dbs'
+
+Edit standby environment files
+?Edit the standby database entry in /etc/oratab to point to the new 12.2.0.1 home.
+?On both the primary and standby database servers, ensure the tnsnames.ora entries are available to the database after it has been upgraded.  If using the default location for tnsnames.ora, $ORACLE_HOME/network/admin, then copy tnsnames.ora from the old home to the new home.
+(oracle)$ dcli -l oracle -g ~/dbs_group \
+              cp /u01/app/oracle/product/12.1.0.2/dbhome_1/network/admin/tnsnames.ora \
+              /u01/app/oracle/product/12.2.0.1/dbhome_1/network/admin
+If using Data Guard Broker to manage the configuration please refer to Note 1387859.1 for more information.
+NOTE: Static "_DGMGRL" entries are no longer needed as of Oracle Database 12.1.0.2 in Oracle Data Guard Broker configurations that are managed by Oracle Restart, RAC One Node or RAC as the Broker will use the clusterware to restart an instance.
+Update the OCR configuration for the standby database by running the 'srvctl upgrade' command from the new database home as follow:
+(oracle)$ srvctl upgrade database -d stby -o /u01/app/oracle/product/12.2.0.1/dbhome_1
+Start the standby as follows (add -o mount option for database running Active Data Guard):
+(oracle)$ srvctl start database -d stby -o mount
+Start all Non-CDB primary instances in restricted mode
+For Non-CDB startup the primary database in restricted mode, as follows:
+
+(oracle)$ srvctl start database -d PRIM -o restrict
+Start all Container databases(CDB) primary in normal Read/Write mode
+For Container Database (CDB)  all PDB's must be open READ WRITE.
+(oracle)$srvctl start database -d PRIM 
+(oracle)$sqlplus / as sysdba
+SQL> alter session set container-CDB$ROOT
+SQL> alter pluggable database all open;
+Validate open_mode for the container(CDB) and PDB's:
+SQL> select con_id,name,open_mode,restricted, open_time from v$containers 
+CON_ID         NAME          OPEN_MODE    RESTRICTED OPEN_TIME
+---------- --------------- - ------------ ---------- ---------------------------------
+1           CDB$ROOT         READ WRITE     NO        16-JUN-16 02.20.30.357 PM -05:00
+2           PDB$SEED         READ ONLY      NO        16-JUN-16 02.20.30.363 PM -05:00
+3           PDB1             READ WRITE     NO        16-JUN-16 02.21.47.950 PM -05:00
+4           PDB2             READ WRITE     NO        16-JUN-16 02.21.47.949 PM -05:00
+Change preference for concurrent statistics gathering
+
+NOTE: Before starting the Database Upgrade Assistant it is required change the preference for 'concurrent statistics gathering' on the current release if the current setting is not set to 'FALSE'.
+First, while still on the 11.2. release, obtain the current setting:
+SQL> SELECT dbms_stats.get_prefs('CONCURRENT') from dual;
+When on 11.2 databases 'concurrent statistics gathering' is not not set to 'FALSE', change the value to 'FALSE' before the upgrade. 
+BEGIN 
+DBMS_STATS.SET_GLOBAL_PREFS('CONCURRENT','FALSE'); 
+END; 
+/
+When on 12.1 Non-CDB databases the default is 'concurrent statistics' gathering is set to 'OFF'. If not set it to OFF before the upgrade.
+BEGIN
+DBMS_STATS.SET_GLOBAL_PREFS('CONCURRENT','OFF');
+END;
+/
+When on 12.1 Container database (CDB) database, the default 'concurrent statistics' gathering is set to 'OFF' . If not set it to OFF before the upgrade.
+BEGIN
+DBMS_STATS.SET_GLOBAL_PREFS('CONCURRENT','OFF');
+END;
+/
+
+In 11.2 concurrency is disabled by default for both manual and automatic statistics gathering. In 12.1 Non CDB concurrency is set to 'OFF'   by default.  In 12.1 Container database (CDB) concurrency is set to 'OFF' by default. If the database requires changing this value back to the original setting, do this after the upgrade. 
+Reference bug bug 23484735  
+Before starting the Database Upgrade Assistant (DBUA) stop and disable all services with PRECONNECT as option for 'TAF Policy specification'
+
+NOTE: Before starting the database upgrade assistant all databases that will be upgraded having services configured with PRECONNECT as option for 'TAF Policy specification' should have these services  stopped and disabled. Once a database upgrade is completed, services can be enabled and brought online. Not disabling services having the PRECONNECT option for 'TAF Policy specification' will cause an upgrade to fail.
+For each database being upgraded use the srvctl command to determine if a 'TAF policy specification' with 'PRECONNECT' is defined. Example as follows:
+
+(oracle)$ srvctl config service -d <db_unique_name> | grep -i preconnect | wc -l
+
+For each database being upgraded the output of the above command should be 0. When the output of the above command is not equal to 0, find the specific service(s) for which PRECONNECT is defined. Example as follows: 
+(oracle)$ srvctl config service -d <db_unique_name> -s <service_name>
+
+Those services found need to be stopped and disabled before proceeding the upgrade. Example as follows:
+
+(oracle)$ srvctl stop service -d <db_unique_name> -s "<service_name_list>"
+(oracle)$ srvctl disable service -d <db_unique_name> -s "<service_name_list>"
+
+Reference bug bug 16539215 
+
+Note: You can use DBUA to upgrade multitenant architecture container databases (CDB), pluggable databases (PDBs), and non-CDB databases. The procedures are the same, but the choices you must make and the behavior of DBUA are different, depending on the type of upgrade:
+
+Upgrade the Database with Database Upgrade Assistant (DBUA)
+Running DBUA on Non-CDB, Container database(CDB), and Pluggable database (PDB) :   
+
+Run DBUA to upgrade the primary database.  All database instances of the database you are upgrading must be open.
+
+For Non-CDB database, If there is a standby database, the primary database should be left running in restricted mode, as performed in the previous step.
+
+For Container database(CDB), the CDB$ROOT container and all PDB's must be open READ WRITE.
+
+Oracle recommends removing the value for the init.ora parameter 'listener_networks' before starting DBUA. The value will be restored after running DBUA. Be sure to obtain the original value before removing, as follows:
+
+SYS@PRIM1> set lines 200
+SYS@PRIM1> select name, value from v$parameter where name='listener_networks';
+
+If the value for parameter listener_networks was set, then the value needs to be removed as follows:
+SYS@PRIM1> alter system set listener_networks='' sid='*' scope=both;
+
+Run DBUA from the new 12.2.0.1 ORACLE_HOME as follows:
+
+(oracle)$ /u01/app/oracle/product/12.2.0.1/dbhome_1/bin/dbua
+
+Perform these mandatory actions on the DBUA screens:
+?On "Select Database" screen, select the source Oracle home and then select the database to be upgraded, and then click Next.
+If the selected database is a multitenant container database (CDB), then DBUA displays the Select Pluggable Databases window.
+?On "Pluggable Database" screen you change priority of PDB's being upgraded. Recommend to leave it at default.
+?On "Prerequisite Checks" screen, be sure all validation checks are passed. If required make appropriate changes and re-run validation, then click Next
+?On "Upgrade Options" screen
+Enable Parallel Upgrade When not already done earlier
+Select "recompile invalid objects during post upgrade"
+Select "Upgrade Timezone Data" - if it applies
+Select "Gather Statistics Before Upgrade"
+Set User Tablespace to Read-Only During the Upgrade - if it applies
+Specify any Custom Scripts to be execute before/after
+?On "Recovery Options" screen, select an option to recover the database in case of upgrade problems
+When backups were created earlier skip this step by selecting "I have my own backup and restore strategy"
+When 'Guaranteed Restore Points' were created earlier select them now 'at Use Available Guaranteed Restore Point'
+?On "Management Options" screen, select the Enterprise Manager option applicable to your environment and fill in the details when required, then click Next.
+?On "Summary" screen, verify information presented about the database upgrade, and then click Finish.
+?On "Progress" screen, when the upgrade is complete, click OK. ?Solaris specific: This step may fail with "Failed to startup instance in upgrade mode" if _exafusion_enabled is set in MEMORY or spfile. Review Document <2186095.1> section Oracle Solaris-specific workaround required for DBUA on Solaris for workaround.
+?On "Upgrade Results" screen, review the upgrade result and investigate logfiles and any failures, and then click Close.
+The database upgrade to 12.2.0.1 is now complete. There are additional actions to perform to complete configuration. 
+
+Complete the steps on Non-CDB  database, required by the pre-upgrade information tool. Take action on areas identified in the output.
+When the preupgade tool was run, it was advised to set the $ORACLE_BASE environment. The generated scripts and log files are created in the file path $ORACLE_BASE/cfgtoollogs/dbunique_name/preupgrade.
+Substitute the example dbunique_name 'dbm01' with the name of your database.
+cd $ORACLE_BASE/cfgtoollogs/prim/preupgrade
+SQL> @postupgrade_fixups.sql
+SQL> EXECUTE DBMS_STATS.GATHER_DICTIONARY_STATS;
+SQL> EXECUTE DBMS_STATS.GATHER_FIXED_OBJECTS_STATS;
+Complete the steps on a Container database (CDB), required by the pre-upgrade information tool.Take action on areas identified in the output.
+Example shown is with 2 PDB's, if more PDB's exist, then postfixup script must be run in each PDB container, generated by the preupgrade tool with their corresponding name eg:postupgrade_fixups_PDB1.sql on PDB1.
+
+(oracle)$sqlplus / as sysdba
+SQL> alter session set container-CDB$ROOT
+SQL> @postupgrade_fixups.sql
+SQL> EXECUTE DBMS_STATS.GATHER_DICTIONARY_STATS;
+SQL> alter session set container=PDB1
+SQL> @postupgrade_fixups_PDB1.sql
+SQL alter session set container=PDB2
+SQL> @postupgrade_fixups_PDB2.sql
+
+NOTE: To downgrade your database to the earlier release you can use either 1) script provided generated by DBUA at upgrade time or 2) manual running the downgrade script (catdwgrd.sql).
+          From an MAA perspective for optimal reliability and minimal downtime, it is recommended to use the script generated by DBUA.
+          The upgrade logs directory contains the downgrade script generated by DBUA /u01/app/oracle/cfgtoollogs/dbua/upgradeYYYY-MM-DD_HH-MI-SS-AM/PM/db-unique name/db-unique-name_restore.sh. You can also find the details in the UpgradeResults.html in the same directory.
+           For further information please see:Downgrading Oracle Database to an Earlier Release in the Database Upgrade guide.
+Pluggable database(PDB) sequential upgrades using Unplug/Plug (Optional)
+Container databases (CDBs) can contain zero, one, or more pluggable databases (PDBs). You can upgrade one PDB without upgrading the whole CDB. To do this, you can unplug a PDB from a release 12.1.0.2 CDB, plug it into a release 12.2.0.1 CDB, and then upgrade that PDB to release 12.2.0.1. The following is a high-level list of the steps required for sequential PDB upgrades:
+Assumption: The Earlier release and Later release are on same server with shared storage.
+1.Run the Pre-Upgrade Information Tool on earlier release PDB
+2.Unplug the earlier release PDB from the earlier release CDB.
+3.To keep data dictionaries consistent, drop the PDB from the CDB. Dropping the PDB clears the data dictionaries from the previous CDB.
+4.Plug the earlier release PDB into the later release CDB
+5.Upgrade the Earlier Release PDB to a Later Release
+Run the Pre-Upgrade Information Tool on the earlier release PDB. The output will be to the directory /tmp specified on the command line when using dir /tmp option.
+(oracle)$ /u01/app/oracle/product/12.1.0.2/dbhome_1/jdk/bin/java -jar /u01/app/oracle/product/12.2.0.1/dbhome_1/rdbms/admin/preupgrade.jar dir /tmp -c PDB2
+$sqlplus / as sysdba
+SQL> alter session set container=PDB2;
+SQL> @/tmp/preupgrade_fixups.sql
+Follow the recommendations listed in /tmp/preupgrade.log.
+Log back into earlier release CDB$ROOT. Close the PDB you want to unplug. For example PDB2
+CONNECT / AS SYSDBA
+SQL> alter session set container=CDB$ROOT;
+SQL> alter pluggable database PDB2 close instances=all;
+SQL> alter pluggable database PDB2 unplug into '/home/oracle/pdb2.xml';
+SQL> drop pluggable database PDB2 keep datafiles;
+Plug  the earlier release PDB into the newer release CDB. Please note that the name should not conflict with existing PDB. In this example we unplugged PDB2 and plugged in as PDB3.
+Log into CDB$ROOT
+CONNECT / AS SYSDBA
+SQL> alter session set container=CDB$ROOT;
+SQL> create pluggable database PDB3 using '/home/oracle/pdb2.xml';
+SQL> alter session set container=PDB3;
+SQL> alter pluggable database open upgrade;
+Upgrade the earlier release PDB3 to the newer release. The -c option shows the inclusive list of PDB's specified and -l option is where the logs will be stored.
+(oracle)$ mkdir -p /u01/app/oracle/cfgtoollogs/dbua/pdb3
+(oracle)$/u01/app/oracle/product/12.2.0.1/dbhome_1/bin/dbupgrade -c 'PDB3' -l /u01/app/oracle/cfgtoollogs/dbua/pdb3
+Examine the Upgrade logs and Upgrade Summary Report. Then open the new pluggable database PDB3 open and run the postupgrade tasks.
+SQL> alter session set container=PDB3;
+SQL> startup
+SQL> @/tmp/postupgrade_fixups.sql
+Validate the staus of the new PDB3 and existing PDB's.
+SQL> alter session set container=CDB$ROOT;
+SQL> select name,open_mode from v$pdbs;
+NAME OPEN_MODE
+------------------------- ----------
+PDB$SEED READ ONLY
+PDB1 READ WRITE
+PDB2 READ WRITE
+PDB3 READ WRITE
+Recompile any remaining stored PL/SQL and Java code:
+(oracle) $ /u01/app/oracle/product/12.2.0.1/dbhome_1/perl/bin/perl /u01/app/oracle/product/12.2.0.1/dbhome_1/rdbms/admin/catcon.pl -e -b utlrp -d '''.''' /u01/app/oracle/product/12.2.0.1/dbhome_1/rdbms/admin/utlrp.sql
+The results of running the post-upgrade fixup scripts are located in $ORACLE_HOME/cfgtoollogs/CDB-SID/upgrade/upg_summary.log.
+Review and perform steps in Oracle Upgrade Guide, Chapter 4 'Post-Upgrade Tasks for Oracle Database'
+The Oracle Upgrade Guide documents required and recommended tasks to perform after upgrading to 12.2.0.1.  Since the database was upgraded from  11.2.0.3, 11.2.0.4, 12.1.0.1 or 12.1.0.2 some tasks do not apply.  The following list is the minimum set of tasks that should be reviewed for your environment.
+?Update environment variables
+?Upgrade the Recovery Catalog
+?Upgrade the Time Zone File Version when not already done earlier by DBUA.
+?For upgrades done by DBUA tnsnames.ora entries for that particular database will be updated in the tnsnames.ora in the new home. However entries not related to a database upgrade or entries related to standby database will not be updated as part of any DBUA action. The synchronization of these entries needs to be done manually. Ifile directives used in tnsnames.ora, for example in the grid home, need to be updated to point to the new database home.
+
+Change Custom Scripts and environment variables to Reference the 12.2.0.1 Database Home
+The primary database is upgraded and is now running from the 12.2.0.1 database home. Customized administration and login scripts that reference database home ORACLE_HOME should be updated to refer to /u01/app/oracle/product/12.2.0.1/dbhome_1.
+Initialization Parameters 
+
+The value for the init.ora parameter 'listener_networks' removed before the upgrade needs to be restored as follows:
+SYS@PRIM1> alter system set listener_networks='<original value>' sid='*' scope=both;
+
+Data Guard only - DBUA will not affect parameters set on the standby, hence previously set underscore parameters will remain in place.
+For any parameter setup in the spfile only, be sure to restart the databases to make the settings effective.
+When available: run 12.2.0.1 Bundle Patch Post-Installation Steps
+If a PSU installation was performed before the database was upgraded then post-installation steps may be required. See the PSU README for instructions (if any).
+
+NOTE: be sure to check all objects are valid after running the Post-Installation Steps. If invalid objects are found run utlrp until no rows are returned
+Data Guard only - Enable Fast-Start Failover and Data Guard Broker
+
+If using Data Guard Broker to manage the configuration, update static sid entries into the local node listener.ora located in the grid infrastructure home on all hosts in the configuration. Please refer to Note 1387859.1 for instructions on how to complete this.
+
+NOTE: Static "_DGMGRL" entries are no longer needed as of Oracle Database 12.1.0.2 in Oracle Data Guard Broker configurations that are managed by Oracle Restart, RAC One Node or RAC as the Broker will use the clusterware to restart an instance.
+                    
+If Data Guard broker and fast-start failover were disabled in a previous step, then re-enable them in SQL-Plus and dgmgrl, as follows:
+
+
+SYS@PRIM1> alter system set dg_broker_start = true sid='*';
+SYS@STBY1> alter system set dg_broker_start = true sid='*';
+
+Enable configuration:
+
+DGMGRL> enable configuration
+DGMGRL> enable fast_start failover
+
+
+Post-upgrade Steps
+Here are the steps performed in this section. ?Remove Guaranteed Restore Point if still exists
+?Disable Diagsnap for Exadata
+?Deconfigure MGMTDB
+?DBFS only - Perform DBFS Required Updates
+?Run Exachk or HealthCheck
+?Optional:Deinstall the 11.2.0.2, 11.2.0.3, 11.2.0.4, 12.1.0.1 or 12.1.0.2 Database and Grid Homes
+?Re-configure RMAN Media Management Library
+?Restore settings for concurrent statistics gathering
+?Advance COMPATIBLE.ASM diskgroup attribute (highly recommended)
+?Requirements for running 12.1.0.2 database in 12.2 GI/RDBMS environment
+Remove Guaranteed Restore Point 
+If the upgrade has been successful and a Guaranteed Restore Point (GRP) was created, it should be removed now as follows:
+SYS@PRIM1> DROP RESTORE POINT GRPT_BF_UPGR;
+Disable Diagsnap for Exadata
+NOTE: Due to unpublished bugs 24900613 25785073 and 25810099, Diagsnap should be disabled for Exadata.
+
+(oracle)$ cd /u01/app/12.2.0.1/grid/bin
+(oracle)$ ./oclumon manage -disable diagsnap
+Deconfigure MGMTDB
+To deconfigure MGMTDB post upgrade or post deployment, perform the following these steps. Please note steps will be performned from old and new GI_HOMES and last step as user root.
+(oracle)$export ORACLE_SID=-MGMTDB
+(oracle)$export ORACLE_BASE=/u01/app/oracle
+(oracle)$export ORACLE_HOME=/u01/app/12.1.0.2/grid
+(oracle)$ dbca -silent -deleteDatabase -sourceDB -MGMTDB
+(oracle)$srvctl stop mgmtlsnr
+(oracle)$srvctl remove mgmtlsnr
+(oracle)$/u01/app/12.2.0.1/grid/bin/crsctl stop res ora.crf -init
+(root)# /u01/app/12.2.0.1/grid/bin/crsctl modify res ora.crf -attr "ENABLED=0" -init
+When MGMTDB needs to be added back follow the steps in MOS Note: 2246123.1, 12.2: How to Create GI Management Repository.
+DBFS only - Perform DBFS Required Updates
+When the DBFS database is upgraded to 12.2.0.1 the following additional actions are required:
+Obtain latest mount-dbfs.sh script from Document 1054431.1
+Download the latest mount-dbfs.sh script attached to Document 1054431.1, place it a (new) directory and update the CRS resource:
+(oracle)$ dcli -l oracle -g ~/dbs_group mkdir -p /home/oracle/dbfs/scripts
+(oracle)$ dcli -l oracle -g ~/dbs_group -f /u01/app/oracle/patchdepot/mount-dbfs.sh -d /home/oracle/dbfs/scripts
+(oracle)$ crsctl modify resource dbfs_mount -attr "ACTION_SCRIPT=/home/oracle/dbfs/scripts/mount-dbfs.sh"
+Edit mount-dbfs.sh script and Oracle Net files for the new 12.2.0.1 environment
+Using the variable settings from the original mount-dbfs.sh script, edit the variable settings in the new mount-dbfs.sh script to match your environment.  The setting for variable ORACLE_HOME must be changed to match the 12.2.0.1 ORACLE_HOME (/u01/app/oracle/product/12.2.0.1/dbhome_1).  
+Edit tnsnames.ora used for DBFS to change the directory referenced for the parameters PROGRAM and ORACLE_HOME to the new 12.2.0.1 database home.
+fsdb.local =
+(DESCRIPTION =
+   (ADDRESS =
+     (PROTOCOL=BEQ)
+     (PROGRAM=/u01/app/oracle/product/12.2.0.1/dbhome_1/bin/oracle)
+     (ARGV0=oraclefsdb1)
+     (ARGS='(DESCRIPTION=(LOCAL=YES)(ADDRESS=(PROTOCOL=BEQ)))')
+     (ENVS='ORACLE_HOME=/u01/app/oracle/product/12.2.0.1/dbhome_1,ORACLE_SID=fsdb1')
+   )
+   (CONNECT_DATA=(SID=fsdb1))
+)
+If the location of Oracle Net files changed as a result of the upgrade, then change the setting of TNS_ADMIN in shell scripts and login files.
+If using wallet-based authentication, recreate the symbolic link to /sbin/mount.dbfs. If you are using the Oracle Wallet to store the DBFS password, then run the following commands: 
+(root)# dcli -l root -g ~/dbs_group ln -sf \ 
+/u01/app/oracle/product/12.2.0.1/dbhome_1/bin/dbfs_client /sbin/mount.dbfs
+(root)# dcli -l root -g ~/dbs_group ln -sf \ 
+/u01/app/oracle/product/12.2.0.1/dbhome_1/lib/libnnz11.so /usr/local/lib/libnnz11.so
+(root)# dcli -l root -g ~/dbs_group ln -sf \
+/u01/app/oracle/product/12.2.0.1/dbhome_1/lib/libclntsh.so.11.1 /usr/local/lib/libclntsh.so.11.1
+(root)# dcli -l root -g ~/dbs_group ldconfig
+Run Exachk
+The database upgrade to 12.2.0.1 is now complete. It is now required to run Exachk to validate all Oracle database 12.2 parameters meet the Best practices. Run the latest release of Exachk to validate software, hardware, firmware, and configuration best practices. Resolve any issues identified by Exachk before proceeding . Review Document 1070954.1 for details. 
+Optional: Deinstall the 11.2.0.3, 11.2.0.4, 12.1.0.1 or 12.1.0.2 Database and Grid Homes
+Exadata Bare Metal configurations
+After the upgrade is complete and the database and application have been validated and in use for some time, the 11.2.0.3, 11.2.0.4, 12.1.0.1 or 12.1.0.2 database and Grid homes can be removed using the deinstall tool.  Run these commands on the first database server.  The deinstall tool will perform the deinstallation on all database servers.  Refer to Oracle Grid Infrastructure Installation Guide for 11g or 12c for additional details of the deinstall tool.
+Before running the deinstall tool to remove the old database and grid homes, run deinstall with the -checkonly option to verify the actions it will perform.  Ensure the following:
+?There are no databases configured to use the home.
+?The home is not a configured Grid Infrastructure home.
+?ASM is not detected in the Oracle Home.
+To deinstall Database and Grid infrastructure, Set the $ORACLE_HOME to the home that need to be deinstalled. Deinstall of the current home is assumed.
+The example steps for an 12.1 database are as follows:
+
+
+oracle)$ cd $ORACLE_HOME/deinstall
+(oracle)$ ./deinstall -checkonly
+(oracle)$ ./deinstall
+change ORACLE_HOME to grid home for previous grid home deinstall:
+(root)# dcli -l root -g ~/dbs_group chown -R oracle:oinstall /u01/app/12.1.0.2
+(root)# dcli -l root -g ~/dbs_group chmod -R 755 /u01/app/12.1.0.2
+(oracle)$ ./deinstall -checkonly 
+(oracle)$ ./deinstall
+
+When not immediately deinstalling the previous Grid Infrastructure, rename the old Grid Home directory on all nodes such that operators cannot mistakenly execute crsctl commands from the wrong Grid Infratructure Home.
+Exadata Oracle Virtual Machine (OVM)
+For Exadata Oracle Virtual Machine (OVM) using deinstall tool is not required.  Just umount the file system and detaching the devices from User Domain(domU) and remove the links and files.
+Determine the devices associated with the file system.
+(root)# df -h
+Filesystem Size Used Avail Use% Mounted on
+/dev/mapper/VGExaDb-LVDbSys1
+24G 5.1G 18G 23% /
+tmpfs 24G 0 24G 0% /dev/shm
+/dev/xvda1 496M 30M 441M 7% /boot
+/dev/mapper/VGExaDb-LVDbOra1
+20G 221M 19G 2% /u01
+/dev/xvdb 50G 7.5G 40G 17% /u01/app/11.2.0.4/grid
+/dev/xvdc 50G 6.1G 41G 13% /u01/app/oracle/product/11.2.0.4/dbhome_1
+/dev/xvde 50G 8.0G 39G 17% /u01/app/oracle/product/12.2.0.1/dbhome_1
+/dev/xvdf 50G 7.2G 40G 16% /u01/app/12.2.0.1/grid
+In the above example devices xvdb, xvdc are associated with the old GRID_HOME and ORACLE_HOME
+Execute on all nodes of User Domain(domU). Unmount the files systems.
+(root)# umount /u01/app/11.2.0.4/grid
+(root)# umount /u01/app/oracle/product/11.2.0.4/dbhome_1
+Execute on all nodes of User Domain(domU). Remove entries from /etc/fstab. The entries should refer to the old GRID_HOME and ORACLE_HOME as shown below.
+/dev/xvdb /u01/app/11.2.0.4/grid ext4 defaults 1 1
+/dev/xvdc /u01/app/oracle/product/11.2.0.4/dbhome_1 ext4 defaults 1 1
+Execute on every member of the Management domain(dom0) of Oracle Virtual Machine.Detach the devices.
+(root)# xm block-detach domain-name /dev/xvdb
+(root)# xm block-detach domain-name /dev/xvdc
+Execute on every member of the Management domain(dom0) of Oracle Virtual Machine. Find the name of the reflinks that need to be removed.
+(root)# ls /EXAVMIMAGES/GuestImages/domain-name/*.img
+Execute on every member of the Management domain(dom0) of Oracle Virtual Machine. Remove Use Domain(domU) specific reflinks.
+In the above staep we found the name of the reflink , in this example grid11.2.0.4.0.img,db11.2.0.4.0.img
+(root)# rm /EXAVMIMAGES/GuestImages/domain-name/grid11.2.0.4.0.img
+(root)# rm /EXAVMIMAGES/GuestImages/domain-name/db11.2.0.4.0.img
+Edit the vm.cfg file found under /EXAVMIMAGES/GuestImages/domain-name/. Note down and remove the devices xvdb, xvdc. The content shows two disks xvdb, xvdc were removed from the configuration.
+disk =
+['file:/OVS/Repositories/e6b97843a4044d8f9e54148d803ae640/VirtualDisks/
+f9044b18530e4346845f01451f09a2c1.img,xvda,w',
+'file:/OVS/Repositories/e6b97843a4044d8f9e54148d803ae640/VirtualDisks/
+e6c8be441ff34961a1784a01dc3591a9.img,xvdd,w',
+'file:/OVS/Repositories/e6b97843a4044d8f9e54148d803ae640/VirtualDisks/
+c240ffe6736147de8e065b102c4e72cb.img,xvde,w',
+'file:/OVS/Repositories/e6b97843a4044d8f9e54148d803ae640/VirtualDisks/
+e3e58f0c1d3446a7bc3452ae8515a959.img,xvdf,w']
+Execute on every member of the Management domain(dom0) of Oracle Virtual Machine. Remove symlinks from the standard /OVS location. The device names were noted down before delting the entries from vm.cfg
+(root)# rm /OVS/Repositories/e6b97843a4044d8f9e54148d803ae640/VirtualDisks/8608bb6db4dc4b719cb84bec4caaf462.img
+(root)# rm OVS/Repositories/e6b97843a4044d8f9e54148d803ae640/VirtualDisks/230acfd245bc41c798b7ad145731e470.img
+If on the Management domain(dom0) of Oracle Virtual Machine no other cluster is using the old GRID_HOME and ORACLE_HOME then the .iso file under /EXAVMIMAGES corresponding to old home can me removed to recliam space.
+(root)# rm /EXAVMIMAGES/grid-klone-Linux-x86-64-11204160719.50.iso
+(root)# rm /EXAVMIMAGES/db-klone-Linux-x86-64-11204160719.50.iso
+Re-configure RMAN Media Management Library
+Database installations that use an RMAN Media Management Library (MML) may require re-configuration of the Oracle Database Home after the upgrade. Most often recreating a symbolic link to vendor provided MML is sufficient.
+For specific details see the MML documentation.
+Restore settings for concurrent statistics gathering
+When the preference for concurrent statistics gathering was changed in 11.2 to FALSE earlier in the process (before DBUA was started), then restore this setting now when required. Note that the 12.2 DEFAULT of 'MANUAL' and 12.2 Container CDB database is 'OFF'
+Advance COMPATIBLE.ASM diskgroup attribute 
+As a highly recommended best practice and in order to create new databases with the password file stored in an ASM diskgroup or using ACFS, it's recommended to advance the COMPATIBLE.ASM parameter of your diskgroups to the Oracle ASM software version in use. 
+Your diskgroup names may be different, please check your environment , it could be DATA or DATAC1, RECO or RECOC1  In the below example it is assumed to be DATA and RECO:
+ALTER DISKGROUP RECO SET ATTRIBUTE 'compatible.asm' = '12.2.0.1.0';
+ALTER DISKGROUP DBFS_DG SET ATTRIBUTE 'compatible.asm' = '12.2.0.1.0';
+ALTER DISKGROUP DATA SET ATTRIBUTE 'compatible.asm' = '12.2.0.1.0';
+Using earlier Oracle Database Releases with Oracle Grid Infrastructure 12.2
+Installing earlier version of Oracle Database
+You can use Oracle Database 11.2.0.3, 11.2.0.4, 12.1.0.1, 12.1.0.2 and 12.2.0.1 with Oracle Grid Infrastructure 12c release 2 (12.2).
+?If you are at database release 11.2.0.3 and plan to create additional 11.2.0.3 databases then must apply patch 23186035 to the 11.2.0.3 database home on top of the latest bundle patch.
+?If you are at database release 11.2.0.4 and plan to create additional 11.2.0.4 databases then must apply patch 23186035 to the 11.2.0.4 database home on top of the latest bundle patch.
+?If you are at database release 12.1.0.1 and plan to create additional 12.1.0.1 databases then must apply patch 23186035 to the 12.1.0.1 database home on top of the latest bundle patch.
+?If you are at database release 12.1.0.2 and plan to create additional 12.1.0.2 databases then must apply patch 21626377 to the 12.1.0.2 database home on top of the latest bundle patch.
+Performing Inventory update
+An inventory update is required to the 12.2.0.1 Grid Home because with Grid Home 12.2.0.1 , cluster node names are not registered in the inventory. Older database version tools relied on node names from inventory. Please run the following command on the local node.
+/u01/app/12.2.0.1/grid/oui/bin/runInstaller -ignoreSysPrereqs -updateNodeList ORACLE_HOME=/u01/app/12.2.0.1/grid "CLUSTER_NODES={comma_separated_list_of_hub_nodes}" CRS=true LOCAL_NODE=local_node
+
+
+Troubleshooting
+
+The approach where a new software release is installed out of place (in a new home) will help against failed installations. Any type of installation problem should not impact availability. Failed installations can easily be rolled back and restarted. The rootupgrade script that needs to run after installing a new Grid Infrastructure is the critical part of the upgrade. When this fails normal problem solving applies and the notes mentioned below maybe helpful:
+?Document 1050908.1 - Troubleshoot Grid Infrastructure Startup Issues
+?Document 1991928.1 - Grid Infrastructure root script (root.sh etc) fails as remote node missing binaries (Doc ID 1991928.1)
+Revision History
+
+
+Date
+
+Change
+
+Jun 29 2016
+
+?Initial Draft Reviewed
+
+Sep 26, 2016
+
+?Add Solaris and SuperCluster related information.
+
+October 13, 2016
+
+?Add Stack Size and formatting
+
+October 26, 2016
+
+?Add Requirements for running 12.1.0.2 database in 12.2 GI/RDBMS environment
+
+November 1, 2016
+
+?Incoporate feedback
+
+November 28,2016
+
+?Add Flex ASM cardinality  and handle obsolete parameters.
+
+December 20, 2016
+
+?Added Exadata Oracle Virtual Machine (OVM) information.
+
+January 6, 2017
+
+?Incorporate feedback
+
+February 10, 2017
+
+?Add prequisites if ACFS is configured on existing system before running rootupgrade.sh
+
+March 2, 2017
+
+?Added extra focus on best practices regarding advancing compatible.asm
+
+March 14, 2017
+
+?12.2.0.1 Grid Infrastructure home requires fix for bug 25556203
+
+March 21,2017
+
+?Fix path for Installing earlier version of Oracle Database
+
+March 31, 2017
+
+?Moving to gridSetup.sh -applyOneOffs for applying patch 25556203 at installation time.
+
+April 6, 2017
+
+?Disable Diagsnap for Exadata
+
+April 20, 2017
+
+?Add MGMTDB information
+
+May 10, 2017
+
+?Add options fort tune2fs/tune4fs when tuniung a filesystem
+
+May 15,2017
+
+?Add flags to Grid upgrade to skip MGMTDB
+
+May 25, 2017
+
+?REMOVE CSS MISSCOUNT=60 FROM EXADATA DEPLOYMENT FOR 12.1 GI AND HIGHER
+
+May 25, 2017
+
+?Bug 25795447 - 12.2 CLUVFY  for Multicast check
+
+June 6, 2017
+
+?Update Exadata OVM Grid and Database upgrade steps.
+
+
+
+
+References
+NOTE:1991928.1 - Grid Infrastructure root script (root.sh etc) fails as remote node missing binaries
+NOTE:1910022.1 - CLSRSC-214: Failed To Start 'ohasd' Running rootupgrade.sh On the Last Node due to Existing Checkpoint File
+NOTE:1589394.1 - How to Move/Recreate GI Management Repository to Different Shared Storage (Diskgroup, CFS or NFS etc) 
