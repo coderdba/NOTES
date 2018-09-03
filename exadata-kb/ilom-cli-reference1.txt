@@ -1,0 +1,299 @@
+http://unixadminschool.com/blog/2012/06/ilom-integrated-lights-out-manager-command-line-reference-2/
+
+Unix Quick Reference : ILOM ( Integrated Lights out Manager) Command Line
+BY RAMDEV · PUBLISHED JUNE 29, 2012 · UPDATED AUGUST 20, 2014
+
+The X4000 Family implements the ILOM – Integrated Lights Out Manager.  This is a combination of dedicated hardware and supporting software.
+
+The Sun Fire X64 family of servers implement a technology called ILOM – Integrated Lights Out Manager where available. This is a combination of dedicated hardware and supporting software built on a service processor, integral to the platform.
+
+Introduction
+
+ILOM uses a hierarchical namespace.
+It contains a predefined tree /SP namespace manages the ILOM. e.g. to manage users and clock settings. The SP namespace is generic over all platforms using the ILOM. /SYS namespace manages the host system. e.g. change the host state, read sensor information, and access other information for managed system hardware. The SYS namespace is unique to each platform.
+
+ 
+
+ 
+
+Command Syntax
+Command syntax can be separate or in combination:
+
+Individually:
+
+-> cd /SP/services/http
+-> set port=80
+
+Single combined command:
+
+-> set /SP/services/http port=80
+
+Useful ILOM CLI Commands:
+
+Display SP firmware version:
+
+-> version
+
+Show available CLI commands:
+
+-> show /SP/cli/commands
+
+Display help information about commands and targets
+
+-> help
+
+For help specific to a command, use help followed by the command of interest, for example:
+
+-> help start
+
+Display status information about the controller board in your server (the command path to the board will vary within the X4000 family):
+
+-> show /SYS/MB/P0
+
+Connect to host serial console (host COM0):
+
+-> start /SP/console
+
+Power on host:
+
+-> start /SYS
+
+Power off host:
+
+-> stop /SYS
+
+Reset host:
+
+-> reset /SYS
+
+Reset ILOM:
+
+-> reset /SP
+
+Resetting the ILOM and BIOS Passwords:
+
+Requires changing a hardware jumper within the server enclosure
+
+Exit the ILOM CLI:
+
+-> exit
+
+Send break to the host:
+
+Escape + B (press the Escape key and type upper case B)
+
+Start the server console:
+
+-> start /SP/console
+
+Exit the server console   (   type ESC  –  to exit the console (usually for x86)    or     #.     –   usually for SPARC )
+
+-> show /SP/faultmgmt
+
+/SP/faultmgmt
+
+Targets:
+shell
+0 (/SYS)
+1 (/SYS/BL1)
+2 (/SYS/BL2)
+
+Properties:
+
+Commands:
+cd
+show
+
+ 
+
+–> show faulty
+
+Target               | Property                | Value
+——————–+————————+———————————
+/SP/faultmgmt/0      | fru                     | /SYS
+/SP/faultmgmt/0/    | class                   | fault.chassis.device.missing
+faults/0                          |                         |
+/SP/faultmgmt/0/     | sunw-msg-id             | SPX86-8000-4S
+faults/0                           |                         |
+/SP/faultmgmt/0/     | uuid                    | 8acb45f9-fb70-e5d0-b73c-f8e5ea32
+faults/0                           |                         | c52a
+/SP/faultmgmt/0/     | timestamp               | 2010-02-19/02:58:20
+faults/0                           |                         |
+/SP/faultmgmt/0/     | product_serial_number | 12345678-abcdefghi
+faults/0                           |                         |
+/SP/faultmgmt/0/     | chassis_serial_number | 12345678-abcdefghi
+faults/0                           |                         |
+/SP/faultmgmt/0/     | power_supply            | 2
+faults/0                           |                         |
+/SP/faultmgmt/0/     | event_key               | 2
+faults/0                           |                         |
+
+The show faulty command is a shortcut for the following Oracle ILOM CLI command string: -> show -o table -level all /SP/faultmgmt.  It shows you all active faults in the system in a concise, tabular form. For example, it produces output similar to the following:
+
+ 
+
+-> (
+
+List users with open sessions to the system console (who is using the console?):
+
+-> show /SP/sessions
+
+Terminate a server console session started by another user:
+
+-> stop /SP/console
+
+Display SEL (System Event Log)
+
+-> show /SP/logs/event/list
+
+Clear all System Event logs:
+
+-> set /SP/logs/event clear=true
+
+Locate LED – a white LED to help find a server.
+
+Enable locate LED:
+
+-> set /SYS LOCATE=on
+
+Disable locate LED:
+
+-> set /SYS LOCATE=off
+
+Configuring a Static IP Address
+
+Set the working directory:
+
+-> cd /SP/network
+
+Specify a static Ethernet configuration:
+
+-> set pendingipdiscovery=static
+
+-> set pendingipaddress=xxx.xxx.xx.xx
+
+-> set pendingipnetmask=yyy.yyy.yyy.y
+
+-> set pendingipgateway=zzz.zzz.zz.zzz
+
+-> set commitpending=true
+
+Display the targets in SYS:
+
+-> show /SYS /SYS
+
+Targets: INTSW BIOS SP REAR_SVC TOP_SVC TEMP_FAULT POWER LOCATE SERVICE V_+12V V_+1V2
+
+Display the targets with the /SYS/SASBP ? disk backplane:
+
+-> show /SYS/SASBP /SYS/SASBP
+
+Targets: ID0 ID1 T_AMB HDD0 HDD1 HDD2 HDD3 Properties: type = Disk Backplane Commands: cd show
+
+Add a local user account:
+
+-> create /SP/users/username password=password role=[administrator|operator]
+
+Delete a User:
+
+-> delete /SP/users/username
+
+Displaying Users:
+
+-> show /SP/users
+
+Change the role of user1 to operator
+
+-> set /SP/users/user1 role=operator
+
+Display the role of username ‘user1’ (the role will clearly impact which command functionality is available for a user):
+
+-> show /SP/users/user1
+
+Change user1’s password:
+
+-> set /SP/users/user1
+password Changing password for user /SP/users/user1/password…
+Enter new password:********
+Enter new password again:********
+New password was successfully set for user /SP/users/user1
+
+ILOM has two serial ports: an internal host port that interfaces directly with the host server using the start /SP/console command, and an external port that is exposed on back of the server.
+
+Display serial port settings (on back of server):
+
+-> show /SP/serial/external
+
+Display settings for the host serial port (internal):
+
+-> show /SP/serial/host
+
+Change speed (baud rate) for host serial port:
+
+-> set /SP/serial/host pendingspeed=57600 commitpending=true
+
+Display network settings:
+
+-> show /SP/network
+
+Change the IP address of ILOM:
+
+-> set /SP/network ipaddress=nnn.nn.nn.nn commitpending=true
+
+Change HTTPS settings:
+
+-> set /SP/services/https port=portnumber servicestate=[enabled|disabled]
+
+Change HTTP settings, such as enabling automatic redirection to HTTPS:
+
+-> set /SP/services/http port=portnumber secureredirect=[enabled|disabled] servicestate=[enabled|disabled]
+
+Display clock settings:
+
+-> show /SP/clock
+
+Configure clock to synchronize with NTP server:
+
+-> set /SP/clients/ntp/server/1 address=125.128.84.20
+
+To disable use of NTP set the NTP-server IP address to none as show below:
+
+-> set /SP/clients/ntp/server/1 address=none
+
+Enable NTP service:
+
+-> cd /SP/clock -> set usentpserver=enabled
+
+Upgrade ILOM Firmware:
+
+-> load -source tftp://archive/newmainimage
+Are you sure you want to load the specified file (y/n)? y
+File upload is complete. Firmware image verification is complete.
+Do you want to preserve the configuration (y/n)? n
+Updating firmware in flash RAM: .
+Firmware update is complete.
+ILOM will not be restarted with the new firmware.
+
+Display configured alerts:
+
+-> show /SP/alert/rules
+
+Display alert configuration rule in detail:
+
+-> show /SP/alert/rules/N (where N is 1 to 15)
+
+Configure an alert:
+
+-> set /SP/alert/rules/1 destination=128.145.77.21 level=critical
+
+Change an alert level to critical:
+
+-> set /SP/alert/rules/1 level=critical
+
+Disable an alert:
+
+-> set /SP/alert/rules/1 level=disable
+
+Send a test alert for all enabled rules:
+
+-> set /SP/alert/rules testalert=true
