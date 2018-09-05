@@ -1,0 +1,51 @@
+https://fritshoogland.wordpress.com/2017/01/21/auditing-oracle-database-stopping-and-starting-using-the-elk-stack/
+
+These files need to be configured in filebeat, in the file: /etc/filebeat/filebeat.yml. As the extension of the file indicates, this is a file organised in YAML syntax. The best way to configure the file is to move the file, and create your own file with your desired configuration. First of all we add the output, which is logstash in our case. Please mind the default configuration of filebeat is direct output to elasticsearch, which means we don’t have an option to enrich the data!
+
+
+# mv /etc/filebeat/filebeat.yml /etc/filebeat/filebeat.yml.orig
+# vi /etc/filebeat/filebeat.yml
+output.logstash:
+  hosts: ["localhost:5044"]
+Please mind the two spaces in front of ‘hosts’, which is mandatory for a YAML document!
+Next up we add the files to monitor in the configuration file. The linux based logfiles are easy:
+
+
+filebeat.prospectors:
+- input_type: log
+  paths:
+    - /var/log/secure
+  document_type: secure
+ 
+- input_type: log
+  paths:
+    - /var/log/audit/audit.log
+  document_type: audit
+One thing to notice is that a type is set for each file (which is really just a name for the file filebeat monitors), 
+which makes it able to find data from these specific files later on. Now the Oracle audit file:
+
+
+- input_type: log
+  paths:
+    - /u01/app/oracle/admin/*/adump/*.aud
+  document_type: oracle_audit
+  multiline:
+    pattern: '^[A-Za-z]{3} [A-Za-z]{3} [0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} [0-9]{4}'
+    negate: true
+    match: after
+This looks a bit more complicated. The reason for the complication is the multiline specification. 
+An Oracle database audit file contains a timestamp, after which the audit data is written; it looks like this:
+
+
+Thu Jan 19 13:44:12 2017 +00:00
+LENGTH : '198'
+ACTION :[49] 'ALTER DATABASE OPEN /* db agent *//* {0:0:476} */'
+DATABASE USER:[1] '/'
+PRIVILEGE :[6] 'SYSDBA'
+CLIENT USER:[6] 'oracle'
+CLIENT TERMINAL:[0] ''
+STATUS:[1] '0'
+DBID:[10] '2622783786'
+The important things at this time: the ‘pattern’ keyword specifies the timestamp, you can see you can match it 
+with the timestamp, and all the following data needs to be processed together, this is a single record, 
+written over multiple lines. ‘negate: true’ means that anything that does not fit the pattern needs to be added to this piece of data, ‘match: after’ means that this is added after the pattern is matched.
