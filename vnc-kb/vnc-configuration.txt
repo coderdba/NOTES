@@ -1,0 +1,248 @@
+http://www.elinuxbook.com/tigervnc-server-configuration-remote-desktop-application-for-linux/
+
+STEP BY STEP TIGERVNC SERVER CONFIGURATION – A REMOTE DESKTOP APPLICATION FOR LINUX
+BY BALAMUKUNDA SAHU · PUBLISHED MARCH 4, 2017 · UPDATED APRIL 18, 2017
+
+
+ 
+TigerVNC Server Configuration - A Remote Desktop Application for Linux
+TigerVNC Server Configuration – A Remote Desktop Application for Linux
+Introduction
+In this article we are going to discuss on How to configure TigerVNC Server in RHEL/CentOS/Fedora. VNC stands for Virtual Network Computing is a open source application used to share the desktop remotely in GUI (Graphical User Interface) format. It uses RFB (Remote Frame Buffer) protocol to transfer data over network. TigerVNC Server is a independent application comes for all kinds of operating systems i.e Windows, Linux, MacOS. VNC was first invented on year 1998 at AT&T lab in Cambridge. Usually the port number of TigerVNC Server is 5901, 5902 but we can customize the port Number. In TigerVNC Server also we need a Server to instalkl Server application and a client from where we can take remote of VNC Server. From client side we have tool called VNC Viewer. Here also we have one disadvantage in TigerVNC Server is it used RFB protocol to transfer data over network which is completely not secure but better then telnet. Like telnet TigerVNC Server not transfers data plain in text format. But we can implement extra security layer for VNC Server.
+
+  Download Free Linux eBook HERE!      "Learn Linux in 5 Days" - A Free Linux eBooks for Beginners
+So Let’s have a look at configuration steps of TigerVNC Server in RHEL/CentOS/Fedora Linux.
+
+Follow the below steps to configure TigerVNC Server (Remote Desktop Application for Linux)
+Server Side :
+
+IP Address – 192.168.0.105
+
+First configure the Ethernet Card, Here in my practice Lab its eth0 and IP address is 192.168.0.105 as shown on the output below.
+
+
+ 
+[root@localhost ~]# ifconfig eth0   # Check the IP Address
+eth0      Link encap:Ethernet  HWaddr 00:0C:29:A4:B6:76
+          inet addr:192.168.0.105  Bcast:192.168.0.255  Mask:255.255.255.0
+          inet6 addr: fe80::20c:29ff:fea4:b676/64 Scope:Link
+          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+          RX packets:29501 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:19961 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:1000
+          RX bytes:36244704 (34.5 MiB)  TX bytes:2702906 (2.5 MiB)
+Step : 1 Install Required Packages
+
+Before we start the configuration of TigerVNC Server we have to install required packages and dependencies. So let’s go ahead and install Desktop Environment and X Windows System packages.
+
+[root@localhost ~]# yum -y groupinstall "Desktop" "GNOME Desktop Environment" "X Window System"
+Now install TigerVNC Server package using yum repository as shown below.
+
+[root@localhost ~]# yum install tigervnc-server xorg-x11-fonts-Type1   # Install TigerVNC Server
+Loaded plugins: fastestmirror, refresh-packagekit, security
+Setting up Install Process
+Loading mirror speeds from cached hostfile
+ * base: centos.mirror.net.in
+ * extras: mirrors.aluhost.com
+ * updates: centos.mirror.net.in
+Resolving Dependencies
+--> Running transaction check
+---> Package tigervnc-server.x86_64 0:1.1.0-18.el6 will be installed
+--> Processing Dependency: xorg-x11-fonts-misc for package: tigervnc-server-1.1.0-18.el6.x86_64
+---> Package xorg-x11-fonts-Type1.noarch 0:7.2-11.el6 will be installed
+--> Processing Dependency: ttmkfdir for package: xorg-x11-fonts-Type1-7.2-11.el6.noarch
+--> Processing Dependency: ttmkfdir for package: xorg-x11-fonts-Type1-7.2-11.el6.noarch
+--> Running transaction check
+---> Package ttmkfdir.x86_64 0:3.0.9-32.1.el6 will be installed
+---> Package xorg-x11-fonts-misc.noarch 0:7.2-11.el6 will be installed
+--> Finished Dependency Resolution
+
+Dependencies Resolved
+
+================================================================================
+ Package                    Arch         Version               Repository  Size
+================================================================================
+Installing:
+ tigervnc-server            x86_64       1.1.0-18.el6          base       1.0 M
+ xorg-x11-fonts-Type1       noarch       7.2-11.el6            base       520 k
+Installing for dependencies:
+ ttmkfdir                   x86_64       3.0.9-32.1.el6        base        43 k
+ xorg-x11-fonts-misc        noarch       7.2-11.el6            base       5.8 M
+
+Transaction Summary
+================================================================================
+Install       4 Package(s)
+
+Total download size: 7.4 M
+Installed size: 10 M
+Is this ok [y/N]: y
+Downloading Packages:
+(1/4): tigervnc-server-1.1.0-18.el6.x86_64.rpm           | 1.0 MB     00:01     
+(2/4): ttmkfdir-3.0.9-32.1.el6.x86_64.rpm                |  43 kB     00:00     
+(3/4): xorg-x11-fonts-Type1-7.2-11.el6.noarch.rpm        | 520 kB     00:00     
+(4/4): xorg-x11-fonts-misc-7.2-11.el6.noarch.rpm         | 5.8 MB     00:10     
+--------------------------------------------------------------------------------
+Total                                           410 kB/s | 7.4 MB     00:18     
+Running rpm_check_debug
+Running Transaction Test
+Transaction Test Succeeded
+Running Transaction
+  Installing : xorg-x11-fonts-misc-7.2-11.el6.noarch                        1/4 
+  Installing : ttmkfdir-3.0.9-32.1.el6.x86_64                               2/4 
+  Installing : xorg-x11-fonts-Type1-7.2-11.el6.noarch                       3/4 
+  Installing : tigervnc-server-1.1.0-18.el6.x86_64                          4/4 
+  Verifying  : ttmkfdir-3.0.9-32.1.el6.x86_64                               1/4 
+  Verifying  : tigervnc-server-1.1.0-18.el6.x86_64                          2/4 
+  Verifying  : xorg-x11-fonts-misc-7.2-11.el6.noarch                        3/4 
+  Verifying  : xorg-x11-fonts-Type1-7.2-11.el6.noarch                       4/4 
+
+Installed:
+  tigervnc-server.x86_64 0:1.1.0-18.el6                                         
+  xorg-x11-fonts-Type1.noarch 0:7.2-11.el6                                      
+
+Dependency Installed:
+  ttmkfdir.x86_64 0:3.0.9-32.1.el6    xorg-x11-fonts-misc.noarch 0:7.2-11.el6   
+
+Complete!
+Step : 2 Create Users for TigerVNC Server
+
+As we can see above TigerVNC Server package installed successfully, now we have to create users for VNC Server. So create users using useradd command as shown below.
+
+Now I am going to create two users i.e. “elinuxbook” and “helpdesk“, Follow the steps below.
+
+Note : Here as an example I have created Two users but you can create as much user you want as per your Scenario and Requirement.
+
+So creating the 1st User i.e. “elinuxbook”
+
+[root@localhost ~]# useradd elinuxbook   # Create a User "elinuxbook"
+[root@localhost ~]# passwd elinuxbook
+Changing password for user elinuxbook.
+New password: 
+Retype new password: 
+passwd: all authentication tokens updated successfully.
+Creating the 2nd User i.e. “helpdesk”
+
+[root@localhost ~]# useradd helpdesk   # Create a User "helpdesk"
+[root@localhost ~]# passwd helpdesk
+Changing password for user helpdesk.
+New password: 
+Retype new password: 
+passwd: all authentication tokens updated successfully.
+Also Read :
+
+HOW TO MOUNT AN ISO IMAGE IN LINUX
+HOW TO CONFIGURE XRDP REMOTE DESKTOP SERVER IN RHEL/CENTOS 7
+Step : 3 Generate VNC Password Users
+
+Once users created we need to Switch to both users using su command and have to generate password for VNC Server. This password will used to authentication with TigerVNC Server while taking remote.
+
+Generate Password for 1st User i.e. “elinuxbook”
+
+[root@localhost ~]# su - elinuxbook   # Switch to User "elinuxbook"
+[elinuxbook@localhost ~]$ vncpasswd   # Set Password to login VNC Server
+Password:
+Verify:
+[elinuxbook@localhost ~]$ exit
+logout
+Generate Password for 2nd User i.e. “helpdesk”
+
+[root@localhost ~]# su - helpdesk
+[helpdesk@localhost ~]$ vncpasswd 
+Password:
+Verify:
+Users passwords are stores in a file called passwd which is located at .vnc/passwd.
+
+Note : .vnc is a hidden directory can be seen by using ls -a command and located at home directory of User. Refer the output below.
+
+[helpdesk@localhost ~]$ ls -a   # Show Hidden Files & Directories
+.  ..  .bash_logout  .bash_profile  .bashrc  .gnome2  .mozilla  .vnc
+[helpdesk@localhost ~]$ cd .vnc/
+[helpdesk@localhost .vnc]$ ls
+passwd
+Step : 4 Configure the Resolution for Users in VNC Server
+
+Now we have to configure the main configuration file of TigerVNC Server i.e. /etc/sysconfig/vncsevers where we have to define users which we created on Step : 3 and also have to set the resolutions. So Follow the below steps to do the same. Configuration parts are highlighted in Red color.
+
+Here we have set Resolution for both user is 800×600 means while we take remote of TigerVNC Server the screen will come in-front of us with 800×600 resolution.
+
+[root@localhost ~]# nano /etc/sysconfig/vncservers   # Configuring VNC Server
+
+# The VNCSERVERS variable is a list of display:user pairs.
+#
+# Uncomment the lines below to start a VNC server on display :2
+# as my 'myusername' (adjust this to your own).  You will also
+# need to set a VNC password; run 'man vncpasswd' to see how
+# to do that.
+#
+# DO NOT RUN THIS SERVICE if your local area network is
+# untrusted!  For a secure way of using VNC, see this URL:
+# https://access.redhat.com/knowledge/solutions/7027
+
+# Use "-nolisten tcp" to prevent X connections to your VNC server via TCP.
+
+# Use "-localhost" to prevent remote VNC clients connecting except when
+# doing so through a secure tunnel.  See the "-via" option in the
+# `man vncviewer' manual page.
+
+# VNCSERVERS="2:myusername"
+# VNCSERVERARGS[2]="-geometry 800x600 -nolisten tcp -localhost"
+
+VNCSERVERS="1:elinuxbook 2:helpdesk"
+VNCSERVERARGS[1]="-geometry 800x600"
+VNCSERVERARGS[2]="-geometry 800x600"
+Here I configured user “elinuxbook” with port no.1 and “helpdesk” with port no. 2. You can use different ports as per your requirement.
+
+All required configuration are done, Now we have start the TigerVNC Server service.
+
+[root@localhost ~]# /etc/init.d/vncserver start   # Start VNC Server Service
+Starting VNC server: 1:elinuxbook xauth:  timeout in locking authority file /var/run/gdm/auth-for-root-ZdH4Pp/database
+
+New 'localhost.localdomain:1 (elinuxbook)' desktop is localhost.localdomain:1
+
+Creating default startup script /home/elinuxbook/.vnc/xstartup
+Starting applications specified in /home/elinuxbook/.vnc/xstartup
+Log file is /home/elinuxbook/.vnc/localhost.localdomain:1.log
+
+2:helpdesk xauth:  timeout in locking authority file /var/run/gdm/auth-for-root-ZdH4Pp/database
+
+New 'localhost.localdomain:2 (helpdesk)' desktop is localhost.localdomain:2
+
+Creating default startup script /home/helpdesk/.vnc/xstartup
+Starting applications specified in /home/helpdesk/.vnc/xstartup
+Log file is /home/helpdesk/.vnc/localhost.localdomain:2.log
+
+                                                           [  OK  ]
+After start the VNC Server service it creates script file (xstartup) and log file which is located at .vnc directory as shown on the outout above.
+
+Start the TigerVNC Server service at startup.
+
+[root@localhost ~]# chkconfig --level 35 vncserver on   # Start VNC Server at Startup
+[root@localhost ~]# chkconfig --list vncserver
+vncserver       0:off   1:off   2:off   3:on    4:off   5:on    6:off
+Stop the Linux Firewall so that we can take remote of VNC Server from client side.
+
+[root@localhost ~]# /etc/init.d/iptables stop   # Stop IPTables Service
+iptables: Setting chains to policy ACCEPT: filter          [  OK  ]
+iptables: Flushing firewall rules:                         [  OK  ]
+iptables: Unloading modules:                               [  OK  ]
+So we have done with all required configuration from client side, So let’s go ahead and test from client side to confirm if TigerVNC Server is working properly or not.
+
+To take remote of VNC Server just download the VNC client application i.e. VNC Viewer which is freely available.  SO download it and install it on your client system.
+
+Now open the VNC Viewer application and enter the IP Address of the TigerVNC Server.
+
+Enter the IP Address of TigerVNC Server
+Enter the IP Address of TigerVNC Server
+Click on continue button.
+
+Click on Continue Button
+Click on Continue Button
+Now here TigerVNC server asking for Password, So enter the password of user “eliuxbook” which we have created on Step : 3. Here we are using password of user “elinuxbook” as we are taking the remote of TigerVNC Server using port :1 with IP Address (192.168.0.105:1) which we have configured in /etc/sysconfig/vncservers configuration file on Step : 4.
+
+Enter the Password of TigerVNC Server
+Enter the Password of TigerVNC Server
+And we successfully able to take the remote of Linux Operating System using TigerVNC Server Refer the snapshots below.
+
+Here enter the password of user “elinuxbook” to login linux operating system.
+
+Note : This is the normal password to login Linux Operating System which we set after user creating on Step : 2 not that one which we have generated for VNC Server, So dont get confused.
