@@ -1,0 +1,24 @@
+ILOM Reset and Memory checks post DIMM replacement
+ 
+##To check whether the DIMM replaced, is visible across Hardware and software
+--Hardware Memory
+ipmitool sunoem cli 'show system/Memory'
+ 
+--OS Memory
+xm info | grep memory
+ 
+--if OS memory is not matching, run the following
+-- There should be no message that sayw - "No Module Installed" / or any other than the size of the disk replaced
+dmidecode -t memory|grep -i Size
+ 
+--If it has errors, reboot ilom to fix the issue
+--Make sure compute/VM/cell are already offline, login to respective ilom and do the following
+                show /SP
+                show -d properties /SP/clock uptime
+                reset /SP
+                show -d properties /SP/clock uptime
+                show /SP
+--Bring up dom0
+                start /System
+--Bring up the respective compute/VM/cell servers and its services
+--Check the above 2 hardware and OS commands , if they are same with respect to memory
