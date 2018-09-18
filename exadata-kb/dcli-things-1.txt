@@ -1,0 +1,61 @@
+DCLI RELATED THINGS
+
+======================
+DCLI HELP TEXT
+======================
+
+https://docs.oracle.com/cd/E83411_01/OREAD/using-dcli-to-install-ORE-on-exadata.htm
+
+$ dcli -h
+ 
+Distributed Shell for Oracle Storage
+ 
+This script executes commands on multiple cells in parallel threads.
+The cells are referenced by their domain name or ip address.
+Local files can be copied to cells and executed on cells.
+This tool does not support interactive sessions with host applications.
+Use of this tool assumes ssh is running on local host and cells.
+The -k option should be used initially to perform key exchange with
+cells.  User may be prompted to acknowledge cell authenticity, and
+may be prompted for the remote user password.  This -k step is serialized
+to prevent overlayed prompts.  After -k option is used once, then
+subsequent commands to the same cells do not require -k and will not require
+passwords for that user from the host.
+Command output (stdout and stderr) is collected and displayed after the
+copy and command execution has finished on all cells.
+Options allow this command output to be abbreviated.
+
+Return values:
+ 0 -- file or command was copied and executed successfully on all cells
+ 1 -- one or more cells could not be reached or remote execution returned
+      non-zero status.
+ 2 -- An error prevented any command execution
+
+Examples:
+ dcli -g mycells -k
+ dcli -c stsd2s2,stsd2s3 vmstat
+ dcli -g mycells cellcli -e alter iormplan active
+ dcli -g mycells -x reConfig.scl
+ 
+usage: dcli [options] [command]
+
+options:
+ --version           show program's version number and exit
+ -c CELLS            comma-separated list of cells
+ -d DESTFILE         destination directory or file
+ -f FILE             file to be copied
+ -g GROUPFILE        file containing list of cells
+ -h, --help          show help message and exit
+ -k                  push ssh key to cell's authorized_keys file
+ -l USERID           user to login as on remote cells (default: celladmin)
+ -n                  abbreviate non-error output
+ -r REGEXP           abbreviate output lines matching a regular expression
+ -s SSHOPTIONS       string of options passed through to ssh
+ --scp=SCPOPTIONS    string of options passed through to scp if different from
+                     sshoptions
+ --serial            serialize execution over the cells
+ -t                  list target cells
+ --unkey             drop keys from target cells' authorized_keys file
+ -v                  print extra messages to stdout
+ --vmstat=VMSTATOPS  vmstat command options
+ -x EXECFILE         file to be copied and executed
