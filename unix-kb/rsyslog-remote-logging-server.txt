@@ -23,5 +23,31 @@ $InputTCPServerRun 514
 tcp        0      0 0.0.0.0:514             0.0.0.0:*               LISTEN      3969/rsyslogd       
 tcp6       0      0 :::514                  :::*                    LISTEN      3969/rsyslogd       
 udp        0      0 0.0.0.0:514             0.0.0.0:*                           3969/rsyslogd       
-udp6       0      0 :::514                  :::*                                3969/rsyslogd       
+udp6       0      0 :::514                  :::*                                3969/rsyslogd    
+
 unix  2      [ ]         DGRAM                    34854    3969/rsyslogd  
+
+- In contrast the remote machines contain only the following netstat output
+[root@elk1 ~]# netstat -anp |grep rsyslog
+unix  2      [ ]         DGRAM                    21708    1338/rsyslogd  
+
+==========================================================
+SETUP CLIENT TO SEND LOGS TO REMOTE LOGGING SERVER
+==========================================================
+- Edit /etc/rsyslog.conf and add/edit the following lines:
+
+#*.* @@remote-host:514
+*.* @@192.168.0.210:514
+
+- Restart rsyslog
+[root@elk1 etc]# service rsyslog restart
+Redirecting to /bin/systemctl restart rsyslog.service
+
+- Verify
+[root@elk1 etc]# netstat -anp |grep rsyslog
+tcp        0      0 192.168.0.211:57692     192.168.0.210:514       ESTABLISHED 8454/rsyslogd 
+unix  2      [ ]         DGRAM                    118945   8454/rsyslogd  
+
+--> the first line 'tcp' is the remote logging established
+--> the second line 'unix' is the local process
+
