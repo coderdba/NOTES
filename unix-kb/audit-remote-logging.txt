@@ -23,8 +23,9 @@ USING RSYSLOG - to be tested
 Using rsyslog:
 https://serverfault.com/questions/202044/sending-audit-logs-to-syslog-server
 
-On the sending client (rsyslog.conf):
-
+---------------------------------------
+On the sending client (rsyslog.conf)
+---------------------------------------
 # auditd audit.log  
 $InputFileName /var/log/audit/audit.log  
 $InputFileTag tag_audit_log:  
@@ -32,13 +33,28 @@ $InputFileStateFile audit_log
 $InputFileSeverity info  
 $InputFileFacility local6  
 $InputRunFileMonitor
-Note that the imfile module will need to have been loaded previously in the rsyslog configuration. This is the line responsible for that:
+Note that the imfile module will need to have been loaded previously in the rsyslog configuration. 
+This is the line responsible for that:
 
 $ModLoad imfile
-So check if it's in your rsyslog.conf file. If it's not there, add it under the ### MODULES ### section to enable this module; otherwise, the above configuration for auditd logging will not work.
+So check if it's in your rsyslog.conf file. 
+If it's not there, add it under the ### MODULES ### section to enable this module; 
+otherwise, the above configuration for auditd logging will not work.
 
-On the receiving server (rsyslog.conf):
+------------------------------------------
+On the receiving server (rsyslog.conf)
+------------------------------------------
 
 $template HostAudit, "/var/log/rsyslog/%HOSTNAME%/audit_log"  
 local6.*
 Restart the service (service rsyslog restart) on both hosts and you should begin receiving auditd messages.
+
+------
+verify
+------
+On receiving server - in /var/log/messages, you will see servername, and tag 'tag_audit_log' messages
+Oct  8 15:46:23 elk1 systemd: Started System Logging Service.
+Oct  8 15:46:23 elk1 tag_audit_log: type=DAEMON_START msg=audit(1526112378.384:7053): op=start ver=2.8.1 format=raw kernel=4.1.12-112.16.4.el7uek.x86_64 auid=4294967295 pid=661 uid=0 ses=4294967295 subj=system_u:system_r:auditd_t:s0 res=success
+Oct  8 15:46:23 elk1 tag_audit_log: type=CONFIG_CHANGE msg=audit(1526112378.521:5): audit_backlog_limit=8192 old=64 auid=4294967295 ses=4294967295 subj=system_u:system_r:unconfined_service_t:s0 res=1
+Oct  8 15:46:23 elk1 tag_audit_log: type=CONFIG_CHANGE msg=audit(1526112378.521:6): audit_failure=1 old=1 auid=4294967295 ses=4294967295 subj=system_u:system_r:unconfined_service_t:s0 res=1
+Oct  8 15:46:23 elk1 tag_audit_log: type=SERVICE_START msg=audit(1526112378.526:7): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='unit=auditd comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=success'
