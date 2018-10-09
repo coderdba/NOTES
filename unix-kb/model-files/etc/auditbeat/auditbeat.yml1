@@ -1,0 +1,126 @@
+###################### Auditbeat Configuration CFC #########################
+# Deployment Directory
+# /etc/auditbeat/auditbeat.yml
+#==========================  Modules configuration =============================
+auditbeat.modules:
+- module: auditd
+  resolve_ids: true
+  audit_rules: |
+    #- AUDIT Syscall Rules -#
+    -a always,exit -F arch=b32 -S execve,execveat -F key=audit-process-execution
+    -a always,exit -F arch=b64 -S execve,execveat -F key=audit-process-execution
+    -a always,exit -F arch=b32 -S bind,listen -F key=audit-network-connections
+    -a always,exit -F arch=b64 -S bind,listen -F key=audit-network-connections
+    -a always,exit -F arch=b32 -S setuid,setresuid -F a0=0 -F key=audit-privilege-changes
+    -a always,exit -F arch=b64 -S setuid,setresuid -F a0=0 -F key=audit-privilege-changes
+    -a always,exit -F arch=b32 -S sethostname,setdomainname,adjtimex,settimeofday,stime -F key=audit-configuration-changes
+    # stime not in b64 list
+    -a always,exit -F arch=b64 -S sethostname,setdomainname,adjtimex,settimeofday -F key=audit-configuration-changes
+    -a always,exit -F arch=b32 -S clock_settime -F a0=0x0 -F key=audit-configuration-changes
+    -a always,exit -F arch=b64 -S clock_settime -F a0=0x0 -F key=audit-configuration-changes
+    -a always,exit -F arch=b32 -S chown,lchown,fchown,fchownat,chmod,fchmod,fchmodat -F auid>=1000 -F auid!=4294967295 -F key=audit-permission-changes-stig
+    -a always,exit -F arch=b64 -S chown,lchown,fchown,fchownat,chmod,fchmod,fchmodat -F auid>=1000 -F auid!=4294967295 -F key=audit-permission-changes-stig
+    -a always,exit -F arch=b32 -S setxattr,lsetxattr,fsetxattr,removexattr,lremovexattr,fremovexattr -F auid>=1000 -F auid!=4294967295 -F key=audit-permission-changes-stig
+    -a always,exit -F arch=b64 -S setxattr,lsetxattr,fsetxattr,removexattr,lremovexattr,fremovexattr -F auid>=1000 -F auid!=4294967295 -F key=audit-permission-changes-stig
+    -a always,exit -F arch=b32 -S mount,umount2 -F auid>=1000 -F auid!=4294967295 -F key=audit-configuration-changes-stig
+    -a always,exit -F arch=b64 -S mount,umount2 -F auid>=1000 -F auid!=4294967295 -F key=audit-configuration-changes-stig
+    -a always,exit -F arch=b32 -S unlink,unlinkat,rename,renameat,rmdir -F auid>=1000 -F auid!=4294967295 -F key=audit-configuration-changes-stig
+    -a always,exit -F arch=b64 -S unlink,unlinkat,rename,renameat,rmdir -F auid>=1000 -F auid!=4294967295 -F key=audit-configuration-changes-stig
+    -a always,exit -F arch=b32 -S delete_module,init_module -F auid>=1000 -F auid!=4294967295 -F key=audit-configuration-changes-stig
+    -a always,exit -F arch=b64 -S delete_module,init_module -F auid>=1000 -F auid!=4294967295 -F key=audit-configuration-changes-stig
+    -a always,exit -F arch=b32 -S open,creat,truncate,ftruncate,openat,open_by_handle_at -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -F key=audit-privilege-failure
+    -a always,exit -F arch=b64 -S open,creat,truncate,ftruncate,openat,open_by_handle_at -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -F key=audit-privilege-failure
+    -a always,exit -F arch=b32 -S open,creat,truncate,ftruncate,openat,open_by_handle_at -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -F key=audit-privilege-failure
+    -a always,exit -F arch=b64 -S open,creat,truncate,ftruncate,openat,open_by_handle_at -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -F key=audit-privilege-failure
+    #- AUDIT File Rules -#
+    -w /etc -p wa -k audit-filechange
+    -w /bin -p wa -k audit-filechange
+    -w /sbin -p wa -k audit-filechange
+    -w /usr/bin -p wa -k audit-filechange
+    -w /usr/sbin -p wa -k audit-filechange
+    -w /usr/local/bin -p wa -k audit-filechange
+    -w /usr/local/sbin -p wa -k audit-filechange
+    #- END AUDIT Rules -#
+    #- SECTEAM Syscall Rules -#
+    #- SECTEAM File Rules -#
+    #- END SECTEAM Rules -#
+- module: file_integrity
+  paths:
+    #- AUDIT Rules -#
+  - /etc
+  - /bin
+  - /sbin
+  - /usr/bin
+  - /usr/sbin
+  - /usr/local/bin
+  - /usr/local/sbin
+
+
+  exclude_files:
+  # log files
+  - '\.log($|\.)'
+  - '/log/'
+  # temp files
+  - '\.t[e]?mp$'
+  - '/\d+$'
+  # swap files
+  - '(?i)\.sw[nop]$'
+  # vim recovery
+  - '~$'
+  # git files
+  - '/\.git($|/)'
+  #- SECTEAM Rules -#
+
+  scan_at_start: true
+  # consumes at startup while scanning. Default is "50 MiB".
+  scan_rate_per_sec: 10 MiB
+  # Default is 100 MiB, adjust as needed
+  max_file_size: 10 MiB
+  hash_types: [md5]
+  recursive: true
+
+#==================== Elasticsearch template setting ==========================
+#================================ General =====================================
+#name:
+#tags: ["service-X", "web-tier"]
+fields:
+  config_type: "secrity_dept"
+  config_version: "1.4"
+  app: "My App"
+  ci: "cimyapp"
+  env: "prod"
+
+fields_under_root: false
+
+queue:
+  mem:
+    # Max number of events the queue can buffer.
+    events: 4096
+    flush.min_events: 2048
+    flush.timeout: 5s
+
+ # default is the number of logical CPUs available in the system.
+max_procs: 1
+
+#============================== Processors ====================================
+#processors:
+#============================== Dashboards ====================================
+#============================== Kibana =====================================
+#============================= Elastic Cloud ==================================
+#================================ Outputs =====================================
+# Configure what output to use when sending the data collected by the beat.
+#------------------------------- Kafka output ---------------------------------
+output.kafka:
+  hosts: ["kafka1.company.com:9092","kafka2.company.com:9092"]
+  topic: 'raw-auditbeat-pci'
+  version: '1.10'
+  partition:
+    random.group_events: 1
+  required_acks: 1
+  compression: gzip
+  max_message_bytes: 1000000
+#-------------------------- Elasticsearch output ------------------------------
+#----------------------------- Logstash output --------------------------------
+#================================ Logging =====================================
+logging.to_syslog: true
+#============================== Xpack Monitoring ==============================
