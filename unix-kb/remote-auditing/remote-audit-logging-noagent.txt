@@ -2,3 +2,49 @@
 REMOTE AUDIT-LOGGING WITHOUT AGENTS LIKE AUDITBEAT
 ==================================================
 
+========================
+LOCAL MACHINE SETUP
+========================
+
+-----------------
+RSYSLOG.CONF
+-----------------
+# CUSTOMIZE - FOR AUDITD
+$ModLoad imfile
+# CUSTOMIZE - FOR AUDITD END
+
+# CUSTOMIZE - REMOTE LOGGING
+# Forward to a remote server (comment out if using config file in /etc/rsyslog.d)
+*.* @@192.168.0.210:514
+
+-- FILTERING
+NOTE: BE CAREFUL WHAT YOU FILTER - SO THAT YOU DONT END UP REMOVING WHAT YOU NEED
+      EXAMPLE - IF FILTER DOES NOT PASS USERADD/USERMOD ETC. THEN THOSE WONT GO TO REMOTE SERVER
+      
+# CUSTOMIZE - REMOTE LOGGING WITH FILTER
+# Forward to a remote server only filtered messages (comment out if using config file in /etc/rsyslog.d)
+#if ($programname == 'sshd' or $programname == 'rsyslogd' or $programname == 'systemd' or $programname == 'systemd-logind' or $programname == 'auditbeat' or $programname == 'auditd') and not ($syslogseverity == '7' or $msg contains_i 'debug') then @@192.168.0.210:514;RSYSLOG_ForwardFormat
+
+# CUSTOMIZE - FOR AUDITD
+# auditd audit.log
+$ModLoad imfile
+$InputFileName /var/log/audit/audit.log
+$InputFileTag tag_audit_log:
+$InputFileStateFile audit_log
+$InputFileSeverity info
+$InputFileFacility local6
+$InputRunFileMonitor
+# CUSTOMIZE - FOR AUDITD END
+
+-----------------
+AUDIT.RULES
+-----------------
+
+Add rules - just a few examples below:
+
+-w /usr/sbin/useradd -p x -k identity_audit
+-w /usr/sbin/usermod -p x -k identity_audit
+-w /usr/sbin/userdel -p x -k identity_audit
+
+
+
