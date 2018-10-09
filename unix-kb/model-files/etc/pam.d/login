@@ -1,0 +1,29 @@
+#%PAM-1.0
+auth [user_unknown=ignore success=ok ignore=ignore default=bad] pam_securetty.so
+auth       include      system-auth
+
+# For SCML commented pam_tally2.so
+#auth       required     pam_tally2.so deny=15 onerr=fail unlock_time=30 serialize
+
+# EXADATA ACCESS CONTROL via /etc/exadata/security/exadata-access.conf
+account    requisite    pam_access.so accessfile=/etc/exadata/security/exadata-access.conf
+account    required     pam_nologin.so
+account    include      system-auth
+
+# For SCML commented pam_tally2.so
+#account    required     pam_tally2.so
+
+password   include      system-auth
+# pam_selinux.so close should be the first session rule
+session    required     pam_selinux.so close
+session    required     pam_loginuid.so
+##session    optional     pam_console.so
+# pam_selinux.so open should only be followed by sessions to be executed in the user context
+session    required     pam_selinux.so open
+session    required     pam_namespace.so
+session    optional     pam_keyinit.so force revoke
+session    include      system-auth
+-session   optional     pam_ck_connector.so
+########### BEGIN DO NOT REMOVE Added by Oracle Exadata ###########
+session    required     pam_limits.so
+########### END DO NOT REMOVE Added by Oracle Exadata ###########
