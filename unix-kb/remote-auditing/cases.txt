@@ -1,0 +1,77 @@
+CASE1: AUDIT CONFIGURATION CHANGE IN LOCAL SERVER
+
+Edit /etc/audit/rules.d/audit.rules (or /etc/audit/audit.rules)
+# Additional ones for testing
+-w /usr/sbin/useradd -p x -k identity_audit
+-w /usr/sbin/usermod -p x -k identity_audit
+-w /usr/sbin/userdel -p x -k identity_audit
+
+-w /etc/passwd -p wa -k passwd_changes
+-w /etc/shadow -p wa -k passwd_changes
+-w /etc/gshadow -p wa -k passwd_changes
+
+Messages in remote logger:
+Oct  9 12:44:04 elk1 tag_audit_log: type=CONFIG_CHANGE msg=audit(1539069240.043:704): auid=4294967295 ses=4294967295 op="remove_rule" key="identity_audit" list=4 res=1
+Oct  9 12:44:04 elk1 tag_audit_log: type=CONFIG_CHANGE msg=audit(1539069240.043:705): audit_backlog_limit=8192 old=8192 auid=4294967295 ses=4294967295 res=1
+Oct  9 12:44:04 elk1 tag_audit_log: type=CONFIG_CHANGE msg=audit(1539069240.043:706): audit_failure=1 old=1 auid=4294967295 ses=4294967295 res=1
+Oct  9 12:44:04 elk1 tag_audit_log: type=CONFIG_CHANGE msg=audit(1539069240.043:707): auid=4294967295 ses=4294967295 op="add_rule" key="identity_audit" list=4 res=1
+Oct  9 12:44:04 elk1 tag_audit_log: type=CONFIG_CHANGE msg=audit(1539069240.043:708): auid=4294967295 ses=4294967295 op="add_rule" key="identity_audit" list=4 res=1
+Oct  9 12:44:04 elk1 tag_audit_log: type=CONFIG_CHANGE msg=audit(1539069240.043:709): auid=4294967295 ses=4294967295 op="add_rule" key="identity_audit" list=4 res=1
+Oct  9 12:44:04 elk1 tag_audit_log: type=CONFIG_CHANGE msg=audit(1539069240.043:710): auid=4294967295 ses=4294967295 op="add_rule" key="passwd_changes" list=4 res=1
+Oct  9 12:44:04 elk1 tag_audit_log: type=CONFIG_CHANGE msg=audit(1539069240.043:711): auid=4294967295 ses=4294967295 op="add_rule" key="passwd_changes" list=4 res=1
+Oct  9 12:44:04 elk1 tag_audit_log: type=CONFIG_CHANGE msg=audit(1539069240.043:712): auid=4294967295 ses=4294967295 op="add_rule" key="passwd_changes" list=4 res=1
+Oct  9 12:44:04 elk1 tag_audit_log: type=SERVICE_START msg=audit(1539069240.048:713): pid=1 uid=0 auid=4294967295 ses=4294967295 msg='unit=auditd comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=success'
+
+
+CASE2: ADD A USER
+NOTE: Local machine has rules to track changes to /etc/passwd, /etc/shadow, /etc/gshadow also
+
+Oct  9 12:44:34 elk1 tag_audit_log: type=SYSCALL msg=audit(1539069269.882:714): arch=c000003e syscall=59 success=yes exit=0 a0=1426d30 a1=130f3d0 a2=1426f10 a3=7ffcf95d2ce0 items=2 ppid=18892 pid=23485 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts1 ses=4 comm="useradd" exe="/usr/sbin/useradd" key="identity_audit"
+Oct  9 12:44:34 elk1 tag_audit_log: type=EXECVE msg=audit(1539069269.882:714): argc=2 a0="useradd" a1="rrrr"
+Oct  9 12:44:34 elk1 tag_audit_log: type=CWD msg=audit(1539069269.882:714):  cwd="/etc/audit/rules.d"
+Oct  9 12:44:34 elk1 tag_audit_log: type=PATH msg=audit(1539069269.882:714): item=0 name="/usr/sbin/useradd" inode=1496711 dev=f9:00 mode=0100750 ouid=0 ogid=0 rdev=00:00 nametype=NORMAL
+Oct  9 12:44:34 elk1 tag_audit_log: type=PATH msg=audit(1539069269.882:714): item=1 name="/lib64/ld-linux-x86-64.so.2" inode=155306 dev=f9:00 mode=0100755 ouid=0 ogid=0 rdev=00:00 nametype=NORMAL
+Oct  9 12:44:34 elk1 tag_audit_log: type=PROCTITLE msg=audit(1539069269.882:714): proctitle=757365726164640072727272
+Oct  9 12:44:34 elk1 tag_audit_log: type=SYSCALL msg=audit(1539069269.883:715): arch=c000003e syscall=2 success=yes exit=5 a0=560eec17cce0 a1=20902 a2=0 a3=8 items=1 ppid=18892 pid=23485 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts1 ses=4 comm="useradd" exe="/usr/sbin/useradd" key="passwd_changes"
+Oct  9 12:44:34 elk1 tag_audit_log: type=CWD msg=audit(1539069269.883:715):  cwd="/etc/audit/rules.d"
+Oct  9 12:44:34 elk1 tag_audit_log: type=PATH msg=audit(1539069269.883:715): item=0 name="/etc/passwd" inode=141591847 dev=f9:00 mode=0100644 ouid=0 ogid=0 rdev=00:00 nametype=NORMAL
+Oct  9 12:44:34 elk1 tag_audit_log: type=PROCTITLE msg=audit(1539069269.883:715): proctitle=757365726164640072727272
+Oct  9 12:44:34 elk1 tag_audit_log: type=SYSCALL msg=audit(1539069269.884:716): arch=c000003e syscall=2 success=yes exit=7 a0=560eec17d180 a1=20902 a2=0 a3=7fe5e68c4ae0 items=1 ppid=18892 pid=23485 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts1 ses=4 comm="useradd" exe="/usr/sbin/useradd" key="passwd_changes"
+Oct  9 12:44:34 elk1 tag_audit_log: type=CWD msg=audit(1539069269.884:716):  cwd="/etc/audit/rules.d"
+Oct  9 12:44:34 elk1 tag_audit_log: type=PATH msg=audit(1539069269.884:716): item=0 name="/etc/gshadow" inode=141591769 dev=f9:00 mode=0100000 ouid=0 ogid=0 rdev=00:00 nametype=NORMAL
+Oct  9 12:44:34 elk1 tag_audit_log: type=PROCTITLE msg=audit(1539069269.884:716): proctitle=757365726164640072727272
+Oct  9 12:44:34 elk1 tag_audit_log: type=SYSCALL msg=audit(1539069269.884:717): arch=c000003e syscall=2 success=yes exit=8 a0=560eec17d620 a1=20902 a2=0 a3=7fe5e6b4c7b8 items=1 ppid=18892 pid=23485 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts1 ses=4 comm="useradd" exe="/usr/sbin/useradd" key="passwd_changes"
+Oct  9 12:44:34 elk1 tag_audit_log: type=CWD msg=audit(1539069269.884:717):  cwd="/etc/audit/rules.d"
+Oct  9 12:44:34 elk1 tag_audit_log: type=PATH msg=audit(1539069269.884:717): item=0 name="/etc/shadow" inode=141591808 dev=f9:00 mode=0100000 ouid=0 ogid=0 rdev=00:00 nametype=NORMAL
+Oct  9 12:44:34 elk1 tag_audit_log: type=PROCTITLE msg=audit(1539069269.884:717): proctitle=757365726164640072727272
+Oct  9 12:44:34 elk1 tag_audit_log: type=ADD_GROUP msg=audit(1539069269.884:718): pid=23485 uid=0 auid=0 ses=4 msg='op=add-group acct="rrrr" exe="/usr/sbin/useradd" hostname=elk1 addr=? terminal=pts/1 res=success'
+Oct  9 12:44:34 elk1 tag_audit_log: type=ADD_USER msg=audit(1539069269.888:719): pid=23485 uid=0 auid=0 ses=4 msg='op=add-user id=54326 exe="/usr/sbin/useradd" hostname=elk1 addr=? terminal=pts/1 res=success'
+Oct  9 12:44:34 elk1 tag_audit_log: type=CONFIG_CHANGE msg=audit(1539069269.890:720): auid=0 ses=4 op="updated_rules" path="/etc/passwd" key="passwd_changes" list=4 res=1
+Oct  9 12:44:34 elk1 tag_audit_log: type=SYSCALL msg=audit(1539069269.890:721): arch=c000003e syscall=82 success=yes exit=0 a0=7ffff1bbd1d0 a1=560eec17cce0 a2=7ffff1bbd140 a3=560eec884860 items=5 ppid=18892 pid=23485 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts1 ses=4 comm="useradd" exe="/usr/sbin/useradd" key="passwd_changes"
+Oct  9 12:44:34 elk1 tag_audit_log: type=CWD msg=audit(1539069269.890:721):  cwd="/etc/audit/rules.d"
+Oct  9 12:44:34 elk1 tag_audit_log: type=PATH msg=audit(1539069269.890:721): item=0 name="/etc/" inode=134217857 dev=f9:00 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=PARENT
+Oct  9 12:44:34 elk1 tag_audit_log: type=PATH msg=audit(1539069269.890:721): item=1 name="/etc/" inode=134217857 dev=f9:00 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=PARENT
+Oct  9 12:44:34 elk1 tag_audit_log: type=PATH msg=audit(1539069269.890:721): item=2 name="/etc/passwd+" inode=141591846 dev=f9:00 mode=0100644 ouid=0 ogid=0 rdev=00:00 nametype=DELETE
+Oct  9 12:44:34 elk1 tag_audit_log: type=PATH msg=audit(1539069269.890:721): item=3 name="/etc/passwd" inode=141591847 dev=f9:00 mode=0100644 ouid=0 ogid=0 rdev=00:00 nametype=DELETE
+Oct  9 12:44:34 elk1 tag_audit_log: type=PATH msg=audit(1539069269.890:721): item=4 name="/etc/passwd" inode=141591846 dev=f9:00 mode=0100644 ouid=0 ogid=0 rdev=00:00 nametype=CREATE
+Oct  9 12:44:34 elk1 tag_audit_log: type=PROCTITLE msg=audit(1539069269.890:721): proctitle=757365726164640072727272
+Oct  9 12:44:34 elk1 tag_audit_log: type=CONFIG_CHANGE msg=audit(1539069269.900:722): auid=0 ses=4 op="updated_rules" path="/etc/shadow" key="passwd_changes" list=4 res=1
+Oct  9 12:44:34 elk1 tag_audit_log: type=SYSCALL msg=audit(1539069269.900:723): arch=c000003e syscall=82 success=yes exit=0 a0=7ffff1bbd1d0 a1=560eec17d620 a2=7ffff1bbd140 a3=6931353564694c53 items=5 ppid=18892 pid=23485 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts1 ses=4 comm="useradd" exe="/usr/sbin/useradd" key="passwd_changes"
+Oct  9 12:44:34 elk1 tag_audit_log: type=CWD msg=audit(1539069269.900:723):  cwd="/etc/audit/rules.d"
+Oct  9 12:44:34 elk1 tag_audit_log: type=PATH msg=audit(1539069269.900:723): item=0 name="/etc/" inode=134217857 dev=f9:00 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=PARENT
+Oct  9 12:44:34 elk1 tag_audit_log: type=PATH msg=audit(1539069269.900:723): item=1 name="/etc/" inode=134217857 dev=f9:00 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=PARENT
+Oct  9 12:44:34 elk1 tag_audit_log: type=PATH msg=audit(1539069269.900:723): item=2 name="/etc/shadow+" inode=141591847 dev=f9:00 mode=0100000 ouid=0 ogid=0 rdev=00:00 nametype=DELETE
+Oct  9 12:44:34 elk1 tag_audit_log: type=PATH msg=audit(1539069269.900:723): item=3 name="/etc/shadow" inode=141591808 dev=f9:00 mode=0100000 ouid=0 ogid=0 rdev=00:00 nametype=DELETE
+Oct  9 12:44:34 elk1 tag_audit_log: type=PATH msg=audit(1539069269.900:723): item=4 name="/etc/shadow" inode=141591847 dev=f9:00 mode=0100000 ouid=0 ogid=0 rdev=00:00 nametype=CREATE
+Oct  9 12:44:34 elk1 tag_audit_log: type=PROCTITLE msg=audit(1539069269.900:723): proctitle=757365726164640072727272
+Oct  9 12:44:34 elk1 tag_audit_log: type=CONFIG_CHANGE msg=audit(1539069269.911:724): auid=0 ses=4 op="updated_rules" path="/etc/gshadow" key="passwd_changes" list=4 res=1
+Oct  9 12:44:34 elk1 tag_audit_log: type=SYSCALL msg=audit(1539069269.910:725): arch=c000003e syscall=82 success=yes exit=0 a0=7ffff1bbd1d0 a1=560eec17d180 a2=7ffff1bbd140 a3=22 items=5 ppid=18892 pid=23485 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts1 ses=4 comm="useradd" exe="/usr/sbin/useradd" key="passwd_changes"
+Oct  9 12:44:34 elk1 tag_audit_log: type=CWD msg=audit(1539069269.910:725):  cwd="/etc/audit/rules.d"
+Oct  9 12:44:34 elk1 tag_audit_log: type=PATH msg=audit(1539069269.910:725): item=0 name="/etc/" inode=134217857 dev=f9:00 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=PARENT
+Oct  9 12:44:34 elk1 tag_audit_log: type=PATH msg=audit(1539069269.910:725): item=1 name="/etc/" inode=134217857 dev=f9:00 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=PARENT
+Oct  9 12:44:34 elk1 tag_audit_log: type=PATH msg=audit(1539069269.910:725): item=2 name="/etc/gshadow+" inode=141591775 dev=f9:00 mode=0100000 ouid=0 ogid=0 rdev=00:00 nametype=DELETE
+Oct  9 12:44:34 elk1 tag_audit_log: type=PATH msg=audit(1539069269.910:725): item=3 name="/etc/gshadow" inode=141591769 dev=f9:00 mode=0100000 ouid=0 ogid=0 rdev=00:00 nametype=DELETE
+Oct  9 12:44:34 elk1 tag_audit_log: type=PATH msg=audit(1539069269.910:725): item=4 name="/etc/gshadow" inode=141591775 dev=f9:00 mode=0100000 ouid=0 ogid=0 rdev=00:00 nametype=CREATE
+Oct  9 12:44:34 elk1 tag_audit_log: type=PROCTITLE msg=audit(1539069269.910:725): proctitle=757365726164640072727272
+Oct  9 12:44:34 elk1 tag_audit_log: type=USER_MGMT msg=audit(1539069269.925:726): pid=23485 uid=0 auid=0 ses=4 msg='op=add-home-dir id=54326 exe="/usr/sbin/useradd" hostname=elk1 addr=? terminal=pts/1 res=success'
+
