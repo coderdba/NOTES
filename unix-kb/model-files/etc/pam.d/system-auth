@@ -1,0 +1,32 @@
+#%PAM-1.0
+# This file is auto-generated.
+# User changes will be destroyed the next time authconfig is run.
+auth        required      pam_env.so
+
+# For SCML - commented out pam_unix.so try_first_pass
+#auth        required    pam_unix.so try_first_pass
+
+#auth        required      pam_deny.so
+
+# For SCML - add begin
+auth required pam_faillock.so preauth audit silent deny=6 unlock_time=1800
+auth [success=1 default=bad] pam_unix.so
+auth [default=die] pam_faillock.so authfail audit deny=6 unlock_time=1800
+auth sufficient pam_faillock.so authsucc audit deny=6 unlock_time=1800
+# For SCML - add end
+
+account     required      pam_unix.so
+
+# For SCML added
+account     required      pam_faillock.so
+
+# For SCML modified
+password    requisite    pam_passwdqc.so min=disabled,disabled,disabled,disabled,8 similar=deny enforce=everyone max=40
+
+password    sufficient    pam_unix.so try_first_pass use_authtok sha512 shadow remember=10
+password    required      pam_deny.so
+
+session     optional      pam_keyinit.so revoke
+session     required      pam_limits.so
+session     [success=1 default=ignore] pam_succeed_if.so service in crond quiet use_uid
+session     required      pam_unix.so
