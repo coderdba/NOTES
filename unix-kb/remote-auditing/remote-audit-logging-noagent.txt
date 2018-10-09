@@ -72,5 +72,39 @@ local6.* ?HostAudit
 # CUSTOMIZE - FOR AUDITD END
 
 
+----------------------
+VERIFY
+----------------------
+
+OPERATION - useradd and userdel of user 'qqqq'
+
+- Local /var/log/audit/audit.log
+NOTE: The exact same lines appear in remote logs - just with added 'readable time', from-hostname and tag.
+-->   However, the time like "Oct  9 12:14:53" on the remote logs could be time on the remote machine, not of from-machine.
+
+type=EXECVE msg=audit(1539067492.031:645): argc=2 a0="useradd" a1="qqqq"
+type=ADD_GROUP msg=audit(1539067492.033:646): pid=21542 uid=0 auid=0 ses=4 msg='op=add-group acct="qqqq" exe="/usr/sbin/useradd" hostname=elk1 addr=? terminal=pts/0 res=success'
+type=EXECVE msg=audit(1539067494.712:649): argc=2 a0="userdel" a1="qqqq"
+type=DEL_GROUP msg=audit(1539067494.721:651): pid=21563 uid=0 auid=0 ses=4 msg='op=delete-group grp="qqqq" acct="qqqq" exe="/usr/sbin/userdel" hostname=elk1 addr=? terminal=pts/0 res=success'
+type=GRP_MGMT msg=audit(1539067494.721:652): pid=21563 uid=0 auid=0 ses=4 msg='op=delete-shadow-group grp="qqqq" acct="qqqq" exe="/usr/sbin/userdel" hostname=elk1 addr=? terminal=pts/0 res=success'
+
+- Remote /var/log/rsyslog/<hostname>/audit_log
+NOTE: Looks same content and format as in the remote /var/log/messages file
+
+Oct  9 12:14:53 elk1 tag_audit_log: type=EXECVE msg=audit(1539067492.031:645): argc=2 a0="useradd" a1="qqqq"
+Oct  9 12:14:53 elk1 tag_audit_log: type=ADD_GROUP msg=audit(1539067492.033:646): pid=21542 uid=0 auid=0 ses=4 msg='op=add-group acct="qqqq" exe="/usr/sbin/useradd" hostname=elk1 addr=? terminal=pts/0 res=success'
+Oct  9 12:15:03 elk1 tag_audit_log: type=EXECVE msg=audit(1539067494.712:649): argc=2 a0="userdel" a1="qqqq"
+Oct  9 12:15:03 elk1 tag_audit_log: type=DEL_GROUP msg=audit(1539067494.721:651): pid=21563 uid=0 auid=0 ses=4 msg='op=delete-group grp="qqqq" acct="qqqq" exe="/usr/sbin/userdel" hostname=elk1 addr=? terminal=pts/0 res=success'
+Oct  9 12:15:03 elk1 tag_audit_log: type=GRP_MGMT msg=audit(1539067494.721:652): pid=21563 uid=0 auid=0 ses=4 msg='op=delete-shadow-group grp="qqqq" acct="qqqq" exe="/usr/sbin/userdel" hostname=elk1 addr=? terminal=pts/0 res=success'
+
+- Remote /var/log/messages
+NOTE: Looks same content and format as in the remote audit_log file
+
+Oct  9 12:14:53 elk1 tag_audit_log: type=EXECVE msg=audit(1539067492.031:645): argc=2 a0="useradd" a1="qqqq"
+Oct  9 12:14:53 elk1 tag_audit_log: type=ADD_GROUP msg=audit(1539067492.033:646): pid=21542 uid=0 auid=0 ses=4 msg='op=add-group acct="qqqq" exe="/usr/sbin/useradd" hostname=elk1 addr=? terminal=pts/0 res=success'
+Oct  9 12:15:03 elk1 tag_audit_log: type=EXECVE msg=audit(1539067494.712:649): argc=2 a0="userdel" a1="qqqq"
+Oct  9 12:15:03 elk1 tag_audit_log: type=DEL_GROUP msg=audit(1539067494.721:651): pid=21563 uid=0 auid=0 ses=4 msg='op=delete-group grp="qqqq" acct="qqqq" exe="/usr/sbin/userdel" hostname=elk1 addr=? terminal=pts/0 res=success'
+Oct  9 12:15:03 elk1 tag_audit_log: type=GRP_MGMT msg=audit(1539067494.721:652): pid=21563 uid=0 auid=0 ses=4 msg='op=delete-shadow-group grp="qqqq" acct="qqqq" exe="/usr/sbin/userdel" hostname=elk1 addr=? terminal=pts/0 res=success'
+
 
 
