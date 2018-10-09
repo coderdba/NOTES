@@ -49,21 +49,35 @@ On the receiving server (rsyslog.conf)
 ------------------------------------------
 
 $template HostAudit, "/var/log/rsyslog/%HOSTNAME%/audit_log"  
-local6.*
+local6.* ?HostAudit
+
 Restart the service (service rsyslog restart) on both hosts and you should begin receiving auditd messages.
+
 
 ---------
 verify 1
 ---------
-No records were produced in /var/log/rsyslog/<hostname>/audit_log
--- TBD
+Audit records of client were produced on the remote-server in this file:
+/var/log/rsyslog/%HOSTNAME%/audit_log
+
+For the 'elk1' server:
+/var/log/rsyslog/elk1/audit_log
+
+Oct  9 11:10:07 elk1 tag_audit_log: type=USER_START msg=audit(1539063601.354:418): pid=16367 uid=0 auid=0 ses=37 msg='op=PAM:session_open grantors=pam_loginuid,pam_keyinit,pam_limits,pam_systemd acct="root" exe="/usr/sbin/crond" hostname=? addr=? terminal=cron res=success'
+Oct  9 11:10:07 elk1 tag_audit_log: type=CRED_REFR msg=audit(1539063601.354:419): pid=16367 uid=0 auid=0 ses=37 msg='op=PAM:setcred grantors=pam_env,pam_unix acct="root" exe="/usr/sbin/crond" hostname=? addr=? terminal=cron res=success'
+Oct  9 11:10:07 elk1 tag_audit_log: type=CRED_DISP msg=audit(1539063601.361:420): pid=16367 uid=0 auid=0 ses=37 msg='op=PAM:setcred grantors=pam_env,pam_unix acct="root" exe="/usr/sbin/crond" hostname=? addr=? terminal=cron res=success'
+Oct  9 11:10:07 elk1 tag_audit_log: type=USER_END msg=audit(1539063601.361:421): pid=16367 uid=0 auid=0 ses=37 msg='op=PAM:session_close grantors=pam_loginuid,pam_keyinit,pam_limits,pam_systemd acct="root" exe="/usr/sbin/crond" hostname=? addr=? terminal=cron res=success'
+
 
 ---------
 verify 2
 ---------
+
 On receiving server - in /var/log/messages, you will see servername, and tag 'tag_audit_log' messages
-Oct  8 15:46:23 elk1 systemd: Started System Logging Service.
-Oct  8 15:46:23 elk1 tag_audit_log: type=DAEMON_START msg=audit(1526112378.384:7053): op=start ver=2.8.1 format=raw kernel=4.1.12-112.16.4.el7uek.x86_64 auid=4294967295 pid=661 uid=0 ses=4294967295 subj=system_u:system_r:auditd_t:s0 res=success
-Oct  8 15:46:23 elk1 tag_audit_log: type=CONFIG_CHANGE msg=audit(1526112378.521:5): audit_backlog_limit=8192 old=64 auid=4294967295 ses=4294967295 subj=system_u:system_r:unconfined_service_t:s0 res=1
-Oct  8 15:46:23 elk1 tag_audit_log: type=CONFIG_CHANGE msg=audit(1526112378.521:6): audit_failure=1 old=1 auid=4294967295 ses=4294967295 subj=system_u:system_r:unconfined_service_t:s0 res=1
-Oct  8 15:46:23 elk1 tag_audit_log: type=SERVICE_START msg=audit(1526112378.526:7): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='unit=auditd comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=success'
+
+Oct  9 11:10:07 elk1 tag_audit_log: type=LOGIN msg=audit(1539063601.346:417): pid=16367 uid=0 old-auid=4294967295 auid=0 old-ses=4294967295 ses=37 res=1
+Oct  9 11:10:07 elk1 tag_audit_log: type=USER_START msg=audit(1539063601.354:418): pid=16367 uid=0 auid=0 ses=37 msg='op=PAM:session_open grantors=pam_loginuid,pam_keyinit,pam_limits,pam_systemd acct="root" exe="/usr/sbin/crond" hostname=? addr=? terminal=cron res=success'
+Oct  9 11:10:07 elk1 tag_audit_log: type=CRED_REFR msg=audit(1539063601.354:419): pid=16367 uid=0 auid=0 ses=37 msg='op=PAM:setcred grantors=pam_env,pam_unix acct="root" exe="/usr/sbin/crond" hostname=? addr=? terminal=cron res=success'
+Oct  9 11:10:07 elk1 tag_audit_log: type=CRED_DISP msg=audit(1539063601.361:420): pid=16367 uid=0 auid=0 ses=37 msg='op=PAM:setcred grantors=pam_env,pam_unix acct="root" exe="/usr/sbin/crond" hostname=? addr=? terminal=cron res=success'
+Oct  9 11:10:07 elk1 tag_audit_log: type=USER_END msg=audit(1539063601.361:421): pid=16367 uid=0 auid=0 ses=37 msg='op=PAM:session_close grantors=pam_loginuid,pam_keyinit,pam_limits,pam_systemd acct="root" exe="/usr/sbin/crond" hostname=? addr=? terminal=cron res=success'
+
