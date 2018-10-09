@@ -26,6 +26,27 @@ Oct  9 12:44:04 elk1 tag_audit_log: type=SERVICE_START msg=audit(1539069240.048:
 CASE2: ADD A USER
 NOTE: Local machine has rules to track changes to /etc/passwd, /etc/shadow, /etc/gshadow also
 
+GREPPED-LIST:
+--> Grep the specific files modified also
+    - as otherwise, for the same key passwd_changes, it will be too many lines related to the operation like SYSCALL also
+    
+    Oct  9 12:44:34 elk1 tag_audit_log: type=CONFIG_CHANGE msg=audit(1539069269.900:722): auid=0 ses=4 op="updated_rules"
+    path="/etc/shadow" key="passwd_changes" list=4 res=1
+    Oct  9 12:44:34 elk1 tag_audit_log: type=SYSCALL msg=audit(1539069269.900:723): arch=c000003e syscall=82 success=yes     
+    exit=0 a0=7ffff1bbd1d0 a1=560eec17d620 a2=7ffff1bbd140 a3=6931353564694c53 items=5 ppid=18892 pid=23485 auid=0 uid=0 
+    gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts1 ses=4 comm="useradd" exe="/usr/sbin/useradd" 
+      key="passwd_changes"
+
+    
+[root@rsyslogsvr elk1]# grep passwd_changes * |grep etc
+audit_log.0:Oct  9 12:44:34 elk1 tag_audit_log: type=CONFIG_CHANGE msg=audit(1539069269.890:720): auid=0 ses=4 op="updated_rules" path="/etc/passwd" key="passwd_changes" list=4 res=1
+audit_log.0:Oct  9 12:44:34 elk1 tag_audit_log: type=CONFIG_CHANGE msg=audit(1539069269.900:722): auid=0 ses=4 op="updated_rules" path="/etc/shadow" key="passwd_changes" list=4 res=1
+audit_log.0:Oct  9 12:44:34 elk1 tag_audit_log: type=CONFIG_CHANGE msg=audit(1539069269.911:724): auid=0 ses=4 op="updated_rules" path="/etc/gshadow" key="passwd_changes" list=4 res=1
+x2:Oct  9 12:44:34 elk1 tag_audit_log: type=CONFIG_CHANGE msg=audit(1539069269.890:720): auid=0 ses=4 op="updated_rules" path="/etc/passwd" key="passwd_changes" list=4 res=1
+x2:Oct  9 12:44:34 elk1 tag_audit_log: type=CONFIG_CHANGE msg=audit(1539069269.900:722): auid=0 ses=4 op="updated_rules" path="/etc/shadow" key="passwd_changes" list=4 res=1
+x2:Oct  9 12:44:34 elk1 tag_audit_log: type=CONFIG_CHANGE msg=audit(1539069269.911:724): auid=0 ses=4 op="updated_rules" path="/etc/gshadow" key="passwd_changes" list=4 res=1
+
+FULL-LIST
 Oct  9 12:44:34 elk1 tag_audit_log: type=SYSCALL msg=audit(1539069269.882:714): arch=c000003e syscall=59 success=yes exit=0 a0=1426d30 a1=130f3d0 a2=1426f10 a3=7ffcf95d2ce0 items=2 ppid=18892 pid=23485 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts1 ses=4 comm="useradd" exe="/usr/sbin/useradd" key="identity_audit"
 Oct  9 12:44:34 elk1 tag_audit_log: type=EXECVE msg=audit(1539069269.882:714): argc=2 a0="useradd" a1="rrrr"
 Oct  9 12:44:34 elk1 tag_audit_log: type=CWD msg=audit(1539069269.882:714):  cwd="/etc/audit/rules.d"
