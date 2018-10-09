@@ -2,6 +2,11 @@
 REMOTE AUDIT-LOGGING WITHOUT AGENTS LIKE AUDITBEAT
 ==================================================
 
+-- FILTERING CAUTION
+It may not be good to filter when you are looking for both audit and rsyslog outputs to go to remote server.
+Filtering can be probably done when sending from that remote server to another remote server
+- OR - design the filtering so that you capture both required rsyslog and audit logs
+
 ========================
 LOCAL MACHINE SETUP
 ========================
@@ -17,10 +22,11 @@ $ModLoad imfile
 # Forward to a remote server (comment out if using config file in /etc/rsyslog.d)
 *.* @@192.168.0.210:514
 
--- FILTERING
+
+-- FILTERING (read caution mentioned before)
 NOTE: BE CAREFUL WHAT YOU FILTER - SO THAT YOU DONT END UP REMOVING WHAT YOU NEED
       EXAMPLE - IF FILTER DOES NOT PASS USERADD/USERMOD ETC. THEN THOSE WONT GO TO REMOTE SERVER
-      
+   
 # CUSTOMIZE - REMOTE LOGGING WITH FILTER
 # Forward to a remote server only filtered messages (comment out if using config file in /etc/rsyslog.d)
 #if ($programname == 'sshd' or $programname == 'rsyslogd' or $programname == 'systemd' or $programname == 'systemd-logind' or $programname == 'auditbeat' or $programname == 'auditd') and not ($syslogseverity == '7' or $msg contains_i 'debug') then @@192.168.0.210:514;RSYSLOG_ForwardFormat
