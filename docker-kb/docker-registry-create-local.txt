@@ -2,9 +2,7 @@
 DOCKER REGISTRY - CREATE A LOCAL REGISTRY
 ==========================================
 
-
 This did not work: http://www.macadamian.com/2017/02/07/creating-a-private-docker-registry/
-
 
 =====================
 CREATE LOCAL REGISTRY
@@ -34,6 +32,12 @@ Status: Downloaded newer image for registry:2
 $ docker run -d -p 5000:5000 --name registry registry:2
 883a5fa4c34c9d2d8c44b45652765e5117a08c5b6eb1e4aba82ebc6a67a4f397
 
+URL in browser will show this:
+
+http://localhost:5000/v2/_catalog
+
+{"repositories":[]}
+
 - Verify
 $ docker ps
 CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS                    NAMES
@@ -47,7 +51,7 @@ registry                 2                   2e2f252f3c88        4 weeks ago    
 centos/systemd           latest              78c36a71df7e        2 months ago        200MB
 
 - TAG AN EXISTING CREATED/PULLED IMAGE TO THE LOCAL REGISTRY
-$ 
+
 $ docker image tag cassandrasingle/centos localhost:5000/cassandrasingle
 Error response from daemon: No such image: cassandrasingle/centos:latest
 
@@ -106,6 +110,51 @@ redis                            latest              0a153379a539        10 days
 localhost:5000/redis             local               0a153379a539        10 days ago         83.4MB
 registry                         2                   2e2f252f3c88        4 weeks ago         33.3MB
 centos/systemd                   latest              78c36a71df7e        2 months ago        200MB
+
+
+- TAG ANOTHER ONE AND PUSH
+
+- get one from public registry
+
+$ docker pull redis
+Using default tag: latest
+latest: Pulling from library/redis
+
+$ docker images
+REPOSITORY                       TAG                 IMAGE ID            CREATED             SIZE
+cassandrasingle/centos           1.0                 8994386cdefb        26 hours ago        703MB
+centos/systemd                   latest              78c36a71df7e        2 months ago        200MB
+registry                         2                   2e2f252f3c88        4 weeks ago         33.3MB
+redis                            latest              0a153379a539        10 days ago         83.4MB
+
+- tag it to local registry
+$ docker images
+REPOSITORY               TAG                 IMAGE ID            CREATED             SIZE
+cassandrasingle/centos   1.0                 8994386cdefb        26 hours ago        703MB
+redis                    latest              0a153379a539        10 days ago         83.4MB
+registry                 2                   2e2f252f3c88        4 weeks ago         33.3MB
+centos/systemd           latest              78c36a71df7e        2 months ago        200MB
+
+$ docker image tag redis:latest localhost:5000/redislocal
+
+$ docker images
+REPOSITORY                  TAG                 IMAGE ID            CREATED             SIZE
+cassandrasingle/centos      1.0                 8994386cdefb        26 hours ago        703MB
+redis                       latest              0a153379a539        10 days ago         83.4MB
+localhost:5000/redislocal   latest              0a153379a539        10 days ago         83.4MB
+registry                    2                   2e2f252f3c88        4 weeks ago         33.3MB
+centos/systemd              latest              78c36a71df7e        2 months ago        200MB
+
+At this time, the URL will not show any new entries in the repositories:
+http://localhost:5000/v2/_catalog
+{"repositories":[]}
+
+- push it
+$ docker push localhost:5000/redislocal
+
+Now the URL will show new repo:
+http://localhost:5000/v2/_catalog
+{"repositories":["redislocal"]}
 
 ======================
 REMOVE LOCAL REGISTRY
