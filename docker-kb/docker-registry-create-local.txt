@@ -1,2 +1,75 @@
-http://www.macadamian.com/2017/02/07/creating-a-private-docker-registry/
+==========================================
+DOCKER REGISTRY - CREATE A LOCAL REGISTRY
+==========================================
 
+
+This did not work: http://www.macadamian.com/2017/02/07/creating-a-private-docker-registry/
+
+Use this, with some modification:  https://docs.docker.com/registry/#basic-commands
+
+- PULL THE 'REGISTRY' IMAGE ITSELF
+Note: A docker image that provides a registry is available - pull it and run registry as a docker container locally
+
+$ docker pull registry:2
+2: Pulling from library/registry
+d6a5679aa3cf: Pull complete 
+ad0eac849f8f: Pull complete 
+2261ba058a15: Pull complete 
+f296fda86f10: Pull complete 
+bcd4a541795b: Pull complete 
+Digest: sha256:5a156ff125e5a12ac7fdec2b90b7e2ae5120fa249cf62248337b6d04abc574c8
+Status: Downloaded newer image for registry:2
+
+- Start your registry
+
+$ docker run -d -p 5000:5000 --name registry registry:2
+883a5fa4c34c9d2d8c44b45652765e5117a08c5b6eb1e4aba82ebc6a67a4f397
+
+- Verify
+$ docker ps
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS                    NAMES
+883a5fa4c34c        registry:2          "/entrypoint.sh /etc…"   3 seconds ago       Up 2 seconds        0.0.0.0:5000->5000/tcp   registry
+
+$ docker images
+REPOSITORY               TAG                 IMAGE ID            CREATED             SIZE
+cassandrasingle/centos   1.0                 8994386cdefb        25 hours ago        703MB
+redis                    latest              0a153379a539        10 days ago         83.4MB
+registry                 2                   2e2f252f3c88        4 weeks ago         33.3MB
+centos/systemd           latest              78c36a71df7e        2 months ago        200MB
+
+- TAG AN EXISTING CREATED/PULLED IMAGE TO THE LOCAL REGISTRY
+$ 
+$ docker image tag cassandrasingle/centos localhost:5000/cassandrasingle
+Error response from daemon: No such image: cassandrasingle/centos:latest
+
+$ docker image tag cassandrasingle/centos:1.0 localhost:5000/cassandrasingle
+
+$ docker images
+REPOSITORY                       TAG                 IMAGE ID            CREATED             SIZE
+localhost:5000/cassandrasingle   latest              8994386cdefb        25 hours ago        703MB
+cassandrasingle/centos           1.0                 8994386cdefb        25 hours ago        703MB
+redis                            latest              0a153379a539        10 days ago         83.4MB
+registry                         2                   2e2f252f3c88        4 weeks ago         33.3MB
+centos/systemd                   latest              78c36a71df7e        2 months ago        200MB
+
+- UNTAG IT
+$ docker image rm localhost:5000/cassandrasingle
+Untagged: localhost:5000/cassandrasingle:latest
+
+$ docker images
+REPOSITORY               TAG                 IMAGE ID            CREATED             SIZE
+cassandrasingle/centos   1.0                 8994386cdefb        25 hours ago        703MB
+redis                    latest              0a153379a539        10 days ago         83.4MB
+registry                 2                   2e2f252f3c88        4 weeks ago         33.3MB
+centos/systemd           latest              78c36a71df7e        2 months ago        200MB
+
+- TAG IT WITH A VERSION (when did without a version, it tagged as 'latest')
+$ docker image tag cassandrasingle/centos:1.0 localhost:5000/cassandrasingle:1.0
+
+$ docker images
+REPOSITORY                       TAG                 IMAGE ID            CREATED             SIZE
+cassandrasingle/centos           1.0                 8994386cdefb        25 hours ago        703MB
+localhost:5000/cassandrasingle   1.0                 8994386cdefb        25 hours ago        703MB
+redis                            latest              0a153379a539        10 days ago         83.4MB
+registry                         2                   2e2f252f3c88        4 weeks ago         33.3MB
+centos/systemd                   latest              78c36a71df7e        2 months ago        200MB
