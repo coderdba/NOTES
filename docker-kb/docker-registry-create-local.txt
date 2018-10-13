@@ -87,10 +87,8 @@ redis                            latest              0a153379a539        10 days
 registry                         2                   2e2f252f3c88        4 weeks ago         33.3MB
 centos/systemd                   latest              78c36a71df7e        2 months ago        200MB
 
-
-- PUSH IT TO THE LOCAL REPO??
-NOTE: This probably should be done 
-      AND, in this example, used 'redis' instead of 'cassandrasingle'
+- PUSH IT TO THE LOCAL REPO
+NOTE: In this example, used 'redis' instead of 'cassandrasingle'
 
 $ docker push localhost:5000/redis:local
 The push refers to repository [localhost:5000/redis]
@@ -110,7 +108,6 @@ redis                            latest              0a153379a539        10 days
 localhost:5000/redis             local               0a153379a539        10 days ago         83.4MB
 registry                         2                   2e2f252f3c88        4 weeks ago         33.3MB
 centos/systemd                   latest              78c36a71df7e        2 months ago        200MB
-
 
 - TAG ANOTHER ONE AND PUSH
 
@@ -156,20 +153,33 @@ Now the URL will show new repo:
 http://localhost:5000/v2/_catalog
 {"repositories":["redislocal"]}
 
-TROUBLESHOOTING
+================================
+TROUBLESHOOTING IN MINIKUBE
+================================
 But, pulling it into minikube was failing - as http response came instead of https
 https://stackoverflow.com/questions/38695515/can-not-pull-push-images-after-update-docker-to-1-12#38716311
 --> but, doing that and restarting minikube wiped out the changes in minikube done per this article
 
 Try this:  
+REG_IP and REG_PORT are the IP and exposed port of the host that has the registry 
+(the registry itself is a docker image whose port should be mapped to a port of the hosting machine)
 
+      $ minikube delete
+      $ minikube start --vm-driver="virtualbox" --insecure-registry="$REG_IP":"$REG_PORT"
+      from: https://stackoverflow.com/questions/38979231/imagepullbackoff-local-repository-with-minikube#39331429
+      and https://github.com/kubernetes/minikube/issues/604
+
+      https://stackoverflow.com/questions/40160363/pulling-image-from-local-docker-repository
+      https://stackoverflow.com/questions/38979231/imagepullbackoff-local-repository-with-minikube
+
+- ACTUAL STEPS
 $ minikube delete
-$ minikube start --vm-driver="virtualbox" --insecure-registry="$REG_IP":80
-from: https://stackoverflow.com/questions/38979231/imagepullbackoff-local-repository-with-minikube#39331429
-and https://github.com/kubernetes/minikube/issues/604
 
-https://stackoverflow.com/questions/40160363/pulling-image-from-local-docker-repository
-https://stackoverflow.com/questions/38979231/imagepullbackoff-local-repository-with-minikube
+$ minikube start --insecure-registry=192.168.10.153:5000
+Starting local Kubernetes v1.10.0 cluster...
+Starting VM...
+
+$ kubectl run redis --image=192.168.0.53:5000/redislocal --port=6379
 
 ======================
 REMOVE LOCAL REGISTRY
