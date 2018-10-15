@@ -92,7 +92,7 @@ Create a file logstash-stdin.conf
 input { stdin { } }
 output {
   elasticsearch { hosts => ["localhost:9200"] 
-                  index => "simple1"
+                  index => "logstash-stdin-local"
                 }
   stdout { codec => rubydebug }
 }
@@ -110,21 +110,81 @@ Output on the same screen:
           "host" => "oel75rac12cr2model"
 }
 
-==============================
-CASE 1 - STDIN
-==============================
-In the logstash window, type in a few phrases - after the messages from the tool itself.
+Type in a few phrases onto the logstash screen (stdin).
+It will output a json with those inputs on the same screen (stdout)
+--> Also, by our config file setting, it would have sent it to elasticsearch also 
+                                                                  - with index name 'logstash-stdin-local'
+
+The stdin plugin is now waiting for input:
+[2018-10-15T09:44:38,226][INFO ][logstash.agent           ] Pipelines running {:count=>1, :running_pipelines=>[:main], :non_running_pipelines=>[]}
+[2018-10-15T09:44:39,209][INFO ][logstash.agent           ] Successfully started Logstash API endpoint {:port=>9600}
+aaaa
+{
+    "@timestamp" => 2018-10-15T04:18:49.201Z,
+          "host" => "rsyslogsvr",
+      "@version" => "1",
+       "message" => "aaaa"
+}
+bbbb
+{
+    "@timestamp" => 2018-10-15T04:18:52.700Z,
+          "host" => "rsyslogsvr",
+      "@version" => "1",
+       "message" => "bbbb"
+}
+
+======================================
+CASE 1 - VISUALIZE IN KIBANA - STDIN
+======================================
+In the logstash window (stdin), type in a few phrases  - after the messages from the tool itself.
 You will see JSON outputs for your inputs on the screen.
---> They also would have been directed to elasticsearch - as per logstash 'stdin' config file set up above
+--> They also would have been directed to elasticsearch along with to stdout
+    - as per logstash 'stdin' config file set up above
 --> You should be able to see it in Kibana
 
 input { stdin { } }
 output {
   elasticsearch { hosts => ["localhost:9200"] 
-                  index => "simple1"
+                  index => "logstash-stdin-local"
                 }
   stdout { codec => rubydebug }
 }
+
+- TEST ON STDIN/STDOUT
+Do some stdin inputs as under 'SOME INPUTS' below and view the outputs on screen
+
+- CREATE KIBANA STUFF
+
+-- VIEW ELASTICSEARCH INDEX (created for the logstash stdin inputs)
+Go to Kibana UI in browser
+  View elasticsearch indexes under: -> 'Management' menu -> section Elasticsearch -> Index Management 
+     --> Here, you should be able to see logstash-stdin-local
+     
+-- DEFINE KIBANA 'INDEX PATTERN'
+In Kibana - define index pattern
+  -> 'Management' menu -> section Kibana -> Index Patterns
+  In that, 'add' a new pattern - by searching for logstash-stdin-local
+    Index Pattern = logstash-stdin-local
+    Timestamp (choose in drop down) = @timestamp
+    
+-- VIEW INDEX RECORDS
+In Kibana - go to 'Discover'
+ Here, you can see the index pattern 'logstash-stdin-local' and its records
+ -> IF RECORDS ARE NOT VISIBLE, change time-range (in the top right corner mostly)
+
+-- ADD A FEW MORE RECORDS
+In Logstash screen, input a few more messages
+View them in Kibana 'Discover'
+    
+
+
+
+
+
+
+
+
+== SOME INPUTS
 
 The stdin plugin is now waiting for input:
 [2018-10-15T09:44:38,226][INFO ][logstash.agent           ] Pipelines running {:count=>1, :running_pipelines=>[:main], :non_running_pipelines=>[]}
