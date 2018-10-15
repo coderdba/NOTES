@@ -32,6 +32,7 @@ SETUP ONCE YOU START RECEIVING LOGS ON RSYSLOG-SERVER
 --------------------------------------------------------
 Back on the rsyslog-server server, create a new configuration file to format the messages into JSON format before sending to Logstash:
 
+- CONFIGURE JSON FORMAT FOR SENDING TO LOGSTASH
 Create a file /etc/rsyslog.d/01-json-template.conf
 Copy the following contents to the file exactly as shown:
 
@@ -48,3 +49,12 @@ template(name="json-template"
       constant(value="\",\"procid\":\"")      property(name="procid")
     constant(value="\"}\n")
 }
+
+- CONFIGURE SENDING TO LOGSTASH
+
+Create file /etc/rsyslog.d/60-output.conf
+with the following lines:
+
+# This line sends all lines to defined IP address at port 10514,
+# using the "json-template" format template
+*.*                         @private_ip_logstash:10514;json-template
