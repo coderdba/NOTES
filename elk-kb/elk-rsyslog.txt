@@ -1,0 +1,50 @@
+===================================
+ELK TO PROCESS REMOTE RSYSLOG
+===================================
+
+
+SITES
+Rsyslog server etc:
+https://www.elastic.co/blog/how-to-centralize-logs-with-rsyslog-logstash-and-elasticsearch-on-ubuntu-14-04
+
+Rsyslog server etc:
+https://www.digitalocean.com/community/tutorials/how-to-install-elasticsearch-logstash-and-kibana-elk-stack-on-ubuntu-14-04
+
+===================================
+REQUIREMENT
+===================================
+Many machines send their rsyslog messages to a remote server (rsyslog-server)
+In that remote server (rsyslog-server) process the incoming recoreds with Logstash and Elasticsearch
+
+===================================
+CONFIGURATION
+===================================
+
+------------------------------------------------
+CONFIGURE MACHINES TO LOG TO RSYSLOG-SERVER
+------------------------------------------------
+<< For syslog push to rsyslog-server, see other doc in unix-kb or 
+https://www.elastic.co/blog/how-to-centralize-logs-with-rsyslog-logstash-and-elasticsearch-on-ubuntu-14-04
+>>
+
+--------------------------------------------------------
+SETUP ONCE YOU START RECEIVING LOGS ON RSYSLOG-SERVER
+--------------------------------------------------------
+Back on the rsyslog-server server, create a new configuration file to format the messages into JSON format before sending to Logstash:
+
+Create a file /etc/rsyslog.d/01-json-template.conf
+Copy the following contents to the file exactly as shown:
+
+template(name="json-template"
+  type="list") {
+    constant(value="{")
+      constant(value="\"@timestamp\":\"")     property(name="timereported" dateFormat="rfc3339")
+      constant(value="\",\"@version\":\"1")
+      constant(value="\",\"message\":\"")     property(name="msg" format="json")
+      constant(value="\",\"sysloghost\":\"")  property(name="hostname")
+      constant(value="\",\"severity\":\"")    property(name="syslogseverity-text")
+      constant(value="\",\"facility\":\"")    property(name="syslogfacility-text")
+      constant(value="\",\"programname\":\"") property(name="programname")
+      constant(value="\",\"procid\":\"")      property(name="procid")
+    constant(value="\"}\n")
+}
