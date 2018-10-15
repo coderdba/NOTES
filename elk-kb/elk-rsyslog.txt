@@ -64,13 +64,18 @@ template(name="json-template"
 
 - CONFIGURE SENDING TO LOGSTASH
 
+Format:
+# This line sends all lines to defined IP address at port 10514,
+# using the "json-template" format template
+*.*                         @private_ip_logstash:10514;json-template
+
 Create file /etc/rsyslog.d/60-output.conf
 with the following lines: 
 NOTE: Use the same IP used in logstash config file's 'input' section
 
 # This line sends all lines to defined IP address at port 10514,
 # using the "json-template" format template
-*.*                         @@private_ip_logstash:10514;json-template
+*.*                         @192.168.0.210:10514;json-template
 
 The *.* at the beginning means to process the remainder of the line for all log messages. 
 The @ symbols means to use UDP (Use @@ to instead use TCP). 
@@ -122,3 +127,25 @@ output {
     }
   }
 }
+
+- START LOGSTASH
+Logon as elk user
+$ /opt/logstash/logstash-6.4.2/bin/logstash -f ../config/logstash-rsyslog-server.conf 
+
+- RESTART SYSLOG
+Logon as root
+# service rsyslog restart
+
+- FIND THE INDEX IN KIBANA
+Management --> Elasticsearch --> Index Management
+This should show the index logstash-rsyslog-server.
+
+- CREATE INDEX PATTERN IN KIBANA
+Management --> Kibana --> Index Patterns
+In this, find the index logstash-rsyslog-server and form a pattern (say, name the pattern also same as index itself)
+
+- DISCOVER IN KIBANA
+Find the index-pattern and do any discovery
+
+- VIEW THE ELASTICSEARCH INDEXES USING CURL
+curl -XGET 'http://elasticsearch_ip:9200/_all/_search?q=*&pretty'
