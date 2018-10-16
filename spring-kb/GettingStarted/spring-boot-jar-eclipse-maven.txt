@@ -9,9 +9,9 @@ New project --> Maven Project
 Default workspace
 Archetype = maven-archetype-quickstart
 
-Group = com.mycom.spring
+Group = mycom.example.spring
 Artifact = ComMycomSpring-SpringRestModel
-Package = com.mycom.spring
+Package = mycom.example.spring
 
 Packaging = jar
 
@@ -42,7 +42,7 @@ Add these:
 MAIN PROGRAM
 ==============================
 
-package com.example.spring;
+package mycom.example.spring;
   
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -56,16 +56,66 @@ public class Application {
 }
 
 ==============================
+MODEL
+==============================
+
+public class Greeting {
+
+    private final long id;
+    private final String content;
+
+    public Greeting(long id, String content) {
+        this.id = id;
+        this.content = content;
+    }
+
+    public long getId() {
+        return id;
+    }
+
+    public String getContent() {
+        return content;
+    }
+}
+
+==============================
 CONTROLLERS
 ==============================
 
+package mycom.example.spring;
+  
+import java.util.concurrent.atomic.AtomicLong;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+public class GreetingController {
+
+    private static final String template = "Hello, %s!";
+    private final AtomicLong counter = new AtomicLong();
+
+    //alternative - @RequestMapping(method=RequestMethod.GET, value={"/greeting","/Greeting"})
+    @RequestMapping("/greeting")
+    public Greeting greeting(@RequestParam(value="name", defaultValue="World") String name) {
+        return new Greeting(counter.incrementAndGet(),
+                            String.format(template, name));
+    }
+}
+
+====================================
+BUILD
+====================================
+In Eclipse, go to the top of the tree of the project, 
+then, Run As --> Maven Install
+
+====================================
+RUN
+====================================
 
 
 
-
-
-
-
+========= TBD SOMETIME ===========================
 ====================================
 IF PACKAGING AS WAR - TBD TBD TBD
 ====================================
