@@ -20,17 +20,18 @@ In that remote server (rsyslog-server) process the incoming recoreds with Logsta
 CONFIGURATION
 ===================================
 
+NOTE ON IP ADDRESSES / HOSTNAMES TO USE:
 In Logstash config file's 'input' section:
-127.0.0.1 works
-192.168.0.210 works (or other IP of the machine)
-udp works
-tcp fails - starts logstash, but does not ingest syslog records
+- 127.0.0.1 works
+- 192.168.0.210 works (or other IP of the machine)
+- udp works
+- tcp fails - starts logstash, but does not ingest syslog records
 
 In logstash conf file's elasticsearch section:
-locahost works
+- locahost works
 
 In rsyslog conf files:
-Use the IP that is used in logstash conf file
+- Use the IP that is used in logstash conf file
 
 ------------------------------------------------
 CONFIGURE MACHINES TO LOG TO RSYSLOG-SERVER
@@ -64,7 +65,9 @@ template(name="json-template"
     constant(value="\"}\n")
 }
 
-- CONFIGURE SENDING TO LOGSTASH
+- CONFIGURE RSYSLOG IN RSYSLOG-SERVER ITSELF - CONFIGURE RSYSLOG-SERVER'S RSYSLOG TO SEND TO LOGSTASH
+NOTE: Rsyslog on rsyslog-server now receives local syslog and logs from other 'client' machines
+      Here, we will configure rsyslog of rsyslog-server to send those to logstash
 
 Format:
 # This line sends all lines to defined IP address at port 10514,
@@ -86,7 +89,7 @@ In our case, we are using the private IP address for rsyslog-server since the rs
 and the Logstash server are installed on the same server. 
 This must match the private IP address you configure Logstash to listen on in the next step.
 
-- CONFIGURE LOGSTASH CONFIG FILE FOR THIS
+- CONFIGURE LOGSTASH
 NOTE: This does not include stdin etc which was done in basic tutorial.  Possibly that too can be added
 
 NOTE: Use udp (tcp did not seem to work) --> define in the 'input' section in the config file
@@ -97,7 +100,7 @@ NOTE: Use udp (tcp did not seem to work) --> define in the 'input' section in th
 ^C[2018-10-15T20:04:38,395][WARN ][logstash.runner          ] SIGINT received. Shutting down.
 [2018-10-15T20:04:39,895][INFO ][logstash.pipeline        ] Pipeline has terminated {:pipeline_id=>"main", :thread=>"#<Thread:0x6851b14c run>"}
 
----- NOW, CONFIGURE THE FILE:
+-- CONFIGURE LOGSTASH CONFIG FILE 
 File: /opt/logstash/logstash-6.4.2/config/logstash-rsyslog-server.conf
 
 # This input block will listen on port 10514 for logs to come in.
@@ -135,7 +138,6 @@ Logon as elk user
 $ cd /opt/elasticsearch/elasticsearch-6.4.2/bin
 
 $ ./elasticsearch
-
 
 - START LOGSTASH
 Logon as elk user
