@@ -55,6 +55,7 @@ Copy the following contents to the file exactly as shown:
 NOTE: Somehow, adding the 'tag' seemed to result in messages with 'acct=' show up the account info 
           (like which account was added/dropped by useradd/userdel etc)
           
+ALSO: For more JSON templates, see section JSON TEMPLATES in this document
 
 template(name="json-template"
   type="list") {
@@ -166,3 +167,54 @@ Find the index-pattern and do any discovery
 
 - VIEW THE ELASTICSEARCH INDEXES USING CURL
 curl -XGET 'http://elasticsearch_ip:9200/_all/_search?q=*&pretty'
+
+
+====================
+JSON TEMPLATES
+====================
+
+TEMPLATE 1
+The one mentioned in the tutorial above
+
+TEMPLATE 2
+http://certifiedgeek.weebly.com/blog/rsyslog-json-format-template
+Rsyslog JSON format template
+1/6/2017 0 Comments
+ 
+These are the rsyslog templates I configured using the configuration guide discussed by UnterGeek here. In my setup, the log server collects logs from multiple devices and I need to store the logs in JSON format and also forward them to logstash/elasticsearch/kibana (ELK) system.
+
+The first template is used to collect logs from the device and save them in a file with a format using its source IP address and the current day (YEAR-MONTH-DAY.log). Dont forget to create the target directory.
+template (name="devicelog" type="string"
+     string="/opt/data/syslogs/%HOSTNAME:::lowercase%_%fromhost-ip%_%$YEAR%-%$MONTH%-%$DAY%.log")
+Next template is used for parsing the logs into JSON format.
+template(name="json_syslog"
+  type="list") {
+    constant(value="{")
+      constant(value="\"@timestamp\":\"")       property(name="timereported" dateFormat="rfc3339")
+      constant(value="\",\"type\":\"syslog_json")
+      constant(value="\",\"tag\":\"")           property(name="syslogtag" format="json")
+      constant(value="\",\"relayhost\":\"")     property(name="fromhost")
+      constant(value="\",\"relayip\":\"")       property(name="fromhost-ip")
+      constant(value="\",\"logsource\":\"")     property(name="source")
+      constant(value="\",\"hostname\":\"")      property(name="hostname" caseconversion="lower")
+      constant(value="\",\"program\":\"")      property(name="programname")
+      constant(value="\",\"priority\":\"")      property(name="pri")
+      constant(value="\",\"severity\":\"")      property(name="syslogseverity")
+      constant(value="\",\"facility\":\"")      property(name="syslogfacility")
+      constant(value="\",\"severity_label\":\"")   property(name="syslogseverity-text")
+      constant(value="\",\"facility_label\":\"")   property(name="syslogfacility-text")
+      constant(value="\",\"message\":\"")       property(name="rawmsg" format="json")
+      constant(value="\",\"end_msg\":\"")
+    constant(value="\"}\n")
+}  
+Then we use these templates to process the syslog of interest.
+if $fromhost-ip == '10.x.x.x' then {
+    # matching logs will be saved
+    action(type="omfile" DynaFile="devicelog" template="json_syslog" DirCreateMode="0755" FileCreateMode="0644")
+    # forward logs to another server (i.e. logstash) if needed
+    action(type="omfwd" target="10.x.x.x" Port="xxxx" Protocol="tcp" template="json_syslog")
+    # enable below to stop processing further this log
+    stop
+}
+
+Remember to restart the rsyslog service in order to take effect.
