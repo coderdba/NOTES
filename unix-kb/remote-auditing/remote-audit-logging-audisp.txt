@@ -3,7 +3,50 @@ REMOTE AUDIT LOGGING USIND AUDISP AND RSYSLOG (in the absence of agents like Aud
 ================================================
 
 https://luppeng.wordpress.com/2016/08/06/setting-up-centralized-logging-with-auditd/
+https://www.server-world.info/en/note?os=CentOS_7&p=audit&f=2
 
+================================================
+TEST CASES
+================================================
+
+-------------------------------------------------------------------------------------------------
+WILL NOLOG IN AUDITD.CONF OF CLIENTS BE OK - WILL IT STILL SEND RECORDS TO CENTRAL SERVER
+-------------------------------------------------------------------------------------------------
+Yes - that works
+
+---------------------------------------------------------------
+WHAT IF CENTRAL SERVER IS DOWN FOR SOME TIME
+---------------------------------------------------------------
+Desired result:  Audit records are queued up locally and then later sent out to central server once it is up
+
+TBD - is this the queue file in the local servers?
+audisp-remote.conf:queue_file = /var/spool/audit/remote.log
+
+NOTES:
+Looks like once the central server auditd restarts, then remote servers do not seem to automatically reconnect.
+- netstat -anp does not show 'ESTABLISHED'
+
+
+[root@rsyslogsvr audit]# netstat -nap |grep auditd
+tcp6       0      0 :::60                   :::*                    LISTEN      7123/auditd         
+tcp6       0      0 192.168.0.210:60        192.168.0.211:13772     ESTABLISHED 7123/auditd         
+unix  2      [ ]         DGRAM                    46458    7123/auditd          
+unix  3      [ ]         STREAM     CONNECTED     46456    7123/auditd          
+unix  3      [ ]         STREAM     CONNECTED     46457    7123/auditd          
+unix  3      [ ]         STREAM     CONNECTED     46460    7123/auditd          
+unix  3      [ ]         STREAM     CONNECTED     46459    7123/auditd          
+[root@rsyslogsvr audit]# 
+[root@rsyslogsvr audit]# 
+[root@rsyslogsvr audit]# service auditd restart
+Stopping logging:                                          [  OK  ]
+Redirecting start to /bin/systemctl start auditd.service
+[root@rsyslogsvr audit]# netstat -nap |grep auditd
+tcp6       0      0 :::60                   :::*                    LISTEN      7490/auditd         
+unix  3      [ ]         STREAM     CONNECTED     47496    7490/auditd          
+unix  3      [ ]         STREAM     CONNECTED     47500    7490/auditd          
+unix  2      [ ]         DGRAM                    47498    7490/auditd          
+unix  3      [ ]         STREAM     CONNECTED     47497    7490/auditd          
+unix  3      [ ]         STREAM     CONNECTED     47499    7490/auditd 
 
 ================================================
 TROUBLESHOOTING
