@@ -5,6 +5,17 @@ REMOTE AUDIT LOGGING USIND AUDISP AND RSYSLOG (in the absence of agents like Aud
 https://luppeng.wordpress.com/2016/08/06/setting-up-centralized-logging-with-auditd/
 https://www.server-world.info/en/note?os=CentOS_7&p=audit&f=2
 
+================================================================================================
+IMPORTANT: GO THROGUH THE FOLLOWING TO ENSURE ALL RECOREDS ARE FORWARDED
+================================================================================================
+https://manpages.debian.org/testing/audispd-plugins/audisp-remote.conf.5.en.html
+
+==================
+TBD
+==================
+1. NOLOG seems to prevent re-establish connection with central server
+2. Restart of auditd and re-establish connection with central server - after central server auditd restarts
+
 ================================================
 CONFIGURATION - CLIENT
 ================================================
@@ -19,19 +30,22 @@ queue_file = /var/spool/audit/remote.log
 #mode = immediate --> THIS IS DEFAULT. HOWEVER, THIS WILL LOSE RECORDS IF NOT CONNECTED TO REMOTE LOGGER
 mode = forward --> THIS WILL SPOOL RECORDS INTO queue_file IF REMOTE CONNECTION IS DOWN
 
-
+#heartbeat_timeout = 0 --> THIS '0' WILL NOT SEND HEARTBEAT TO SERVER
+heartbeat_timeout = 5  --> THIS WILL SEND HEARTBEAT TO SERVER EVERY X SECONDS
 
 ================================================
 TEST CASES
 ================================================
 
 -------------------------------------------------------------------------------------------------
-WILL NOLOG IN AUDITD.CONF OF CLIENTS BE OK - WILL IT STILL SEND RECORDS TO CENTRAL SERVER
+WILL 'NOLOG' IN AUDITD.CONF OF CLIENTS BE OK - WILL IT STILL SEND RECORDS TO CENTRAL SERVER
 -------------------------------------------------------------------------------------------------
-Yes - that works
+It seemed to work
+--> But, upon trying again, re-establishment of connection with central server failed - netstat showed no ESTABLISHED
+--> only after making it RAW from NOLOG in client and restartinf auditd in client machine it was ESTABLISHED in central server
 
 ---------------------------------------------------------------
-WHAT IF CENTRAL SERVER IS DOWN FOR SOME TIME
+RE-ESTABLISH CONNECTION WHEN REMOTE SERVER IS DOWN FOR SOMETIME
 ---------------------------------------------------------------
 Desired result:  Audit records are queued up locally and then later sent out to central server once it is up
 
@@ -42,7 +56,7 @@ NOTES:
 Looks like once the central server auditd restarts, then remote servers do not seem to automatically reconnect.
 - netstat -anp does not show 'ESTABLISHED'
 
-
+- FIRST PART - JUST REESTABLISH CONNECTION
 [root@rsyslogsvr audit]# netstat -nap |grep auditd
 tcp6       0      0 :::60                   :::*                    LISTEN      7123/auditd         
 tcp6       0      0 192.168.0.210:60        192.168.0.211:13772     ESTABLISHED 7123/auditd         
@@ -51,8 +65,7 @@ unix  3      [ ]         STREAM     CONNECTED     46456    7123/auditd
 unix  3      [ ]         STREAM     CONNECTED     46457    7123/auditd          
 unix  3      [ ]         STREAM     CONNECTED     46460    7123/auditd          
 unix  3      [ ]         STREAM     CONNECTED     46459    7123/auditd          
-[root@rsyslogsvr audit]# 
-[root@rsyslogsvr audit]# 
+
 [root@rsyslogsvr audit]# service auditd restart
 Stopping logging:                                          [  OK  ]
 Redirecting start to /bin/systemctl start auditd.service
@@ -63,6 +76,23 @@ unix  3      [ ]         STREAM     CONNECTED     47500    7490/auditd
 unix  2      [ ]         DGRAM                    47498    7490/auditd          
 unix  3      [ ]         STREAM     CONNECTED     47497    7490/auditd          
 unix  3      [ ]         STREAM     CONNECTED     47499    7490/auditd 
+
+NOW - restart auditd in client to re-establish connection (TBD - how to do that automatically from client machine??)
+
+
+- SECOND PART
+Ensure that records are forwarded upon connection re-establishment
+
+Set this in the /etc/audisp/audisp-remote.conf
+(default is 'immediate')
+mode = forward
+queue_file = /var/spool/audit/remote.log
+
+This will retain records in the queue_file and then forward once connection is established
+
+- THIRD PART
+Ensure re-establish happens without manual intervention of restarting auditd in client
+
 
 ================================================
 TROUBLESHOOTING
