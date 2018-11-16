@@ -17,9 +17,10 @@ TBD
 2. Restart of auditd and re-establish connection with central server - after central server auditd restarts
 
 ================================================
-CONFIGURATION - CENTRAL SERVER
+CONFIGURATION 
 ================================================
 
+- CENTRAL SERVER
 # vi /etc/audit/auditd.conf
 
 Uncomment the line that says “tcp_listen_port = “ and enter the chosen port for remote logging to take place on.
@@ -38,9 +39,7 @@ unix  3      [ ]         STREAM     CONNECTED     54331    11739/auditd
 unix  3      [ ]         STREAM     CONNECTED     54329    11739/auditd         
 unix  3      [ ]         STREAM     CONNECTED     54332    11739/auditd   
 
-================================================
-CONFIGURATION - CLIENT
-================================================
+- CLIENT
 
 # vi /etc/audisp/audisp-remote.conf
 …
@@ -65,8 +64,23 @@ $ sudo service auditd restart
 [root@elk1 audit]# netstat -anp |grep audisp-remote
 tcp        0      0 192.168.0.211:14917     192.168.0.210:60        ESTABLISHED 12050/audisp-remote 
 
+- VERIFY
+In the central server's /var/log/audit/audit.log the audit records of the client should appear.
+--> with identifier 'node=...'
 
--- MORE DETAILED CONFIGURATION -->
+Example:
+[root@rsyslogsvr audit]# grep bbb111 audit.log
+node=elk1 type=EXECVE msg=audit(1542357066.659:6402): argc=2 a0="useradd" a1="bbb111"
+node=elk1 type=ADD_GROUP msg=audit(1542357066.662:6420): pid=11494 uid=0 auid=0 ses=1 msg='op=add-group acct="bbb111" exe="/usr/sbin/useradd" hostname=elk1 addr=? terminal=pts/0 res=success'
+node=elk1 type=EXECVE msg=audit(1542357070.068:6455): argc=2 a0="userdel" a1="bbb111"
+node=elk1 type=DEL_GROUP msg=audit(1542357070.092:6474): pid=11508 uid=0 auid=0 ses=1 msg='op=delete-group grp="bbb111" acct="bbb111" exe="/usr/sbin/userdel" hostname=elk1 addr=? terminal=pts/0 res=success'
+node=elk1 type=GRP_MGMT msg=audit(1542357070.092:6475): pid=11508 uid=0 auid=0 ses=1 msg='op=delete-shadow-group grp="bbb111" acct="bbb111" exe="/usr/sbin/userdel" hostname=elk1 addr=? terminal=pts/0 res=success'
+
+
+
+===================================
+-- MORE DETAILED CONFIGURATION --
+===================================
 FILE1: /etc/audisp/audisp-remote.conf
 https://manpages.debian.org/testing/audispd-plugins/audisp-remote.conf.5.en.html
 
