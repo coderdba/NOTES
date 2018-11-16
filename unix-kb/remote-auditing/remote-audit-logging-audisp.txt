@@ -17,9 +17,56 @@ TBD
 2. Restart of auditd and re-establish connection with central server - after central server auditd restarts
 
 ================================================
+CONFIGURATION - CENTRAL SERVER
+================================================
+
+# vi /etc/audit/auditd.conf
+
+Uncomment the line that says “tcp_listen_port = “ and enter the chosen port for remote logging to take place on.
+
+tcp_listen_port = 60
+Lastly, save the edits and restart auditd
+
+# service auditd restart
+
+[root@rsyslogsvr audit]# netstat -anp |grep auditd
+tcp6       0      0 :::60                   :::*                    LISTEN      11739/auditd        
+tcp6       0      0 192.168.0.210:60        192.168.0.211:14917     ESTABLISHED 11739/auditd        
+unix  3      [ ]         STREAM     CONNECTED     54328    11739/auditd         
+unix  2      [ ]         DGRAM                    54330    11739/auditd         
+unix  3      [ ]         STREAM     CONNECTED     54331    11739/auditd         
+unix  3      [ ]         STREAM     CONNECTED     54329    11739/auditd         
+unix  3      [ ]         STREAM     CONNECTED     54332    11739/auditd   
+
+================================================
 CONFIGURATION - CLIENT
 ================================================
 
+# vi /etc/audisp/audisp-remote.conf
+…
+remote_server = <IP Address of Centralized Log Server>
+port = 60
+Next, enable the remote logging plugin:
+
+# vi /etc/audisp/plugins.d/au-remote.conf
+…
+active = yes
+…
+
+Optional (however, keeping this as RAW did not seem to establish remote connection
+#  vi /etc/audit/auditd.conf
+…
+log_format = NOLOG
+…
+Lastly, restart auditd to enable the changes.
+
+$ sudo service auditd restart
+
+[root@elk1 audit]# netstat -anp |grep audisp-remote
+tcp        0      0 192.168.0.211:14917     192.168.0.210:60        ESTABLISHED 12050/audisp-remote 
+
+
+-- MORE DETAILED CONFIGURATION -->
 FILE1: /etc/audisp/audisp-remote.conf
 https://manpages.debian.org/testing/audispd-plugins/audisp-remote.conf.5.en.html
 
