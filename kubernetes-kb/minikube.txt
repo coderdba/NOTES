@@ -1,3 +1,690 @@
+=========================
+MINIKUBE
+=========================
+
+Start here: https://kubernetes.io/docs/setup/minikube#installation
+--> https://kubernetes.io/docs/tasks/tools/install-minikube/
+
+https://medium.com/@claudiopro/getting-started-with-kubernetes-via-minikube-ada8c7a29620
+
+Many commands available here:
+https://gist.github.com/sitkevij/b2e8fad3f1bf409d1ba5196cb5f52b55
+
+Exposing port and accessing url:
+http://192.168.99.100:31317
+
+=========================
+INSTALLING ON MAC 
+=========================
+Start here: https://kubernetes.io/docs/setup/minikube#installation
+--> https://kubernetes.io/docs/tasks/tools/install-minikube/
+
+- Install hypervisor - virtualbox
+Install from virtualbox site
+
+- Install kubectl    
+https://kubernetes.io/docs/tasks/tools/install-kubectl/
+--> https://kubernetes.io/docs/tasks/tools/install-kubectl/#install-kubectl-binary-using-curl
+
+curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/darwin/amd64/kubectl
+
+cp kubectl to /usr/local/bin 
+chmod +x /usr/local/bin/kubectl
+
+- Install minikube  
+https://github.com/kubernetes/minikube/releases
+Install this one: minikube-darwin-amd64
+curl -Lo minikube https://storage.googleapis.com/minikube/releases/v0.30.0/minikube-darwin-amd64
+chmod +x minikube
+
+Optionally, copy/move minikube to /usr/local/bin so that it can be called by all without issue
+cp minikube /usr/local/bin/ 
+rm minikube
+
+=========================
+START MINIKUBE
+=========================
+NOTE:  Old installs and machines of minikube may interfere and say "machine does not exist"
+       -> Therefore, rename or remove the folder ~/.minikube which was created by previous installs
+       -> There may be a better way of doing it, but for now, rename/remove that folder
+       -> https://github.com/kubernetes/minikube/issues/459
+
+NOTE -- THIS WILL CREATE A VM 'minikube' on Virtualbox
+(virtualbox is default driver for minikube)
+
+https://kubernetes.io/docs/setup/minikube/#installation
+
+$ minikube version
+minikube version: v0.30.0
+
+$ minikube start
+Starting local Kubernetes v1.10.0 cluster...
+Starting VM...
+Downloading Minikube ISO
+ 170.78 MB / 170.78 MB [============================================] 100.00% 0s
+Getting VM IP address...
+Moving files into cluster...
+Downloading kubeadm v1.10.0
+Downloading kubelet v1.10.0
+Finished Downloading kubelet v1.10.0
+Finished Downloading kubeadm v1.10.0
+Setting up certs...
+Connecting to cluster...
+Setting up kubeconfig...
+Starting cluster components...
+Kubectl is now configured to use the cluster.
+Loading cached images from config file.
+
+- VERIFY
+
+$ minikube status
+minikube: Running
+cluster: Running
+kubectl: Correctly Configured: pointing to minikube-vm at 192.168.99.100
+
+$ minikube service list
+|-------------|----------------------|--------------|
+|  NAMESPACE  |         NAME         |     URL      |
+|-------------|----------------------|--------------|
+| default     | kubernetes           | No node port |
+| kube-system | kube-dns             | No node port |
+| kube-system | kubernetes-dashboard | No node port |
+|-------------|----------------------|--------------|
+
+$ kubectl get po --all-namespaces
+NAMESPACE     NAME                                    READY   STATUS    RESTARTS   AGE
+kube-system   coredns-c4cffd6dc-j47vg                 1/1     Running   0          8m
+kube-system   etcd-minikube                           1/1     Running   0          9m
+kube-system   kube-addon-manager-minikube             1/1     Running   0          8m
+kube-system   kube-apiserver-minikube                 1/1     Running   0          8m
+kube-system   kube-controller-manager-minikube        1/1     Running   0          8m
+kube-system   kube-dns-86f4d74b45-rkxk5               3/3     Running   0          8m
+kube-system   kube-proxy-wz67j                        1/1     Running   0          8m
+kube-system   kube-scheduler-minikube                 1/1     Running   0          8m
+kube-system   kubernetes-dashboard-6f4cfc5d87-lvf86   1/1     Running   0          8m
+kube-system   storage-provisioner                     1/1     Running   0          8m
+
+===========================
+DEPLOY A SERVICE POD
+===========================
+Note: Apparently a pod is also created even though there is only one container serving the service
+
+------------
+DEPLOY
+------------
+
+$ kubectl run hello-minikube --image=k8s.gcr.io/echoserver:1.10 --port=8080
+kubectl run --generator=deployment/apps.v1beta1 is DEPRECATED and will be removed in a future version. Use kubectl create instead.
+deployment.apps/hello-minikube created
+
+$ kubectl expose deployment hello-minikube --type=NodePort
+service/hello-minikube exposed
+
+$ kubectl get pod
+NAME                              READY   STATUS    RESTARTS   AGE
+hello-minikube-7c77b68cff-kqw87   1/1     Running   0          2m
+
+$ kubectl get deployments
+NAME             DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+hello-minikube   1         1         1            1           13h
+
+- OR - 
+$  kubectl get deployments.v1.apps 
+NAME             DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+hello-minikube   1         1         1            1           13h
+
+$ kubectl get svc
+NAME             TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
+hello-minikube   NodePort    10.98.172.207   <none>        8080:31317/TCP   13h
+kubernetes       ClusterIP   10.96.0.1       <none>        443/TCP          13h
+
+- OR - 
+$ kubectl get services
+NAME             TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
+hello-minikube   NodePort    10.98.172.207   <none>        8080:31317/TCP   13h
+kubernetes       ClusterIP   10.96.0.1       <none>        443/TCP          13h
+
+--------------------
+ACCESS THE SERVICE
+--------------------
+
+$ curl $(minikube service hello-minikube --url)
+
+Hostname: hello-minikube-7c77b68cff-kqw87
+
+Pod Information:
+	-no pod information available-
+
+Server values:
+	server_version=nginx: 1.13.3 - lua: 10008
+
+Request Information:
+	client_address=172.17.0.1
+	method=GET
+	real path=/
+	query=
+	request_version=1.1
+	request_scheme=http
+	request_uri=http://192.168.99.100:8080/
+
+Request Headers:
+	accept=*/*
+	host=192.168.99.100:31317
+	user-agent=curl/7.47.1
+
+Request Body:
+	-no body in request-
+	
+
+----------------------------------------------
+ALTERNATIVE ACCESS TO SERVICE URL VIA BROWSER
+----------------------------------------------
+NOTE: Port 8080 is inside minikube 
+      - it is exposed as 31317 inside minikube, but accessible from host with minikube IP address.
+      
+- INDIRECTLY SEND THE URL TO BROWSER
+Note: This command will open a browser on host and paste automatically the URL with exposed port and get the result
+
+$ minikube service hello-minikube
+Opening kubernetes service default/hello-minikube in default browser...
+
+< and you will see the result on a browser on host>
+
+- OBTAIN THE EXPOSED PORT
+$ kubectl get services
+NAME             TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
+hello-minikube   NodePort    10.98.172.207   <none>        8080:31317/TCP   13m
+kubernetes       ClusterIP   10.96.0.1       <none>        443/TCP          25m
+
+- OBTAIN THE EXPOSED URL
+$ minikube service hello-minikube --url
+http://192.168.99.100:31317
+
+- Access the URL in a browser on the host
+http://192.168.99.100:31317/
+
+-- EXPECTED RESULTS - in all methods above:
+You will see the same output as the curl command that was run before:
+
+Hostname: hello-minikube-7c77b68cff-kqw87
+
+Pod Information:
+	-no pod information available-
+
+Server values:
+	server_version=nginx: 1.13.3 - lua: 10008
+
+Request Information:
+	client_address=172.17.0.1
+	method=GET
+	real path=/
+	query=
+	request_version=1.1
+	request_scheme=http
+	request_uri=http://192.168.99.100:8080/
+
+Request Headers:
+	accept=text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
+	accept-encoding=gzip, deflate
+	accept-language=en-US,en;q=0.9
+	connection=keep-alive
+	host=192.168.99.100:31317
+	upgrade-insecure-requests=1
+	user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.81 Safari/537.36
+
+Request Body:
+	-no body in request-
+	
+==========================
+DEPLOY NGINX
+==========================
+
+$ kubectl get services
+NAME             TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
+hello-minikube   NodePort    10.98.172.207   <none>        8080:31317/TCP   13h
+kubernetes       ClusterIP   10.96.0.1       <none>        443/TCP          13h
+
+$ kubectl create deployment nginx --image=nginx
+deployment.apps/nginx created
+
+$ kubectl get deployments
+NAME             DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+hello-minikube   1         1         1            1           13h
+nginx            1         1         1            0           18s
+
+$ kubectl create service nodeport nginx --tcp=80:80
+service/nginx created
+
+$ kubectl get services
+NAME             TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)          AGE
+hello-minikube   NodePort    10.98.172.207    <none>        8080:31317/TCP   13h
+kubernetes       ClusterIP   10.96.0.1        <none>        443/TCP          13h
+nginx            NodePort    10.107.190.179   <none>        80:31974/TCP     59s
+
+- VERIFY
+$ minikube service nginx --url
+
+Then, in browser - http://192.168.99.100:31974
+
+You will then see Nginx welcome page:
+Welcome to nginx!
+
+
+- VERIFY WITH CURL
+$ curl $(minikube service nginx --url)
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+    body {
+        width: 35em;
+        margin: 0 auto;
+        font-family: Tahoma, Verdana, Arial, sans-serif;
+    }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, the nginx web server is successfully installed and
+working. Further configuration is required.</p>
+
+<p>For online documentation and support please refer to
+<a href="http://nginx.org/">nginx.org</a>.<br/>
+Commercial support is available at
+<a href="http://nginx.com/">nginx.com</a>.</p>
+
+<p><em>Thank you for using nginx.</em></p>
+</body>
+</html>
+
+======================================================
+DEPLOY OWN-CREATED IMAGE THAT IS ON A LAPTOP DOCKER (not complete yet)
+======================================================
+
+- REATTEMPT 2 
+Try this:  minikube start --vm-driver="virtualbox" --insecure-registry="$REG_IP":80
+from: https://stackoverflow.com/questions/38979231/imagepullbackoff-local-repository-with-minikube#39331429
+
+https://stackoverflow.com/questions/40160363/pulling-image-from-local-docker-repository
+https://stackoverflow.com/questions/38979231/imagepullbackoff-local-repository-with-minikube
+
+$ minikube delete
+
+$ minikube start --insecure-registry=192.168.10.153:5000
+Starting local Kubernetes v1.10.0 cluster...
+Starting VM...
+
+$ kubectl run redis --image=192.168.0.53:5000/redislocal --port=6379
+
+ON MINIKUBE 
+You can see redislocal image
+$ docker images
+REPOSITORY                                 TAG                 IMAGE ID            CREATED             SIZE
+192.168.0.53:5000/redislocal               latest              0a153379a539        10 days ago         83.4MB
+k8s.gcr.io/coredns                         1.2.2               367cdc8433a4        6 weeks ago         39.2MB
+k8s.gcr.io/kubernetes-dashboard-amd64      v1.10.0             0dab2435c100        7 weeks ago         122MB
+k8s.gcr.io/kube-proxy-amd64                v1.10.0             bfc21aadc7d3        6 months ago        97MB
+k8s.gcr.io/kube-controller-manager-amd64   v1.10.0             ad86dbed1555        6 months ago        148MB
+k8s.gcr.io/kube-apiserver-amd64            v1.10.0             af20925d51a3        6 months ago        225MB
+k8s.gcr.io/kube-scheduler-amd64            v1.10.0             704ba848e69a        6 months ago        50.4MB
+k8s.gcr.io/etcd-amd64                      3.1.12              52920ad46f5b        7 months ago        193MB
+k8s.gcr.io/kube-addon-manager              v8.6                9c16409588eb        7 months ago        78.4MB
+k8s.gcr.io/k8s-dns-dnsmasq-nanny-amd64     1.14.8              c2ce1ffb51ed        9 months ago        41MB
+k8s.gcr.io/k8s-dns-sidecar-amd64           1.14.8              6f7f2dc7fab5        9 months ago        42.2MB
+k8s.gcr.io/k8s-dns-kube-dns-amd64          1.14.8              80cc5ea4b547        9 months ago        50.5MB
+k8s.gcr.io/pause-amd64                     3.1                 da86e6ba6ca1        9 months ago        742kB
+gcr.io/k8s-minikube/storage-provisioner    v1.8.1              4689081edb10        11 months ago       80.8MB
+
+and you can see redislocal container and its pod
+$ docker ps |grep redis
+dac34bc272e7        192.168.0.53:5000/redislocal               "docker-entrypoint.s…"   5 seconds ago       Up 5 seconds                            k8s_redis_redis-76c5f94484-dvrxc_default_3223b9a9-cecd-11e8-8a4e-080027be9777_0
+f7bbc64c0994        k8s.gcr.io/pause-amd64:3.1                 "/pause"                 9 seconds ago       Up 9 seconds                            k8s_POD_redis-76c5f94484-dvrxc_default_3223b9a9-cecd-11e8-8a4e-080027be9777_0
+
+
+
+- REATTEMPT 1
+
+$ kubectl create service nodeport redis --tcp=6379
+service/redis created
+
+$ kubectl get services
+NAME             TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)          AGE
+hello-minikube   NodePort    10.98.172.207    <none>        8080:31317/TCP   15h
+kubernetes       ClusterIP   10.96.0.1        <none>        443/TCP          15h
+nginx            NodePort    10.107.190.179   <none>        80:31974/TCP     1h
+redis            NodePort    10.100.185.183   <none>        6379:31238/TCP   14s
+
+- REATTEMPT
+
+$ docker image tag redis:latest localhost:5000/redis:local
+$ docker images
+REPOSITORY                       TAG                 IMAGE ID            CREATED             SIZE
+cassandrasingle/centos           1.0                 8994386cdefb        25 hours ago        703MB
+localhost:5000/cassandrasingle   1.0                 8994386cdefb        25 hours ago        703MB
+redis                            latest              0a153379a539        10 days ago         83.4MB
+localhost:5000/redis             local               0a153379a539        10 days ago         83.4MB
+registry                         2                   2e2f252f3c88        4 weeks ago         33.3MB
+centos/systemd                   latest              78c36a71df7e        2 months ago        200MB
+
+$ kubectl run redis --image=localhost:5000/redis:local --port=6379
+
+- VERIFY INSIDE MINIKUBE
+$ minikube ssh
+
+$ docker ps |grep redis
+
+CONTAINER ID        IMAGE                                      COMMAND                  CREATED             STATUS              PORTS               NAMES
+63daedfa21ad        k8s.gcr.io/pause-amd64:3.1                 "/pause"                 39 seconds ago      Up 38 seconds                           k8s_POD_redis-5b6bb77cf6-c2p54_default_f75af57b-ceba-11e8-a6d1-0800276e1a5a_0
+<<< THIS DOES NOT SEEM RIGHT AS IT HAS TAKEN SOME 'PAUSE' IMAGE RATHER THAN THE LOCAL REDIS IMAGE >>>
+
+$ kubectl get services
+NAME             TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)          AGE
+cassandraone     NodePort    10.109.15.221    <none>        9042:32547/TCP   1h
+hello-minikube   NodePort    10.98.172.207    <none>        8080:31317/TCP   14h
+kubernetes       ClusterIP   10.96.0.1        <none>        443/TCP          15h
+nginx            NodePort    10.107.190.179   <none>        80:31974/TCP     1h
+
+$ kubectl get pods
+NAME                              READY   STATUS             RESTARTS   AGE
+hello-minikube-7c77b68cff-kqw87   1/1     Running            0          14h
+nginx-56f766d96f-2sqz5            1/1     Running            0          1h
+redis-5b6bb77cf6-c2p54            0/1     ImagePullBackOff   0          5m
+
+$ kubectl get deployments
+NAME             DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+hello-minikube   1         1         1            1           14h
+nginx            1         1         1            1           1h
+redis            1         1         1            0           5m
+
+$ kubectl delete deployment redis
+deployment.extensions "redis" deleted
+
+$ kubectl get deployments
+NAME             DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+hello-minikube   1         1         1            1           14h
+nginx            1         1         1            1           1h
+
+- FAILED ATTEMPT
+$ docker images
+REPOSITORY               TAG                 IMAGE ID            CREATED             SIZE
+cassandrasingle/centos   1.0                 8994386cdefb        24 hours ago        703MB
+centos/systemd           latest              78c36a71df7e        2 months ago        200MB
+
+$ kubectl create deployment cassandrasingle/centos --image=cassandrasingle/centos
+The Deployment "cassandrasingle/centos" is invalid: 
+* metadata.name: Invalid value: "cassandrasingle/centos": a DNS-1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')
+* metadata.labels: Invalid value: "cassandrasingle/centos": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')
+* spec.selector.matchLabels: Invalid value: "cassandrasingle/centos": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')
+* spec.selector: Invalid value: v1.LabelSelector{MatchLabels:map[string]string{"app":"cassandrasingle/centos"}, MatchExpressions:[]v1.LabelSelectorRequirement(nil)}: invalid label selector.
+
+$ kubectl create deployment cassandrasingle --image=cassandrasingle              
+deployment.apps/cassandrasingle created
+
+$ kubectl get deployments
+NAME              DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+cassandrasingle   1         1         1            0           13s
+hello-minikube    1         1         1            1           13h
+nginx             1         1         1            1           7m
+
+NOTE: 9042 is the CQL port
+$ kubectl create service nodeport cassandraone --tcp=9042
+service/cassandraone created
+<<<< DID IT REALLY CREATE CASSANDRA USING AN IMAGE ON LAPTOP - NO >>
+
+- REMOVE IT AS IT DID NOT WORK
+$ kubectl get deployments
+NAME              DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+cassandrasingle   1         1         1            0           27m
+hello-minikube    1         1         1            1           14h
+nginx             1         1         1            1           35m
+
+$ kubectl delete deployment cassandrasingle
+deployment.extensions "cassandrasingle" deleted
+
+$ kubectl get deployments
+NAME             DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+hello-minikube   1         1         1            1           14h
+nginx            1         1         1            1           35m
+
+
+==================================
+IMAGE REGISTRIES
+==================================
+https://kubernetes.io/docs/concepts/containers/images/
+https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+
+$ kubectl get secrets
+NAME                  TYPE                                  DATA   AGE
+default-token-h2mks   kubernetes.io/service-account-token   3      14h
+
+$ kubectl get secret default-token-h2mks --output=yaml
+apiVersion: v1
+data:
+  ca.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUM1ekNDQVjFGbVhjUjhKTzNuWXZHa2hFY2l1NzBLSjJ6UnNjTWNCZ0xxCndXbmliVHAyUjg1Qk5EUzVYRENYdkRnNFlIRkxPaXNtYjRycAotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+  namespace: ZGVmYXVsdA==
+  token: ZXlKaGJHY2lPaUpTVXpJOERvcmMxcm9oTmRMNkFYRnhyMHBYRmtFZlFGbm91ajdxbGlpb3F2d1hMSDZJcElaOHgzUlBvWFpuWERLbTZzFYdnNKWFRrRkJCSjJxNFZLQzEzRUpMRGNpb0w4OU1sdWZGSm5iMTJ2MnFUWFE1WWRBYWlXbWVQUTNrSUNQeU12WXNMVWV0OTRZOFkycGc=
+kind: Secret
+metadata:
+  annotations:
+    kubernetes.io/service-account.name: default
+    kubernetes.io/service-account.uid: 035fad41-ce3d-11e8-a6d1-0800276e1a5a
+  creationTimestamp: 2018-10-12T16:36:47Z
+  name: default-token-h2mks
+  namespace: default
+  resourceVersion: "296"
+  selfLink: /api/v1/namespaces/default/secrets/default-token-h2mks
+  uid: 0361ae08-ce3d-11e8-a6d1-0800276e1a5a
+type: kubernetes.io/service-account-token
+
+======================================================
+LOOK AROUND INSIDE MINIKUBE MACHINE
+======================================================
+
+$ minikube ssh
+--> This will take you inside minikube machine
+
+Now, inside minikube machine:
+$ docker ps |grep hello
+
+--> This one is the container
+33e84aca8894        k8s.gcr.io/echoserver                      "/usr/local/bin/run.…"   7 minutes ago       Up 7 minutes                            k8s_hello-minikube_hello-minikube-7c77b68cff-kqw87_default_75e2cab9-ce3e-11e8-a6d1-0800276e1a5a_0
+
+--> This seems to be the pod
+7163487bdbf3        k8s.gcr.io/pause-amd64:3.1                 "/pause"                 7 minutes ago       Up 7 minutes                            k8s_POD_hello-minikube-7c77b68cff-kqw87_default_75e2cab9-ce3e-11e8-a6d1-0800276e1a5a_0
+
+$ docker ps
+< will list many containers >
+
+$ docker images
+REPOSITORY                                 TAG                 IMAGE ID            CREATED             SIZE
+k8s.gcr.io/coredns                         1.2.2               367cdc8433a4        6 weeks ago         39.2MB
+k8s.gcr.io/kubernetes-dashboard-amd64      v1.10.0             0dab2435c100        7 weeks ago         122MB
+k8s.gcr.io/kube-proxy-amd64                v1.10.0             bfc21aadc7d3        6 months ago        97MB
+k8s.gcr.io/kube-apiserver-amd64            v1.10.0             af20925d51a3        6 months ago        225MB
+k8s.gcr.io/kube-scheduler-amd64            v1.10.0             704ba848e69a        6 months ago        50.4MB
+k8s.gcr.io/kube-controller-manager-amd64   v1.10.0             ad86dbed1555        6 months ago        148MB
+k8s.gcr.io/echoserver                      1.10                365ec60129c5        6 months ago        95.4MB
+k8s.gcr.io/etcd-amd64                      3.1.12              52920ad46f5b        7 months ago        193MB
+k8s.gcr.io/kube-addon-manager              v8.6                9c16409588eb        7 months ago        78.4MB
+k8s.gcr.io/k8s-dns-dnsmasq-nanny-amd64     1.14.8              c2ce1ffb51ed        9 months ago        41MB
+k8s.gcr.io/k8s-dns-sidecar-amd64           1.14.8              6f7f2dc7fab5        9 months ago        42.2MB
+k8s.gcr.io/k8s-dns-kube-dns-amd64          1.14.8              80cc5ea4b547        9 months ago        50.5MB
+k8s.gcr.io/pause-amd64                     3.1                 da86e6ba6ca1        9 months ago        742kB
+gcr.io/k8s-minikube/storage-provisioner    v1.8.1              4689081edb10        11 months ago       80.8MB
+
+===========================
+CLUSTER CHECKS
+===========================
+
+$ kubectl get nodes
+NAME       STATUS   ROLES    AGE   VERSION
+minikube   Ready    master   21m   v1.10.0
+
+$ kubectl get pods
+NAME                              READY   STATUS    RESTARTS   AGE
+hello-minikube-7c77b68cff-kqw87   1/1     Running   0          13m
+
+$ kubectl get services
+NAME             TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
+hello-minikube   NodePort    10.98.172.207   <none>        8080:31317/TCP   13m
+kubernetes       ClusterIP   10.96.0.1       <none>        443/TCP          25m
+
+===========================
+REMOVING SERVICE etc
+===========================
+$ kubectl delete services hello-minikube
+service "hello-minikube" deleted
+$ kubectl delete deployment hello-minikube
+deployment.extensions "hello-minikube" deleted
+$ minikube stop
+Stopping local Kubernetes cluster...
+Stopping "minikube"...
+
+===========================
+DOCKER IN MINIKUBE
+===========================
+
+To use docker daemon on host/laptop to work inside minikube VM:
+
+- On the host:
+$ eval $(minikube docker-env)
+$ docker ps
+< this will list the docker containers running in the minikube vm >
+
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+============================================
+TROUBLESHOOTING SECTION
+============================================
+
+- MINIKUBE START ERRORING OUT
+NOTE: This exited with an error, but later, status check seemed ok (see down below for minikube status)
+$ minikube start
+
+Starting local Kubernetes v1.10.0 cluster...
+Starting VM...
+Downloading Minikube ISO
+ 170.78 MB / 170.78 MB [============================================] 100.00% 0s
+Getting VM IP address...
+Moving files into cluster...
+Downloading kubelet v1.10.0
+Downloading kubeadm v1.10.0
+Finished Downloading kubelet v1.10.0
+Finished Downloading kubeadm v1.10.0
+Setting up certs...
+Connecting to cluster...
+Setting up kubeconfig...
+Starting cluster components...
+E1012 13:43:55.940097   23806 start.go:297] Error starting cluster:  kubeadm init error 
+sudo /usr/bin/kubeadm init --config /var/lib/kubeadm.yaml --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests --ignore-preflight-errors=DirAvailable--data-minikube --ignore-preflight-errors=Port-10250 --ignore-preflight-errors=FileAvailable--etc-kubernetes-manifests-kube-scheduler.yaml --ignore-preflight-errors=FileAvailable--etc-kubernetes-manifests-kube-apiserver.yaml --ignore-preflight-errors=FileAvailable--etc-kubernetes-manifests-kube-controller-manager.yaml --ignore-preflight-errors=FileAvailable--etc-kubernetes-manifests-etcd.yaml --ignore-preflight-errors=Swap --ignore-preflight-errors=CRI  &&
+sudo /usr/bin/kubeadm alpha phase addon kube-dns
+ running command: : running command: 
+sudo /usr/bin/kubeadm init --config /var/lib/kubeadm.yaml --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests --ignore-preflight-errors=DirAvailable--data-minikube --ignore-preflight-errors=Port-10250 --ignore-preflight-errors=FileAvailable--etc-kubernetes-manifests-kube-scheduler.yaml --ignore-preflight-errors=FileAvailable--etc-kubernetes-manifests-kube-apiserver.yaml --ignore-preflight-errors=FileAvailable--etc-kubernetes-manifests-kube-controller-manager.yaml --ignore-preflight-errors=FileAvailable--etc-kubernetes-manifests-etcd.yaml --ignore-preflight-errors=Swap --ignore-preflight-errors=CRI  &&
+sudo /usr/bin/kubeadm alpha phase addon kube-dns
+
+.: Process exited with status 1
+================================================================================
+An error has occurred. Would you like to opt in to sending anonymized crash
+information to minikube to help prevent future errors?
+To opt out of these messages, run the command:
+	minikube config set WantReportErrorPrompt false
+================================================================================
+Please enter your response [Y/n]: 
+
+- SEEMS SUCCESS
+However, status check seemed ok:
+$ minikube status
+minikube: Running
+cluster: Running
+kubectl: Correctly Configured: pointing to minikube-vm at 192.168.99.100
+
+- ERROR - TIMEOUT
+$ minikube service list
+Get https://192.168.99.100:8443/api/v1/services: dial tcp 192.168.99.100:8443: i/o timeout
+Check that minikube is running and that you have specified the correct namespace (-n flag) if required.
+
+- TROUBLESHOOTING:
+- NEXT - DELETED AND DID A 'START' OF THE MINIKUBE TO SEE IF IT HELPS
+$ minikube delete
+$ minikube start
+
+- ssh into minkube vm
+$ minikube ssh
+                         _             _            
+            _         _ ( )           ( )           
+  ___ ___  (_)  ___  (_)| |/')  _   _ | |_      __  
+/' _ ` _ `\| |/' _ `\| || , <  ( ) ( )| '_`\  /'__`\
+| ( ) ( ) || || ( ) || || |\`\ | (_) || |_) )(  ___/
+(_) (_) (_)(_)(_) (_)(_)(_) (_)`\___/'(_,__/'`\____)
+
+$ hostname
+minikube
+
+$ id
+uid=1001(docker) gid=1001(docker) groups=1001(docker),10(wheel),1000(rkt),1019(rkt-admin),1020(vboxsf)
+
+This user docker may have password --> username: "docker", password: "tcuser"
+(according to https://stackoverflow.com/questions/38870277/how-do-i-ssh-into-the-vm-for-minikube)
+
+- check why 8443 is timing out
+
+8443 shows TIME_WAIT --> is that the problem
+
+(run netstat inside minkube vm after doing minkube ssh)
+
+$ netstat -an |grep 8443
+tcp        0      0 127.0.0.1:32776         127.0.0.1:8443          ESTABLISHED 
+tcp        0      0 192.168.99.101:45950    192.168.99.101:8443     TIME_WAIT   
+tcp        0      0 127.0.0.1:60692         127.0.0.1:8443          ESTABLISHED 
+tcp        0     86 127.0.0.1:60690         127.0.0.1:8443          ESTABLISHED 
+tcp        0      0 :::8443                 :::*                    LISTEN      
+tcp        0      0 ::ffff:127.0.0.1:8443   ::ffff:127.0.0.1:60690  ESTABLISHED 
+tcp        0      0 ::1:40068               ::1:8443                ESTABLISHED 
+tcp        0      0 ::1:8443                ::1:39990               ESTABLISHED 
+tcp        0      0 ::1:39990               ::1:8443                ESTABLISHED 
+tcp        0      0 ::ffff:192.168.99.101:8443 ::ffff:10.0.2.15:54946  ESTABLISHED 
+tcp        0      0 ::ffff:127.0.0.1:8443   ::ffff:127.0.0.1:32776  ESTABLISHED 
+tcp        0      0 ::1:8443                ::1:40068               ESTABLISHED 
+tcp        0      0 ::ffff:127.0.0.1:8443   ::ffff:127.0.0.1:60692  ESTABLISHED 
+tcp        0      0 ::ffff:192.168.99.101:8443 ::ffff:172.17.0.3:48200 ESTABLISHED 
+tcp        0      0 ::1:40000               ::1:8443                ESTABLISHED 
+tcp        0      0 ::1:8443                ::1:40000               ESTABLISHED 
+
+On host (MAC) the following command seemed to hang:
+$ kubectl get po --all-namespaces
+
+- quit vpn, stop minikube and restart
+https://neutrollized.blogspot.com/2018/01/unable-to-connect-to-server-dial-tcp.html
+$ minikube stop
+$ minikube start
+
+TRIED THIS: https://stackoverflow.com/questions/38664770/cannot-connect-to-minikube-on-macos
+--> This too did not help..
+FINALLY, A RESTART OF MAC HELPED
+
+After MAC restart - did the following:
+
+$ minikube version
+minikube version: v0.28.2
+$ minikube delete
+Deleting local Kubernetes cluster...
+Machine deleted.
+$ minikube start
+Starting local Kubernetes v1.10.0 cluster...
+Starting VM...
+Getting VM IP address...
+Moving files into cluster...
+Setting up certs...
+Connecting to cluster...
+Setting up kubeconfig...
+Starting cluster components...
+Kubectl is now configured to use the cluster.
+Loading cached images from config file.
+
+
+==== OLD NOTES
 Tutorial:
 https://kubernetes.io/docs/tutorials/kubernetes-basics/create-cluster/cluster-intro/
 
