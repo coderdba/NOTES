@@ -53,6 +53,31 @@ Connected.
 
 SQL> ALTER DISKGROUP RECOC1 DROP DISKS IN FAILGROUP ED01CELADM03 FORCE;
 
+----------------------------------------------------------------
+CHECK IF ASM HAS SUFFICIENT FREE SPACE FOR REBALANCE
+----------------------------------------------------------------
+
+select group_number, count(distinct failgroup) current_failgroups,  
+   sum(total_mb)/count(distinct failgroup) total_cell_space_to_rebalance, 
+   sum(free_mb) free_space_after_failure , 
+   case 
+ when sum(total_mb)/count(distinct failgroup) > sum(free_mb) then 'REBALANCE NOT POSSIBLE' 
+ else 
+ 'REBALANCE POSSIBLE' 
+    end output 
+from v$asm_disk where library= 'CELL' group by group_number  order by 1,2; 
+
+
+GROUP_NUMBER COUNT(DISTINCTFAILGROUP) TOTAL_CELL_SPACE_TO_REBALANCE 
+------------ ------------------------ ----------------------------- 
+FREE_SPACE_AFTER_FAILURE OUTPUT 
+------------------------ ------------------------------------------------- 
+
+           1                        2                       7520256 
+                12053120 OK: REBALANCE POSSIBLE 
+
+           2                        2                        700416 
+                 1108016 OK: REBALANCE POSSIBLE 
 
 --------------------------------------
 REBALANCE, RESILVER - LIST OPERATIONS
