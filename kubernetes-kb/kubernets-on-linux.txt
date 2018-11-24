@@ -265,6 +265,36 @@ Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
 192.168.11.0    0.0.0.0         255.255.255.0   U     107    0        0 enp0s8
 192.168.122.0   0.0.0.0         255.255.255.0   U     0      0        0 virbr0
 
+- FLANNELD SERVICE
+
+cat << EOF > /lib/systemd/system/flanneld.service
+[Unit]
+Description=Network fabric for containers
+Documentation=https://github.com/coreos/flannel
+After=network.target
+After=network-online.target
+Wants=network-online.target
+After=etcd.service
+Before=docker.service
+
+[Service]
+Type=notify
+Restart=always
+RestartSec=5
+ExecStart=/usr/local/bin/flanneld \\
+  -etcd-endpoints=http://192.168.11.10:4001,http://192.168.11.11:4001,http://192.168.11.12:4001 \\
+  -logtostderr=true \\
+  -ip-masq=true \\
+  -subnet-dir=/var/lib/flanneld/networks \\
+  -subnet-file=/var/lib/flanneld/subnet.env \
+  -iface=enp0s8 \
+  -public-ip=192.168.11.10 
+[Install]
+WantedBy=multi-user.target
+EOF
+
+
+
 ===================
 NODES
 ===================
