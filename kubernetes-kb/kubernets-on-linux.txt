@@ -266,7 +266,13 @@ Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
 192.168.122.0   0.0.0.0         255.255.255.0   U     0      0        0 virbr0
 
 - FLANNELD SERVICE
+NOTE: The following as in the site are deprecated
+  -logtostderr=true \\
+  -subnet-dir=/var/lib/flanneld/networks \\
 
+NOTE: it is -iface not -interface to specify default interface
+
+-- CREATE THE SERVICE CONFIG FILE
 cat << EOF > /lib/systemd/system/flanneld.service
 [Unit]
 Description=Network fabric for containers
@@ -283,9 +289,7 @@ Restart=always
 RestartSec=5
 ExecStart=/usr/local/bin/flanneld \\
   -etcd-endpoints=http://192.168.11.10:4001,http://192.168.11.11:4001,http://192.168.11.12:4001 \\
-  -logtostderr=true \\
   -ip-masq=true \\
-  -subnet-dir=/var/lib/flanneld/networks \\
   -subnet-file=/var/lib/flanneld/subnet.env \
   -iface=enp0s8 \
   -public-ip=192.168.11.10 
@@ -293,7 +297,9 @@ ExecStart=/usr/local/bin/flanneld \\
 WantedBy=multi-user.target
 EOF
 
-
+-- START THE SERVICE
+# service flanneld start
+# service flanneld status
 
 ===================
 NODES
