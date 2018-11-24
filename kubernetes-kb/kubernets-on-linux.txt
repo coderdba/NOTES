@@ -225,6 +225,26 @@ I1124 17:12:19.338024    8830 iptables.go:137] Deleting iptables rule: -d 100.64
 I1124 17:12:19.352248    8830 iptables.go:125] Adding iptables rule: -s 100.64.0.0/16 -j ACCEPT
 I1124 17:12:19.391676    8830 iptables.go:125] Adding iptables rule: -d 100.64.0.0/16 -j ACCEPT
 
+- VERIFY
+# cat subnet.env
+FLANNEL_NETWORK=100.64.0.0/16
+FLANNEL_SUBNET=100.64.53.1/24
+FLANNEL_MTU=1450
+FLANNEL_IPMASQ=false
+
+# ip -4 -d link show flannel.1
+7: flannel.1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1450 qdisc noqueue state UNKNOWN mode DEFAULT group default 
+    link/ether 32:13:b7:be:22:05 brd ff:ff:ff:ff:ff:ff promiscuity 0 
+    vxlan id 1 local 192.168.11.10 dev enp0s8 srcport 0 0 dstport 8472 nolearning ageing 300 noudpcsum noudp6zerocsumtx
+    noudp6zerocsumrx addrgenmode eui64 numtxqueues 1 numrxqueues 1 
+
+# ip addr list
+7: flannel.1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1450 qdisc noqueue state UNKNOWN group default 
+    link/ether 32:13:b7:be:22:05 brd ff:ff:ff:ff:ff:ff
+    inet 100.64.53.0/32 scope global flannel.1
+       valid_lft forever preferred_lft forever
+    inet6 fe80::3013:b7ff:febe:2205/64 scope link 
+       valid_lft forever preferred_lft forever
 
 ===================
 NODES
