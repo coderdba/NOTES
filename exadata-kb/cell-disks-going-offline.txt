@@ -2,9 +2,105 @@ https://oracleracdba1.wordpress.com/2013/08/14/steps-to-shut-down-or-reboot-an-e
 (this is of flash disks) http://www.oracle.com/technetwork/articles/database/exadata-write-back-flash-2179184.html
 
 
+================================
 FOR CELL DISKS (not flash disks)
+================================
+
+--------------------------------------
+FIND IF THE DISKS ARE OFFLINE
+--------------------------------------
+ASMCMD> lsdg 
+
+State    Type    Rebal  Sector  Block       AU  Total_MB   Free_MB  Req_mir_free_MB  Usable_file_MB  Offline_disks  Voting_files  Name 
+
+MOUNTED  HIGH    N         512   4096  4194304  15040768  12053120          1253376         3599914             12             Y  DATA1/ 
+
+MOUNTED  NORMAL  N         512   4096  4194304   1400832   1108016            58368          524824             12             N  RECO1/
+
+
+- LIST OFFLINE DISKS IN ASM
+select group_number,failgroup,mode_status,count(distinct name),sum(total_mb) 
+from v$asm_disk 
+group by group_number,failgroup,mode_status; 
+
+GROUP_NUMBER FAILGROUP                      MODE_ST COUNT(DISTINCTNAME) SUM(TOTAL_MB) 
+------------ ------------------------------ ------- ------------------- ------------- 
+           1 EXD01CELADM01                   ONLINE                   12       7520256 
+           1 EXD01CELADM02                   ONLINE                   12       7520256 
+           1 EXD01CELADM03                   OFFLINE                  12       7520256 
+           1 EXD01ADM01VM01                  ONLINE                    1           128 
+           1 EXD01ADM02VM01                  ONLINE                    1           128 
+           2 EXD01CELADM01                   ONLINE                   12        700416 
+           2 EXD01CELADM02                   ONLINE                   12        700416 
+           2 EXD01CELADM03                   OFFLINE                  12        700416
+
+- IN ASM ALERT LOG CHECK MESSAGES
+86400 - is the disk_repair_time 24 hrs
+
+WARNING: Disk 30 (RECO1_CD_06_EXD01CELADM0) in group 2 will be dropped in: (86400) secs on ASM inst 1 
+WARNING: Started Drop Disk Timeout for Disk 31 (RECO1_CD_07_EXD01CELADM01) in group 2 with a value 86400 
+WARNING: Disk 31 (RECO1_CD_07_EXD01CELADM0) in group 2 will be dropped in: (86400) secs on ASM inst 1 
+WARNING: Started Drop Disk Timeout for Disk 32 (RECO1_CD_08_EXD01CELADM01) in group 2 with a value 86400 
+
+--------------------------------
+DROP OFFLINE DISK FORCE
+--------------------------------
+ASM will re-add the disks automatically (?? TBD verify this statement)
+
 SQL> connect / as sysasm 
 
 Connected. 
 
 SQL> ALTER DISKGROUP RECOC1 DROP DISKS IN FAILGROUP ED01CELADM03 FORCE;
+
+
+--------------------------------------
+REBALANCE, RESILVER - LIST OPERATIONS
+--------------------------------------
+SQL>  select * from gv$asm_operation; 
+
+ 
+   INST_ID GROUP_NUMBER OPERA PASS      STAT      POWER     ACTUAL      SOFAR   EST_WORK   EST_RATE EST_MINUTES ERROR_CODE                                  CON_ID 
+
+---------- ------------ ----- --------- ---- ---------- ---------- ---------- ---------- ---------- ----------- -------------------------------------------- ---------- 
+
+         2            1 REBAL RESYNC    DONE          8                                                                 0 
+
+         2            1 REBAL RESILVER  DONE          8                                                                 0 
+
+         2            1 REBAL REBALANCE WAIT          8                                                                 0 
+
+         2            1 REBAL COMPACT   WAIT          8                                                                 0 
+
+         1            1 REBAL RESYNC    DONE          8          8          0          0          0           0         0 
+
+         1            1 REBAL RESILVER  DONE          8          8          0          0          0           0         0 
+
+         1            1 REBAL REBALANCE RUN           8          8       2154      70535      22906           2         0 
+
+         1            1 REBAL COMPACT   WAIT          8          8          0          0          0           0         0
+
+
+--------------------------------
+RECHECK GRIDDISKS AFTER FIX
+--------------------------------
+Griddisks should be in active/ONLINE state : 
+
+# cellcli -e list griddisk attributes name, status, asmmodestatus
+
+DATA1_CD_00_exd01celadm01       active  ONLINE 
+DATA1_CD_01_exd01celadm01       active  ONLINE
+....
+....
+....
+
+----------------------------------------------------------------
+ASM LOGS SHOULD SHOW DISKS BEING ONLINE
+----------------------------------------------------------------
+ASM should report that the disks for all diskgroup are now back ONLINE 
+
+
+NOTE: disk validation pending for 12 disks in group 2/0x3343df(RECO1) 
+NOTE: Assigning number (2,43) to disk (o/192.168.10.15/RECO1_CD_08_exd01celadm01) 
+NOTE: Assigning number (2,44) to disk (o/192.168.10.15/RECO1_CD_11_exd01celadm01) 
+
