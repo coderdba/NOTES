@@ -186,6 +186,15 @@ FLANNEL INSTALL
 -------------------
 Get the latest/recommended Flannel release from https://github.com/coreos/flannel/releases
 
+- NETWORK CONFIG
+https://icicimov.github.io/blog/kubernetes/Kubernetes-cluster-step-by-step-Part4/
+NOTE: Without this, you will get this error when flanneld is run:  
+         E1124 17:05:27.338513  8341 main.go:349] Couldn't fetch network config: 100: Key not found (/coreos.com) 
+         
+# etcdctl set /coreos.com/network/config '{ "Network": "100.64.0.0/16", "SubnetLen": 24, "Backend": {"Type": "vxlan"} }'
+{ "Network": "100.64.0.0/16", "SubnetLen": 24, "Backend": {"Type": "vxlan"} }
+
+
 - INSTALL
 # mkdir /opt/flannel
 # cd /opt/flannel
@@ -195,6 +204,27 @@ Get the latest/recommended Flannel release from https://github.com/coreos/flanne
 - INITIALIZE
 # flanneld
 TBD: This takes the NAT interface as default. To make it use a different one: https://stackoverflow.com/questions/47845739/configuring-flannel-to-use-a-non-default-interface-in-kubernetes
+https://github.com/coreos/flannel/issues/426
+--> WITH DIFFERENT INTERFACE
+# flanneld --iface=enp0s8
+I1124 17:12:19.135304    8830 main.go:488] Using interface with name enp0s8 and address 192.168.11.10
+I1124 17:12:19.135370    8830 main.go:505] Defaulting external address to interface address (192.168.11.10)
+I1124 17:12:19.135431    8830 main.go:235] Created subnet manager: Etcd Local Manager with Previous Subnet: None
+I1124 17:12:19.135436    8830 main.go:238] Installing signal handlers
+I1124 17:12:19.138745    8830 main.go:353] Found network config - Backend type: vxlan
+I1124 17:12:19.138781    8830 vxlan.go:120] VXLAN config: VNI=1 Port=0 GBP=false DirectRouting=false
+I1124 17:12:19.190239    8830 local_manager.go:234] Picking subnet in range 100.64.1.0 ... 100.64.255.0
+I1124 17:12:19.191379    8830 local_manager.go:220] Allocated lease (100.64.53.0/24) to current node (192.168.11.10) 
+I1124 17:12:19.191886    8830 main.go:300] Wrote subnet file to /run/flannel/subnet.env
+I1124 17:12:19.191895    8830 main.go:304] Running backend.
+I1124 17:12:19.229876    8830 vxlan_network.go:60] watching for new subnet leases
+I1124 17:12:19.231694    8830 main.go:396] Waiting for 22h59m59.958772932s to renew lease
+I1124 17:12:19.302950    8830 iptables.go:115] Some iptables rules are missing; deleting and recreating rules
+I1124 17:12:19.302971    8830 iptables.go:137] Deleting iptables rule: -s 100.64.0.0/16 -j ACCEPT
+I1124 17:12:19.338024    8830 iptables.go:137] Deleting iptables rule: -d 100.64.0.0/16 -j ACCEPT
+I1124 17:12:19.352248    8830 iptables.go:125] Adding iptables rule: -s 100.64.0.0/16 -j ACCEPT
+I1124 17:12:19.391676    8830 iptables.go:125] Adding iptables rule: -d 100.64.0.0/16 -j ACCEPT
+
 
 ===================
 NODES
