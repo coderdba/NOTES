@@ -131,6 +131,10 @@ https://icicimov.github.io/blog/kubernetes/Kubernetes-cluster-step-by-step-Part3
 # useradd -c "Etcd key-value store user" -d /var/lib/etcd -s /bin/false -g etcd -u 1501 etcd
 # chown -R etcd:etcd /var/lib/etcd
 
+# cd /usr/local/src
+# curl -ksL 'https://github.com/coreos/etcd/releases/download/v3.3.0/etcd-v3.3.0-linux-amd64.tar.gz' | tar -xzvf -
+# cp etcd-v3.3.0-linux-amd64/etcd* /usr/local/bin
+
 - CONFIG
 Create the service on each node (master and nodes).
 Note: 192.168.11.10 is the IP of the machine (and initial cluster has other machines that host etcd as a cluster)
@@ -163,11 +167,17 @@ LimitNOFILE=40000
 WantedBy=multi-user.target
 EOF
 
-- START THE ETCD SERVICE
+- ETCD SERVICE SETUP
 # systemctl daemon-reload
 # systemctl enable etcd
 # systemctl start etcd.service
 # systemctl status -l etcd.service
+
+- ETCD CLUSTER STATUS VERIFY
+[root@kubemaster ~]# etcdctl cluster-health
+member cefbcaac4f708449 is healthy: got healthy result from http://192.168.11.10:2379
+cluster is healthy
+
 
 ===================
 NODES
