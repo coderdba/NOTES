@@ -42,16 +42,6 @@ WARNING: Started Drop Disk Timeout for Disk 31 (RECO1_CD_07_EXD01CELADM01) in gr
 WARNING: Disk 31 (RECO1_CD_07_EXD01CELADM0) in group 2 will be dropped in: (86400) secs on ASM inst 1 
 WARNING: Started Drop Disk Timeout for Disk 32 (RECO1_CD_08_EXD01CELADM01) in group 2 with a value 86400 
 
---------------------------------
-DROP OFFLINE DISK FORCE
---------------------------------
-ASM will re-add the disks automatically (?? TBD verify this statement)
-
-SQL> connect / as sysasm 
-
-Connected. 
-
-SQL> ALTER DISKGROUP RECOC1 DROP DISKS IN FAILGROUP ED01CELADM03 FORCE;
 
 ----------------------------------------------------------------
 CHECK IF ASM HAS SUFFICIENT FREE SPACE FOR REBALANCE
@@ -78,12 +68,46 @@ FREE_SPACE_AFTER_FAILURE OUTPUT
 
            2                        2                        700416 
                  1108016 OK: REBALANCE POSSIBLE 
+                 
+- CHECK USING LSDG
+Req_mir_free_MB is the free space required to restore redundancy after 1 disk (12.1 and before) or 1 cell (12.2+) failure.
+Free_MB should be greater than Req_mir_free_MB to do rebalance
+
+--> If space is sufficient do the rebalance - do normal redundancy ones first as high redundancy DG's can be still stable
+--> If space is not sufficient, rebalance will error/hang with ORA-15041 -- which will clear when disk/cell restores
+
+ASMCMD> lsdg 
+
+State    Type    Rebal  Sector  Block       AU  Total_MB   Free_MB  Req_mir_free_MB  Usable_file_MB  Offline_disks  Voting_files  Name 
+
+MOUNTED  HIGH    N         512   4096  4194304  22561024  18079612          1253376         5608745              0             Y  DATAC1/ 
+
+MOUNTED  NORMAL  N         512   4096  4194304   2101248   1661908            58368          801770              0             N  RECOC1/
+
 
 --------------------------------------
 REBALANCE, RESILVER - LIST OPERATIONS
 --------------------------------------
-SQL>  select * from gv$asm_operation; 
 
+- ESTIMATE REBALANCE TIME REQUIRED
+--> See the appendix on that topic
+
+
+- DROP OFFLINE DISK FORCE
+
+ASM will re-add the disks automatically (?? TBD verify this statement)
+
+SQL> connect / as sysasm 
+
+Connected. 
+
+SQL> ALTER DISKGROUP RECOC1 DROP DISKS IN FAILGROUP ED01CELADM03 FORCE;
+
+- REBALANCE
+Rebalance starts automatically upon dropping disks
+
+- MONITOR PROGRESS
+SQL>  select * from gv$asm_operation; 
  
    INST_ID GROUP_NUMBER OPERA PASS      STAT      POWER     ACTUAL      SOFAR   EST_WORK   EST_RATE EST_MINUTES ERROR_CODE                                  CON_ID 
 
@@ -129,3 +153,150 @@ NOTE: disk validation pending for 12 disks in group 2/0x3343df(RECO1)
 NOTE: Assigning number (2,43) to disk (o/192.168.10.15/RECO1_CD_08_exd01celadm01) 
 NOTE: Assigning number (2,44) to disk (o/192.168.10.15/RECO1_CD_11_exd01celadm01) 
 
+
+=================================================
+APPENDIX: ESTIMATE REBALANCE TIME
+=================================================
+
+set serveroutput on 
+
+declare 
+
+diskspace number; 
+
+cellspace number; 
+
+disk_rebal_time number; 
+
+cell_rebal_time number; 
+
+default_power_limit number; 
+
+max_rate_diff_cell number; 
+
+max_rate_diff_disk number; 
+
+failgroup_name varchar2(30); 
+
+diskgroup_name varchar2(30); 
+
+begin 
+
+dbms_output.put_line('---------------------------------------------------------------'); 
+
+dbms_output.put_line('Estimates are provided for both the current default power '); 
+
+dbms_output.put_line('(asm_power_limit) and the recommended DBM max of 32'); 
+
+dbms_output.put_line('The current recommended default power limit for a DBM is 4'); 
+
+dbms_output.put_line(chr(10)); 
+
+dbms_output.put_line('Note these estimates are for a DBM with High Performance drives'); 
+
+dbms_output.put_line('and do not include the compaction phase of rebalance. The '); 
+
+dbms_output.put_line('compaction phase is not required for redundancy restoration'); 
+
+dbms_output.put_line('---------------------------------------------------------------'); 
+
+select value into default_power_limit from v$parameter where name='asm_power_limit'; 
+
+max_rate_diff_cell:=32/default_power_limit; 
+
+max_rate_diff_disk:=16/default_power_limit; 
+
+for dg in (select group_number from v$asm_Diskgroup where group_number>0 and state='MOUNTED') loop 
+
+select failgroup into failgroup_name from v$asm_disk where group_number=dg.group_number and rownum=1; 
+
+select name into diskgroup_name from v$asm_diskgroup where group_number=dg.group_number; 
+
+select round(sum(total_mb-free_mb)/1024,0) into diskspace from v$asm_disk where disk_number=1 and group_number=dg.group_number; 
+
+select round(sum(total_mb-free_mb)/1024,0) into cellspace from v$asm_disk where failgroup=failgroup_name and group_number=dg.group_number; 
+
+disk_rebal_time:=round((diskspace/280)*60,0); 
+
+cell_rebal_time:=round((cellspace/1024)*60,0); 
+
+dbms_output.put_line(chr(10)); 
+
+dbms_output.put_line('****************************************************************'); 
+
+dbms_output.put_line('Rough time estimates for rebalance of diskgroup '||diskgroup_name||':'); 
+
+dbms_output.put_line('DISK based rebalance at the default power of '||default_power_limit||': '||disk_rebal_time*max_rate_diff_disk||' minutes'); 
+
+dbms_output.put_line('CELL based rebalance at the default power of '||default_power_limit||': '||cell_rebal_time*max_rate_diff_cell||' minutes'); 
+
+dbms_output.put_line('DISK based rebalance at the maximum recommended power of 32: '||disk_rebal_time||' minutes'); 
+
+dbms_output.put_line('CELL based rebalance at the maximum recommended power of 32: '||cell_rebal_time||' minutes'); 
+
+dbms_output.put_line('****************************************************************'); 
+
+end loop; 
+
+end; 
+
+/ 
+
+Sample output : 
+
+provided for both the current default power 
+
+(asm_power_limit) and the recommended DBM max of 32 
+
+The current recommended default power limit for a DBM is 4 
+
+ 
+
+ 
+
+Note these estimates are for a DBM with High Performance drives 
+
+and do not include the compaction phase of rebalance. The 
+
+compaction phase is not required for redundancy restoration 
+
+--------------------------------------------------------------- 
+
+ 
+
+ 
+
+**************************************************************** 
+
+Rough time estimates for rebalance of diskgroup DATAC1: 
+
+DISK based rebalance at the default power of 8: 52 minutes 
+
+CELL based rebalance at the default power of 8: 340 minutes 
+
+DISK based rebalance at the maximum recommended power of 32: 26 minutes 
+
+CELL based rebalance at the maximum recommended power of 32: 85 minutes 
+
+**************************************************************** 
+
+ 
+
+ 
+
+**************************************************************** 
+
+Rough time estimates for rebalance of diskgroup RECOC1: 
+
+DISK based rebalance at the default power of 8: 6 minutes 
+
+CELL based rebalance at the default power of 8: 32 minutes 
+
+DISK based rebalance at the maximum recommended power of 32: 3 minutes 
+
+CELL based rebalance at the maximum recommended power of 32: 8 minutes 
+
+**************************************************************** 
+
+
+PL/SQL procedure successfully completed. 
