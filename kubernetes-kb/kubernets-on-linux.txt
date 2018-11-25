@@ -81,8 +81,8 @@ HOSTNAMES, IP ADDRESSES
 
 Hostnames:
 Master - kubemaster
-    inet 10.10.11.10/24 brd 10.10.11.255 scope global noprefixroute enp0s8
-    inet 192.168.11.10/24 brd 192.168.11.255 scope global noprefixroute enp0s9
+    inet 192.168.11.10/24 brd 192.168.11.255 scope global noprefixroute enp0s8 --> use this for ETCD
+    inet 192.168.12.10/24 brd 192.168.12.255 scope global noprefixroute enp0s9
 
 Node1 - kubenode11 (1 for site1, 1 for node1)
 Node2 - kubenode12 (1 for site1, 2 for node2)
@@ -230,7 +230,8 @@ I1124 17:12:19.352248    8830 iptables.go:125] Adding iptables rule: -s 100.64.0
 I1124 17:12:19.391676    8830 iptables.go:125] Adding iptables rule: -d 100.64.0.0/16 -j ACCEPT
 
 - VERIFY
-# cat subnet.env
+NOTE: FLANNEL_NETWORK is the one we defined in the etcdctl command run before
+# cat /run/flannel/subnet.env
 FLANNEL_NETWORK=100.64.0.0/16
 FLANNEL_SUBNET=100.64.53.1/24
 FLANNEL_MTU=1450
@@ -284,6 +285,8 @@ NOTE: The following as in the site are deprecated
 NOTE: it is -iface not -interface to specify default interface
 
 -- CREATE THE SERVICE CONFIG FILE
+Copy /run/flannel/subnet.env to /var/lib/flanneld/subnet.env (as the latter is referenced in the service config file)
+
 cat << EOF > /lib/systemd/system/flanneld.service
 [Unit]
 Description=Network fabric for containers
