@@ -458,18 +458,41 @@ ExecStart=/usr/bin/dockerd --bip=100.64.53.1/24 --mtu=1450 --iptables=false -H u
 # systemctl daemon-reload
 # service docker restart
 
-- VERIFY
+- VERIFY ROUTES
 Note that the route list shows the new Flannel IP than original docker default IPs
 Original: 172.17.0.0/16 dev docker0 proto kernel scope link src 172.17.0.1
 New with Flannel: 100.64.53.0/24 dev docker0 proto kernel scope link src 100.64.53.1 
 
 # ip route
+TBD: This still does not show Flannel - though it shows docker0 with new IP based on Flannel
+
 default via 10.0.2.2 dev enp0s3 proto dhcp metric 100 
 10.0.2.0/24 dev enp0s3 proto kernel scope link src 10.0.2.15 metric 100 
 100.64.53.0/24 dev docker0 proto kernel scope link src 100.64.53.1 
 192.168.11.0/24 dev enp0s8 proto kernel scope link src 192.168.11.10 metric 101 
 192.168.12.0/24 dev enp0s9 proto kernel scope link src 192.168.12.10 metric 102 
 192.168.122.0/24 dev virbr0 proto kernel scope link src 192.168.122.1 
+
+TBD - this still does not show flanel0
+# route -n
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+0.0.0.0         10.0.2.2        0.0.0.0         UG    100    0        0 enp0s3
+10.0.2.0        0.0.0.0         255.255.255.0   U     100    0        0 enp0s3
+100.64.53.0     0.0.0.0         255.255.255.0   U     0      0        0 docker0
+192.168.11.0    0.0.0.0         255.255.255.0   U     101    0        0 enp0s8
+192.168.12.0    0.0.0.0         255.255.255.0   U     102    0        0 enp0s9
+192.168.122.0   0.0.0.0         255.255.255.0   U     0      0        0 virbr0
+
+- VERIFY IP ADDRESSES
+
+# ip -4 addr show
+7: docker0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1450 qdisc noqueue state UP group default 
+    inet 100.64.53.1/24 brd 100.64.53.255 scope global docker0
+       valid_lft forever preferred_lft forever
+8: flannel.1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1450 qdisc noqueue state UNKNOWN group default 
+    inet 100.64.53.0/32 scope global flannel.1
+       valid_lft forever preferred_lft forever
 
 - VERIFY CONTAINER IP's
 Create a container newly or restart an existing container (say, redis1 based on redis image)
@@ -478,6 +501,8 @@ Create a container newly or restart an existing container (say, redis1 based on 
                     "IPAddress": "100.64.53.2"
 
 (this, in the past without flannel would be "IPAddress": "172.17.0.2"
+
+
 
 ===================
 NODES
