@@ -432,6 +432,38 @@ default via 10.0.2.2 dev enp0s3 proto dhcp metric 100
 192.168.12.0/24 dev enp0s9 proto kernel scope link src 192.168.12.10 metric 102 
 192.168.122.0/24 dev virbr0 proto kernel scope link src 192.168.122.1 
 
+======================================
+DOCKER INTEGRATION WITH FLANNEL
+======================================
+
+NOTE: 100.64.53.1/24 is the FLANNEL_SUBNET, 1450 is FLANNEL_MTU from flannel env file.
+
+- EDIT SERVICE CONFIG FILE
+In docker service config file: /usr/lib/systemd/system/docker.service
+# Original After
+#After=network-online.target firewalld.service
+# After - with etcd and flanneld
+After=network-online.target firewalld.service etcd.service flanneld.service
+
+# original ExecStart
+#ExecStart=/usr/bin/dockerd -H unix://
+# modified ExecStart to interface with Flannel
+ExecStart=/usr/bin/dockerd --bip=100.64.53.1/24 --mtu=1450 --iptables=false -H unix://
+
+- RESTART DOCKER
+# systemctl daemon-reload
+# service docker restart
+
+- VERIFY
+# ip route
+default via 10.0.2.2 dev enp0s3 proto dhcp metric 100 
+10.0.2.0/24 dev enp0s3 proto kernel scope link src 10.0.2.15 metric 100 
+100.64.53.0/24 dev docker0 proto kernel scope link src 100.64.53.1 
+192.168.11.0/24 dev enp0s8 proto kernel scope link src 192.168.11.10 metric 101 
+192.168.12.0/24 dev enp0s9 proto kernel scope link src 192.168.12.10 metric 102 
+192.168.122.0/24 dev virbr0 proto kernel scope link src 192.168.122.1 
+
+
 ===================
 NODES
 ===================
