@@ -249,6 +249,17 @@ FLANNEL_IPMASQ=false
        valid_lft forever preferred_lft forever
     inet6 fe80::3013:b7ff:febe:2205/64 scope link 
        valid_lft forever preferred_lft forever
+  
+# ifconfig -a
+flannel.1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1450
+        inet 100.64.53.0  netmask 255.255.255.255  broadcast 0.0.0.0
+        inet6 fe80::3013:b7ff:febe:2205  prefixlen 64  scopeid 0x20<link>
+        ether 32:13:b7:be:22:05  txqueuelen 0  (Ethernet)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 40 overruns 0  carrier 0  collisions 0
+
 
 # bridge fdb show dev flannel.1
 --> this did not give any result - TBD 
@@ -319,19 +330,33 @@ From this: https://www.cyberciti.biz/faq/install-use-setup-docker-on-rhel7-cento
 
 NOTE:  The systemd service config file is /usr/lib/systemd/system/docker.service
 
+- INSTALL
 # yum remove docker docker-common docker-selinux docker-engine
 # yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
 # yum install docker-ce
 
+- START SERVICE
 # systemctl enable docker.service 
 # systemctl start docker.service ## <-- Start docker ##
 # systemctl stop docker.service ## <-- Stop docker ##
 # systemctl restart docker.service ## <-- Restart docker ##
 # systemctl status docker.service ## <-- Get status of docker ##
 
-# ip a
-# ip a list docker0
+- VERIFY
+# ip addr list docker0
+8: docker0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default 
+    link/ether 02:42:29:6a:88:33 brd ff:ff:ff:ff:ff:ff
+    inet 172.17.0.1/16 brd 172.17.255.255 scope global docker0
+       valid_lft forever preferred_lft forever
 
+# ifconfig -a
+docker0: flags=4099<UP,BROADCAST,MULTICAST>  mtu 1500
+        inet 172.17.0.1  netmask 255.255.0.0  broadcast 172.17.255.255
+        ether 02:42:29:6a:88:33  txqueuelen 0  (Ethernet)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
 
 ===========================
 CONTAINER-SELINUX INSTALL
