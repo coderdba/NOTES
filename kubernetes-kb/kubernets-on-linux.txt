@@ -193,7 +193,31 @@ EOF
 # systemctl daemon-reload
 # systemctl enable etcd
 # systemctl start etcd.service
+
 # systemctl status -l etcd.service
+- OR - 
+# service etcd status -l
+Redirecting to /bin/systemctl status  -l etcd.service
+● etcd.service - etcd key-value store
+   Loaded: loaded (/usr/lib/systemd/system/etcd.service; enabled; vendor preset: disabled)
+   Active: active (running) since Sun 2018-11-25 12:00:02 IST; 12min ago
+     Docs: https://github.com/coreos/etcd
+ Main PID: 8143 (etcd)
+   Memory: 18.0M
+   CGroup: /system.slice/etcd.service
+           └─8143 /usr/local/bin/etcd --name etcd0 --data-dir /var/lib/etcd --initial-advertise-peer-urls http://192.168.11.10:2380 --listen-peer-urls http://192.168.11.10:2380 --listen-client-urls http://192.168.11.10:2379,http://127.0.0.1:2379,http://192.168.11.10:4001 --advertise-client-urls http://192.168.11.10:2379,http://192.168.11.10:4001 --initial-cluster-token etcd-cluster-1 --initial-cluster etcd0=http://192.168.11.10:2380,etcd1=http://192.168.11.11:2380,etcd2=http://192.168.11.12:2380 --initial-cluster-state new --heartbeat-interval 1000 --election-timeout 5000
+
+Nov 25 12:00:02 kubemaster etcd[8143]: cefbcaac4f708449 became leader at term 3
+Nov 25 12:00:02 kubemaster etcd[8143]: raft.node: cefbcaac4f708449 elected leader cefbcaac4f708449 at term 3
+Nov 25 12:00:02 kubemaster etcd[8143]: published {Name:etcd0 ClientURLs:[http://192.168.11.10:2379 http://192.168.11.10:4001]} to cluster 1728201daf913f68
+Nov 25 12:00:02 kubemaster etcd[8143]: ready to serve client requests
+Nov 25 12:00:02 kubemaster systemd[1]: Started etcd key-value store.
+Nov 25 12:00:02 kubemaster etcd[8143]: serving insecure client requests on 192.168.11.10:2379, this is strongly discouraged!
+Nov 25 12:00:02 kubemaster etcd[8143]: ready to serve client requests
+Nov 25 12:00:02 kubemaster etcd[8143]: serving insecure client requests on 127.0.0.1:2379, this is strongly discouraged!
+Nov 25 12:00:02 kubemaster etcd[8143]: ready to serve client requests
+Nov 25 12:00:02 kubemaster etcd[8143]: serving insecure client requests on 192.168.11.10:4001, this is strongly discouraged!
+
 
 - ETCD CLUSTER STATUS VERIFY
 [root@kubemaster ~]# etcdctl cluster-health
@@ -329,14 +353,34 @@ EOF
 
 -- START THE SERVICE
 # service flanneld start
-# service flanneld status
+
+# service flanneld status -l
+Redirecting to /bin/systemctl status  -l flanneld.service
+● flanneld.service - Network fabric for containers
+   Loaded: loaded (/usr/lib/systemd/system/flanneld.service; enabled; vendor preset: disabled)
+   Active: active (running) since Sun 2018-11-25 12:10:54 IST; 2min 42s ago
+     Docs: https://github.com/coreos/flannel
+ Main PID: 9003 (flanneld)
+   Memory: 7.6M
+   CGroup: /system.slice/flanneld.service
+           └─9003 /usr/local/bin/flanneld -etcd-endpoints=http://192.168.11.10:4001,http://192.168.11.11:4001,http://192.168.11.12:4001 -ip-masq=true -subnet-file=/var/lib/flanneld/subnet.env -iface=enp0s8 -public-ip=192.168.11.10
+
+Nov 25 12:10:54 kubemaster flanneld[9003]: I1125 12:10:54.867044    9003 iptables.go:115] Some iptables rules are missing; deleting and recreating rules
+Nov 25 12:10:54 kubemaster flanneld[9003]: I1125 12:10:54.867056    9003 iptables.go:137] Deleting iptables rule: -s 100.64.0.0/16 -d 100.64.0.0/16 -j RETURN
+Nov 25 12:10:54 kubemaster flanneld[9003]: I1125 12:10:54.869049    9003 iptables.go:137] Deleting iptables rule: -s 100.64.0.0/16 ! -d 224.0.0.0/4 -j MASQUERADE
+Nov 25 12:10:54 kubemaster flanneld[9003]: I1125 12:10:54.870582    9003 iptables.go:137] Deleting iptables rule: ! -s 100.64.0.0/16 -d 100.64.53.0/24 -j RETURN
+Nov 25 12:10:54 kubemaster flanneld[9003]: I1125 12:10:54.871724    9003 iptables.go:137] Deleting iptables rule: ! -s 100.64.0.0/16 -d 100.64.0.0/16 -j MASQUERADE
+Nov 25 12:10:54 kubemaster flanneld[9003]: I1125 12:10:54.872806    9003 iptables.go:125] Adding iptables rule: -s 100.64.0.0/16 -d 100.64.0.0/16 -j RETURN
+Nov 25 12:10:54 kubemaster flanneld[9003]: I1125 12:10:54.875050    9003 iptables.go:125] Adding iptables rule: -s 100.64.0.0/16 ! -d 224.0.0.0/4 -j MASQUERADE
+Nov 25 12:10:54 kubemaster flanneld[9003]: I1125 12:10:54.876666    9003 iptables.go:125] Adding iptables rule: ! -s 100.64.0.0/16 -d 100.64.53.0/24 -j RETURN
+Nov 25 12:10:54 kubemaster flanneld[9003]: I1125 12:10:54.878530    9003 iptables.go:125] Adding iptables rule: ! -s 100.64.0.0/16 -d 100.64.0.0/16 -j MASQUERADE
+Nov 25 12:10:54 kubemaster flanneld[9003]: I1125 12:10:54.880269    9003 main.go:396] Waiting for 22h59m59.955101176s to renew lease
 
 ===================
 NODES
 ===================
 For now, install stuff as done for master
 TBD - what is that node tar for and how to use it
-
 
 ===========================
 APPENDIX - DOCKER INSTALL
