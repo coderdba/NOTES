@@ -87,6 +87,12 @@ This will install the following in /usr/bin
 -rwxr-xr-x.   1 root root     37171264 Oct 27 07:40 kubeadm
 -rwxr-xr-x.   1 root root       389560 Aug  2  2017 socat
 
+- ALSO, IT WILL CREATE SYSTEMD FILES FOR KUBELET
+# cd /etc/systemd/system/
+# ls -ld kub*
+-rw-r--r--. 1 root root 222 Oct 27 07:40 kubelet.service
+drwxr-xr-x. 2 root root  29 Nov 26 11:05 kubelet.service.d
+
 -- SCREEN OUTPUT
 [root@kubemaster0 kubeinstall]# yum install -y kubelet kubeadm kubectl
 Loaded plugins: langpacks, ulninfo
@@ -181,5 +187,15 @@ Dependency Installed:
 Complete!
 
 ---------------------------------------
+CGROUP CHANGES
 ---------------------------------------
+Now we need to ensure that both Docker-ce and Kubernetes belong to the same control group (cgroup). 
+By default, Docker should already belong to cgroupfs (you can check this with the command docker info | grep -i cgroup). 
+
+To add Kubernetes to this, issue the command: (or, edit /etc/systemd/system/kubelet.service.d/10-kubeadm.conf)
+# sed -i 's/cgroup-driver=systemd/cgroup-driver=cgroupfs/g' /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+
+Restart the systemd daemon and the kubelet service with the commands:
+# systemctl daemon-reload
+# systemctl restart kubelet
 
