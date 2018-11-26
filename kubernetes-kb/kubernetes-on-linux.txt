@@ -325,3 +325,59 @@ Nov 26 12:24:35 kubemaster0 systemd: Unit kubelet.service entered failed state.
 Nov 26 12:24:35 kubemaster0 systemd: kubelet.service failed.
 Nov 26 12:24:42 kubemaster0 systemd: Stopped kubelet: The Kubernetes Node Agent.
 Nov 26 12:24:42 kubemaster0 systemd: Configuration file /etc/systemd/system/kubelet.service.d/10-kubeadm.conf is marked executable. Please remove executable permission bits. Proceeding anyway.
+
+
+-- Try first doing kubeadm init and then kubelet start
+(per https://linuxthegreat.wordpress.com/2017/10/17/installing-kubernetes-1-8-1-on-centos-7/)
+NOTE: To avoid this first list of errors, remove the conf files from /etc/kubernetes
+      ALSO, run with flag --ignore-preflight-errors=all
+      
+First list of errors: 
+# kubeadm init --apiserver-advertise-address=192.168.1.99 --pod-network-cidr=192.168.1.0/16
+[root@kubemaster0 ~]# kubeadm init --apiserver-advertise-address=192.168.1.99 --pod-network-cidr=192.168.1.0/16
+[init] using Kubernetes version: v1.12.2
+[preflight] running pre-flight checks
+	[WARNING Service-Docker]: docker service is not enabled, please run 'systemctl enable docker.service'
+[preflight] The system verification failed. Printing the output from the verification:
+KERNEL_VERSION: 4.1.12-112.16.4.el7uek.x86_64
+CONFIG_NAMESPACES: enabled
+CONFIG_NET_NS: enabled
+CONFIG_PID_NS: enabled
+CONFIG_IPC_NS: enabled
+CONFIG_UTS_NS: enabled
+CONFIG_CGROUPS: enabled
+CONFIG_CGROUP_CPUACCT: enabled
+CONFIG_CGROUP_DEVICE: enabled
+CONFIG_CGROUP_FREEZER: enabled
+CONFIG_CGROUP_SCHED: enabled
+CONFIG_CPUSETS: enabled
+CONFIG_MEMCG: enabled
+CONFIG_INET: enabled
+CONFIG_EXT4_FS: enabled (as module)
+CONFIG_PROC_FS: enabled
+CONFIG_NETFILTER_XT_TARGET_REDIRECT: enabled (as module)
+CONFIG_NETFILTER_XT_MATCH_COMMENT: enabled (as module)
+CONFIG_OVERLAY_FS: enabled (as module)
+CONFIG_AUFS_FS: not set - Required for aufs.
+CONFIG_BLK_DEV_DM: enabled (as module)
+OS: Linux
+CGROUPS_CPU: enabled
+CGROUPS_CPUACCT: enabled
+CGROUPS_CPUSET: enabled
+CGROUPS_DEVICES: enabled
+CGROUPS_FREEZER: enabled
+CGROUPS_MEMORY: enabled
+	[WARNING Service-Kubelet]: kubelet service is not enabled, please run 'systemctl enable kubelet.service'
+[preflight] Some fatal errors occurred:
+	[ERROR CRI]: container runtime is not running: output: Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?
+, error: exit status 1
+	[ERROR Service-Docker]: docker service is not active, please run 'systemctl start docker.service'
+	[ERROR FileContent--proc-sys-net-bridge-bridge-nf-call-iptables]: /proc/sys/net/bridge/bridge-nf-call-iptables does not exist
+	[ERROR SystemVerification]: failed to get docker info: Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?
+[preflight] If you know what you are doing, you can make a check non-fatal with `--ignore-preflight-errors=...`
+[root@kubemaster0 ~]# ls -l /proc/sys/net/bridge/bridge-nf-call-iptables 
+-rw-r--r-- 1 root root 0 Nov 26 12:47 /proc/sys/net/bridge/bridge-nf-call-iptables
+[root@kubemaster0 ~]# ls -l /proc/sys/net/bridge/bridge-nf-call-iptables 
+
+# kubeadm init --apiserver-advertise-address=192.168.1.99 --pod-network-cidr=192.168.1.0/16 --ignore-preflight-errors=all
+
