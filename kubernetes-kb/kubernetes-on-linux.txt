@@ -4,6 +4,37 @@ KUBERNETES CLUSTER ON LINUX
 BASED MAINLY ON - https://www.techrepublic.com/article/how-to-install-a-kubernetes-cluster-on-centos-7/
 
 =========================================
+INFO
+=========================================
+
+CONFIG FILE DIRECTORY STRUCTURE
+https://github.com/kubernetes/kubeadm/issues/368
+
+/etc/kubernetes/
+├── admin.conf
+├── controller-manager.conf
+├── kubelet.conf
+├── manifests
+│   ├── etcd.yaml
+│   ├── kube-apiserver.yaml
+│   ├── kube-controller-manager.yaml
+│   └── kube-scheduler.yaml
+├── pki
+│   ├── apiserver.crt
+│   ├── apiserver.key
+│   ├── apiserver-kubelet-client.crt
+│   ├── apiserver-kubelet-client.key
+│   ├── ca.crt
+│   ├── ca.key
+│   ├── front-proxy-ca.crt
+│   ├── front-proxy-ca.key
+│   ├── front-proxy-client.crt
+│   ├── front-proxy-client.key
+│   ├── sa.key
+│   └── sa.pub
+└── scheduler.conf
+
+=========================================
 SET UP MASTER (or, rather, first master)
 =========================================
 
@@ -271,3 +302,23 @@ Nov 26 12:09:48 kubemaster0 systemd: kubelet.service: main process exited, code=
 Nov 26 12:09:48 kubemaster0 systemd: Unit kubelet.service entered failed state.
 Nov 26 12:09:48 kubemaster0 systemd: kubelet.service failed.
 
+See this: 
+https://github.com/kubernetes/kubernetes/issues/57631
+
+- Then, commented out lines in /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+#Environment="KUBELET_KUBECONFIG_ARGS=--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf"
+
+Restart kubelet gave these errors in /var/log/messages
+Nov 26 12:24:35 kubemaster0 systemd: Started kubelet: The Kubernetes Node Agent.
+Nov 26 12:24:35 kubemaster0 systemd: Starting kubelet: The Kubernetes Node Agent...
+Nov 26 12:24:35 kubemaster0 systemd: Started Kubernetes systemd probe.
+Nov 26 12:24:35 kubemaster0 systemd: Starting Kubernetes systemd probe.
+Nov 26 12:24:35 kubemaster0 kubelet: I1126 12:24:35.322744   15458 server.go:408] Version: v1.12.2
+Nov 26 12:24:35 kubemaster0 kubelet: I1126 12:24:35.322896   15458 plugins.go:99] No cloud provider specified.
+Nov 26 12:24:35 kubemaster0 kubelet: W1126 12:24:35.322925   15458 server.go:553] standalone mode, no API client
+Nov 26 12:24:35 kubemaster0 kubelet: F1126 12:24:35.322937   15458 server.go:262] failed to run Kubelet: no client provided, cannot use webhook authentication
+Nov 26 12:24:35 kubemaster0 systemd: kubelet.service: main process exited, code=exited, status=255/n/a
+Nov 26 12:24:35 kubemaster0 systemd: Unit kubelet.service entered failed state.
+Nov 26 12:24:35 kubemaster0 systemd: kubelet.service failed.
+Nov 26 12:24:42 kubemaster0 systemd: Stopped kubelet: The Kubernetes Node Agent.
+Nov 26 12:24:42 kubemaster0 systemd: Configuration file /etc/systemd/system/kubelet.service.d/10-kubeadm.conf is marked executable. Please remove executable permission bits. Proceeding anyway.
