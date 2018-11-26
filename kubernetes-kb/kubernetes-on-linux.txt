@@ -250,12 +250,51 @@ REVISED STEPS:
 - Run kubeadm init with the following command:   
 # kubeadm init --apiserver-advertise-address=192.168.11.200 --pod-network-cidr=192.168.11.0/16 --ignore-preflight-errors=all
 
-THIS WORKED, AND ALSO STARTED KUBLET AND API-SERVER (see the outputs below)
+THIS WORKED, AND ALSO STARTED KUBLET AND API-SERVER (see the outputs and some processe, file in appendix)
 
 - After this init, start kubelet (IF IT DID NOT START)
 # service kubelet start
 
+AT THIS TIME THIS NODE IS SET UP AS MASTER
+--> EXCEPT THAT OVERLAY NETWORK LIKE FLANNEL IS NOT SETUP
+--> ETCD, KUBE-PROXY, KUBE-APISERVER etc ARE RUNNING AS CONTAINERS (IMAGES PULLED BY KUBEADM INIT)
+--> KUBE-APISERVER IS THE THING THAT MAKES THIS A MASTER
 
+------------------------------
+CREATE A CLIENT USER
+------------------------------
+More from https://linuxthegreat.wordpress.com/2017/10/17/installing-kubernetes-1-8-1-on-centos-7/
+
+[root@kubemaster0 ~]# useradd kube
+[root@kubemaster0 ~]# su - kube
+
+[kube@kubemaster0 ~]$ mkdir .kube
+
+[kube@kubemaster0 ~]$ pwd
+/home/kube
+[kube@kubemaster0 ~]$ exit
+logout
+
+[root@kubemaster0 ~]# cp /etc/kubernetes/admin.conf /home/kube/.kube/.
+[root@kubemaster0 ~]# cd /home/kube/.kube
+[root@kubemaster0 .kube]# ls -l
+total 8
+-rw------- 1 root root 5454 Nov 26 15:43 admin.conf
+[root@kubemaster0 .kube]# chown kube:kube *
+[root@kubemaster0 .kube]# ls -l
+total 8
+-rw------- 1 kube kube 5454 Nov 26 15:43 admin.conf
+
+$ kubectl get nodes
+The connection to the server localhost:8080 was refused - did you specify the right host or port?
+(same error as root also - root however does not have .kube folder)
+
+Fix?: https://github.com/kubernetes/kubernetes/issues/23726
+
+
+=================================================
+APPENDIX - OUTPUTS AND FILES AFTER KUBEADM INIT
+=================================================
 ----
 OUTPUT OF KUBEADM INIT
 ----
