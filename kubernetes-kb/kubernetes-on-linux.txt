@@ -447,9 +447,32 @@ This node has joined the cluster:
 
 Run 'kubectl get nodes' on the master to see this node join the cluster.
 
+-- PROCESSES ON NODES
+
+---- KUBELET
+# ps -ef|grep kubelet
+root      4362     1  1 17:39 ?        00:00:05 /usr/bin/kubelet --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf --config=/var/lib/kubelet/config.yaml --cgroup-driver=cgroupfs --network-plugin=cni
+root      5144  3186  0 17:44 pts/0    00:00:00 grep --color=auto kubelet
+
+---- KUBE-PROXY
+# docker ps
+CONTAINER ID        IMAGE                   COMMAND                  CREATED             STATUS              PORTS               NAMES
+b3605bb2bbea        k8s.gcr.io/kube-proxy   "/usr/local/bin/kube…"   4 minutes ago       Up 4 minutes                            k8s_kube-proxy_kube-proxy-rnf5t_kube-system_2d6c8f7d-f174-11e8-8b20-080027104420_0
+ce3d545e60bf        k8s.gcr.io/pause:3.1    "/pause"                 5 minutes ago       Up 5 minutes                            k8s_POD_kube-proxy-rnf5t_kube-system_2d6c8f7d-f174-11e8-8b20-080027104420_0
+
+---- NO ETCD, KUBE-APISERVER
 
 -------------------------------
-INSTALL FLANNEL OVERLAY NETWORK
+VERIFY - ON MASTER NODE (if child nodes are installed)
+-------------------------------
+# kubectl get nodes
+NAME    STATUS     ROLES    AGE     VERSION
+kube0   NotReady   master   35m     v1.12.2 --> only this should show if only master existed
+kube1   NotReady   <none>   81s     v1.12.2
+kube2   NotReady   <none>   3m24s   v1.12.2
+
+-------------------------------
+INSTALL FLANNEL OVERLAY NETWORK (run on master)
 -------------------------------
 NOTE: Ensure that KUBECONFIG environment variable is setup 
       (or have /etc/kubernetes/admin.conf is copied to file /root/.kube/config). 
@@ -466,14 +489,15 @@ daemonset.extensions/kube-flannel-ds-arm created
 daemonset.extensions/kube-flannel-ds-ppc64le created
 daemonset.extensions/kube-flannel-ds-s390x created
 
+
 ------------------------------
 !!!!! NOW IT IS READY !!!!!
 ------------------------------
 # kubectl get nodes
 NAME          STATUS   ROLES    AGE   VERSION
-kubemaster0   Ready    master   97m   v1.12.2
+kubemaster0   Ready    master   97m   v1.12.2 --> if only master was installed
 
-- ROUTES
+- ROUTES (on master)
 # route -n
 Kernel IP routing table
 Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
