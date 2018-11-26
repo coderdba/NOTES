@@ -1,8 +1,7 @@
 =================================
 KUBERNETES CLUSTER ON LINUX
 =================================
-https://www.techrepublic.com/article/how-to-install-a-kubernetes-cluster-on-centos-7/
-
+BASED MAINLY ON - https://www.techrepublic.com/article/how-to-install-a-kubernetes-cluster-on-centos-7/
 
 =========================================
 SET UP MASTER (or, rather, first master)
@@ -61,6 +60,13 @@ Next, add the Docker-ce repository with the command:
 
 Install Docker-ce with the command:
 # yum install -y docker-ce
+
+- START DOCKER
+# service docker start
+
+- CHECK CGROUP
+# docker info | grep -i cgroup
+Cgroup Driver: cgroupfs
 
 ---------------------------------------
 INSTALL KUBERNETES
@@ -191,6 +197,8 @@ CGROUP CHANGES
 ---------------------------------------
 Now we need to ensure that both Docker-ce and Kubernetes belong to the same control group (cgroup). 
 By default, Docker should already belong to cgroupfs (you can check this with the command docker info | grep -i cgroup). 
+# docker info | grep -i cgroup
+Cgroup Driver: cgroupfs
 
 To add Kubernetes to this, issue the command: (or, edit /etc/systemd/system/kubelet.service.d/10-kubeadm.conf)
 # sed -i 's/cgroup-driver=systemd/cgroup-driver=cgroupfs/g' /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
