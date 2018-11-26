@@ -1,0 +1,39 @@
+IN SOME CLOUD??  Still can be of help
+https://nirmata-documentation.readthedo
+Deleting a Kubernetes Cluster
+To delete you Kubernetes cluster, just click on the Delete Cluster menu option. The cluster will then shut down and all the cluster components will be removed. For Nirmata managed Host Groups, the cloud instances will automatically be deleted for you. For Direct Connect Host Groups, you can manually delete your VMs once the cluster is deleted.
+
+Note: It is not recommended to reuse the VMs/Hosts to deploy another cluster to avoid any installation related to settings that remain on the VMs (e.g. data, NAT rules, etc.). You should shut down the VMs and deploy new VMs for your cluster.
+
+To manually cleanup your hosts/VMs, run these commands on each host
+
+# Stop and remove any running containers
+sudo docker stop $(sudo docker ps | grep “flannel” | gawk '{print $1}')
+sudo docker stop $(sudo docker ps | grep "nirmata" | gawk '{print $1}')
+
+sudo docker stop $(sudo docker ps | grep "kube" | gawk '{print $1}')
+sudo docker rm  $(sudo docker ps -a | grep "Exit" |gawk '{print $1}')
+
+# Remove any cni plugins
+sudo rm -rf /etc/cni/*
+sudo rm -rf /opt/cni/*
+
+# Clear IP Tables
+sudo iptables --flush
+sudo iptables -tnat --flush
+
+# Restart docker
+sudo systemctl stop docker
+sudo systemctl start docker
+sudo docker ps
+
+# Deletes the cni interface
+sudo ifconfig cni0 down
+sudo brctl delbr cni0
+sudo ifconfig flannel.1 down
+sudo ip link delete cni0
+sudo ip link delete flannel.1
+
+# Remove cluster database
+sudo rm -rf /datacs.io/en/latest/Clusters.html
+
