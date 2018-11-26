@@ -49,6 +49,10 @@ echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables
 ---------------------------------------
 INSTALL DOCKER-CE (community edition)
 ---------------------------------------
+- FIRST INSTALL CONTAINER-SELINUX > v2.9
+http://mirror.centos.org/centos/7/extras/x86_64/Packages/container-selinux-2.68-1.el7.noarch.rpm
+
+- INSTALL DOCKER
 Check, and install if needed - dependencies with the following command:
 # yum install -y yum-utils device-mapper-persistent-data lvm2
 
@@ -57,3 +61,125 @@ Next, add the Docker-ce repository with the command:
 
 Install Docker-ce with the command:
 # yum install -y docker-ce
+
+---------------------------------------
+INSTALL KUBERNETES
+---------------------------------------
+- Create yum repo
+Create file: /etc/yum.repos.d/kubernetes.repo
+With content:
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg
+        https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+        
+- INSTALL KUBERNETES kubeadm, kubelet, kubectl
+# yum install -y kubelet kubeadm kubectl
+
+This will install the following in /usr/bin
+-rwxr-xr-x.   1 root root     19254448 Oct  8 06:14 crictl
+-rwxr-xr-x.   1 root root    117744864 Oct 27 07:40 kubelet
+-rwxr-xr-x.   1 root root     39895144 Oct 27 07:40 kubectl
+-rwxr-xr-x.   1 root root     37171264 Oct 27 07:40 kubeadm
+-rwxr-xr-x.   1 root root       389560 Aug  2  2017 socat
+
+-- SCREEN OUTPUT
+[root@kubemaster0 kubeinstall]# yum install -y kubelet kubeadm kubectl
+Loaded plugins: langpacks, ulninfo
+kubernetes/signature                                                                |  454 B  00:00:00     
+Retrieving key from https://packages.cloud.google.com/yum/doc/yum-key.gpg
+Importing GPG key 0xA7317B0F:
+ Userid     : "Google Cloud Packages Automatic Signing Key <gc-team@google.com>"
+ Fingerprint: d0bc 747f d8ca f711 7500 d6fa 3746 c208 a731 7b0f
+ From       : https://packages.cloud.google.com/yum/doc/yum-key.gpg
+Retrieving key from https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+kubernetes/signature                                                                | 1.4 kB  00:00:00 !!! 
+kubernetes/primary                                                                  |  38 kB  00:00:02     
+kubernetes                                                                                         275/275
+Resolving Dependencies
+--> Running transaction check
+---> Package kubeadm.x86_64 0:1.12.2-0 will be installed
+--> Processing Dependency: kubernetes-cni >= 0.6.0 for package: kubeadm-1.12.2-0.x86_64
+--> Processing Dependency: cri-tools >= 1.11.0 for package: kubeadm-1.12.2-0.x86_64
+---> Package kubectl.x86_64 0:1.12.2-0 will be installed
+---> Package kubelet.x86_64 0:1.12.2-0 will be installed
+--> Processing Dependency: socat for package: kubelet-1.12.2-0.x86_64
+--> Running transaction check
+---> Package cri-tools.x86_64 0:1.12.0-0 will be installed
+---> Package kubernetes-cni.x86_64 0:0.6.0-0 will be installed
+---> Package socat.x86_64 0:1.7.3.2-2.el7 will be installed
+--> Finished Dependency Resolution
+
+Dependencies Resolved
+
+===========================================================================================================
+ Package                     Arch                Version                     Repository               Size
+===========================================================================================================
+Installing:
+ kubeadm                     x86_64              1.12.2-0                    kubernetes              7.2 M
+ kubectl                     x86_64              1.12.2-0                    kubernetes              7.7 M
+ kubelet                     x86_64              1.12.2-0                    kubernetes               19 M
+Installing for dependencies:
+ cri-tools                   x86_64              1.12.0-0                    kubernetes              4.2 M
+ kubernetes-cni              x86_64              0.6.0-0                     kubernetes              8.6 M
+ socat                       x86_64              1.7.3.2-2.el7               ol7_latest              289 k
+
+Transaction Summary
+===========================================================================================================
+Install  3 Packages (+3 Dependent packages)
+
+Total download size: 47 M
+Installed size: 237 M
+Downloading packages:
+warning: /var/cache/yum/x86_64/7Server/kubernetes/packages/53edc739a0e51a4c17794de26b13ee5df939bd3161b37f503fe2af8980b41a89-cri-tools-1.12.0-0.x86_64.rpm: Header V4 RSA/SHA512 Signature, key ID 3e1ba8d5: NOKEY
+Public key for 53edc739a0e51a4c17794de26b13ee5df939bd3161b37f503fe2af8980b41a89-cri-tools-1.12.0-0.x86_64.rpm is not installed
+(1/6): 53edc739a0e51a4c17794de26b13ee5df939bd3161b37f503fe2af8980b41a89-cri-tools-1 | 4.2 MB  00:00:06     
+(2/6): 6bd058ff754287c0b6b7431ee8f08bd35af40b0b1d098d94acf1448de0c8053b-kubeadm-1.1 | 7.2 MB  00:00:09     
+(3/6): ead06eb2dc5ff86ca39823fa5f9e944b2f197e681b76ea0ba4a72f5ca6c51f32-kubectl-1.1 | 7.7 MB  00:00:03     
+(4/6): socat-1.7.3.2-2.el7.x86_64.rpm                                               | 289 kB  00:00:03     
+(5/6): fe33057ffe95bfae65e2f269e1b05e99308853176e24a4d027bc082b471a07c0-kubernetes- | 8.6 MB  00:00:04     
+(6/6): c2c59cf03fa14b8d91026c94d63c877091d54ae8492ee3f49faa7aeccd5cac3f-kubelet-1.1 |  19 MB  00:00:12     
+-----------------------------------------------------------------------------------------------------------
+Total                                                                      2.1 MB/s |  47 MB  00:00:22     
+Retrieving key from https://packages.cloud.google.com/yum/doc/yum-key.gpg
+Importing GPG key 0xA7317B0F:
+ Userid     : "Google Cloud Packages Automatic Signing Key <gc-team@google.com>"
+ Fingerprint: d0bc 747f d8ca f711 7500 d6fa 3746 c208 a731 7b0f
+ From       : https://packages.cloud.google.com/yum/doc/yum-key.gpg
+Retrieving key from https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+Importing GPG key 0x3E1BA8D5:
+ Userid     : "Google Cloud Packages RPM Signing Key <gc-team@google.com>"
+ Fingerprint: 3749 e1ba 95a8 6ce0 5454 6ed2 f09c 394c 3e1b a8d5
+ From       : https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+Running transaction check
+Running transaction test
+Transaction test succeeded
+Running transaction
+  Installing : kubectl-1.12.2-0.x86_64                                                                 1/6 
+  Installing : socat-1.7.3.2-2.el7.x86_64                                                              2/6 
+  Installing : kubernetes-cni-0.6.0-0.x86_64                                                           3/6 
+  Installing : kubelet-1.12.2-0.x86_64                                                                 4/6 
+  Installing : cri-tools-1.12.0-0.x86_64                                                               5/6 
+  Installing : kubeadm-1.12.2-0.x86_64                                                                 6/6 
+  Verifying  : kubeadm-1.12.2-0.x86_64                                                                 1/6 
+  Verifying  : cri-tools-1.12.0-0.x86_64                                                               2/6 
+  Verifying  : kubelet-1.12.2-0.x86_64                                                                 3/6 
+  Verifying  : kubernetes-cni-0.6.0-0.x86_64                                                           4/6 
+  Verifying  : socat-1.7.3.2-2.el7.x86_64                                                              5/6 
+  Verifying  : kubectl-1.12.2-0.x86_64                                                                 6/6 
+
+Installed:
+  kubeadm.x86_64 0:1.12.2-0          kubectl.x86_64 0:1.12.2-0          kubelet.x86_64 0:1.12.2-0         
+
+Dependency Installed:
+  cri-tools.x86_64 0:1.12.0-0      kubernetes-cni.x86_64 0:0.6.0-0      socat.x86_64 0:1.7.3.2-2.el7     
+
+Complete!
+
+---------------------------------------
+---------------------------------------
+
