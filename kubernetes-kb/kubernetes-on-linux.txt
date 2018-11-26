@@ -255,7 +255,7 @@ THIS WORKED, AND ALSO STARTED KUBLET AND API-SERVER (see the outputs and some pr
 - After this init, start kubelet (IF IT DID NOT START)
 # service kubelet start
 
-AT THIS TIME THIS NODE IS SET UP AS MASTER
+AT THIS TIME THIS NODE IS SET UP AS MASTER - but pods are not running or something...
 --> EXCEPT THAT OVERLAY NETWORK LIKE FLANNEL IS NOT SETUP
 --> ETCD, KUBE-PROXY, KUBE-APISERVER etc ARE RUNNING AS CONTAINERS (IMAGES PULLED BY KUBEADM INIT)
 --> KUBE-APISERVER IS THE THING THAT MAKES THIS A MASTER
@@ -267,6 +267,40 @@ Nov 26 15:57:02 kubemaster0 kubelet: E1126 15:57:02.577050    2280 kubelet.go:21
 Nov 26 15:57:07 kubemaster0 kubelet: W1126 15:57:07.583476    2280 cni.go:188] Unable to update cni config: No networks found in /etc/cni/net.d
 Nov 26 15:57:07 kubemaster0 kubelet: E1126 15:57:07.583587    2280 kubelet.go:2167] Container runtime network not ready: NetworkReady=false reason:NetworkPluginNotReady message:docker: network plugin is not ready: cni config uninitialized
 
+-------------------------------------
+SET KUBECONFIG FOR ROOT
+-------------------------------------
+Option1: Without environment variable
+# mkdir /root/.kube
+# cp /etc/kubernetes/admin.conf /root/.kube/config
+
+Option2: With environment variable
+# export KUBECONFIG=/etc/kubernetes/admin.conf
+
+-------------------------------
+INSTALL FLANNEL OVERLAY NETWORK
+-------------------------------
+NOTE: Ensure that KUBECONFIG environment variable is setup 
+      (or have /etc/kubernetes/admin.conf is copied to file /root/.kube/config). 
+      Otherwise local:8080 not reachable error will come.
+
+# kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+clusterrole.rbac.authorization.k8s.io/flannel created
+clusterrolebinding.rbac.authorization.k8s.io/flannel created
+serviceaccount/flannel created
+configmap/kube-flannel-cfg created
+daemonset.extensions/kube-flannel-ds-amd64 created
+daemonset.extensions/kube-flannel-ds-arm64 created
+daemonset.extensions/kube-flannel-ds-arm created
+daemonset.extensions/kube-flannel-ds-ppc64le created
+daemonset.extensions/kube-flannel-ds-s390x created
+
+------------------------------
+!!!!! NOW IT IS READY !!!!!
+------------------------------
+# kubectl get nodes
+NAME          STATUS   ROLES    AGE   VERSION
+kubemaster0   Ready    master   97m   v1.12.2
 
 ------------------------------
 CREATE A CLIENT USER
@@ -283,22 +317,28 @@ More from https://linuxthegreat.wordpress.com/2017/10/17/installing-kubernetes-1
 [kube@kubemaster0 ~]$ exit
 logout
 
+-- Without environment variable (elegant)
+# cp /etc/kubernetes/admin.conf /home/kube/.kube/config
+# cd /home/kube/.kube
+# chown kube:kube config
+
+-- With environment variable (not elegant)
 [root@kubemaster0 ~]# cp /etc/kubernetes/admin.conf /home/kube/.kube/.
 [root@kubemaster0 ~]# cd /home/kube/.kube
 [root@kubemaster0 .kube]# ls -l
 total 8
 -rw------- 1 root root 5454 Nov 26 15:43 admin.conf
-[root@kubemaster0 .kube]# chown kube:kube *
+[root@kubemaster0 .kube]# chown kube:kube admin.conf
 [root@kubemaster0 .kube]# ls -l
 total 8
 -rw------- 1 kube kube 5454 Nov 26 15:43 admin.conf
+$ export KUBECONFIG=$HOME/.kube/admin.conf
 
-$ export KUBECONFIG=$HOME/admin.conf
+
+- CHECK NOW
 $ kubectl get nodes
-The connection to the server localhost:8080 was refused - did you specify the right host or port?
-(same error as root also - root however does not have .kube folder)
-
-Fix?: https://github.com/kubernetes/kubernetes/issues/23726
+NAME          STATUS   ROLES    AGE    VERSION
+kubemaster0   Ready    master   100m   v1.12.2
 
 
 =================================================
