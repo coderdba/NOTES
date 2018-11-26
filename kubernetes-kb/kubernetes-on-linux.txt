@@ -3,9 +3,14 @@ KUBERNETES CLUSTER ON LINUX
 =================================
 https://www.techrepublic.com/article/how-to-install-a-kubernetes-cluster-on-centos-7/
 
-=================================
+
+=========================================
+SET UP MASTER (or, rather, first master)
+=========================================
+
+---------------------------------
 HOSTNAME AND IP SETUP
-=================================
+---------------------------------
 # hostnamectl set-hostname kubemaster0
 Set IP for = enp0s8 192.168.11.200 netmask 255.255.255.0
 Set IP for = enp0s8 192.168.12.200 netmask 255.255.255.0
@@ -20,24 +25,35 @@ Restart the machine and ensure hostname and IPs show up.
 # ifconfig enp0s8
 # ifconfig enp0s9
 
-=================================
+---------------------------------
 DISABLE SELINUX
-=================================
+---------------------------------
 # setenfornce 0
 
 Edit the file /etc/sysconfig/selinux and set enforcing as disabled
 
-=================================
+---------------------------------
 DISABLE SWAP
-=================================
+---------------------------------
 # swapoff -a
 
 Edit /etc/fstab and comment out line of swap
 #/dev/mapper/ol-swap     swap                    swap    defaults        0 0
 
-=================================
+---------------------------------
 ENABLE br_netfilter
-=================================
+---------------------------------
 modprobe br_netfilter
 echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables
 
+---------------------------------------
+INSTALL DOCKER-CE (community edition)
+---------------------------------------
+Check, and install if needed - dependencies with the following command:
+# yum install -y yum-utils device-mapper-persistent-data lvm2
+
+Next, add the Docker-ce repository with the command:
+# yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+
+Install Docker-ce with the command:
+# yum install -y docker-ce
