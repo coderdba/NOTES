@@ -203,7 +203,30 @@ Cgroup Driver: cgroupfs
 To add Kubernetes to this, issue the command: (or, edit /etc/systemd/system/kubelet.service.d/10-kubeadm.conf)
 # sed -i 's/cgroup-driver=systemd/cgroup-driver=cgroupfs/g' /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
 
+NOTE: The line was not there to edit - therefore, added these lines:
+Add this line under [service] as a new Environment line: 
+Environment="KUBELET_CGROUP_ARGS=--cgroup-driver=cgroupfs"
+
+Add $KUBELET_CGROUP ARGS to ExecStrat line:
+ExecStart=/usr/bin/kubelet $KUBELET_CGROUP_ARGS $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS
+
 Restart the systemd daemon and the kubelet service with the commands:
 # systemctl daemon-reload
 # systemctl restart kubelet
+
+However, kubelet did not start:
+# service kubelet status
+Redirecting to /bin/systemctl status kubelet.service
+● kubelet.service - kubelet: The Kubernetes Node Agent
+   Loaded: loaded (/etc/systemd/system/kubelet.service; disabled; vendor preset: disabled)
+  Drop-In: /etc/systemd/system/kubelet.service.d
+           └─10-kubeadm.conf
+   Active: activating (auto-restart) (Result: exit-code) since Mon 2018-11-26 11:21:54 IST; 5s ago
+     Docs: https://kubernetes.io/docs/
+  Process: 8778 ExecStart=/usr/bin/kubelet $KUBELET_CGROUP_ARGS $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS (code=exited, status=255)
+ Main PID: 8778 (code=exited, status=255)
+
+Nov 26 11:21:54 kubemaster0 systemd[1]: kubelet.service: main process exited, code=exited, status=255/n/a
+Nov 26 11:21:54 kubemaster0 systemd[1]: Unit kubelet.service entered failed state.
+Nov 26 11:21:54 kubemaster0 systemd[1]: kubelet.service failed.
 
