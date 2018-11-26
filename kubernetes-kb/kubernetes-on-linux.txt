@@ -497,6 +497,7 @@ daemonset.extensions/kube-flannel-ds-s390x created
 NAME          STATUS   ROLES    AGE   VERSION
 kubemaster0   Ready    master   97m   v1.12.2 --> if only master was installed
 
+---- CHECK ROUTES AND IP ON MASTER - IN ONE-MACHINE CONFIGURATION
 - ROUTES (on master)
 # route -n
 Kernel IP routing table
@@ -573,6 +574,119 @@ Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
     link/ether 7a:b6:09:e8:a4:d0 brd ff:ff:ff:ff:ff:ff link-netnsid 1
     inet6 fe80::78b6:9ff:fee8:a4d0/64 scope link 
        valid_lft forever preferred_lft forever
+
+
+-- CHECK IP AND ROUTES ON MULTI MACHINE WITH ONE MASTER
+Note:  CNI0 is not on master.  Node2 was joined before Node1. CNI0 is on Node2
+
+Master
+[root@kube0 ~]# route -n
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+0.0.0.0         10.0.2.2        0.0.0.0         UG    100    0        0 enp0s3
+10.0.2.0        0.0.0.0         255.255.255.0   U     100    0        0 enp0s3
+172.17.0.0      0.0.0.0         255.255.0.0     U     0      0        0 docker0
+192.168.1.0     192.168.1.0     255.255.255.0   UG    0      0        0 flannel.1
+192.168.2.0     192.168.2.0     255.255.255.0   UG    0      0        0 flannel.1
+192.168.11.0    0.0.0.0         255.255.255.0   U     101    0        0 enp0s8
+192.168.12.0    0.0.0.0         255.255.255.0   U     102    0        0 enp0s9
+192.168.122.0   0.0.0.0         255.255.255.0   U     0      0        0 virbr0
+
+Node1
+[root@kube1 ~]# route -n
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+0.0.0.0         10.0.2.2        0.0.0.0         UG    100    0        0 enp0s3
+10.0.2.0        0.0.0.0         255.255.255.0   U     100    0        0 enp0s3
+172.17.0.0      0.0.0.0         255.255.0.0     U     0      0        0 docker0
+192.168.0.0     192.168.0.0     255.255.255.0   UG    0      0        0 flannel.1
+192.168.1.0     192.168.1.0     255.255.255.0   UG    0      0        0 flannel.1
+192.168.11.0    0.0.0.0         255.255.255.0   U     101    0        0 enp0s8
+192.168.12.0    0.0.0.0         255.255.255.0   U     102    0        0 enp0s9
+192.168.122.0   0.0.0.0         255.255.255.0   U     0      0        0 virbr0
+
+Node2
+[root@kube2 kubernetes]# route -n
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+0.0.0.0         10.0.2.2        0.0.0.0         UG    100    0        0 enp0s3
+10.0.2.0        0.0.0.0         255.255.255.0   U     100    0        0 enp0s3
+172.17.0.0      0.0.0.0         255.255.0.0     U     0      0        0 docker0
+192.168.1.0     0.0.0.0         255.255.255.0   U     0      0        0 cni0
+192.168.0.0     192.168.0.0     255.255.255.0   UG    0      0        0 flannel.1
+192.168.2.0     192.168.2.0     255.255.255.0   UG    0      0        0 flannel.1
+192.168.11.0    0.0.0.0         255.255.255.0   U     101    0        0 enp0s8
+192.168.12.0    0.0.0.0         255.255.255.0   U     102    0        0 enp0s9
+192.168.122.0   0.0.0.0         255.255.255.0   U     0      0        0 virbr0
+
+
+Master
+[root@kube0 ~]# ip route
+default via 10.0.2.2 dev enp0s3 proto dhcp metric 100 
+10.0.2.0/24 dev enp0s3 proto kernel scope link src 10.0.2.15 metric 100 
+172.17.0.0/16 dev docker0 proto kernel scope link src 172.17.0.1 
+192.168.1.0/24 via 192.168.1.0 dev flannel.1 onlink 
+192.168.2.0/24 via 192.168.2.0 dev flannel.1 onlink 
+192.168.11.0/24 dev enp0s8 proto kernel scope link src 192.168.11.100 metric 101 
+192.168.12.0/24 dev enp0s9 proto kernel scope link src 192.168.12.100 metric 102 
+192.168.122.0/24 dev virbr0 proto kernel scope link src 192.168.122.1 
+
+Node1
+[root@kube1 ~]# ip route
+default via 10.0.2.2 dev enp0s3 proto dhcp metric 100 
+10.0.2.0/24 dev enp0s3 proto kernel scope link src 10.0.2.15 metric 100 
+172.17.0.0/16 dev docker0 proto kernel scope link src 172.17.0.1 
+192.168.0.0/24 via 192.168.0.0 dev flannel.1 onlink 
+192.168.1.0/24 via 192.168.1.0 dev flannel.1 onlink 
+192.168.11.0/24 dev enp0s8 proto kernel scope link src 192.168.11.101 metric 101 
+192.168.12.0/24 dev enp0s9 proto kernel scope link src 192.168.12.101 metric 102 
+192.168.122.0/24 dev virbr0 proto kernel scope link src 192.168.122.1 
+
+Node2
+[root@kube2 kubernetes]# ip route
+default via 10.0.2.2 dev enp0s3 proto dhcp metric 100 
+10.0.2.0/24 dev enp0s3 proto kernel scope link src 10.0.2.15 metric 100 
+172.17.0.0/16 dev docker0 proto kernel scope link src 172.17.0.1 
+192.168.0.0/24 via 192.168.0.0 dev flannel.1 onlink 
+192.168.1.0/24 dev cni0 proto kernel scope link src 192.168.1.1 
+192.168.2.0/24 via 192.168.2.0 dev flannel.1 onlink 
+192.168.11.0/24 dev enp0s8 proto kernel scope link src 192.168.11.102 metric 101 
+192.168.12.0/24 dev enp0s9 proto kernel scope link src 192.168.12.102 metric 102 
+192.168.122.0/24 dev virbr0 proto kernel scope link src 192.168.122.1 
+
+
+Master
+8: flannel.1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1450 qdisc noqueue state UNKNOWN group default 
+    link/ether f2:57:94:27:86:63 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.0.0/32 scope global flannel.1
+       valid_lft forever preferred_lft forever
+    inet6 fe80::f057:94ff:fe27:8663/64 scope link 
+       valid_lft forever preferred_lft forever
+
+
+Node1
+8: flannel.1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1450 qdisc noqueue state UNKNOWN group default 
+    link/ether a6:67:3a:6f:83:0c brd ff:ff:ff:ff:ff:ff
+    inet 192.168.2.0/32 scope global flannel.1
+       valid_lft forever preferred_lft forever
+    inet6 fe80::a467:3aff:fe6f:830c/64 scope link 
+       valid_lft forever preferred_lft forever
+
+Node2
+# ip addr list
+8: flannel.1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1450 qdisc noqueue state UNKNOWN group default 
+    link/ether b2:6b:7c:7a:6a:4c brd ff:ff:ff:ff:ff:ff
+    inet 192.168.1.0/32 scope global flannel.1
+       valid_lft forever preferred_lft forever
+    inet6 fe80::b06b:7cff:fe7a:6a4c/64 scope link 
+       valid_lft forever preferred_lft forever
+9: cni0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1450 qdisc noqueue state UP group default 
+    link/ether 0a:58:c0:a8:01:01 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.1.1/24 scope global cni0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::6828:9fff:fe76:90d8/64 scope link 
+       valid_lft forever preferred_lft forever
+
 
 
 ------------------------------
