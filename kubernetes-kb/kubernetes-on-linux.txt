@@ -240,3 +240,34 @@ Nov 26 11:22:45 kubemaster0 systemd: kubelet.service: main process exited, code=
 Nov 26 11:22:45 kubemaster0 systemd: Unit kubelet.service entered failed state.
 Nov 26 11:22:45 kubemaster0 systemd: kubelet.service failed.
 
+=========================
+===> ERROR FIX EXERCISE
+=========================
+- KUBELET CONFIG FILE
+https://kubernetes.io/docs/tasks/administer-cluster/kubelet-config-file/
+--> https://github.com/kubernetes/kubernetes/blob/master/pkg/kubelet/apis/config/types.go
+
+/var/lib/kubelet/config.yaml
+For cgroup-driver, under KubeletConfiguration - use "CgroupDriver string" like:
+"CgroupDriver: cgroupfs" of "cgroupDriver: cgroupfs"
+Example in: https://github.com/kubernetes/kubernetes/issues/65863
+
+kind: KubeletConfiguration
+apiVersion: kubelet.config.k8s.io/v1beta1
+cgroupDriver: cgroupfs
+evictionHard:
+    memory.available:  "200Mi"
+cgroupDriver: cgroupfs
+
+- With config file, again got errors in /var/log/messages:
+Nov 26 12:09:48 kubemaster0 systemd: Started kubelet: The Kubernetes Node Agent.
+Nov 26 12:09:48 kubemaster0 systemd: Starting kubelet: The Kubernetes Node Agent...
+Nov 26 12:09:48 kubemaster0 systemd: Started Kubernetes systemd probe.
+Nov 26 12:09:48 kubemaster0 systemd: Starting Kubernetes systemd probe.
+Nov 26 12:09:48 kubemaster0 kubelet: I1126 12:09:48.574188   14222 server.go:408] Version: v1.12.2
+Nov 26 12:09:48 kubemaster0 kubelet: I1126 12:09:48.574371   14222 plugins.go:99] No cloud provider specified.
+Nov 26 12:09:48 kubemaster0 kubelet: F1126 12:09:48.574417   14222 server.go:262] failed to run Kubelet: unable to load bootstrap kubeconfig: stat /etc/kubernetes/bootstrap-kubelet.conf: no such file or directory
+Nov 26 12:09:48 kubemaster0 systemd: kubelet.service: main process exited, code=exited, status=255/n/a
+Nov 26 12:09:48 kubemaster0 systemd: Unit kubelet.service entered failed state.
+Nov 26 12:09:48 kubemaster0 systemd: kubelet.service failed.
+
