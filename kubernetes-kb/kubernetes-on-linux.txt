@@ -268,7 +268,7 @@ AT THIS POINT - BACKUP/CLONE THE VM - IF YOU ARE DOING THIS ON VM'S
 --> THIS BACKUP CAN BE CLONED TO NODES - as nodes require docker and kube software installed so far
 
 ---------------------------------------
-CGROUP CHANGES
+MASTER: KUBEADM INIT ('CGroup Changes' in the web article)
 ---------------------------------------
 Now we need to ensure that both Docker-ce and Kubernetes belong to the same control group (cgroup). 
 By default, Docker should already belong to cgroupfs (you can check this with the command docker info | grep -i cgroup). 
@@ -322,7 +322,131 @@ IF ADDING NODES DO IT NOW - before FLANNEL
 -------------------------------------------
 Steps TBD 
 TBD - get the token and discovery_token from kubeadm screen output on master
-# kubeadm join 192.168.11.200:6443 --token TOKEN --discovery-token-ca-cert-hash DISCOVERY_TOKEN
+
+# systemctl enable kubelet.service
+# echo 1 > /proc/sys/net/bridge/bridge-nf-call-iptables
+# cat /proc/sys/net/bridge/bridge-nf-call-iptables
+1
+
+Next command:
+(THIS COMMAND IS FOR KUBE0 master based cluster - change IP and token as required)
+# kubeadm join 192.168.11.100:6443 --token 4q9ls2.lq4n3n8pruedn8ly --discovery-token-ca-cert-hash sha256:80ed28cf7358e2c22db1a2ff87c3bfd4e71a5019c094e77265136b804e4def04 --ignore-preflight-errors=all
+
+-- OUTPUT from kube1
+[root@kube1 ~]# kubeadm join 192.168.11.100:6443 --token 4q9ls2.lq4n3n8pruedn8ly --discovery-token-ca-cert-hash sha256:80ed28cf7358e2c22db1a2ff87c3bfd4e71a5019c094e77265136b804e4def04 --ignore-preflight-errors=all
+[preflight] running pre-flight checks
+	[WARNING RequiredIPVSKernelModulesAvailable]: the IPVS proxier will not be used, because the following required kernel modules are not loaded: [ip_vs ip_vs_rr ip_vs_wrr ip_vs_sh] or no builtin kernel ipvs support: map[ip_vs:{} ip_vs_rr:{} ip_vs_wrr:{} ip_vs_sh:{} nf_conntrack_ipv4:{}]
+you can solve this problem with following methods:
+ 1. Run 'modprobe -- ' to load missing kernel modules;
+2. Provide the missing builtin kernel ipvs support
+
+[preflight] The system verification failed. Printing the output from the verification:
+KERNEL_VERSION: 4.1.12-112.16.4.el7uek.x86_64
+CONFIG_NAMESPACES: enabled
+CONFIG_NET_NS: enabled
+CONFIG_PID_NS: enabled
+CONFIG_IPC_NS: enabled
+CONFIG_UTS_NS: enabled
+CONFIG_CGROUPS: enabled
+CONFIG_CGROUP_CPUACCT: enabled
+CONFIG_CGROUP_DEVICE: enabled
+CONFIG_CGROUP_FREEZER: enabled
+CONFIG_CGROUP_SCHED: enabled
+CONFIG_CPUSETS: enabled
+CONFIG_MEMCG: enabled
+CONFIG_INET: enabled
+CONFIG_EXT4_FS: enabled (as module)
+CONFIG_PROC_FS: enabled
+CONFIG_NETFILTER_XT_TARGET_REDIRECT: enabled (as module)
+CONFIG_NETFILTER_XT_MATCH_COMMENT: enabled (as module)
+CONFIG_OVERLAY_FS: enabled (as module)
+CONFIG_AUFS_FS: not set - Required for aufs.
+CONFIG_BLK_DEV_DM: enabled (as module)
+DOCKER_VERSION: 18.09.0
+OS: Linux
+CGROUPS_CPU: enabled
+CGROUPS_CPUACCT: enabled
+CGROUPS_CPUSET: enabled
+CGROUPS_DEVICES: enabled
+CGROUPS_FREEZER: enabled
+CGROUPS_MEMORY: enabled
+	[WARNING SystemVerification]: unsupported docker version: 18.09.0
+[discovery] Trying to connect to API Server "192.168.11.100:6443"
+[discovery] Created cluster-info discovery client, requesting info from "https://192.168.11.100:6443"
+[discovery] Requesting info from "https://192.168.11.100:6443" again to validate TLS against the pinned public key
+[discovery] Cluster info signature and contents are valid and TLS certificate validates against pinned roots, will use API Server "192.168.11.100:6443"
+[discovery] Successfully established connection with API Server "192.168.11.100:6443"
+[kubelet] Downloading configuration for the kubelet from the "kubelet-config-1.12" ConfigMap in the kube-system namespace
+[kubelet] Writing kubelet configuration to file "/var/lib/kubelet/config.yaml"
+[kubelet] Writing kubelet environment file with flags to file "/var/lib/kubelet/kubeadm-flags.env"
+[preflight] Activating the kubelet service
+[tlsbootstrap] Waiting for the kubelet to perform the TLS Bootstrap...
+[patchnode] Uploading the CRI Socket information "/var/run/dockershim.sock" to the Node API object "kube1" as an annotation
+
+This node has joined the cluster:
+* Certificate signing request was sent to apiserver and a response was received.
+* The Kubelet was informed of the new secure connection details.
+
+Run 'kubectl get nodes' on the master to see this node join the cluster.
+
+
+-- OUTPUT from kube2
+rt-hash sha256:80ed28cf7358e2c22db1a2ff87c3bfd4e71a5019c094e77265136b804e4def04 --ignore-preflight-errors=all
+[preflight] running pre-flight checks
+	[WARNING RequiredIPVSKernelModulesAvailable]: the IPVS proxier will not be used, because the following required kernel modules are not loaded: [ip_vs_wrr ip_vs_sh ip_vs ip_vs_rr] or no builtin kernel ipvs support: map[ip_vs_wrr:{} ip_vs_sh:{} nf_conntrack_ipv4:{} ip_vs:{} ip_vs_rr:{}]
+you can solve this problem with following methods:
+ 1. Run 'modprobe -- ' to load missing kernel modules;
+2. Provide the missing builtin kernel ipvs support
+
+[preflight] The system verification failed. Printing the output from the verification:
+KERNEL_VERSION: 4.1.12-112.16.4.el7uek.x86_64
+CONFIG_NAMESPACES: enabled
+CONFIG_NET_NS: enabled
+CONFIG_PID_NS: enabled
+CONFIG_IPC_NS: enabled
+CONFIG_UTS_NS: enabled
+CONFIG_CGROUPS: enabled
+CONFIG_CGROUP_CPUACCT: enabled
+CONFIG_CGROUP_DEVICE: enabled
+CONFIG_CGROUP_FREEZER: enabled
+CONFIG_CGROUP_SCHED: enabled
+CONFIG_CPUSETS: enabled
+CONFIG_MEMCG: enabled
+CONFIG_INET: enabled
+CONFIG_EXT4_FS: enabled (as module)
+CONFIG_PROC_FS: enabled
+CONFIG_NETFILTER_XT_TARGET_REDIRECT: enabled (as module)
+CONFIG_NETFILTER_XT_MATCH_COMMENT: enabled (as module)
+CONFIG_OVERLAY_FS: enabled (as module)
+CONFIG_AUFS_FS: not set - Required for aufs.
+CONFIG_BLK_DEV_DM: enabled (as module)
+DOCKER_VERSION: 18.09.0
+OS: Linux
+CGROUPS_CPU: enabled
+CGROUPS_CPUACCT: enabled
+CGROUPS_CPUSET: enabled
+CGROUPS_DEVICES: enabled
+CGROUPS_FREEZER: enabled
+CGROUPS_MEMORY: enabled
+	[WARNING SystemVerification]: unsupported docker version: 18.09.0
+[discovery] Trying to connect to API Server "192.168.11.100:6443"
+[discovery] Created cluster-info discovery client, requesting info from "https://192.168.11.100:6443"
+[discovery] Requesting info from "https://192.168.11.100:6443" again to validate TLS against the pinned public key
+[discovery] Cluster info signature and contents are valid and TLS certificate validates against pinned roots, will use API Server "192.168.11.100:6443"
+[discovery] Successfully established connection with API Server "192.168.11.100:6443"
+[kubelet] Downloading configuration for the kubelet from the "kubelet-config-1.12" ConfigMap in the kube-system namespace
+[kubelet] Writing kubelet configuration to file "/var/lib/kubelet/config.yaml"
+[kubelet] Writing kubelet environment file with flags to file "/var/lib/kubelet/kubeadm-flags.env"
+[preflight] Activating the kubelet service
+[tlsbootstrap] Waiting for the kubelet to perform the TLS Bootstrap...
+[patchnode] Uploading the CRI Socket information "/var/run/dockershim.sock" to the Node API object "kube2" as an annotation
+
+This node has joined the cluster:
+* Certificate signing request was sent to apiserver and a response was received.
+* The Kubelet was informed of the new secure connection details.
+
+Run 'kubectl get nodes' on the master to see this node join the cluster.
+
 
 -------------------------------
 INSTALL FLANNEL OVERLAY NETWORK
