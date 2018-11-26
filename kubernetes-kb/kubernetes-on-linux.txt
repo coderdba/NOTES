@@ -234,6 +234,32 @@ By default, Docker should already belong to cgroupfs (you can check this with th
 # docker info | grep -i cgroup
 Cgroup Driver: cgroupfs
 
+NOTE: The standard steps from the web article did not work - refer to the following sections for more details:
+KUBELET STANDARD STEPS
+KUBELET INITIAL START - ERROR FIX EXERCISE
+
+REVISED STEPS:
+- Remove config files from /etc/kubernetes
+- Run kubeadm init      
+# kubeadm init --apiserver-advertise-address=192.168.11.200 --pod-network-cidr=192.168.11.0/16 --ignore-preflight-errors=all
+This will work, and still say 'kubelet is not running'
+- After this init, do service kubelete start
+
+However, it kept spewing messages into /var/log/messages like the following:
+Hopefull, these will be fixed upon further setup.
+Nov 26 13:53:27 kubemaster0 kubelet: E1126 13:53:27.859872    9390 kubelet.go:2236] node "kubemaster0" not found
+Nov 26 13:53:24 kubemaster0 kubelet: E1126 13:53:24.050606    9390 eviction_manager.go:243] eviction manager: failed to get get summary stats: failed to get node info: node "kubemaster0" not found
+Nov 26 13:53:24 kubemaster0 kubelet: W1126 13:53:24.061391    9390 cni.go:188] Unable to update cni config: No networks found in /etc/cni/net.d
+Nov 26 13:53:24 kubemaster0 kubelet: E1126 13:53:24.061470    9390 kubelet.go:2167] Container runtime network not ready: NetworkReady=false reason:NetworkPluginNotReady message:docker: network plugin is not ready: cni config uninitialized
+
+=================================
+APPENDIX: KUBELET STANDARD STEPS
+=================================
+THIS IS THE STANDARD STEPS SECTION FROM THE WEB ARTICLE.
+*** However, this subsection is not necessary as it errored out much and from another article 
+did  kubeadm init before starting service kubelet will take care of the errors.
+
+Standard steps per article:
 To add Kubernetes to this, issue the command: (or, edit /etc/systemd/system/kubelet.service.d/10-kubeadm.conf)
 # sed -i 's/cgroup-driver=systemd/cgroup-driver=cgroupfs/g' /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
 
@@ -249,7 +275,21 @@ Restart the systemd daemon and the kubelet service with the commands:
 # systemctl daemon-reload
 # systemctl restart kubelet
 
-However, kubelet did not start:
+However, kubelet did not start.  
+See this section for the whole fix: APPENDIX - KUBELET INITIAL START - ERROR FIX EXERCISE
+
+Fix summary:
+(per https://linuxthegreat.wordpress.com/2017/10/17/installing-kubernetes-1-8-1-on-centos-7/)
+
+Remove config files from /etc/kubernetes
+Run kubeadm init      
+# kubeadm init --apiserver-advertise-address=192.168.11.200 --pod-network-cidr=192.168.11.0/16 --ignore-preflight-errors=all
+This will work, and still say 'kubelet is not running'
+After this init, do service kubelete start
+
+======================================================
+APPENDIX: KUBELET INITIAL START - ERROR FIX EXERCISE
+======================================================
 # service kubelet status
 Redirecting to /bin/systemctl status kubelet.service
 ● kubelet.service - kubelet: The Kubernetes Node Agent
@@ -274,9 +314,7 @@ Nov 26 11:22:45 kubemaster0 systemd: kubelet.service: main process exited, code=
 Nov 26 11:22:45 kubemaster0 systemd: Unit kubelet.service entered failed state.
 Nov 26 11:22:45 kubemaster0 systemd: kubelet.service failed.
 
-=========================
-===> ERROR FIX EXERCISE
-=========================
+
 - KUBELET CONFIG FILE
 https://kubernetes.io/docs/tasks/administer-cluster/kubelet-config-file/
 --> https://github.com/kubernetes/kubernetes/blob/master/pkg/kubelet/apis/config/types.go
@@ -382,7 +420,7 @@ CGROUPS_MEMORY: enabled
 - Rerun kubeadm after removing conf files from /etc/kubernetes
 NOTE: Now it pulls some files, copies some files onto /etc/kubernetes and then only cribs about kubelet not running
 
-# kubeadm init --apiserver-advertise-address=192.168.1.99 --pod-network-cidr=192.168.1.0/16 --ignore-preflight-errors=all
+# kubeadm init --apiserver-advertise-address=192.168.11.200 --pod-network-cidr=192.168.11.0/16 --ignore-preflight-errors=all
 [init] using Kubernetes version: v1.12.2
 [preflight] running pre-flight checks
 	[WARNING Service-Docker]: docker service is not enabled, please run 'systemctl enable docker.service'
@@ -457,3 +495,17 @@ CGROUPS_MEMORY: enabled
 [kubelet-check] The HTTP call equal to 'curl -sSL http://localhost:10248/healthz' failed with error: Get http://localhost:10248/healthz: dial tcp [::1]:10248: connect: connection refused.
 [kubelet-check] It seems like the kubelet isn't running or healthy.
 [kubelet-check] The HTTP call equal to 'curl -sSL http://localhost:10248/healthz' failed with error: Get http://localhost:10248/healthz: dial tcp [::1]:10248: connect: connection refused.
+
+- NOW, START KUBELET
+# service kubelet start
+
+First, it failed saying there are two lines of ExecStart in kubelet.service.d config file 10-kubeadm.conf
+Then, copied the original 10-kubeadm.conf confing file on to what was there (though that too had two ExecStart)
+-> and ran "service kubelete start" - then kubelet started
+
+However, it kept spewing messages into /var/log/messages like the following:
+Hopefully, these will be fixed upon further setup.
+Nov 26 13:53:27 kubemaster0 kubelet: E1126 13:53:27.859872    9390 kubelet.go:2236] node "kubemaster0" not found
+Nov 26 13:53:24 kubemaster0 kubelet: E1126 13:53:24.050606    9390 eviction_manager.go:243] eviction manager: failed to get get summary stats: failed to get node info: node "kubemaster0" not found
+Nov 26 13:53:24 kubemaster0 kubelet: W1126 13:53:24.061391    9390 cni.go:188] Unable to update cni config: No networks found in /etc/cni/net.d
+Nov 26 13:53:24 kubemaster0 kubelet: E1126 13:53:24.061470    9390 kubelet.go:2167] Container runtime network not ready: NetworkReady=false reason:NetworkPluginNotReady message:docker: network plugin is not ready: cni config uninitialized
