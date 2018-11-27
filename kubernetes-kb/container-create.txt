@@ -2,13 +2,74 @@
 CREATING CONTAINERS
 ==================================
 
+Based on:
+    https://linuxthegreat.wordpress.com/2017/10/17/installing-kubernetes-1-8-1-on-centos-7/
+    http://containertutorials.com/get_started_kubernetes/k8s_example.html
+
 https://kubernetes.io/docs/tasks/run-application/run-stateless-application-deployment/
-https://linuxthegreat.wordpress.com/2017/10/17/installing-kubernetes-1-8-1-on-centos-7/
 
 Playgrounds:
 https://www.katacoda.com/courses/kubernetes/playground
 https://labs.play-with-k8s.com/
 
+----------------------
+CREATE YAML nginx.yaml
+----------------------
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: nginx
+spec:
+  replicas: 2
+  template:
+    metadata:
+      name: nginx
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80
+        
+----------------------
+CREATE IT
+----------------------
+# kubectl create -f nginx.yaml
+
+# kubectl get pods
+NAME                     READY   STATUS    RESTARTS   AGE
+nginx-85c8f76bb5-df77c   1/1     Running   0          3m
+nginx-85c8f76bb5-dqsr4   1/1     Running   0          3m
+
+# kubectl get deployments
+NAME    DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx   2         2         2            2           3m30s
+
+--------------------------------------------
+EXPOSE PORT - 'WITHIN' THE CLUSTER
+--------------------------------------------
+Note: This command will create service with the name “nginx-service”. 
+Service will be accessible on the port given by “–port” option for the “–target-port”. 
+Target port will be of pod. Service will be accessible within the cluster only. 
+In order to access it using your host IP “NodePort” option will be used.
+
+# kubectl expose deployment nginx-deployment –name=nginx-service –port=80 –target-port=80 –type=NodePort
+
+# kubectl get svc
+NAME         TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)   AGE
+kubernetes   ClusterIP   10.96.0.1        <none>        443/TCP   153m
+nginx        ClusterIP   10.104.227.129   <none>        80/TCP    2m59s
+
+----------------------
+VERIFY
+----------------------
+
+On nodes:
+# docker ps |grep ngin
+fead827c5d51        nginx                  "nginx -g 'daemon of…"   9 minutes ago       Up 9 minutes                            k8s_nginx_nginx-85c8f76bb5-df77c_default_ea105e8c-f220-11e8-b2d7-080027104420_0
+45f39e64f72b        k8s.gcr.io/pause:3.1   "/pause"                 10 minutes ago      Up 10 minutes                           k8s_POD_nginx-85c8f76bb5-df77c_default_ea105e8c-f220-11e8-b2d7-080027104420_0
 
 
 
