@@ -17,6 +17,8 @@ modprobe br_netfilter
 echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables
 
 echo INFO - Install docker
+rpm -Uvh /media/sf_mystage_host/container-selinux/container-selinux-2.68-1.el7.noarch.rpm
+
 yum install -y yum-utils device-mapper-persistent-data lvm2
 
 Next, add the Docker-ce repository with the command:
