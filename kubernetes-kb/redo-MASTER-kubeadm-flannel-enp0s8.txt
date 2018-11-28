@@ -1,0 +1,49 @@
+=============================================================================
+REDO MASTER KUBEADM INIT AND FLANNEL INSTALL - with correct interface enp0s8
+=============================================================================
+
+Install docker
+Install kubelet, kubeadm, ....
+
+# mkdir /root/kubeinstall
+# cd /root/kubeinstall
+
+# wget https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+
+Edit kube-flannel.yml and add the following 'iface' line:
+      - name: kube-flannel
+        image: quay.io/coreos/flannel:v0.10.0-amd64
+        command:
+        - /opt/bin/flanneld
+        args:
+        - --ip-masq
+        - --kube-subnet-mgr
+        - --iface=enp0s8
+
+Ensure '1' in the following:
+# cat /proc/sys/net/bridge/bridge-nf-call-iptables
+1
+
+# systemctl enable docker
+# systemctl enable kubelet
+# service docker start
+
+TBD:
+And also be sure to add the following to kubelet.service: 
+--node-ip={{ hostvars[inventory_hostname]['ansible_enp0s8']['ipv4']['address'] }} , 
+this way the correct host IPs will be matching the Pod CIDRs – jonashackt Jun 21 at 13:37 
+
+
+
+Check routes before kubeadm
+# route -n
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+0.0.0.0         10.0.2.2        0.0.0.0         UG    100    0        0 enp0s3
+10.0.2.0        0.0.0.0         255.255.255.0   U     100    0        0 enp0s3
+172.17.0.0      0.0.0.0         255.255.0.0     U     0      0        0 docker0
+192.168.11.0    0.0.0.0         255.255.255.0   U     101    0        0 enp0s8
+192.168.12.0    0.0.0.0         255.255.255.0   U     102    0        0 enp0s9
+192.168.122.0   0.0.0.0         255.255.255.0   U     0      0        0 virbr0
+
+Run kubeadm init
