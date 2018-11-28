@@ -8,21 +8,8 @@ Install kubelet, kubeadm, ....
 # mkdir /root/kubeinstall
 # cd /root/kubeinstall
 
-# wget https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
-
-Edit kube-flannel.yml and add the following 'iface' line:
-      - name: kube-flannel
-        image: quay.io/coreos/flannel:v0.10.0-amd64
-        command:
-        - /opt/bin/flanneld
-        args:
-        - --ip-masq
-        - --kube-subnet-mgr
-        - --iface=enp0s8
-
 Ensure '1' in the following:
-
-#echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables
+# echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables
 # cat /proc/sys/net/bridge/bridge-nf-call-iptables
 1
 
@@ -234,7 +221,84 @@ Create .kube and config file in it
 # cp /etc/kubernetes/admin.conf /root/.kube/config
 
 Install flannel
+
+# wget https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+
+- Edit kube-flannel.yml and add the following 'iface' line 
+NOTE:  SEARCH FOR subnet-mgr which is there in multiple places - and add iface line below them
+
+      - name: kube-flannel
+        image: quay.io/coreos/flannel:v0.10.0-amd64
+        command:
+        - /opt/bin/flanneld
+        args:
+        - --ip-masq
+        - --kube-subnet-mgr
+        - --iface=enp0s8
+	
 # kubectl apply -f /root/kubeinstall/kube-flannel.yml
+
+Check IPs
+# ip addr list
+
+NOTE: We see flannel1.1 and cni0
+
+[root@k00 kubeinstall]# ip addr list
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default 
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: enp0s3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:10:44:20 brd ff:ff:ff:ff:ff:ff
+    inet 10.0.2.15/24 brd 10.0.2.255 scope global noprefixroute dynamic enp0s3
+       valid_lft 85463sec preferred_lft 85463sec
+    inet6 fe80::2481:bef7:e0d6:5810/64 scope link noprefixroute 
+       valid_lft forever preferred_lft forever
+3: enp0s8: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:7b:13:15 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.11.100/24 brd 192.168.11.255 scope global noprefixroute enp0s8
+       valid_lft forever preferred_lft forever
+    inet6 fe80::5270:6f3b:6966:ad14/64 scope link noprefixroute 
+       valid_lft forever preferred_lft forever
+4: enp0s9: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:ca:34:38 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.12.100/24 brd 192.168.12.255 scope global noprefixroute enp0s9
+       valid_lft forever preferred_lft forever
+    inet6 fe80::b331:1d54:d60b:62c1/64 scope link noprefixroute 
+       valid_lft forever preferred_lft forever
+5: virbr0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default 
+    link/ether 52:54:00:cc:ab:31 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0
+       valid_lft forever preferred_lft forever
+6: virbr0-nic: <BROADCAST,MULTICAST> mtu 1500 qdisc pfifo_fast master virbr0 state DOWN group default qlen 500
+    link/ether 52:54:00:cc:ab:31 brd ff:ff:ff:ff:ff:ff
+7: docker0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default 
+    link/ether 02:42:f3:f2:a2:ba brd ff:ff:ff:ff:ff:ff
+    inet 172.17.0.1/16 brd 172.17.255.255 scope global docker0
+       valid_lft forever preferred_lft forever
+8: flannel.1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1450 qdisc noqueue state UNKNOWN group default 
+    link/ether fe:42:f5:00:b0:e1 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.0.0/32 scope global flannel.1
+       valid_lft forever preferred_lft forever
+    inet6 fe80::fc42:f5ff:fe00:b0e1/64 scope link 
+       valid_lft forever preferred_lft forever
+9: cni0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1450 qdisc noqueue state UP group default 
+    link/ether 0a:58:c0:a8:00:01 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.0.1/24 scope global cni0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::ab:b6ff:febb:58b5/64 scope link 
+       valid_lft forever preferred_lft forever
+10: veth8a6fba63@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1450 qdisc noqueue master cni0 state UP group default 
+    link/ether c2:21:47:83:81:46 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet6 fe80::c021:47ff:fe83:8146/64 scope link 
+       valid_lft forever preferred_lft forever
+11: veth00c589e0@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1450 qdisc noqueue master cni0 state UP group default 
+    link/ether b6:18:a5:a7:66:71 brd ff:ff:ff:ff:ff:ff link-netnsid 1
+    inet6 fe80::b418:a5ff:fea7:6671/64 scope link 
+       valid_lft forever preferred_lft forever
+
 
 TBD: Check routes:
 
