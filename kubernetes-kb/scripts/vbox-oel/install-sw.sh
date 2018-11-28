@@ -5,7 +5,7 @@ echo
 echo WARN - TBD - Edit /etc/sysconfig/selinux and set enforcing as disabled
 echo
 
-- Disable swap
+echo INFO - Disable swap
 swapoff -a
 
 echo
@@ -25,10 +25,10 @@ yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce
 yum install -y docker-ce
 systemctl enable docker
 
-- START DOCKER
+echo INFO - Start docker
 service docker start
 
-- CHECK CGROUP
+echo INFO - check cgroup
 docker info | grep -i cgroup
 
 echo INFO - setup kubernetes yum repo
