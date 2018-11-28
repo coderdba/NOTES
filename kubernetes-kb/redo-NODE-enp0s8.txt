@@ -14,15 +14,32 @@ Do as done in master
 ----------------
 INSTALL FLANNEL
 ----------------
-Do as done in master
+SOMEWHAT Do as done in master
 --> THIS DID NOT INITIALLY INSTALL FLANNEL
 HOWEVER, AFTER DOING 'JOIN', THAT THING ITSELF INSTALLED FLANNEL AFTER A FEW MIN
+
+- Ensure this shows 1
+# echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables
+# cat /proc/sys/net/bridge/bridge-nf-call-iptables
+1
+
+- Edit the file /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+Modify the Environment line --> add node-ip: (replace with correct IP of the node)
+Environment="KUBELET_KUBECONFIG_ARGS=--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf --node-ip=192.168.11.10"
+
+
+# systemctl enable kubelet
+# systemctl enable docker
+# systemctl daemon-reload
+# service docker start
+
+-- Then do join which will install flannel (see JOIN MASTER STEP)
 
 ----------------
 JOIN MASTER
 ----------------
 
-[root@k11 kubeinstall]# kubeadm join 192.168.11.100:6443 --token s8gwke.yxate9aj24yygbhu --discovery-token-ca-cert-hash sha256:ea6d4afd5ae0e4a002d6a1c609dd121f4756e01390d30103b91591e1bf9c6519 --ignore-preflight-errors=all
+[root@k01 kubeinstall]# kubeadm join 192.168.11.100:6443 --token s8gwke.yxate9aj24yygbhu --discovery-token-ca-cert-hash sha256:ea6d4afd5ae0e4a002d6a1c609dd121f4756e01390d30103b91591e1bf9c6519 --ignore-preflight-errors=all
 [preflight] running pre-flight checks
 	[WARNING RequiredIPVSKernelModulesAvailable]: the IPVS proxier will not be used, because the following required kernel modules are not loaded: [ip_vs_rr ip_vs_wrr ip_vs_sh ip_vs] or no builtin kernel ipvs support: map[ip_vs_wrr:{} ip_vs_sh:{} nf_conntrack_ipv4:{} ip_vs:{} ip_vs_rr:{}]
 you can solve this problem with following methods:
@@ -83,12 +100,12 @@ Run 'kubectl get nodes' on the master to see this node join the cluster.
 -- NOW, WAIT A BIT AND YOU WILL SEE FLANNEL RUNNING
 
 - INITIALLY
-[root@k11 kubeinstall]# kubectl get nodes
+[root@k01 kubeinstall]# kubectl get nodes
 NAME   STATUS     ROLES    AGE   VERSION
 k00    Ready      master   50m   v1.12.3
 k11    NotReady   <none>   6s    v1.12.3
 
-[root@k11 kubeinstall]# route -n
+[root@k01 kubeinstall]# route -n
 Kernel IP routing table
 Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
 0.0.0.0         10.0.2.2        0.0.0.0         UG    100    0        0 enp0s3
@@ -104,18 +121,18 @@ root      5672  3258  0 16:08 pts/0    00:00:00 grep --color=auto fla
 
 - AFTER A FEW MIN
 --> Node shows up as ready
-[root@k11 kubeinstall]# kubectl get nodes
+[root@k01 kubeinstall]# kubectl get nodes
 NAME   STATUS   ROLES    AGE     VERSION
 k00    Ready    master   57m     v1.12.3
 k11    Ready    <none>   6m28s   v1.12.3
 
 --> You can see flannel running with correct iface=enp0s8
-[root@k11 kubeinstall]# ps -ef|grep fla
+[root@k01 kubeinstall]# ps -ef|grep fla
 root      6047  6031  0 16:09 ?        00:00:00 /opt/bin/flanneld --ip-masq --kube-subnet-mgr --iface=enp0s8
 root      6349  3258  0 16:10 pts/0    00:00:00 grep --color=auto fla
 
 --> Flannel shows up in route  (HOWEVER, CNI0 does not show)
-[root@k11 kubeinstall]# route -n
+[root@k01 kubeinstall]# route -n
 Kernel IP routing table
 Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
 0.0.0.0         10.0.2.2        0.0.0.0         UG    100    0        0 enp0s3
@@ -127,7 +144,7 @@ Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
 192.168.122.0   0.0.0.0         255.255.255.0   U     0      0        0 virbr0
 
 --> Flannel shows up in IP (HOWEVER, CNI0 does not show)
-[root@k11 kubeinstall]# ip addr list
+[root@k01 kubeinstall]# ip addr list
 1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default 
     link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
     inet 127.0.0.1/8 scope host lo
@@ -172,5 +189,26 @@ Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
        valid_lft forever preferred_lft forever
     inet6 fe80::2cdd:24ff:fef1:855/64 scope link 
        valid_lft forever preferred_lft forever
+
+
+- CHECKS
+
+(after joining two nodes)
+
+-- BRIDGE FDB SHOW
+
+[root@k00 ~]# bridge fdb show dev flannel.1
+82:f4:dc:31:6c:dc dst 192.168.11.102 self permanent
+2e:dd:24:f1:08:55 dst 192.168.11.101 self permanent
+
+
+[root@k01 ~]# bridge fdb show dev flannel.1[root@k01 ~]# bridge fdb show dev flannel.1
+82:f4:dc:31:6c:dc dst 192.168.11.102 self permanent
+fe:42:f5:00:b0:e1 dst 192.168.11.100 self permanent
+
+[root@k02 ~]# bridge fdb show dev flannel.1
+2e:dd:24:f1:08:55 dst 192.168.11.101 self permanent
+fe:42:f5:00:b0:e1 dst 192.168.11.100 self permanent
+
 
 
