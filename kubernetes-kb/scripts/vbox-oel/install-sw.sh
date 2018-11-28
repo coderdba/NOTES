@@ -1,44 +1,41 @@
-# setenforce 0
+echo INFO - Disabling selinux
+setenforce 0
 
-Edit the file /etc/sysconfig/selinux and set enforcing as disabled
+echo
+echo WARN - TBD - Edit /etc/sysconfig/selinux and set enforcing as disabled
+echo
 
----------------------------------
-DISABLE SWAP
----------------------------------
-# swapoff -a
+- Disable swap
+swapoff -a
 
-Edit /etc/fstab and comment out line of swap
-#/dev/mapper/ol-swap     swap                    swap    defaults        0 0
+echo
+echo WARN - TBD - Edit /etc/fstab and comment out line of swap
+echo
 
----------------------------------
-ENABLE br_netfilter
----------------------------------
-# modprobe br_netfilter
-# echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables
+echo INFO - enable netfilter module
+modprobe br_netfilter
+echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables
 
-- INSTALL DOCKER
-Check, and install if needed - dependencies with the following command:
-# yum install -y yum-utils device-mapper-persistent-data lvm2
+echo INFO - Install docker
+yum install -y yum-utils device-mapper-persistent-data lvm2
 
 Next, add the Docker-ce repository with the command:
-# yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
 
-Install Docker-ce with the command:
-# yum install -y docker-ce
-
-- ENABLE DOCKER SERVICE
-# systemctl enable docker
+yum install -y docker-ce
+systemctl enable docker
 
 - START DOCKER
-# service docker start
+service docker start
 
 - CHECK CGROUP
-# docker info | grep -i cgroup
-Cgroup Driver: cgroupfs
+docker info | grep -i cgroup
 
-- Create yum repo
-Create file: /etc/yum.repos.d/kubernetes.repo
-With content:
+echo INFO - setup kubernetes yum repo
+
+repofile=/etc/yum.repos.d/kubernetes.repo
+
+echo "
 [kubernetes]
 name=Kubernetes
 baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
@@ -47,5 +44,7 @@ gpgcheck=1
 repo_gpgcheck=1
 gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg
         https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
-        
-# yum install -y kubelet kubeadm kubectl
+" > $repofile    
+
+echo INFO - Install kubernetes software
+yum install -y kubelet kubeadm kubectl
