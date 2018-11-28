@@ -16,4 +16,4 @@ systemctl enable docker
 systemctl daemon-reload
 service docker start
 
-kubeadm join 192.168.11.100:6443 --token s8gwke.yxate9aj24yygbhu --discovery-token-ca-cert-hash sha256:ea6d4afd5ae0e4a002d6a1c609dd121f4756e01390d30103b91591e1bf9c6519
+kubeadm join 192.168.11.100:6443 --token s8gwke.yxate9aj24yygbhu --discovery-token-ca-cert-hash sha256:ea6d4afd5ae0e4a002d6a1c609dd121f4756e01390d30103b91591e1bf9c6519 --ignore-preflight-errors=all
