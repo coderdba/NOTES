@@ -210,5 +210,80 @@ fe:42:f5:00:b0:e1 dst 192.168.11.100 self permanent
 2e:dd:24:f1:08:55 dst 192.168.11.101 self permanent
 fe:42:f5:00:b0:e1 dst 192.168.11.100 self permanent
 
+- ROUTE -N
+Note1: cni0 is on master only - and for 192.168.0.0
+Note2: master shows 192.168.1.0 and 192.168.2.0 flannel.1 entries
+Note3: node1 shows flannel.1 for 0.0 and 2.0
+Note4: node2 shows flannel.1 for 0.0 and 1.0
+
+[root@k00 ~]# route -n
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+0.0.0.0         10.0.2.2        0.0.0.0         UG    100    0        0 enp0s3
+10.0.2.0        0.0.0.0         255.255.255.0   U     100    0        0 enp0s3
+172.17.0.0      0.0.0.0         255.255.0.0     U     0      0        0 docker0
+192.168.0.0     0.0.0.0         255.255.255.0   U     0      0        0 cni0
+192.168.1.0     192.168.1.0     255.255.255.0   UG    0      0        0 flannel.1
+192.168.2.0     192.168.2.0     255.255.255.0   UG    0      0        0 flannel.1
+192.168.11.0    0.0.0.0         255.255.255.0   U     101    0        0 enp0s8
+192.168.12.0    0.0.0.0         255.255.255.0   U     102    0        0 enp0s9
+192.168.122.0   0.0.0.0         255.255.255.0   U     0      0        0 virbr0
+
+[root@k01 ~]# route -n
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+0.0.0.0         10.0.2.2        0.0.0.0         UG    100    0        0 enp0s3
+10.0.2.0        0.0.0.0         255.255.255.0   U     100    0        0 enp0s3
+172.17.0.0      0.0.0.0         255.255.0.0     U     0      0        0 docker0
+192.168.0.0     192.168.0.0     255.255.255.0   UG    0      0        0 flannel.1
+192.168.2.0     192.168.2.0     255.255.255.0   UG    0      0        0 flannel.1
+192.168.11.0    0.0.0.0         255.255.255.0   U     101    0        0 enp0s8
+192.168.12.0    0.0.0.0         255.255.255.0   U     102    0        0 enp0s9
+192.168.122.0   0.0.0.0         255.255.255.0   U     0      0        0 virbr0
+
+[root@k02 ~]# route -n
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+0.0.0.0         10.0.2.2        0.0.0.0         UG    100    0        0 enp0s3
+10.0.2.0        0.0.0.0         255.255.255.0   U     100    0        0 enp0s3
+172.17.0.0      0.0.0.0         255.255.0.0     U     0      0        0 docker0
+192.168.0.0     192.168.0.0     255.255.255.0   UG    0      0        0 flannel.1
+192.168.1.0     192.168.1.0     255.255.255.0   UG    0      0        0 flannel.1
+192.168.11.0    0.0.0.0         255.255.255.0   U     101    0        0 enp0s8
+192.168.12.0    0.0.0.0         255.255.255.0   U     102    0        0 enp0s9
+192.168.122.0   0.0.0.0         255.255.255.0   U     0      0        0 virbr0
+
+- IP ROUTE
+
+[root@k00 ~]# ip route
+default via 10.0.2.2 dev enp0s3 proto dhcp metric 100 
+10.0.2.0/24 dev enp0s3 proto kernel scope link src 10.0.2.15 metric 100 
+172.17.0.0/16 dev docker0 proto kernel scope link src 172.17.0.1 
+192.168.0.0/24 dev cni0 proto kernel scope link src 192.168.0.1 
+192.168.1.0/24 via 192.168.1.0 dev flannel.1 onlink 
+192.168.2.0/24 via 192.168.2.0 dev flannel.1 onlink 
+192.168.11.0/24 dev enp0s8 proto kernel scope link src 192.168.11.100 metric 101 
+192.168.12.0/24 dev enp0s9 proto kernel scope link src 192.168.12.100 metric 102 
+192.168.122.0/24 dev virbr0 proto kernel scope link src 192.168.122.1 
+
+[root@k01 ~]# ip route
+default via 10.0.2.2 dev enp0s3 proto dhcp metric 100 
+10.0.2.0/24 dev enp0s3 proto kernel scope link src 10.0.2.15 metric 100 
+172.17.0.0/16 dev docker0 proto kernel scope link src 172.17.0.1 
+192.168.0.0/24 via 192.168.0.0 dev flannel.1 onlink 
+192.168.2.0/24 via 192.168.2.0 dev flannel.1 onlink 
+192.168.11.0/24 dev enp0s8 proto kernel scope link src 192.168.11.101 metric 101 
+192.168.12.0/24 dev enp0s9 proto kernel scope link src 192.168.12.101 metric 102 
+192.168.122.0/24 dev virbr0 proto kernel scope link src 192.168.122.1 
+
+[root@k02 ~]# ip route
+default via 10.0.2.2 dev enp0s3 proto dhcp metric 100 
+10.0.2.0/24 dev enp0s3 proto kernel scope link src 10.0.2.15 metric 100 
+172.17.0.0/16 dev docker0 proto kernel scope link src 172.17.0.1 
+192.168.0.0/24 via 192.168.0.0 dev flannel.1 onlink 
+192.168.1.0/24 via 192.168.1.0 dev flannel.1 onlink 
+192.168.11.0/24 dev enp0s8 proto kernel scope link src 192.168.11.102 metric 101 
+192.168.12.0/24 dev enp0s9 proto kernel scope link src 192.168.12.102 metric 102 
+192.168.122.0/24 dev virbr0 proto kernel scope link src 192.168.122.1 
 
 
