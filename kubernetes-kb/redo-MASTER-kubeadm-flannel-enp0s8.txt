@@ -198,17 +198,22 @@ No change. Just the machine and docker interfaces.
 7: virbr0-nic: <BROADCAST,MULTICAST> mtu 1500 qdisc pfifo_fast master virbr0 state DOWN group default qlen 500
     link/ether 52:54:00:cc:ab:31 brd ff:ff:ff:ff:ff:ff
 
+Pass the correct node-ip to kubelet (so that it wont take the NAT IP)
 
+# ps -ef |grep kubelet
+root     17390     1 16 12:46 ?        00:00:00 /usr/bin/kubelet --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf --config=/var/lib/kubelet/config.yaml --cgroup-driver=cgroupfs --network-plugin=cni
 
-TBD: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-And also be sure to add the following to kubelet.service: 
---node-ip={{ hostvars[inventory_hostname]['ansible_enp0s8']['ipv4']['address'] }} , 
-this way the correct host IPs will be matching the Pod CIDRs – jonashackt Jun 21 at 13:37 
+- Edit the file /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+Modify the Environment line --> add node-ip:
+Environment="KUBELET_KUBECONFIG_ARGS=--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf --node-ip=192.168.11.10"
 
-Edit this file???: /var/lib/kubelet/config.yaml
---> This is not there yet - it will be installed first by kubeadm init
---> Let us do kubeadm init first and then try this
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- Restart kubelet
+# service kubelet restart
+
+# ps -ef |grep kublelet
+root     17390     1  2 12:46 ?        00:00:03 /usr/bin/kubelet --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf --node-ip=192.168.11.10 --config=/var/lib/kubelet/config.yaml --cgroup-driver=cgroupfs --network-plugin=cni
+
+(now you see kubelet has node-ip parameter also)
 
 TBD: Then, install flannel
 # kubectl apply -f /root/kubeinstall/kube-flannel.yml
