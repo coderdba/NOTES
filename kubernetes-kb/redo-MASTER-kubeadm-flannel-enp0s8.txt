@@ -2,6 +2,15 @@
 REDO MASTER KUBEADM INIT AND FLANNEL INSTALL - with correct interface enp0s8
 =============================================================================
 
+=================
+MASTER
+=================
+
+------------------
+INSTALL SOFTWARE
+------------------
+NOTE: This part is common to master and nodes
+
 Install docker
 Install kubelet, kubeadm, ....
 
@@ -16,6 +25,11 @@ Ensure '1' in the following:
 # systemctl enable docker
 # systemctl enable kubelet
 # service docker start
+
+------------------------
+KUBEADM INIT
+------------------------
+NOTE: Master only
 
 # kubeadm config images pull 
 --> Optional - if you want to later disable NAT and run kubeadm.  This will pull images for kubeadm beforehand
@@ -131,8 +145,6 @@ as root:
 
   kubeadm join 192.168.11.10:6443 --token cysre4.dqlfk8ys8d8p9dyq --discovery-token-ca-cert-hash sha256:b4352f0c6f0553fefb7656b9000450f3d6e6bceac715dfbfdbccf2a3c2de69d4
 
-
-
 Check routes:
 # route -n
 Kernel IP routing table
@@ -192,6 +204,12 @@ No change. Just the machine and docker interfaces.
 7: virbr0-nic: <BROADCAST,MULTICAST> mtu 1500 qdisc pfifo_fast master virbr0 state DOWN group default qlen 500
     link/ether 52:54:00:cc:ab:31 brd ff:ff:ff:ff:ff:ff
 
+
+------------------------
+INSTALL FLANNEL
+------------------------
+NOTE: THIS IS COMMON TO MASTER AND NODE
+
 Pass the correct node-ip to kubelet (so that it wont take the NAT IP)
 
 # ps -ef |grep kubelet
@@ -210,7 +228,7 @@ root     17390     1  2 12:46 ?        00:00:03 /usr/bin/kubelet --bootstrap-kub
 
 (now you see kubelet has node-ip parameter also)
 
-INSTALL FLANNEL
+- INSTALL FLANNEL
 
 Ensure that this shows '1'
 # cat /proc/sys/net/bridge/bridge-nf-call-iptables
