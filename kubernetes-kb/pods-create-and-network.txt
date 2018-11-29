@@ -7,6 +7,8 @@ https://neuvector.com/network-security/advanced-kubernetes-networking/
 https://www.mirantis.com/blog/introduction-to-yaml-creating-a-kubernetes-deployment/
 https://kubernetes.io/docs/tasks/run-application/run-stateless-application-deployment/
 
+http://kubernetesbyexample.com/services/ --> services
+
 Playgrounds:
 https://www.katacoda.com/courses/kubernetes/playground
 https://labs.play-with-k8s.com/
@@ -168,6 +170,24 @@ Events:
   Normal  Created    9m28s  kubelet, k01       Created container
   Normal  Started    9m28s  kubelet, k01       Started container
 
+- DESCRIBE SERVICE
+http://kubernetesbyexample.com/services/
+
+# kubectl describe svc nginx-service
+Name:                     nginx-service
+Namespace:                default
+Labels:                   <none>
+Annotations:              <none>
+Selector:                 app=nginx
+Type:                     NodePort
+IP:                       10.99.53.183
+Port:                     <unset>  80/TCP
+TargetPort:               80/TCP
+NodePort:                 <unset>  31945/TCP
+Endpoints:                192.168.1.4:80,192.168.2.3:80
+Session Affinity:         None
+External Traffic Policy:  Cluster
+Events:                   <none>
 
 --------------------------------------------
 EXPOSE PORT - 'WITHIN' THE CLUSTER
@@ -183,6 +203,14 @@ In order to access it using your host IP “NodePort” option will be used.
 NAME            TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)        AGE
 kubernetes      ClusterIP   10.96.0.1      <none>        443/TCP        19h
 nginx-service   NodePort    10.99.53.183   <none>        80:31945/TCP   7s
+
+- GET PORT FORWARD INFO
+# iptables-save | grep ngin
+-A KUBE-NODEPORTS -p tcp -m comment --comment "default/nginx-service:" -m tcp --dport 31945 -j KUBE-MARK-MASQ
+-A KUBE-NODEPORTS -p tcp -m comment --comment "default/nginx-service:" -m tcp --dport 31945 -j KUBE-SVC-GKN7Y2BSGW4NJTYL
+-A KUBE-SERVICES ! -s 192.168.0.0/16 -d 10.99.53.183/32 -p tcp -m comment --comment "default/nginx-service: cluster IP" -m tcp --dport 80 -j KUBE-MARK-MASQ
+-A KUBE-SERVICES -d 10.99.53.183/32 -p tcp -m comment --comment "default/nginx-service: cluster IP" -m tcp --dport 80 -j KUBE-SVC-GKN7Y2BSGW4NJTYL
+
 
 - CONNECT
 TBD - this is NOT working
