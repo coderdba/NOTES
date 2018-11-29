@@ -211,22 +211,25 @@ nginx-service   NodePort    10.99.53.183   <none>        80:31945/TCP   7s
 -A KUBE-SERVICES ! -s 192.168.0.0/16 -d 10.99.53.183/32 -p tcp -m comment --comment "default/nginx-service: cluster IP" -m tcp --dport 80 -j KUBE-MARK-MASQ
 -A KUBE-SERVICES -d 10.99.53.183/32 -p tcp -m comment --comment "default/nginx-service: cluster IP" -m tcp --dport 80 -j KUBE-SVC-GKN7Y2BSGW4NJTYL
 
-
 - CONNECT
-TBD - this is NOT working
 
+-- Connect using host port (31945 is port of host machine as in the KUBE-NODEPORTS in iptables and also showing in get svc)
+# curl -I http://192.168.11.101:31945
+HTTP/1.1 200 OK
+Server: nginx/1.7.9
+Date: Thu, 29 Nov 2018 06:03:26 GMT
+Content-Type: text/html
+Content-Length: 612
+Last-Modified: Tue, 23 Dec 2014 16:25:09 GMT
+Connection: keep-alive
+ETag: "54999765-264"
+Accept-Ranges: bytes
+
+-- Connect to cluster IP
+TBD: Not working
 # curl cluster-ip port
-# curl 10.104.227.129 80
+# curl 10.99.53.183 80
 --> TBD - This just hung and timed out
-
-# curl node-ip port
---> Here we give ip of the node itself
---> TBD - connection refused
-[root@k0 k8]# curl 192.168.11.100 80
-curl: (7) Failed connect to 192.168.11.100:80; Connection refused
-curl: (7) Failed to connect to 0.0.0.80: Invalid argument
-[root@k0 k8]# curl http://192.168.11.100:80
-curl: (7) Failed connect to 192.168.11.100:80; Connection refused
 
 --------------------------------------------
 REMOVE SERVICE
