@@ -1,2 +1,120 @@
+=========================
+PODS
+=========================
+
+https://linuxthegreat.wordpress.com/2017/10/17/installing-kubernetes-1-8-1-on-centos-7/ - basic nginx with nodeport forward
 https://neuvector.com/network-security/advanced-kubernetes-networking/
 https://www.mirantis.com/blog/introduction-to-yaml-creating-a-kubernetes-deployment/
+https://kubernetes.io/docs/tasks/run-application/run-stateless-application-deployment/
+
+Playgrounds:
+https://www.katacoda.com/courses/kubernetes/playground
+https://labs.play-with-k8s.com/
+
+================
+FIRST TRIAL
+================
+https://linuxthegreat.wordpress.com/2017/10/17/installing-kubernetes-1-8-1-on-centos-7/
+https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
+http://containertutorials.com/get_started_kubernetes/k8s_example.html
+
+
+NOTE: THIS FAILED - details below
+
+----------------------
+CREATE YAML nginx.yaml
+----------------------
+# https://kubernetes.io/docs/tasks/run-application/run-stateless-application-deployment/
+#apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+apiVersion: apps/v1beta2 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  replicas: 2 # tells deployment to run 2 pods matching the template
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.7.9
+        ports:
+        - containerPort: 80
+        
+----------------------
+CREATE IT
+----------------------
+# kubectl apply -f nginx-deployment-kubsite.yml
+
+# kubectl get pods
+NAME                                READY   STATUS    RESTARTS   AGE
+nginx-deployment-5c689d88bb-f8l2r   1/1     Running   0          14h
+nginx-deployment-5c689d88bb-ptcfz   1/1     Running   0          14h
+
+# kubectl get deployments
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   2         2         2            2           14h
+
+- VERIFY
+
+On nodes:
+# docker ps |grep ngin
+fead827c5d51        nginx                  "nginx -g 'daemon of…"   9 minutes ago       Up 9 minutes                            k8s_nginx_nginx-85c8f76bb5-df77c_default_ea105e8c-f220-11e8-b2d7-080027104420_0
+45f39e64f72b        k8s.gcr.io/pause:3.1   "/pause"                 10 minutes ago      Up 10 minutes                           k8s_POD_nginx-85c8f76bb5-df77c_default_ea105e8c-f220-11e8-b2d7-080027104420_0
+
+--------------------------------------------
+EXPOSE PORT - 'WITHIN' THE CLUSTER
+--------------------------------------------
+Note: This command will create service with the name “nginx-service”. 
+Service will be accessible on the port given by “–port” option for the “–target-port”. 
+Target port will be of pod. Service will be accessible within the cluster only. 
+In order to access it using your host IP “NodePort” option will be used.
+
+# kubectl expose deployment nginx-deployment –name=nginx-service –port=80 –target-port=80 –type=NodePort
+(this may error out saying nginx-service is not valid or something - but anyway creates one with same name as of deployment)
+
+# kubectl get svc
+NAME               TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE
+kubernetes         ClusterIP   10.96.0.1       <none>        443/TCP   19h
+nginx-deployment   ClusterIP   10.109.191.29   <none>        80/TCP    10m
+
+- CONNECT
+TBD - this is NOT working
+
+# curl cluster-ip port
+# curl 10.104.227.129 80
+--> TBD - This just hung and timed out
+
+# curl node-ip port
+--> Here we give ip of the node itself
+--> TBD - connection refused
+[root@k0 k8]# curl 192.168.11.10 80
+curl: (7) Failed connect to 192.168.11.10:80; Connection refused
+curl: (7) Failed to connect to 0.0.0.80: Invalid argument
+[root@k0 k8]# curl http://192.168.11.10:80
+curl: (7) Failed connect to 192.168.11.10:80; Connection refused
+
+--------------------------------------------
+REMOVE SERVICE
+--------------------------------------------
+# kubectl delete service nginx-deployment
+service "nginx-deployment" deleted
+
+# kubectl delete deployment nginx-deployment
+deployment.extensions "nginx" deleted
+
+[root@k00 pods]# kubectl get pods
+No resources found.
+[root@k00 pods]# kubectl get deployments
+No resources found.
+[root@k00 pods]# kubectl get svc
+NAME         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   19h
+
+
+
