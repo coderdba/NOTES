@@ -204,6 +204,16 @@ NAME            TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)        AGE
 kubernetes      ClusterIP   10.96.0.1      <none>        443/TCP        19h
 nginx-service   NodePort    10.99.53.183   <none>        80:31945/TCP   7s
 
+Explanation: https://linuxthegreat.wordpress.com/2017/10/17/installing-kubernetes-1-8-1-on-centos-7/
+  The expose command abocewill create service with the name “nginx-service”. 
+  Service will be accessible on the port given by “–port” option for the “–target-port”. 
+  Target port will be of pod. Service will be accessible within the cluster only. 
+  In order to access it using your host IP “NodePort” option will be used.
+
+  –type=NodePort :- when this option is given k8s tries to find out  one of free port in the range 30000-32767 
+  on all the VMs of the cluster and binds the underlying service with it. 
+  If no such port found then it will return with an error.
+
 - GET PORT FORWARD INFO
 # iptables-save | grep ngin
 -A KUBE-NODEPORTS -p tcp -m comment --comment "default/nginx-service:" -m tcp --dport 31945 -j KUBE-MARK-MASQ
@@ -212,6 +222,15 @@ nginx-service   NodePort    10.99.53.183   <none>        80:31945/TCP   7s
 -A KUBE-SERVICES -d 10.99.53.183/32 -p tcp -m comment --comment "default/nginx-service: cluster IP" -m tcp --dport 80 -j KUBE-SVC-GKN7Y2BSGW4NJTYL
 
 - CONNECT
+
+Note: In the following get svc listing, service-ip is the cluster-ip and its port is the first (80) in PORT(S)
+      As we have exposed NodePort also, we can use master or worker host IPs and use the second IP (31945) in PORT(S)
+NAME            TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)        AGE
+nginx-service   NodePort    10.99.53.183   <none>        80:31945/TCP   7s
+
+-- Connect using service-ip 
+TBD: This hung
+# curl -I http://10.99.53.183:80
 
 -- Connect using host port (31945 is port of host machine as in the KUBE-NODEPORTS in iptables and also showing in get svc)
 # curl -I http://192.168.11.101:31945
@@ -224,6 +243,9 @@ Last-Modified: Tue, 23 Dec 2014 16:25:09 GMT
 Connection: keep-alive
 ETag: "54999765-264"
 Accept-Ranges: bytes
+
+Or, use browser and go to: http://192.168.11.101:31945
+You will get "welcome nginx" page
 
 -- Connect to cluster IP
 TBD: Not working
