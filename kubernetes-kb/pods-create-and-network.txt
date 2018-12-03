@@ -477,6 +477,27 @@ ExecStart=/usr/bin/dockerd -H unix:// --bip=192.168.2.1/24 --mtu=1450
 # systemctl daemon-reload
 # service docker start
 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+NOTE: After this we could ping pod IPs from their own nodes
+However, that did not work once machines were restarted and new pods were created (or old deployments deleted and recreated)
+To solve it: (on nodes)
+  - Stop docker
+  #  service docker stop
+  
+  - Bring docker bridge interface
+  #  ifconfig docker0 down
+  
+  - Remove docker bridge
+  #  brctl delbr docker0
+  
+  - Restart docker
+  #  service docker start
+  
+  - This created the docker bridge afresh, with correct IP as in flannel subnet.env
+  
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
 -- VERIFY 
 This will show the new gateway and subnet
 # sudo docker network inspect bridge
