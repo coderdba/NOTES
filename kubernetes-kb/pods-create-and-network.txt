@@ -410,6 +410,72 @@ Docker service is defined here:
 File: /usr/lib/systemd/system/docker.service
 (Link: /etc/systemd/system/multi-user.target.wants/docker.service)
 
+- ALETERIG DOCKER CONFIG TO USE FLANNEL
+https://docker-k8s-lab.readthedocs.io/en/latest/docker/docker-flannel.html#restart-docker-daemon-with-flannel-network
+
+# ip addr list 
+7: docker0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default 
+    link/ether 02:42:ea:9d:41:e9 brd ff:ff:ff:ff:ff:ff
+    inet 172.17.0.1/16 brd 172.17.255.255 scope global docker0
+
+-- stop docker
+# service docker stop
+# docker ps
+Cannot connect to the Docker daemon. Is the docker daemon running on this host?
+
+-- know flannel environment
+Node1:
+# cat /run/flannel/subnet.env
+FLANNEL_NETWORK=10.244.0.0/16
+FLANNEL_SUBNET=192.168.1.1/24
+FLANNEL_MTU=1450
+FLANNEL_IPMASQ=true
+
+Node2:
+# cat /run/flannel/subnet.env
+FLANNEL_NETWORK=10.244.0.0/16
+FLANNEL_SUBNET=192.168.2.1/24
+FLANNEL_MTU=1450
+FLANNEL_IPMASQ=true
+
+-- source flannel environment
+# source /run/flannel/subnet.env
+or
+# . /run/flannel/subnet.env
+
+-- modify docker subnet
+# ifconfig docker0 ${FLANNEL_SUBNET}
+
+Node1:
+# ip addr list
+7: docker0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default 
+    link/ether 02:42:ea:9d:41:e9 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.1.1/24 brd 192.168.1.255 scope global docker0
+       valid_lft forever preferred_lft forever
+       
+Node2: 
+7: docker0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default 
+    link/ether 02:42:97:a0:c8:df brd ff:ff:ff:ff:ff:ff
+    inet 192.168.2.1/24 brd 192.168.2.255 scope global docker0
+       valid_lft forever preferred_lft forever
+
+-- start docker daemon / service
+
+---- manually
+# docker daemon --bip=${FLANNEL_SUBNET} --mtu=${FLANNEL_MTU} &
+
+---- OR, MODIFY docker.service file as follows:
+File: /usr/lib/systemd/system/docker.service
+
+Modified ExecStart line:
+Node1:
+ExecStart=/usr/bin/dockerd -H unix:// --bip=192.168.1.1/24 --mtu=1450
+
+Node2:
+ExecStart=/usr/bin/dockerd -H unix:// --bip=192.168.2.1/24 --mtu=1450
+
+# systemctl daemon-reload
+# service docker start
 
 ======================================
 APPENDIX - VARIOUS CHECKS
