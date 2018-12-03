@@ -15,9 +15,9 @@ Playgrounds:
 https://www.katacoda.com/courses/kubernetes/playground
 https://labs.play-with-k8s.com/
 
-================
-FIRST TRIAL
-================
+====================
+FIRST TRIAL - NGINX
+====================
 https://linuxthegreat.wordpress.com/2017/10/17/installing-kubernetes-1-8-1-on-centos-7/
 https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
 http://containertutorials.com/get_started_kubernetes/k8s_example.html
@@ -59,6 +59,12 @@ CREATE IT
 NAME                                READY   STATUS    RESTARTS   AGE
 nginx-deployment-5c689d88bb-f8l2r   1/1     Running   0          14h
 nginx-deployment-5c689d88bb-ptcfz   1/1     Running   0          14h
+
+# kubectl get pods -o wide
+NAME                                READY   STATUS    RESTARTS   AGE    IP            NODE   NOMINATED NODE
+nginx-deployment-5c689d88bb-5w47h   1/1     Running   0          4d4h   192.168.2.3   k02    <none>
+nginx-deployment-5c689d88bb-psj4h   1/1     Running   1          4d4h   192.168.1.4   k01    <none>
+(NOTE: The IPs of two pods are different at the third digit)
 
 # kubectl get deployments
 NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
@@ -186,7 +192,7 @@ IP:                       10.99.53.183
 Port:                     <unset>  80/TCP
 TargetPort:               80/TCP
 NodePort:                 <unset>  31945/TCP
-Endpoints:                192.168.1.4:80,192.168.2.3:80
+Endpoints:                192.168.1.4:80,192.168.2.3:80  --> Note: These are the pod IPs as in kubectl get pods -o wide
 Session Affinity:         None
 External Traffic Policy:  Cluster
 Events:                   <none>
@@ -272,9 +278,9 @@ No resources found.
 NAME         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
 kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   19h
 
-======================================
+--------------------------------------
 LOGON TO THE PODS AND CHECK NETWORK
-======================================
+--------------------------------------
 - FIND IP ADDRESS OF PODS
 -- METHOD1 - GET INTO THE POD CONTAINER ITSELF
 On any node do this to get into the nginx pod/container:
@@ -382,7 +388,12 @@ Events:
   Normal  Created  14m (x2 over 4d2h)  kubelet, k01  Created container
   Normal  Started  14m (x2 over 4d2h)  kubelet, k01  Started container
 
-
+--------------------------------------
+PINGING BETWEEN PODS
+--------------------------------------
+TBD: As of now pods across nodes could not ping each other.  That is because their IPs have different 3rd digit.
+https://stackoverflow.com/questions/51795575/pods-on-different-nodes-cant-ping-each-other
+--> This says Docker should be made to use flannel
 
 ======================================
 APPENDIX - VARIOUS CHECKS
@@ -393,7 +404,8 @@ https://stackoverflow.com/questions/50527633/kubernetes-cluster-ip-unreachable
 # kubectl get endpoints
 
 # kubectl get svc
-# kubectl get pods
+# kubectl get pods 
+# kubectl get pods -o wide
 # kubectl get namespaces
 
 # kubectl get pods
