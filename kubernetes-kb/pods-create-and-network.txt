@@ -467,6 +467,22 @@ Node2:
 ---- OR, MODIFY docker.service file as follows:
 File: /usr/lib/systemd/system/docker.service
 
+--> MODIFY USING FLANNEL ENV FILE SOURCED IN docker.service
+[Service]
+Type=notify
+# the default is not to use systemd for cgroups because the delegate issues still
+# exists and systemd currently does not support the cgroup feature set required
+# for containers run by docker
+EnvironmentFile=/run/flannel/subnet.env
+#ExecStart=/usr/bin/dockerd -H unix://
+#ExecStart=/usr/bin/dockerd -H unix:// --bip=192.168.1.1/24 --mtu=1450
+ExecStart=/usr/bin/dockerd -H unix:// --bip=${FLANNEL_SUBNET} --mtu=${FLANNEL_MTU}
+ExecReload=/bin/kill -s HUP $MAINPID
+TimeoutSec=0
+RestartSec=2
+Restart=always
+
+--> (not preferred) - MODIFY USING HARDCODED VALUES
 Modified ExecStart line:
 Node1:
 ExecStart=/usr/bin/dockerd -H unix:// --bip=192.168.1.1/24 --mtu=1450
