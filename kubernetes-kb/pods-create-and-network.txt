@@ -389,7 +389,7 @@ Events:
   Normal  Started  14m (x2 over 4d2h)  kubelet, k01  Started container
 
 --------------------------------------
-PINGING BETWEEN PODS
+PINGING PODS and BETWEEN PODS
 --------------------------------------
 TBD: As of now pods across nodes could not ping each other.  That is because their IPs have different 3rd digit.
 https://stackoverflow.com/questions/51795575/pods-on-different-nodes-cant-ping-each-other
@@ -399,7 +399,7 @@ https://stackoverflow.com/questions/51795575/pods-on-different-nodes-cant-ping-e
 
 From stackoverflow article:
 The docker virtual bridge interface docker0 is now have IP 172.17.0.1 on both host.
-But as per the docker/flannel integration guide, the docker0virtual bridge should be in flannel network on each host.
+But as per the docker/flannel integration guide, the docker0 virtual bridge should be in flannel network on each host.
 A highlevel workflow of flannel/docker networking integrations below
 
 Flannel creates /run/flannel/subnet.env as per the etcd network configuration during flanneld startup.
@@ -413,6 +413,51 @@ File: /usr/lib/systemd/system/docker.service
 - ALETERIG DOCKER CONFIG TO USE FLANNEL
 https://docker-k8s-lab.readthedocs.io/en/latest/docker/docker-flannel.html#restart-docker-daemon-with-flannel-network
 
+FINAL METHOD
+
+Create a folder /etc/docker-flannel
+# mkdir /etc/docker-flannel
+
+When flannel and docker are running without any modification 
+# cp /run/flannel/subnet.env /etc/docker-flannel/flannel-subnet.env
+
+Modify /usr/lib/systemd/system/docker.service as follows:
+[Service]
+Type=notify
+# the default is not to use systemd for cgroups because the delegate issues still
+# exists and systemd currently does not support the cgroup feature set required
+# for containers run by docker
+# Added environment file
+EnvironmentFile=/etc/docker-flannel/flannel-subnet.env
+# Original ExecStart
+#ExecStart=/usr/bin/dockerd -H unix://
+# Hardcoded bip, mtu in ExecStart
+#ExecStart=/usr/bin/dockerd -H unix:// --bip=192.168.1.1/24 --mtu=1450
+# ExecStart with flannel environment variables
+ExecStart=/usr/bin/dockerd -H unix:// --bip=${FLANNEL_SUBNET} --mtu=${FLANNEL_MTU}
+ExecReload=/bin/kill -s HUP $MAINPID
+
+Restart docker
+# systemctl daemon-reload
+# service docker restart
+
+This should show docker0 using same subnet as flannel (see outputs in trials below)
+
+However, upon restart of node, though docker0 uses same subnet as flannel, it still disallows pings to pods.
+- To fix that
+Option1: Just bring down docker0 interface
+# ifconfig docker0 down
+(this will keep docker0 down, but cni0 still will be running and will now allow pod pings and connections)
+
+Option2: Restart docker after bringing down and removing docker0
+# ifconfig docker0 down
+# brctl delbr docker0
+# service docker restart
+(this will re-create docker0, and cni0 still will be running and docker0 & cni0 will now allow pod pings and connections)
+
+Verify using pings, curl and browser (see trials below)
+
+=====  VARIOUS TRIALS =====
 # ip addr list 
 7: docker0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default 
     link/ether 02:42:ea:9d:41:e9 brd ff:ff:ff:ff:ff:ff
