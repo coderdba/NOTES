@@ -480,8 +480,10 @@ ExecStart=/usr/bin/dockerd -H unix:// --bip=192.168.2.1/24 --mtu=1450
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 NOTE: After this we could ping pod IPs from their own nodes
 However, that did not work once machines were restarted and new pods were created (or old deployments deleted and recreated)
-To solve it: (on nodes)  https://github.com/kubernetes/kubernetes/issues/7996
-                         https://unix.stackexchange.com/questions/62751/cannot-delete-bridge-bridge-br0-is-still-up-cant-delete-it
+To solve it: (on nodes)  
+  https://github.com/kubernetes/kubernetes/issues/7996
+  https://unix.stackexchange.com/questions/62751/cannot-delete-bridge-bridge-br0-is-still-up-cant-delete-it
+  
   - Stop docker
   #  service docker stop
   
@@ -494,17 +496,28 @@ To solve it: (on nodes)  https://github.com/kubernetes/kubernetes/issues/7996
   - Restart docker
   #  service docker start
   
-  - This created the docker bridge afresh, with correct IP as in flannel subnet.env
+  - This created the docker0 bridge afresh, with correct IP as in flannel subnet.env
  
  TBD: However, upon node restart, this again failed and node-ip's could not be pinged
  To fix: (on nodes)
  While docker is running 
-  # ifconfig docker0 down
+  # ifconfig docker0 down  (just the interface - not docker itself)
   # brctl delbr docker0
-  # service docker reload
+  # systemctl daemon-reload
+  # service docker restart  (instead of service docker reload --> see note below)
+                              --> however, this will assign new IP to the pod
+  
+  NOTE: actually, it worked with service docker reload instead of service docker restart
+   [or, possibly without reload either]
+   when we did service docker reload - docker0 did not start, but the pod-ip ping and curl worked
+   So, docker0 may not be necessary
+   Also, instead of doing reload do restart of docker service - so that docker0 interface shows up
 
   Then, pod-IP became pingable again.
   So, probably, upon node restart we should re-create docker0 bridge
+  
+  https://www.slideshare.net/WorksApplications/demystifying-kubernetes
+  --> slide 19, 22, 48, 52, 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
@@ -548,6 +561,48 @@ This will show the new gateway and subnet
         "Labels": {}
     }
 ]
+
+IP Addresses Node1: (after delbr etc)
+# ip addr list flannel.1
+8: flannel.1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1450 qdisc noqueue state UNKNOWN group default 
+    link/ether ca:51:da:83:06:9b brd ff:ff:ff:ff:ff:ff
+    inet 192.168.1.0/32 scope global flannel.1
+       valid_lft forever preferred_lft forever
+    inet6 fe80::c851:daff:fe83:69b/64 scope link 
+       valid_lft forever preferred_lft forever
+[root@k01 ~]# ip addr list cni0
+9: cni0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1450 qdisc noqueue state UP group default 
+    link/ether 0a:58:c0:a8:01:01 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.1.1/24 scope global cni0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::e03a:48ff:fe45:6df1/64 scope link 
+       valid_lft forever preferred_lft forever
+[root@k01 ~]# ip addr list docker0
+11: docker0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default 
+    link/ether 02:42:64:92:69:75 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.1.1/24 brd 192.168.1.255 scope global docker0
+       valid_lft forever preferred_lft forever
+
+IP Addresses Node2:  (after delbr etc)
+# ip addr list docker0
+11: docker0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default 
+    link/ether 02:42:37:32:f2:fd brd ff:ff:ff:ff:ff:ff
+    inet 192.168.2.1/24 brd 192.168.2.255 scope global docker0
+       valid_lft forever preferred_lft forever
+[root@k02 ~]# ip addr list cni0
+9: cni0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1450 qdisc noqueue state UP group default 
+    link/ether 0a:58:c0:a8:02:01 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.2.1/24 scope global cni0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::7012:98ff:fea7:50a6/64 scope link 
+       valid_lft forever preferred_lft forever
+[root@k02 ~]# ip addr list flannel.1
+8: flannel.1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1450 qdisc noqueue state UNKNOWN group default 
+    link/ether 96:d8:71:61:c4:02 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.2.0/32 scope global flannel.1
+       valid_lft forever preferred_lft forever
+    inet6 fe80::94d8:71ff:fe61:c402/64 scope link 
+       valid_lft forever preferred_lft forever
 
 
 -- VERIFY
