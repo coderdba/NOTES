@@ -3,8 +3,11 @@ PODS
 =========================
 
 TBD - various ways of exposing services:
-  TBD - go through and try this (HostNetwork, NodePort): http://alesnosek.com/blog/2017/02/14/accessing-kubernetes-pods-from-outside-of-the-cluster/
-  TBD - go through and try this (external IP): https://kubernetes.io/docs/tutorials/stateless-application/expose-external-ip-address/
+  In-Progress - go through and try this (HostNetwork, HostPort, NodePort): 
+  http://alesnosek.com/blog/2017/02/14/accessing-kubernetes-pods-from-outside-of-the-cluster/
+  
+  TBD - go through and try this (external IP): 
+  https://kubernetes.io/docs/tutorials/stateless-application/expose-external-ip-address/
   
 
 Know flannel networking: https://blog.laputa.io/kubernetes-flannel-networking-6a1cb1f8ec7c
@@ -701,9 +704,9 @@ Try this:
 - OR - 
 Try http://192.168.11.102:31945 in a browser on the machine
 
-======================================
-HOSTNETWORK, NODEPORT, LOAD BALANCER
-======================================
+===============================================
+HOSTNETWORK, HOSTPORT, NODEPORT, LOAD BALANCER
+===============================================
 http://alesnosek.com/blog/2017/02/14/accessing-kubernetes-pods-from-outside-of-the-cluster/
 
 ------------
@@ -715,7 +718,7 @@ started. An application that is configured to listen on all network interfaces w
 all network interfaces of the host machine. 
 
 - Create yaml file:
-nginx-deployment-kubsite-hostPort.yml
+nginx-deployment-kubsite-hostNetwork.yml
 Keyword = Under 'spec' of the container, mention "hostNetwork: true"
 
 #apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
@@ -741,7 +744,7 @@ spec:
         - containerPort: 80
 
 - Create the deployment
-kubectl create -f nginx-deployment-kubsite-hostPort.yml
+kubectl create -f nginx-deployment-kubsite-hostNetwork.yml
 
 - List pods
 # kubectl get pods -o wide
@@ -758,6 +761,26 @@ Note:  No service is created explicity and 'get service' also lists no service f
 # curl 192.168.11.102 80
 
 These curl commands or accessing via browser as http://192.168.11.x:80 will give nginx page.
+
+- Discussion on advantages/disadvantages 
+(from http://alesnosek.com/blog/2017/02/14/accessing-kubernetes-pods-from-outside-of-the-cluster/)
+
+Disadvantage: (due to which this is not a preferred method)
+Note that every time the pod is restarted Kubernetes can reschedule the pod onto a different node and so the application 
+will change its IP address. Besides that two applications requiring the same port cannot run on the same node. 
+
+Advantage: (or where we still can use it beneficially)
+For cases where a direct access to the host networking is required - on standard port all across the cluster. 
+For example, the Kubernetes networking plugin Flannel can be deployed as a daemon set on all nodes of the Kubernetes cluster. Due to hostNetwork: true (in flannel deployment) Flannel has full control of the networking on every node 
+in the cluster allowing it to manage the overlay network to which the pods with hostNetwork: false are connected to.
+
+-----------------
+HOSTPORT
+-----------------
+
+- Create yaml file:
+nginx-deployment-kubsite-hostPort.yml
+
 
 
 
