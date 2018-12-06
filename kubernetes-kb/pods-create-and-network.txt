@@ -250,13 +250,12 @@ Note: In the following get svc listing, service-ip is the cluster-ip and its por
 NAME            TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)        AGE
 nginx-service   NodePort    10.99.53.183   <none>        80:31945/TCP   7s
 
--- Connect using cluster-ip 
-TBD: This hung (check https://github.com/kubernetes/kubernetes/issues/7996)
-# curl -I http://10.99.53.183:80
-# curl -I http://10.99.53.183:31945
-
 -- Connect using node IP and host port 
    (31945 is port of host machine as in the KUBE-NODEPORTS in iptables and also showing in get svc)
+   
+Note: With service and nodeport, it is accessible only with node-ip and nodePort
+https://kubernetes.io/docs/concepts/services-networking/service/
+
 # curl -I http://192.168.11.101:31945
 HTTP/1.1 200 OK
 Server: nginx/1.7.9
@@ -272,8 +271,16 @@ Or, use browser and go to: http://192.168.11.101:31945
 You will get "welcome nginx" page
 
 -- Connect using master IP
-TBD - this hung
+Not TBD anymore - this hung - expected behaviour.  This is accessible only via node-IP
 # curl -I http://192.168.11.100:31945
+
+-- Connect using cluster-ip 
+Not TBD anymore: This hung (check https://github.com/kubernetes/kubernetes/issues/7996)
+                  This is expected behaviour to hang - it is accessible only via node-IP. Cluster IP is not routable. 
+                  https://kubernetes.io/docs/concepts/services-networking/service/
+
+# curl -I http://10.99.53.183:80
+# curl -I http://10.99.53.183:31945
 
 --------------------------------------------
 REMOVE SERVICE
