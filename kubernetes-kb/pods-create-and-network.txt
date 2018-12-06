@@ -3,8 +3,11 @@ PODS
 =========================
 
 TBD - various ways of exposing services:
-  TBD - go through and try this: http://alesnosek.com/blog/2017/02/14/accessing-kubernetes-pods-from-outside-of-the-cluster/
-  TBD - go through and try this: https://kubernetes.io/docs/tutorials/stateless-application/expose-external-ip-address/
+  TBD - go through and try this (HostNetwork, NodePort): http://alesnosek.com/blog/2017/02/14/accessing-kubernetes-pods-from-outside-of-the-cluster/
+  TBD - go through and try this (external IP): https://kubernetes.io/docs/tutorials/stateless-application/expose-external-ip-address/
+  
+
+Know flannel networking: https://blog.laputa.io/kubernetes-flannel-networking-6a1cb1f8ec7c
 
 https://linuxthegreat.wordpress.com/2017/10/17/installing-kubernetes-1-8-1-on-centos-7/ - basic nginx with nodeport forward
 https://www.howtoforge.com/tutorial/centos-kubernetes-docker-cluster/
@@ -25,9 +28,6 @@ FIRST TRIAL - NGINX
 https://linuxthegreat.wordpress.com/2017/10/17/installing-kubernetes-1-8-1-on-centos-7/
 https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
 http://containertutorials.com/get_started_kubernetes/k8s_example.html
-
-
-NOTE: THIS FAILED - details below
 
 ----------------------
 CREATE YAML nginx.yaml
@@ -700,6 +700,67 @@ Try this:
 # curl http://192.168.11.102:31945
 - OR - 
 Try http://192.168.11.102:31945 in a browser on the machine
+
+======================================
+HOSTNETWORK, NODEPORT, LOAD BALANCER
+======================================
+http://alesnosek.com/blog/2017/02/14/accessing-kubernetes-pods-from-outside-of-the-cluster/
+
+------------
+HOSTNETWORK
+------------
+The hostNetwork setting applies to the Kubernetes pods. When a pod is configured with hostNetwork: true, 
+the applications running in such a pod can directly see the network interfaces of the host machine where the pod was
+started. An application that is configured to listen on all network interfaces will in turn be accessible on 
+all network interfaces of the host machine. 
+
+- Create yaml file:
+nginx-deployment-kubsite-hostPort.yml
+Keyword = Under 'spec' of the container, mention "hostNetwork: true"
+
+#apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+apiVersion: apps/v1beta2 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  replicas: 2 # tells deployment to run 2 pods matching the template
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      hostNetwork: true
+      containers:
+      - name: nginx
+        image: nginx:1.7.9
+        ports:
+        - containerPort: 80
+
+- Create the deployment
+kubectl create -f nginx-deployment-kubsite-hostPort.yml
+
+- List pods
+# kubectl get pods -o wide
+NAME                                READY   STATUS    RESTARTS   AGE   IP               NODE   NOMINATED NODE
+nginx-deployment-86d589546f-k4854   1/1     Running   0          41h   192.168.11.101   k01    <none>
+nginx-deployment-86d589546f-srqtp   1/1     Running   0          41h   192.168.11.102   k02    <none>
+
+Note: You can see pod-ip's same as nodes' own IPs
+
+- Access service
+Note:  No service is created explicity and 'get service' also lists no service for this deployment
+
+# curl 192.168.11.101 80
+# curl 192.168.11.102 80
+
+These curl commands or accessing via browser as http://192.168.11.x:80 will give nginx page.
+
+
+
 
 ======================================
 APPENDIX - VARIOUS CHECKS
