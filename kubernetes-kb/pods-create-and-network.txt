@@ -847,6 +847,97 @@ NOTE: This is working from within the node only - not from master or other node
 or
 <host ip>:8080
 
+----------------
+NODEPORT
+----------------
+
+- CREATE AND EXPOSE (BOTH BY YML)
+
+-- CREATING
+# https://kubernetes.io/docs/tasks/run-application/run-stateless-application-deployment/
+#apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+apiVersion: apps/v1beta2 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  replicas: 4 # tells deployment to run 2 pods matching the template
+  template:
+    metadata: 
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.7.9
+        ports:
+        - containerPort: 80
+
+
+-- EXPOSING AFTER CREATING THE PODS/DEPLOYMENTS
+NOTE: The selector is by 'app' name given in creator yml
+kind: Service
+apiVersion: v1
+metadata:
+  name: nginx-service
+spec:
+  selector:
+    app: nginx
+  type: NodePort
+  ports:
+  - name: http
+    port: 80
+    nodePort: 30000
+    protocol: TCP
+    
+-- ACCESSING
+On the node or another node or master:  (accessible from all reachable machines, but using node's IP)
+curl -I http://192.168.11.101:30000
+
+- CREATE AND EXPOSE IN ONE YML
+For multiple item YML:
+https://stackoverflow.com/questions/33887194/how-to-set-multiple-commands-in-one-yaml-file-with-kubernetes
+
+# https://kubernetes.io/docs/tasks/run-application/run-stateless-application-deployment/
+#apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+apiVersion: apps/v1beta2 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  replicas: 4 # tells deployment to run 2 pods matching the template
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.7.9
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:  
+  name: nginx-service
+spec:
+  selector: 
+    app: nginx
+  type: NodePort
+  ports:  
+  - name: http
+    port: 80
+    nodePort: 30000
+    protocol: TCP
+
+
 ======================================
 APPENDIX - VARIOUS CHECKS
 ======================================
