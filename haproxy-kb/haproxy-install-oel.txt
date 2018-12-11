@@ -48,4 +48,13 @@ While this is being fetched (if it takes some time) do a netstat -anp and you ca
 # netstat -anp |grep 30000
 tcp        0      0 0.0.0.0:30000           0.0.0.0:*               LISTEN      8928/haproxy        
 tcp        0      1 192.168.11.91:52583     192.168.11.101:30000    SYN_SENT    8928/haproxy  --> k8 node       
-tcp        0      0 192.168.11.91:44816     192.168.11.91:30000     TIME_WAIT   -             --> haproxy machine itself
+tcp        0      0 192.168.11.91:44816     192.168.11.91:30000     TIME_WAIT   -             --> haproxy machine frontend
+
+This shows connections to multiple backends - IPs 101 and 102 - when two or more curl's are fired
+# netstat -anp |grep 30000
+tcp        0      0 0.0.0.0:30000           0.0.0.0:*               LISTEN      8928/haproxy        
+tcp        0      1 192.168.11.91:63575     192.168.11.102:30000    SYN_SENT    8928/haproxy --> backend2       
+tcp        0      0 192.168.11.91:45815     192.168.11.91:30000     ESTABLISHED 9494/curl    --> haproxy machine frontend   
+tcp        0      1 192.168.11.91:53544     192.168.11.101:30000    SYN_SENT    8928/haproxy --> backend1      
+tcp        0      0 192.168.11.91:45821     192.168.11.91:30000     TIME_WAIT   -            --> haproxy machine frontend   
+tcp        0      0 192.168.11.91:30000     192.168.11.91:45815     ESTABLISHED 8928/haproxy --> haproxy machine frontend
