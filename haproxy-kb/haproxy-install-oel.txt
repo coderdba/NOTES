@@ -5,6 +5,7 @@ https://tecadmin.net/install-and-configure-haproxy-on-centos/
 
 - CONFIG
 Now, edit /etc/haproxy/haproxy.cfg as needed.
+NOTE: Remove the initial comment lines, lines with "@" symbol etc
 
 # ADDED FOR KUBERNETES INGRESS
 frontend kub_nginx
@@ -24,21 +25,27 @@ Created symlink from /etc/systemd/system/multi-user.target.wants/haproxy.service
 Redirecting to /bin/systemctl start haproxy.service
 
 # service haproxy status
-Redirecting to /bin/systemctl status haproxy.service
-● haproxy.service - HAProxy Load Balancer
-   Loaded: loaded (/usr/lib/systemd/system/haproxy.service; enabled; vendor preset: disabled)
-   Active: failed (Result: exit-code) since Tue 2018-12-11 12:09:21 IST; 4s ago
-  Process: 8203 ExecStart=/usr/sbin/haproxy-systemd-wrapper -f /etc/haproxy/haproxy.cfg -p /run/haproxy.pid $OPTIONS (code=exited, status=1/FAILURE)
- Main PID: 8203 (code=exited, status=1/FAILURE)
 
-Dec 11 12:09:21 haproxy1 haproxy-systemd-wrapper[8203]: [ALERT] 344/120921 (8207) : parsing [/etc/haproxy/haproxy.cfg:2...tion.
-Dec 11 12:09:21 haproxy1 haproxy-systemd-wrapper[8203]: [ALERT] 344/120921 (8207) : parsing [/etc/haproxy/haproxy.cfg:2...tion.
-Dec 11 12:09:21 haproxy1 haproxy-systemd-wrapper[8203]: [ALERT] 344/120921 (8207) : parsing [/etc/haproxy/haproxy.cfg:2...tion.
-Dec 11 12:09:21 haproxy1 haproxy-systemd-wrapper[8203]: [ALERT] 344/120921 (8207) : parsing [/etc/haproxy/haproxy.cfg:9...t and
-Dec 11 12:09:21 haproxy1 haproxy-systemd-wrapper[8203]: optionnally supports [addr1]:port1[-end1]{,[addr]:port[-end]}...
-Dec 11 12:09:21 haproxy1 haproxy-systemd-wrapper[8203]: [ALERT] 344/120921 (8207) : Error(s) found in configuration fil...y.cfg
-Dec 11 12:09:21 haproxy1 systemd[1]: haproxy.service: main process exited, code=exited, status=1/FAILURE
-Dec 11 12:09:21 haproxy1 haproxy-systemd-wrapper[8203]: haproxy-systemd-wrapper: exit, haproxy RC=1
-Dec 11 12:09:21 haproxy1 systemd[1]: Unit haproxy.service entered failed state.
-Dec 11 12:09:21 haproxy1 systemd[1]: haproxy.service failed.
-Hint: Some lines were ellipsized, use -l to show in full.
+- VERIFY
+
+-- CURL HAPROXY MACHINE ITSELF WITH THE CONFIGURED PORT
+--> This should then connect to the Kubernetes (or other) pod/service and get the result
+--> The IP below is the haproxy machine IP
+
+# curl -I http://192.168.11.91:30000
+HTTP/1.1 200 OK
+Server: nginx/1.7.9
+Date: Tue, 11 Dec 2018 06:46:51 GMT
+Content-Type: text/html
+Content-Length: 612
+Last-Modified: Tue, 23 Dec 2014 16:25:09 GMT
+ETag: "54999765-264"
+Accept-Ranges: bytes
+
+While this is being fetched (if it takes some time) do a netstat -anp and you can see it is connecting to the K8 server.
+(Note, in this case both haproxy and k8 have 30000 as port - they can be made different)
+
+# netstat -anp |grep 30000
+tcp        0      0 0.0.0.0:30000           0.0.0.0:*               LISTEN      8928/haproxy        
+tcp        0      1 192.168.11.91:52583     192.168.11.101:30000    SYN_SENT    8928/haproxy  --> k8 node       
+tcp        0      0 192.168.11.91:44816     192.168.11.91:30000     TIME_WAIT   -             --> haproxy machine itself
