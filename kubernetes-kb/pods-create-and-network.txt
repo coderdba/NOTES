@@ -11,15 +11,17 @@ TBD - various ways of exposing services:
   
   TBD - Ingress
   https://kubernetes.io/docs/concepts/services-networking/ingress/
+  https://medium.com/google-cloud/kubernetes-nodeport-vs-loadbalancer-vs-ingress-when-should-i-use-what-922f010849e0
   
   TBD - NodePort, LoadBalancer
   https://kubernetes.io/docs/tasks/administer-cluster/access-cluster-services/  (theory)
   --> https://kubernetes.io/docs/concepts/services-networking/service/  (services, clusterIP etc concepts, examples)
   --> https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#expose
+  https://medium.com/google-cloud/kubernetes-nodeport-vs-loadbalancer-vs-ingress-when-should-i-use-what-922f010849e0
   
   TBD - Load Balancer?  Also, one pod two containers
   http://containertutorials.com/get_started_kubernetes/k8s_example.html
-
+  https://medium.com/google-cloud/kubernetes-nodeport-vs-loadbalancer-vs-ingress-when-should-i-use-what-922f010849e0
 
   TBD: https://medium.com/google-cloud/kubernetes-nodeport-vs-loadbalancer-vs-ingress-when-should-i-use-what-922f010849e0
   
@@ -944,6 +946,35 @@ spec:
     nodePort: 30000
     protocol: TCP
 
+===============
+HAPROXY
+===============
+- Create a haproxy setup (see haproxy-kb)
+
+- Setup frontend and backend for the NodePort (or port of hostport or hostNetwork)
+
+Edit /etc/haproxy/haproxy.cfg as needed.
+NOTE: Remove the initial comment lines, lines with "@" symbol etc
+NOTE: The ports of frontend and backend can be same or different - just does not matter
+
+# ADDED FOR KUBERNETES INGRESS
+frontend kub_nginx
+    bind *:30001
+    default_backend kub_nginx_backend
+
+backend kub_nginx_backend
+    balance     roundrobin
+    server  s1 192.168.11.101:30000 check
+    server  s2 192.168.11.102:30000 check
+    
+- Access using haproxy IP and frontend port
+http://<haproxy server IP>:30001
+--> This will redirect on round-robin fashion to one of the backend servers
+
+===============
+INGRESS
+===============
+https://medium.com/google-cloud/kubernetes-nodeport-vs-loadbalancer-vs-ingress-when-should-i-use-what-922f010849e0
 
 ======================================
 APPENDIX - VARIOUS CHECKS
