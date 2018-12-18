@@ -113,8 +113,7 @@ Accept-Ranges: bytes
 ---------------------------------------------------------------
 CREATE AN APPLICATION & SERVICE - WITH MULTIPLE REPLICAS
 ---------------------------------------------------------------
-
-Note: This demo webapp 'hello' is experiencing 'ImagePullBackoff'
+Note: This nginxdemos/hello is an nginx itself
 
 webapp.yml
 ----------
@@ -161,4 +160,27 @@ replicationcontroller/webapp-pod created
 service/webapp-svc created
 
 - VERIFY
+# kubectl get pods -o wide
+NAME                                 READY   STATUS    RESTARTS   AGE     IP             NODE   NOMINATED NODE
+nginx-ingress-pod-6967d9f7bd-6kl4j   1/1     Running   0          4d19h   192.168.1.85   k01    <none>
+webapp-pod-859vp                     1/1     Running   0          101s    192.168.2.43   k02    <none>
+webapp-pod-w6pkq                     1/1     Running   0          101s    192.168.1.87   k01    <none>
+
+# curl -I http://192.168.1.87:80
+HTTP/1.1 200 OK
+Server: nginx/1.13.8
+Date: Tue, 18 Dec 2018 05:32:12 GMT
+Content-Type: text/html
+Connection: keep-alive
+Expires: Tue, 18 Dec 2018 05:32:11 GMT
+Cache-Control: no-cache
+
+# curl -I http://192.168.2.43:80
+HTTP/1.1 200 OK
+Server: nginx/1.13.8
+Date: Tue, 18 Dec 2018 05:32:46 GMT
+Content-Type: text/html
+Connection: keep-alive
+Expires: Tue, 18 Dec 2018 05:32:45 GMT
+Cache-Control: no-cache
 
