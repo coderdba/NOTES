@@ -39,12 +39,17 @@ https://www.nginx.com/blog/nginx-plus-ingress-controller-kubernetes-load-balanci
 
 HOW TO: https://www.nginx.com/blog/load-balancing-kubernetes-services-nginx-plus/ 
 
-
+------------------------------------------
+LABEL A NODE TO USE FOR INGRESS POD
+------------------------------------------
 - LABEL A NODE TO BE USED FOR THIS POD ALWAYS
 # This is optional - to label one node to be used for nginx pod for ingress controller
 #kubectl label node 192.168.11.101 role=nginxnode
 kubectl label node k01 role=nginxnode
 
+---------------------
+CREATE INGRESS POD
+---------------------
 - CREATE POD YML with 1 replica
 The single replica will re-create itself if destroyed - so, always up and running
 
@@ -105,5 +110,55 @@ Connection: keep-alive
 ETag: "5bfd393c-264"
 Accept-Ranges: bytes
 
+---------------------------------------------------------------
+CREATE AN APPLICATION & SERVICE - WITH MULTIPLE REPLICAS
+---------------------------------------------------------------
 
+Note: This demo webapp 'hello' is experiencing 'ImagePullBackoff'
+
+webapp.yml
+----------
+
+# The pod
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: webapp-pod
+spec:
+  replicas: 2
+  selector:
+    app: webapp
+  template:
+    metadata:
+      labels:
+        app: webapp
+    spec:
+      containers:
+      - name: hello
+        image: nginxdemos/hello 
+        ports:
+        - containerPort: 80
+---
+# The service
+apiVersion: v1
+kind: Service
+metadata:
+  name: webapp-svc
+spec:
+  clusterIP: None
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  selector:
+    app: webapp
+
+-- NOW CREATE THE POD AND SERVICE
+
+# kubectl apply -f webapp.yml
+replicationcontroller/webapp-pod created
+service/webapp-svc created
+
+- VERIFY
 
