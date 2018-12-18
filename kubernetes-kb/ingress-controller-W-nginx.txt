@@ -2,18 +2,20 @@
 INGRESS USING NGINX AS INGRESS CONTROLLER
 ==========================================
 
+START PAGE: (not detailed, leads to next page below)
 https://www.nginx.com/blog/nginx-plus-ingress-controller-kubernetes-load-balancing/
-  (this is the lead page, but use the next one below)
---> https://www.nginx.com/blog/load-balancing-kubernetes-services-nginx-plus/  (HOW TO)
 
-(FIRST DO THIS) --> --> https://www.nginx.com/blog/deploying-nginx-nginx-plus-docker/ (building docker image first)
+HOW TO: https://www.nginx.com/blog/load-balancing-kubernetes-services-nginx-plus/
+
+CREATE DOCKER IMAGE --> --> https://www.nginx.com/blog/deploying-nginx-nginx-plus-docker/ (building docker image first)
+
+INGRESS: (more docs)
 --> OFFICIAL NGINX COMPANY IMPLEMENTATION - https://github.com/nginxinc/kubernetes-ingress/ (both nginx and nginx+ combined into one controller)
 --> https://www.nginx.com/products/nginx/kubernetes-ingress-controller/
 
 https://github.com/nginxinc/kubernetes-ingress
 --> https://github.com/nginxinc/kubernetes-ingress/tree/master/examples/complete-example (after installation)
 -->--> https://github.com/nginxinc/kubernetes-ingress/blob/master/docs/installation.md (installation)
-
 
 ==========================================
 PULL OR CREATE NGINX IMAGE
@@ -27,5 +29,75 @@ Note2: Dont create the share and dont create backend.conf - as that is for Nginx
 
 - Just pull the image (on node or on host/laptop and transfer to node)
 - Use the image put on node in k8 yml
+
+==========================================
+SET UP LOAD BALANCING, INGRESS ETC
+==========================================
+
+START PAGE: (not detailed, leads to next page below)
+https://www.nginx.com/blog/nginx-plus-ingress-controller-kubernetes-load-balancing/
+
+HOW TO: https://www.nginx.com/blog/load-balancing-kubernetes-services-nginx-plus/ 
+
+
+- LABEL A NODE TO BE USED FOR THIS POD ALWAYS
+# This is optional - to label one node to be used for nginx pod for ingress controller
+#kubectl label node 192.168.11.101 role=nginxnode
+kubectl label node k01 role=nginxnode
+
+- CREATE POD YML with 1 replica
+The single replica will re-create itself if destroyed - so, always up and running
+
+nginx-ingress-pod.yml
+---------------------
+
+# https://kubernetes.io/docs/tasks/run-application/run-stateless-application-deployment/
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+#apiVersion: apps/v1beta2 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: nginx-ingress-pod
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  replicas: 1 # tells deployment to run 2 pods matching the template
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      nodeSelector:
+        role: nginxnode
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+          - name: http
+            containerPort: 80
+            hostPort: 80
+          - name: http-alt
+            containerPort: 8080
+            hostPort: 8080
+
+- CREATE THE POD
+kubectl create -f nginx-ingress-pod.yml
+
+- VERIFY POD
+# kubectl get pods -o wide
+NAME                                 READY   STATUS    RESTARTS   AGE     IP             NODE   NOMINATED NODE
+nginx-ingress-pod-6967d9f7bd-6kl4j   1/1     Running   0          4d19h   192.168.1.85   k01    <none>
+
+Do a curl from any machine in the network (from master or own or other nodes)
+# curl -I http://192.168.11.101:80
+HTTP/1.1 200 OK
+Server: nginx/1.15.7
+Date: Tue, 18 Dec 2018 05:17:55 GMT
+Content-Type: text/html
+Content-Length: 612
+Last-Modified: Tue, 27 Nov 2018 12:31:56 GMT
+Connection: keep-alive
+ETag: "5bfd393c-264"
+Accept-Ranges: bytes
 
 
