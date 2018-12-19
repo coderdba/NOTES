@@ -114,54 +114,6 @@ If you'd like to turn off curl's verification of the certificate, use
  the -k (or --insecure) option.
 
 
-
-===================================
-CREATE THE INGRESS
-===================================
-
-https://stackpointcloud.com/community/tutorial/configure-and-manage-a-kubernetes-haproxy-ingress-controller#!
-
--------------------
-INGRESS TO GAME APP
--------------------
-ingress-to-game.yaml
-
----
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  name: game-ingress
-spec:
-  rules:
-  - host: game.domain1.io
-    http:
-      paths:
-      - path:
-        backend:
-          serviceName: game2048
-          servicePort: 80
-          
-That's it. We need now to reach HAPRoxy node using the host header game.domain1.io:
-(NOTE: This site example used haproxy - we are using nginx ingress controller)
-Use your own domain, and point the A record to the HAProxy node's IP address.
-Use curl -H "Host: game.domain1.io" real.server.address
-Install a browser plugin to add host header, like Virtual-Hosts for Chrome.
-
-----------------------------
-INGRESS TO DEFAULT BACKEND
-----------------------------
-
-ingress-to-default.yaml
-
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  name: default-http-backend
-spec:
-  backend:
-    serviceName: default-http-backend
-    servicePort: 80
-
 ===================================
 CREATE THE APPLICATION PODS
 ===================================
@@ -371,6 +323,73 @@ game2048               ClusterIP   10.96.38.41      <none>        80/TCP        
 ingress-nginx          NodePort    10.111.237.110   <none>        80:30433/TCP,443:30236/TCP   9s
 kubernetes             ClusterIP   10.96.0.1        <none>        443/TCP                      20d
 
+
+===================================
+CREATE THE INGRESS
+===================================
+
+https://stackpointcloud.com/community/tutorial/configure-and-manage-a-kubernetes-haproxy-ingress-controller#!
+
+-------------------
+INGRESS TO GAME APP
+-------------------
+ingress-to-game.yaml
+
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: game-ingress
+spec:
+  rules:
+  - host: game.domain1.io
+    http:
+      paths:
+      - path:
+        backend:
+          serviceName: game2048
+          servicePort: 80
+          
+That's it. We need now to reach HAPRoxy node using the host header game.domain1.io:
+(NOTE: This site example used haproxy - we are using nginx ingress controller)
+Use your own domain, and point the A record to the HAProxy node's IP address.
+Use curl -H "Host: game.domain1.io" real.server.address
+Install a browser plugin to add host header, like Virtual-Hosts for Chrome.
+
+----------------------------
+INGRESS TO DEFAULT BACKEND
+----------------------------
+ingress-to-default.yaml
+
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: default-http-backend
+spec:
+  backend:
+    serviceName: default-http-backend
+    servicePort: 80
+    
+==============================
+ACCESS THE APPS VIA INGRESS
+==============================
+NOTE: The idea is to use the nodeport ports of the ingress pod - which in turn direct traffic to the app pods
+
+-- Access http port's nodeport without 'Host' directive to curl
+
+NOTE: This shows the output of default backend (which is actually a 404 page like below)
+
+# curl http://192.168.11.102:31676
+default backend - 404
+
+-- Access http port's nodeport with 'Host' directive to curl
+# curl -H "Host: game.domain1.io" http://192.168.11.102:31676
+
+...
+...
+This site is the official version of 2048
+...
+...
 
 ==========================
 APPENDIX
