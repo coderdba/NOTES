@@ -124,30 +124,9 @@ CREATE AN APPLICATION TO USE WITH INGRESS
 ------------------------------------------
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-ONE MAIN APP
+ONE MAIN APP 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Note: This itself seems to be nginx
-
-- Test after pod create: 
-# curl  http://192.168.1.88:8080/
-CLIENT VALUES:
-client_address=192.168.1.1
-command=GET
-real path=/
-query=nil
-request_version=1.1
-request_uri=http://192.168.1.88:8080/
-
-SERVER VALUES:
-server_version=nginx: 1.10.0 - lua: 10001
-
-HEADERS RECEIVED:
-accept=*/*
-host=192.168.1.88:8080
-user-agent=curl/7.29.0
-BODY:
--no body in request-
-
 
 - YAML file: echoheaders.yaml
 
@@ -192,12 +171,29 @@ spec:
   selector:
     app: echoheaders  
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-A DEFAULT BACKEND FOR URLS WITHOUT SPECIFIC ENDPOINTS
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 - Test after pod create: 
-# curl  http://192.168.1.89:8080/
-default backend - 404
+# curl  http://192.168.1.88:8080/
+CLIENT VALUES:
+client_address=192.168.1.1
+command=GET
+real path=/
+query=nil
+request_version=1.1
+request_uri=http://192.168.1.88:8080/
+
+SERVER VALUES:
+server_version=nginx: 1.10.0 - lua: 10001
+
+HEADERS RECEIVED:
+accept=*/*
+host=192.168.1.88:8080
+user-agent=curl/7.29.0
+BODY:
+-no body in request-
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+A DEFAULT BACKEND FOR URLS WITHOUT SPECIFIC ENDPOINTS
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - YAML file:  default-http-backend.yaml
 
@@ -254,16 +250,13 @@ spec:
   selector:
     app: default-http-backend
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-game-app.yaml - A STATIC PAGE 'GAME' APP
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 - Test after pod create: 
-# curl  http://192.168.1.90:80/
-...
-...
-This site is the official version of 2048
-...
-...
+# curl  http://192.168.1.89:8080/
+default backend - 404
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+A STATIC PAGE 'GAME' APP
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - YAML file:  default-http-backend.yaml
 
@@ -303,6 +296,13 @@ spec:
   selector:
     name: game2048
 
+- Test after pod create: 
+# curl  http://192.168.1.90:80/
+...
+...
+This site is the official version of 2048
+...
+...
 ===========================
 LIST PODS AND SERVICES
 ===========================
@@ -370,6 +370,33 @@ spec:
     serviceName: default-http-backend
     servicePort: 80
     
+--------------------------------------------------------
+INGRESS TO ECHOHEADERS APP - WITH MULTIPLE PATHS
+--------------------------------------------------------
+NOTE: For simplicity each path points to the same service - can be different too
+NOTE: This uses a different 'host' attribute
+
+YAML FILE - ingress-to-echoheaders.yml
+
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: echoheaders
+spec:
+  rules:
+  - host: domain2.io
+    http:
+      paths:
+      - path: /path1
+        backend:
+          serviceName: echoheaders
+          servicePort: 80
+      - path: /path2
+        backend:
+          serviceName: echoheaders
+          servicePort: 80
+
 ==============================
 ACCESS THE APPS VIA INGRESS
 ==============================
@@ -392,6 +419,83 @@ default backend - 404
 This site is the official version of 2048
 ...
 ...
+
+-- Access http port's nodeport with another 'Host' directive to curl
+# curl -H "Host: domain2.io" http://k02:31676/path1
+
+CLIENT VALUES:
+client_address=192.168.2.0
+command=GET
+real path=/path1
+query=nil
+request_version=1.1
+request_uri=http://domain2.io:8080/path1
+
+SERVER VALUES:
+server_version=nginx: 1.10.0 - lua: 10001
+
+HEADERS RECEIVED:
+accept=*/*
+host=domain2.io
+user-agent=curl/7.29.0
+x-forwarded-for=192.168.2.1
+x-forwarded-host=domain2.io
+x-forwarded-port=80
+x-forwarded-proto=http
+x-original-uri=/path1
+x-real-ip=192.168.2.1
+x-request-id=6d44b7bb7d51f1c8a8d55dd0820f2e5b
+x-scheme=http
+BODY:
+-no body in request-
+
+==============================================================================
+ACCESS METHOD2 - WITH NAME RESOLUTION RATHER THAN -H DIRECTIVE TO CURL
+==============================================================================
+
+Edit /etc/hosts of the master or other node as follows:
+--> that is, add two more lines with same IP as k02 server, but with the two domain names as in the ingresses
+
+192.168.11.102	k02
+192.168.11.102	game.domain1.io
+192.168.11.102	domain2.io
+
+- Then test as follows --> you will get the same results as with -H directive before
+
+# curl http://game.domain1.io
+...
+...
+This site is the official version of 2048
+...
+...
+
+# curl http://domain2.io/path
+
+CLIENT VALUES:
+client_address=192.168.2.0
+command=GET
+real path=/path1
+query=nil
+request_version=1.1
+request_uri=http://domain2.io:8080/path1
+
+SERVER VALUES:
+server_version=nginx: 1.10.0 - lua: 10001
+
+HEADERS RECEIVED:
+accept=*/*
+host=domain2.io
+user-agent=curl/7.29.0
+x-forwarded-for=192.168.2.1
+x-forwarded-host=domain2.io
+x-forwarded-port=80
+x-forwarded-proto=http
+x-original-uri=/path1
+x-real-ip=192.168.2.1
+x-request-id=6d44b7bb7d51f1c8a8d55dd0820f2e5b
+x-scheme=http
+BODY:
+-no body in request-
 
 ==========================
 APPENDIX
