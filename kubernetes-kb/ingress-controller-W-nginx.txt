@@ -58,6 +58,63 @@ deployment.extensions/nginx-ingress-controller created
 # kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/provider/baremetal/service-nodeport.yaml
 service/ingress-nginx created
 
+-----------------
+VERIFY
+-----------------
+NOTE: Use the correct namespace or query all-namespaces
+
+# kubectl get pods -o wide --all-namespaces |grep nginx
+ingress-nginx   nginx-ingress-controller-5cd796c58c-q8g2p   1/1     Running            0          135m    192.168.2.56     k02    <none>
+
+# kubectl get svc -o wide --all-namespaces |grep nginx 
+ingress-nginx   ingress-nginx          NodePort    10.111.183.164   <none>        80:31676/TCP,443:30393/TCP   131m    app.kubernetes.io/name=ingress-nginx,app.kubernetes.io/part-of=ingress-nginx
+
+
+- VERIFY ACCESS
+You can see that the ingress-nginx pod is running on k02 node - and has nodeport of 31676
+
+Curl to it will show the 404 page that the pod is programmed to show.
+
+-- HTTP
+# curl http://192.168.11.102:31676
+<html>
+<head><title>404 Not Found</title></head>
+<body>
+<center><h1>404 Not Found</h1></center>
+<hr><center>nginx/1.15.6</center>
+</body>
+</html>
+
+-- HTTPS PORT WITH http://
+# curl http://192.168.11.102:30393
+<html>
+<head><title>400 The plain HTTP request was sent to HTTPS port</title></head>
+<body>
+<center><h1>400 Bad Request</h1></center>
+<center>The plain HTTP request was sent to HTTPS port</center>
+<hr><center>nginx/1.15.6</center>
+</body>
+</html>
+
+-- HTTPS WITH https://
+
+# curl https://192.168.11.102:30393
+curl: (60) Issuer certificate is invalid.
+More details here: http://curl.haxx.se/docs/sslcerts.html
+
+curl performs SSL certificate verification by default, using a "bundle"
+ of Certificate Authority (CA) public keys (CA certs). If the default
+ bundle file isn't adequate, you can specify an alternate file
+ using the --cacert option.
+If this HTTPS server uses a certificate signed by a CA represented in
+ the bundle, the certificate verification probably failed due to a
+ problem with the certificate (it might be expired, or the name might
+ not match the domain name in the URL).
+If you'd like to turn off curl's verification of the certificate, use
+ the -k (or --insecure) option.
+
+
+
 ===================================
 CREATE THE INGRESS
 ===================================
