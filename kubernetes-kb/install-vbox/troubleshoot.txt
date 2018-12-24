@@ -1,3 +1,38 @@
 coredns going to crash-backoff state:
 https://github.com/kubernetes/kubeadm/issues/193  
 https://stackoverflow.com/questions/53559291/kubernetes-coredns-in-crashloopbackoff  (seems to have a solution)
+
+# kubectl edit cm coredns -n kube-system
+The following file appears.
+Remove the keyword loop in it, save it, restart master node
+
+# Please edit the object below. Lines beginning with a '#' will be ignored,
+# and an empty file will abort the edit. If an error occurs while saving this file will be
+# reopened with the relevant failures.
+#
+apiVersion: v1
+data:
+  Corefile: |
+    .:53 {
+        errors
+        health
+        kubernetes cluster.local in-addr.arpa ip6.arpa {
+           pods insecure
+           upstream
+           fallthrough in-addr.arpa ip6.arpa
+        }
+        prometheus :9153
+        proxy . /etc/resolv.conf
+        cache 30
+        loop
+        reload
+        loadbalance
+    }
+kind: ConfigMap
+metadata:
+  creationTimestamp: 2018-11-28T09:48:00Z
+  name: coredns
+  namespace: kube-system
+  resourceVersion: "223"
+  selfLink: /api/v1/namespaces/kube-system/configmaps/coredns
+  uid: b10485d1-f2f2-11e8-82a8-080027104420
