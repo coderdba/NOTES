@@ -1,2 +1,114 @@
-https://docs.projectcalico.org/v3.4/getting-started/kubernetes/
+=============
+CALICO FOR K8
+=============
+
+Main doc: https://docs.projectcalico.org/v3.4/getting-started/kubernetes/
 https://kubernetes.io/docs/tasks/administer-cluster/network-policy-provider/calico-network-policy/#creating-a-local-calico-cluster-with-kubeadm
+
+=======================================
+Quickstart for Calico on Kubernetes
+=======================================
+https://docs.projectcalico.org/v3.4/getting-started/kubernetes/
+
+Overview
+This quickstart gets you a single-host Kubernetes cluster with Calico in approximately 15 minutes. You can use this cluster for testing and development.
+
+To deploy a cluster suitable for production, refer to Installation.
+
+Requirements
+AMD64 processor
+2CPU
+2GB RAM
+10GB free disk space
+RedHat Enterprise Linux 7.x+, CentOS 7.x+, Ubuntu 16.04+, or Debian 9.x+
+Before you begin
+Ensure that Calico can manage cali and tunl interfaces on the host. If NetworkManager is present on the host, refer to Configure NetworkManager.
+
+Follow the Kubernetes instructions to install kubeadm.
+
+Note: After installing kubeadm, do not power down or restart the host. Instead, continue directly to the next section to create your cluster.
+
+Create a single-host Kubernetes cluster
+As a regular user with sudo privileges, open a terminal on the host that you installed kubeadm on.
+
+Initialize the master using the following command.
+
+sudo kubeadm init --pod-network-cidr=192.168.0.0/16
+Note: If 192.168.0.0/16 is already in use within your network you must select a different pod network CIDR, replacing 192.168.0.0/16 in the above command as well as in any manifests applied below.
+
+Execute the following commands to configure kubectl (also returned by kubeadm init).
+
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+Install an etcd instance with the following command.
+
+kubectl apply -f \
+https://docs.projectcalico.org/v3.4/getting-started/kubernetes/installation/hosted/etcd.yaml
+Note: You can also view the YAML in a new tab.
+
+You should see the following output.
+
+daemonset.extensions/calico-etcd created
+service/calico-etcd created
+
+Install Calico with the following command.
+
+kubectl apply -f https://docs.projectcalico.org/v3.4/getting-started/kubernetes/installation/hosted/calico.yaml
+Note: You can also view the YAML in a new tab.
+
+You should see the following output.
+
+configmap/calico-config created
+secret/calico-etcd-secrets created
+daemonset.extensions/calico-node created
+serviceaccount/calico-node created
+deployment.extensions/calico-kube-controllers created
+serviceaccount/calico-kube-controllers created
+clusterrole.rbac.authorization.k8s.io/calico-kube-controllers created
+clusterrolebinding.rbac.authorization.k8s.io/calico-kube-controllers created
+clusterrole.rbac.authorization.k8s.io/calico-node created
+clusterrolebinding.rbac.authorization.k8s.io/calico-node created
+Confirm that all of the pods are running with the following command.
+
+watch kubectl get pods --all-namespaces
+
+Wait until each pod has the STATUS of Running.
+
+NAMESPACE    NAME                                       READY  STATUS   RESTARTS  AGE
+kube-system  calico-etcd-x2482                          1/1    Running  0         2m45s
+kube-system  calico-kube-controllers-6ff88bf6d4-tgtzb   1/1    Running  0         2m45s
+kube-system  calico-node-24h85                          2/2    Running  0         2m43s
+kube-system  coredns-846jhw23g9-9af73                   1/1    Running  0         4m5s
+kube-system  coredns-846jhw23g9-hmswk                   1/1    Running  0         4m5s
+kube-system  etcd-jbaker-1                              1/1    Running  0         6m22s
+kube-system  kube-apiserver-jbaker-1                    1/1    Running  0         6m12s
+kube-system  kube-controller-manager-jbaker-1           1/1    Running  0         6m16s
+kube-system  kube-proxy-8fzp2                           1/1    Running  0         5m16s
+kube-system  kube-scheduler-jbaker-1                    1/1    Running  0         5m41s
+Press CTRL+C to exit watch.
+
+Remove the taints on the master so that you can schedule pods on it.
+
+kubectl taint nodes --all node-role.kubernetes.io/master-
+It should return the following.
+
+node/<your-hostname> untainted
+Confirm that you now have a node in your cluster with the following command.
+
+kubectl get nodes -o wide
+It should return something like the following.
+
+NAME              STATUS   ROLES    AGE   VERSION   INTERNAL-IP   EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION    CONTAINER-RUNTIME
+<your-hostname>   Ready    master   52m   v1.12.2   10.128.0.28   <none>        Ubuntu 18.04.1 LTS   4.15.0-1023-gcp   docker://18.6.1
+Congratulations! You now have a single-host Kubernetes cluster equipped with Calico.
+
+Next steps
+Secure a simple application using the Kubernetes NetworkPolicy API
+
+Control ingress and egress traffic using the Kubernetes NetworkPolicy API
+
+Create a user interface that shows blocked and allowed connections in real time
+
+Install and configure calicoctl
