@@ -261,6 +261,20 @@ kube-system   kube-proxy-57qqj                           1/1     Running   1    
 kube-system   kube-proxy-v7bzq                           1/1     Running   0          6m15s   192.168.11.111   kc1    <none>           <none>
 kube-system   kube-scheduler-kc0                         1/1     Running   1          2d      192.168.11.110   kc0    <none>           <none>
 
+Routing table
+# route -n
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+0.0.0.0         10.0.2.2        0.0.0.0         UG    100    0        0 enp0s3
+10.0.2.0        0.0.0.0         255.255.255.0   U     100    0        0 enp0s3
+172.17.0.0      0.0.0.0         255.255.0.0     U     0      0        0 docker0
+192.168.0.0     192.168.11.120  255.255.255.192 UG    0      0        0 tunl0
+192.168.11.0    0.0.0.0         255.255.255.0   U     101    0        0 enp0s8
+192.168.11.0    0.0.0.0         255.255.255.0   U     102    0        0 enp0s9
+192.168.19.128  0.0.0.0         255.255.255.192 U     0      0        0 *
+192.168.19.129  0.0.0.0         255.255.255.255 UH    0      0        0 cali63b400cc6a6
+192.168.19.130  0.0.0.0         255.255.255.255 UH    0      0        0 calid21f50fa19c
+192.168.122.0   0.0.0.0         255.255.255.0   U     0      0        0 virbr0
 
 - FURTHER, WITHOUT /ETC/HOSTS FIX, TO MAKE IT USE correct interface enps08
 Try https://docs.projectcalico.org/v3.4/usage/configuration/node
@@ -270,12 +284,49 @@ https://github.com/kubernetes/kubernetes/issues/33618  (--hostname-override)
 Next steps
 ============
 Secure a simple application using the Kubernetes NetworkPolicy API
-
 Control ingress and egress traffic using the Kubernetes NetworkPolicy API
-
 Create a user interface that shows blocked and allowed connections in real time
-
 Install and configure calicoctl
+
+----------------------------------------------------------------------
+Secure a simple application using the Kubernetes NetworkPolicy API
+----------------------------------------------------------------------
+https://docs.projectcalico.org/v3.4/getting-started/kubernetes/tutorials/simple-policy
+
+- create a namespace for demo
+# kubectl create ns policy-demo
+
+- create some pods
+# kubectl run --namespace=policy-demo nginx --replicas=2 --image=nginx
+
+- verify if the pods are accessible
+# kubectl run --namespace=policy-demo access --rm -ti --image busybox /bin/sh
+
+Screen output:
+	kubectl run --generator=deployment/apps.v1 is DEPRECATED and will be removed in a future version. 
+	                                         Use kubectl run --generator=run-pod/v1 or kubectl create instead.
+
+	If you don't see a command prompt, try pressing enter.
+
+	/ # 
+
+- pods
+# kubectl get pods -o wide -n policy-demo
+NAME                     READY   STATUS    RESTARTS   AGE     IP               NODE   NOMINATED NODE   READINESS GATES
+nginx-7cdbd8cdc9-9fh44   1/1     Running   0          2m58s   192.168.19.130   kc1    <none>           <none>
+nginx-7cdbd8cdc9-q4tss   1/1     Running   0          2m58s   192.168.19.129   kc1    <none>           <none>
+
+Cannot connect to them from master
+# ping 192.168.19.130
+PING 192.168.19.130 (192.168.19.130) 56(84) bytes of data.
+
+Can connect to them from node
+# ping 192.168.19.130
+PING 192.168.19.130 (192.168.19.130) 56(84) bytes of data.
+64 bytes from 192.168.19.130: icmp_seq=1 ttl=64 time=0.081 ms
+64 bytes from 192.168.19.130: icmp_seq=2 ttl=64 time=0.156 ms
+64 bytes from 192.168.19.130: icmp_seq=3 ttl=64 time=0.056 ms
+
 
 ===================
 CALICOCTL
