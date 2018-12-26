@@ -310,6 +310,13 @@ Screen output:
 
 	/ # 
 
+This creates a busybox image and container in the node
+# docker ps |grep  busy
+560eea250e5a        busybox                "/bin/sh"                31 seconds ago      Up 30 seconds                           k8s_access_access-69c6dd8f58-6r4zr_policy-demo_5184e3cf-08f2-11e9-96ce-080027104420_0
+
+# kubectl get pods --all-namespaces -o wide |grep acc
+policy-demo   access-69c6dd8f58-6r4zr                    1/1     Running   0          2m10s   192.168.19.132   kc1    <none>           <none>
+
 - pods
 # kubectl get pods -o wide -n policy-demo
 NAME                     READY   STATUS    RESTARTS   AGE     IP               NODE   NOMINATED NODE   READINESS GATES
@@ -327,6 +334,12 @@ PING 192.168.19.130 (192.168.19.130) 56(84) bytes of data.
 64 bytes from 192.168.19.130: icmp_seq=2 ttl=64 time=0.156 ms
 64 bytes from 192.168.19.130: icmp_seq=3 ttl=64 time=0.056 ms
 
+- TRY ACCESS THE NGINX NODE FROM BUSYBOX NODE
+# kubectl run --namespace=policy-demo access --rm -ti --image busybox /bin/sh
+
+<now, inside the access pod>
+# wget -q nginx -O -
+--> This hangs, as expected
 
 ===================
 CALICOCTL
