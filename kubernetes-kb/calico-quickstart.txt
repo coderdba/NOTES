@@ -208,7 +208,10 @@ ADD NODE
 ------------
 # kubeadm join 192.168.11.110:6443 --token d2xaus.sh3382dgq1j2d6gu --discovery-token-ca-cert-hash sha256:a424dae28f46be50fb286b4052ad585a4af4a43f1db6a314af34e937a6fd1060
 NOTE: This joined with NAT address of first interface enps03 instead of enps08
+	Therefore, deleted the node (kubectl delete node kc1), stopped kubelete on node (service kubelet stop),
+	added kc1 in /etc/hosts of node with desired IP address, and then did a join.
 
+On these corrections, output of join:
 [preflight] Running pre-flight checks
 	[WARNING SystemVerification]: this Docker version is not on the list of validated versions: 18.09.0. Latest validated version: 18.06
 [discovery] Trying to connect to API Server "192.168.11.110:6443"
@@ -231,14 +234,21 @@ This node has joined the cluster:
 
 Run 'kubectl get nodes' on the master to see this node join the cluster.
 
-
+-- BEFORE FIXES TO /ETC/HOSTS
 # kubectl get nodes -o wide
 NAME   STATUS   ROLES    AGE    VERSION   INTERNAL-IP      EXTERNAL-IP   OS-IMAGE                  KERNEL-VERSION                  CONTAINER-RUNTIME
 kc0    Ready    master   46h    v1.13.1   192.168.11.110   <none>        Oracle Linux Server 7.5   4.1.12-112.16.4.el7uek.x86_64   docker://18.9.0
 kc1    Ready    <none>   2m3s   v1.13.1   10.0.2.15        <none>        Oracle Linux Server 7.5   4.1.12-112.16.4.el7uek.x86_64   docker://18.9.0
 
-- TO MAKE IT USE correct interface enps08
+-- AFTER FIX TO /ETC/HOSTS
+# kubectl get nodes -o wide
+NAME   STATUS   ROLES    AGE     VERSION   INTERNAL-IP      EXTERNAL-IP   OS-IMAGE                  KERNEL-VERSION                  CONTAINER-RUNTIME
+kc0    Ready    master   2d      v1.13.1   192.168.11.110   <none>        Oracle Linux Server 7.5   4.1.12-112.16.4.el7uek.x86_64   docker://18.9.0
+kc1    Ready    <none>   2m42s   v1.13.1   192.168.11.111   <none>        Oracle Linux Server 7.5   4.1.12-112.16.4.el7uek.x86_64   docker://18.9.0
+
+- FURTHER, WITHOUT /ETC/HOSTS FIX, TO MAKE IT USE correct interface enps08
 Try https://docs.projectcalico.org/v3.4/usage/configuration/node
+https://github.com/kubernetes/kubernetes/issues/33618  (--hostname-override)
 
 ============
 Next steps
