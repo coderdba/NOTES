@@ -370,13 +370,22 @@ Now, from inside the access pod
 # wget -q nginx -O -
 -->TBD This hangs, BUT, WE SHOULD HAVE GOTTEN A RESULT...
 
-Get into the nginx pod with shell: (pod name nginx-7cdbd8cdc9-5t8tt from get pods command)
-# kubectl exec -it -n policy-demo nginx-7cdbd8cdc9-5t8tt -- /bin/sh
-# (now inside ngnix pod container)
-# cat /etc/resolv.conf
-nameserver 10.96.0.10
-search policy-demo.svc.cluster.local svc.cluster.local cluster.local corp.company.com
-options ndots:5
+	Get into the nginx pod with shell: (pod name nginx-7cdbd8cdc9-5t8tt from get pods command)
+	# kubectl exec -it -n policy-demo nginx-7cdbd8cdc9-5t8tt -- /bin/sh
+	# (now inside ngnix pod container)
+	# cat /etc/resolv.conf
+	nameserver 10.96.0.10
+	search policy-demo.svc.cluster.local svc.cluster.local cluster.local corp.company.com
+	options ndots:5
+	
+	--> where, the nameserver IP 10.96.0.10 is the kube-dns service cluster IP
+	# kubectl get svc --all-namespaces
+	NAMESPACE     NAME          TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)         AGE
+	default       kubernetes    ClusterIP   10.96.0.1       <none>        443/TCP         14d
+	kube-system   calico-etcd   ClusterIP   10.96.232.136   <none>        6666/TCP        14d
+	kube-system   kube-dns      ClusterIP   10.96.0.10      <none>        53/UDP,53/TCP   14d
+	policy-demo   nginx         ClusterIP   10.105.224.53   <none>        80/TCP          12d
+
 
 Access using cluster IP of the service:
 # wget 10.105.224.53 80
