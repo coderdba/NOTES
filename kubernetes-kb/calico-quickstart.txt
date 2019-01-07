@@ -319,7 +319,7 @@ This creates a busybox image and container in the node
 policy-demo   access-69c6dd8f58-6r4zr                    1/1     Running   0          2m10s   192.168.19.132   kc1    <none>           <none>
 
 - pods
-# kubectl get pods -o wide -n policy-demo
+# kubectl get pods -o wide -n policy-demo | grep nginx
 NAME                     READY   STATUS    RESTARTS   AGE     IP               NODE   NOMINATED NODE   READINESS GATES
 nginx-7cdbd8cdc9-9fh44   1/1     Running   0          2m58s   192.168.19.130   kc1    <none>           <none>
 nginx-7cdbd8cdc9-q4tss   1/1     Running   0          2m58s   192.168.19.129   kc1    <none>           <none>
@@ -335,13 +335,17 @@ PING 192.168.19.130 (192.168.19.130) 56(84) bytes of data.
 64 bytes from 192.168.19.130: icmp_seq=2 ttl=64 time=0.156 ms
 64 bytes from 192.168.19.130: icmp_seq=3 ttl=64 time=0.056 ms
 
-ALSO, curl works:
+ALSO, curl works: (from node)
 # curl http://192.168.19.129:80
 # curl http://192.168.19.130:80
 --> both gave nginx page
 
 - EXPOSE NGINX VIA A SERVICE
 # kubectl expose --namespace=policy-demo deployment nginx --port=80
+
+# kubectl get svc -o wide -n policy-demo
+NAME    TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE   SELECTOR
+nginx   ClusterIP   10.105.224.53   <none>        80/TCP    11d   run=nginx
 
 # kubectl describe service nginx -n policy-demo
 Name:              nginx
@@ -364,11 +368,10 @@ Now, from inside the access pod
 # wget -q nginx -O -
 -->TBD This hangs, BUT, WE SHOULD HAVE GOTTEN A RESULT...
 
-Access using cluster IP:
+Access using cluster IP of the service:
 # wget 10.105.224.53 80
 Connecting to 10.105.224.53 (10.105.224.53:80)
 index.html           100% |***********************************************************************|   612  0:00:00 ETA
-
 
 tbd:
 - CREATE A POLICY
@@ -386,8 +389,6 @@ EOF
 
 --> command output message:
 networkpolicy.networking.k8s.io/default-deny created
-
-
 
 ===================
 CALICOCTL
