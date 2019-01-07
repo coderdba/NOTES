@@ -369,7 +369,11 @@ Events:            <none>
 Now, from inside the access pod
 # wget -q nginx -O -
 -->TBD This hangs, BUT, WE SHOULD HAVE GOTTEN A RESULT...
+# nslookup nginx
+--> ;; connection timed out; no servers could be reached
+
 (TRY THIS: https://github.com/kelseyhightower/kubernetes-the-hard-way/issues/356)
+--> Per this site, try using busybox:1.28 (see troubleshoot below)
 
 	Get into the nginx pod with shell: (pod name nginx-7cdbd8cdc9-5t8tt from get pods command)
 	# kubectl exec -it -n policy-demo nginx-7cdbd8cdc9-5t8tt -- /bin/sh
@@ -386,6 +390,19 @@ Now, from inside the access pod
 	kube-system   calico-etcd   ClusterIP   10.96.232.136   <none>        6666/TCP        14d
 	kube-system   kube-dns      ClusterIP   10.96.0.10      <none>        53/UDP,53/TCP   14d
 	policy-demo   nginx         ClusterIP   10.105.224.53   <none>        80/TCP          12d
+
+	Troubleshoot: (from busybox pod)
+	https://github.com/kelseyhightower/kubernetes-the-hard-way/issues/356
+	# kubectl run --namespace=policy-demo access --rm -ti --image busybox:1.28 /bin/sh
+
+	NSLOOKUP with this busybox version at least recognizes the dns ip from /etc/resolv.conf,
+	but still does not resolve names
+
+	# nslookup nginx
+	Server:    10.96.0.10
+	Address 1: 10.96.0.10
+
+	nslookup: can't resolve 'nginx'
 
 
 Access using cluster IP of the service:
