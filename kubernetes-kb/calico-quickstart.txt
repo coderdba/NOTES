@@ -434,6 +434,54 @@ Also see - for dig command: https://github.com/coredns/coredns/issues/2407
 	Address 1: 10.96.0.10
 
 	nslookup: can't resolve 'nginx'
+	
+	Dig command from master (where coredns pods are running) works:
+	[root@kc0 ~]# dig @192.168.0.3 nginx.policy-demo.svc.cluster.local 
+
+		; <<>> DiG 9.9.4-RedHat-9.9.4-61.el7 <<>> @192.168.0.3 nginx.policy-demo.svc.cluster.local
+		; (1 server found)
+		;; global options: +cmd
+		;; Got answer:
+		;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 18795
+		;; flags: qr aa rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 0
+
+		;; QUESTION SECTION:
+		;nginx.policy-demo.svc.cluster.local. IN	A
+
+		;; ANSWER SECTION:
+		nginx.policy-demo.svc.cluster.local. 5 IN A	10.105.224.53
+
+		;; Query time: 60 msec
+		;; SERVER: 192.168.0.3#53(192.168.0.3)
+		;; WHEN: Tue Jan 08 13:17:59 IST 2019
+		;; MSG SIZE  rcvd: 104
+
+	nginx service details look ok
+	[root@kc0 ~]# kubectl -n policy-demo get svc nginx -o yaml
+	apiVersion: v1
+	kind: Service
+	metadata:
+	  creationTimestamp: "2018-12-26T09:50:42Z"
+	  labels:
+	    run: nginx
+	  name: nginx
+	  namespace: policy-demo
+	  resourceVersion: "39253"
+	  selfLink: /api/v1/namespaces/policy-demo/services/nginx
+	  uid: b59be4b7-08f3-11e9-96ce-080027104420
+	spec:
+	  clusterIP: 10.105.224.53
+	  ports:
+	  - port: 80
+	    protocol: TCP
+	    targetPort: 80
+	  selector:
+	    run: nginx
+	  sessionAffinity: None
+	  type: ClusterIP
+	status:
+	  loadBalancer: {}
+
 
 https://serverfault.com/questions/929211/kubernetes-pod-dns-resolution
 https://stackoverflow.com/questions/33924198/how-do-you-cleanly-list-all-the-containers-in-a-kubernetes-pod
