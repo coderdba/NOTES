@@ -1,0 +1,79 @@
+https://docs.ansible.com/ansible/latest/user_guide/intro_inventory.html
+
+Inventory files can contain 
+- groups
+- variables for all groups
+- variables for groups
+
+In addition, create group_vars folder 
+and in that create subfolder with the name of group 
+and in that create file vars to have variables for groups of nodes.
+
+========================
+GROUP VARIABLES
+========================
+---------------------------------------------
+INVENTORY FILE for group1: playbook1/inv/group1.inv
+---------------------------------------------
+[all:vars]
+all_var1=yes_this_is_all_var1
+
+[group1:children]
+local
+
+[local]
+mylocalhost ansible_host=127.0.0.1 ansible_port=2222 ansible_user=root
+
+---------------------------------------------
+INVENTORY FILE for group2: playbook1/inv/group2.inv
+---------------------------------------------
+[all:vars]
+all_var1=yes_this_is_all_var1
+
+[group2:children]
+local
+
+[local]
+mylocalhost ansible_host=127.0.0.1 ansible_port=2222 ansible_user=root
+
+------------------------------------------------------
+GROUP VARS FILE: playbook1/group_vars/group1/vars
+------------------------------------------------------
+# group1
+
+group_var1: yes_this_is_group_var1_of_group1
+
+------------------------------------------------------
+GROUP VARS FILE: playbook1/group_vars/group2/vars
+------------------------------------------------------
+# group1
+
+group_var1: yes_this_is_group_var1_of_group2
+
+------------------------------------------------------
+PLAYBOOK yml: pb1.yml
+------------------------------------------------------
+- name: step1
+  hosts: all
+  tasks: 
+    - debug: msg="group variable - {{ group_var1 }}"
+    
+------------------------------------------------------
+RUN PLAYBOOK yml - for group1 using group1.inv
+------------------------------------------------------
+ansible-playbook -i inv/group1.inv pb1.yml
+
+TASK [debug] **********************************************************************************************************************************************************
+ok: [mylocalhost] => {
+    "msg": "group variable - yes_this_is_group_var1_of_group1"
+}
+
+------------------------------------------------------
+RUN PLAYBOOK yml - for group2 using group2.inv
+------------------------------------------------------
+ansible-playbook -i inv/group2.inv pb1.yml
+
+TASK [debug] **********************************************************************************************************************************************************
+ok: [mylocalhost] => {
+    "msg": "group variable - yes_this_is_group_var1_of_group2"
+}
