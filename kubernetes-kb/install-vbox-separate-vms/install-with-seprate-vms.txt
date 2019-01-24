@@ -29,23 +29,50 @@ kubelet - Processes a container manifest so the containers are launched accordin
 kube-proxy - Provides network proxy services.
 
 ====================
-ETCD AND MASTER NODE
+NODE IPs
 ====================
-
+ke1 - for etcd1
 172.168.2.101 - public  - enps08 - host only adapter
 192.168.2.101 - private - enps09 - intnet adapter
 
-- YUM REPO
+ke2 - for etcd2
+172.168.2.102 - public  - enps08 - host only adapter
+192.168.2.103 - private - enps09 - intnet adapter
+
+km1 - for master1
+172.168.2.201 - public  - enps08 - host only adapter
+192.168.2.201 - private - enps09 - intnet adapter
+
+km2 - for master2
+172.168.2.202 - public  - enps08 - host only adapter
+192.168.2.202 - private - enps09 - intnet adapter
+
+kw1 - for worker1
+172.168.2.251 - public  - enps08 - host only adapter
+192.168.2.251 - private - enps09 - intnet adapter
+
+kw2 - for worker2
+172.168.2.252 - public  - enps08 - host only adapter
+192.168.2.252 - private - enps09 - intnet adapter
+
+
+==============================
+INSTALL AND CONFIGURE
+==============================
+
+====================
+COMMON STEPS
+====================
+
+------------------------------
+ADD YUM REPO
+------------------------------
 # vi /etc/yum.repos.d/virt7-docker-common-release.repo
 
 [virt7-docker-common-release]
 name=virt7-docker-common-release
 baseurl=http://cbs.centos.org/repos/virt7-docker-common-release/x86_64/os/
 gpgcheck=0
-
-==============================
-INSTALL AND CONFIGURE
-==============================
 
 ------------------------------
 TURN SWAP OFF
@@ -54,9 +81,26 @@ TURN SWAP OFF
 # vi /etc/fstab
 --> comment out the swap line
 
+---------------------------------
+ENABLE br_netfilter
+---------------------------------
+# modprobe br_netfilter
+# echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables
+
+Also, put it in /etc/sysctl.conf as follows:
+net.bridge.bridge-nf-call-iptables = 1
+
+And, make it persistent:
+# sysctl -p
+
+====================
+ETCD INSTALL
+====================
 ------------------------------
-ETCD INSTALL ON MASTER
+ETCD INSTALL (ON MASTER IF USING SAME FOR MASTER ALSO)
 ------------------------------
+
+- ETCD NODE1
 # yum -y install --enablerepo=virt7-docker-common-release etcd
 
 # rpm -qa|grep etcd
