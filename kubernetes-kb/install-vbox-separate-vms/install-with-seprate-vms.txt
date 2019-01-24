@@ -152,7 +152,6 @@ ETCD_INITIAL_CLUSTER="etcd1=http://192.168.2.101:2380,etcd2=http://192.168.2.102
 ETCD_INITIAL_CLUSTER_STATE="new"
 ETCD_ADVERTISE_CLIENT_URLS="http://192.168.2.102:2379"
 
-
 - START etcd
 NOTE: If multinode, do one node at a time
 
@@ -175,6 +174,20 @@ cee1eefbc6bf48c2: name=etcd1 peerURLs=http://192.168.2.101:2380 clientURLs=http:
 # etcdctl member list
 ae525a9a84ebce92: name=etcd2 peerURLs=http://192.168.2.102:2380 clientURLs=http://192.168.2.102:2379
 cee1eefbc6bf48c2: name=etcd1 peerURLs=http://192.168.2.101:2380 clientURLs=http://192.168.2.101:2379
+
+--------------------------------
+TEST WITH SOME KEYS
+--------------------------------
+Do this on any etcd node.
+
+[root@ke1 etcd]# etcdctl mkdir /test1/keys
+[root@ke1 etcd]# etcdctl ls /
+/test1
+[root@ke1 etcd]# etcdctl ls /test1
+/test1/keys
+
+[root@ke2 ~]# etcdctl mk /test1/keys/key1 "{ \"Network\": \"172.30.0.0/16\", \"SubnetLen\": 24, \"Backend\": { \"Type\": \"vxlan\" } }"
+{ "Network": "172.30.0.0/16", "SubnetLen": 24, "Backend": { "Type": "vxlan" } }
 
 -------------------------------------
 CONFIG CHANGE, CLEANUP, REINSTALL ETC
