@@ -268,16 +268,25 @@ WantedBy=local.target
 - STOP AND START THE SERVICE
 
 [root@docker system]# systemctl stop redis1
+
 [root@docker system]# systemctl status redis1
 ● redis1.service - Redis container
    Loaded: loaded (/etc/systemd/system/redis1.service; enabled; vendor preset: disabled)
    Active: inactive (dead)
+   
 [root@docker system]# docker ps
 CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+
 [root@docker system]# systemctl start redis1
+
 [root@docker system]# docker ps
 CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS               NAMES
 c42fa7ebe25d        redis               "docker-entrypoint.s…"   24 hours ago        Up 2 seconds        6379/tcp            redis1
+
+# ps -ef|grep redis
+root      8491     1  0 21:16 ?        00:00:00 /usr/bin/docker start -a redis1
+polkitd   8533  8515  0 21:16 ?        00:00:08 redis-server *:6379
+
 [root@docker system]# systemctl status redis1
 ● redis1.service - Redis container
    Loaded: loaded (/etc/systemd/system/redis1.service; enabled; vendor preset: disabled)
@@ -301,4 +310,14 @@ Hint: Some lines were ellipsized, use -l to show in full.
 [root@docker system]# ps -ef|grep redis1
 root      8491     1  0 21:16 ?        00:00:00 /usr/bin/docker start -a redis1
 root      8607  8055  0 21:16 pts/0    00:00:00 grep --color=auto redis1
+
+- THE LOCAL REDIS PROCESS ON HOST
+https://blog.dbi-services.com/how-uid-mapping-works-in-docker-containers/
+
+This is started by polkit or polkitd which provides elevated privilege access to non elevated access users in containers.
+
+# ps -ef|grep redis
+root      8491     1  0 21:16 ?        00:00:00 /usr/bin/docker start -a redis1
+polkitd   8533  8515  0 21:16 ?        00:00:08 redis-server *:6379
+
 
