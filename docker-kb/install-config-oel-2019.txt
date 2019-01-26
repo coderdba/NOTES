@@ -231,3 +231,74 @@ CONTAINER ID        IMAGE               COMMAND                  CREATED        
 c42fa7ebe25d        redis               "docker-entrypoint.s…"   40 seconds ago      Up 39 seconds               6379/tcp            redis1
 3e8efe4cca0b        hello-world         "/hello"                 28 minutes ago      Exited (0) 28 minutes ago                       modest_feynman
 
+=============================================
+SERVICE TO AUTOSTART A CONTAINER UPON STARTUP
+=============================================
+https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux_atomic_host/7/html/managing_containers/using_systemd_with_containers
+
+--------------------
+FOR REDIS CONTAINER
+--------------------
+
+- CREATE SERVICE DEFINITION FILE
+Configure the container as a systemd service by creating the unit configuration file in the /etc/systemd/system/ directory.
+For example, the contents of the /etc/systemd/system/redis-container.service can look as follows (note that redis_server
+matches the name you set on the docker run line):
+
+NOTE: Replace redis_server by name of your redis container
+
+File /etc/systemd/system/redis-container.service (or redis1.servive): 
+--> replace redis_server by redis1 which is the container name
+
+[Unit]
+Description=Redis container
+After=docker.service
+
+[Service]
+Restart=always
+ExecStart=/usr/bin/docker start -a redis_server
+ExecStop=/usr/bin/docker stop -t 2 redis_server
+
+[Install]
+WantedBy=local.target
+
+- ENABLE SERVICE
+# systemctl enable redis-container.service
+
+- STOP AND START THE SERVICE
+
+[root@docker system]# systemctl stop redis1
+[root@docker system]# systemctl status redis1
+● redis1.service - Redis container
+   Loaded: loaded (/etc/systemd/system/redis1.service; enabled; vendor preset: disabled)
+   Active: inactive (dead)
+[root@docker system]# docker ps
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+[root@docker system]# systemctl start redis1
+[root@docker system]# docker ps
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS               NAMES
+c42fa7ebe25d        redis               "docker-entrypoint.s…"   24 hours ago        Up 2 seconds        6379/tcp            redis1
+[root@docker system]# systemctl status redis1
+● redis1.service - Redis container
+   Loaded: loaded (/etc/systemd/system/redis1.service; enabled; vendor preset: disabled)
+   Active: active (running) since Sat 2019-01-26 21:16:26 IST; 10s ago
+ Main PID: 8491 (docker)
+   Memory: 19.7M
+   CGroup: /system.slice/redis1.service
+           └─8491 /usr/bin/docker start -a redis1
+
+Jan 26 21:16:26 docker systemd[1]: Starting Redis container...
+Jan 26 21:16:27 docker docker[8491]: 1:C 26 Jan 2019 15:46:27.554 # oO0OoO0OoO0Oo Redis is starting ...oO0Oo
+Jan 26 21:16:27 docker docker[8491]: 1:C 26 Jan 2019 15:46:27.554 # Redis version=5.0.3, bits=64, co...arted
+Jan 26 21:16:27 docker docker[8491]: 1:C 26 Jan 2019 15:46:27.554 # Warning: no config file specifie....conf
+Jan 26 21:16:27 docker docker[8491]: 1:M 26 Jan 2019 15:46:27.555 * Running mode=standalone, port=6379.
+Jan 26 21:16:27 docker docker[8491]: 1:M 26 Jan 2019 15:46:27.555 # WARNING: The TCP backlog setting... 128.
+Jan 26 21:16:27 docker docker[8491]: 1:M 26 Jan 2019 15:46:27.555 # Server initialized
+Jan 26 21:16:27 docker docker[8491]: 1:M 26 Jan 2019 15:46:27.555 # WARNING overcommit_memory is set...fect.
+Jan 26 21:16:27 docker docker[8491]: 1:M 26 Jan 2019 15:46:27.556 * DB loaded from disk: 0.000 seconds
+Jan 26 21:16:27 docker docker[8491]: 1:M 26 Jan 2019 15:46:27.556 * Ready to accept connections
+Hint: Some lines were ellipsized, use -l to show in full.
+[root@docker system]# ps -ef|grep redis1
+root      8491     1  0 21:16 ?        00:00:00 /usr/bin/docker start -a redis1
+root      8607  8055  0 21:16 pts/0    00:00:00 grep --color=auto redis1
+
