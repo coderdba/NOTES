@@ -2,7 +2,7 @@
 # K8S Core KS for TI
 #
 # Add this to boot kernel string in grub:
-# kernel vmlinuz load_ramdisk=1 initrd=initrd.img ip=<ip>::<gw>:<snm>::<interface>:none inst.ks=http://ttcoscore1-rgw-vip.target.com/swift/v1/k8s-build/ks/<whatever>.ks inst.text inst.gpt nameserver=10.64.40.215
+# kernel vmlinuz load_ramdisk=1 initrd=initrd.img ip=<ip>::<gw>:<snm>::<interface>:none inst.ks=http://kickstartfiles.company.com/s<whatever>.ks inst.text inst.gpt nameserver=110.64.140.205
 
 network --hostname=k8master1 --mtu=1500
 
