@@ -1,0 +1,54 @@
+======================================
+CREATE AND MANAGE ETCD CONTAINER
+======================================
+
+https://coreos.com/etcd/docs/latest/v2/docker_guide.html
+https://quay.io/organization/coreos
+ - https://quay.io/repository/coreos/etcd
+     - docker pull quay.io/coreos/etcd
+
+---------------
+PULL ETCD IMAGE
+---------------
+# docker pull quay.io/coreos/etcd
+
+------------------------------
+CREATE AND RUN THE CONTAINER
+------------------------------
+https://coreos.com/etcd/docs/latest/v2/docker_guide.html
+
+NOTE: THIS IS NOT THE WHOLE SETUP - SEE OTHER DOC IN KUBERNETES-KB
+
+Service startup file:
+/etc/systemd/system/etcd.service
+
+[Unit]
+Description=etcd
+Wants=consul.service docker.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+IOSchedulingClass=2
+IOSchedulingPriority=0
+EnvironmentFile=/etc/environment
+ExecStartPre=/usr/bin/systemctl --quiet is-active docker
+ExecStartPre=/usr/bin/systemctl --quiet is-active consul
+ExecStartPre=/opt/kub/generate-server-tls.sh
+ExecStartPre=/opt/kub/etcd_prestart.sh
+ExecStartPre=/usr/local/bin/consul-template -once \
+  -template "/opt/company-ctmpl/kub-etcd/service-kub-etcd.json.ctmpl:/etc/consul.d/service-kub-etcd.json"
+ExecStart=/opt/kub/startEtcd.sh
+ExecStartPost=/usr/bin/systemctl reload consul
+ExecStartPost=/opt/kub/etcd_io.sh
+ExecStop=/bin/kill -WINCH ${MAINPID}
+Restart=on-failure
+KillSignal=SIGINT
+StandardOutput=syslog
+StandardError=syslog
+NotifyAccess=all
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
