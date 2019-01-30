@@ -177,35 +177,62 @@ NOTE: The IP address 101.192.217.105 and other such of the hosts - not of the co
 --------------------------------------------------------
 ETCD SERVICE FILE:  /etc/systemd/system/etcd.service
 --------------------------------------------------------
+
 [Unit]
-Description=etcd
-Wants=consul.service docker.service
+Description=ETCD container
+After=docker.service
 
 [Service]
-Type=simple
-User=root
-Group=root
-IOSchedulingClass=2
-IOSchedulingPriority=0
-EnvironmentFile=/etc/environment
-ExecStartPre=/usr/bin/systemctl --quiet is-active docker
-ExecStartPre=/usr/bin/systemctl --quiet is-active consul
-ExecStartPre=/opt/k8s/generate-server-tls.sh
-ExecStartPre=/opt/k8s/etcd_prestart.sh
-ExecStartPre=/usr/local/bin/consul-template -once \
-  -template "/opt/company-ctmpl/k8s-etcd/service-k8s-etcd.json.ctmpl:/etc/consul.d/service-k8s-etcd.json"
-ExecStart=/opt/k8s/startEtcd.sh
-ExecStartPost=/usr/bin/systemctl reload consul
-ExecStartPost=/opt/k8s/etcd_io.sh
-ExecStop=/bin/kill -WINCH ${MAINPID}
-Restart=on-failure
-KillSignal=SIGINT
-StandardOutput=syslog
-StandardError=syslog
-NotifyAccess=all
-RestartSec=10
+EnvironmentFile=/opt/k8s/env/etcd.service.env
+Restart=always
+
+ExecStart=/usr/bin/docker run --rm --net=host --name etcd -v $VOL_DATA -v $VOL_BKP \
+-e ETCD_INITIAL_CLUSTER=$ETCD_INITIAL_CLUSTER \
+-e ETCD_INITIAL_CLUSTER_STATE=$ETCD_INITIAL_CLUSTER_STATE \
+-initial-advertise-peer-urls $ETCD_INITIAL_ADVERTISE_PEER_URLS \
+-listen-peer-urls $ETCD_LISTEN_PEER_URLS \
+-listen-client-urls $ETCD_LISTEN_CLIENT_URLS \
+-advertise-client-urls $ETCD_ADVERTISE_CLIENT_URLS
+
+ExecStop=/usr/bin/docker stop -t 2 etcd
+#ExecStop=/bin/kill -WINCH ${MAINPID}
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=local.target
+
+
+~~~~~~~~~~~~~~
+Reference file:
+~~~~~~~~~~~~~~
+        [Unit]
+        Description=etcd
+        Wants=consul.service docker.service
+
+        [Service]
+        Type=simple
+        User=root
+        Group=root
+        IOSchedulingClass=2
+        IOSchedulingPriority=0
+        EnvironmentFile=/etc/environment
+        ExecStartPre=/usr/bin/systemctl --quiet is-active docker
+        ExecStartPre=/usr/bin/systemctl --quiet is-active consul
+        ExecStartPre=/opt/k8s/generate-server-tls.sh
+        ExecStartPre=/opt/k8s/etcd_prestart.sh
+        ExecStartPre=/usr/local/bin/consul-template -once \
+          -template "/opt/company-ctmpl/k8s-etcd/service-k8s-etcd.json.ctmpl:/etc/consul.d/service-k8s-etcd.json"
+        ExecStart=/opt/k8s/startEtcd.sh
+        ExecStartPost=/usr/bin/systemctl reload consul
+        ExecStartPost=/opt/k8s/etcd_io.sh
+        ExecStop=/bin/kill -WINCH ${MAINPID}
+        Restart=on-failure
+        KillSignal=SIGINT
+        StandardOutput=syslog
+        StandardError=syslog
+        NotifyAccess=all
+        RestartSec=10
+
+        [Install]
+        WantedBy=multi-user.target
 
 
