@@ -148,18 +148,56 @@ Pull image as mentioned earlier.
 Create an etcd service with IP settings.
 Start the service so that it starts etcd image as container with correct settings.
 
+--------------
 ETCD SERVICE
+--------------
+To start etcd container when host machine starts - create a systemd service.
 
-Model: redis service (much basic one)
+Model: redis service (much basic one) - To start redis1 container - /etc/systemd/system/redis1.service
+    [Unit]
+    Description=Redis container
+    After=docker.service
+
+    [Service]
+    Restart=always
+    ExecStart=/usr/bin/docker start -a redis1
+    ExecStop=/usr/bin/docker stop -t 2 redis1
+
+    [Install]
+    WantedBy=local.target
+
+--------------------------------------------------------
+ETCD SERVICE FILE:  /etc/systemd/system/etcd.service
+--------------------------------------------------------
 [Unit]
-Description=Redis container
-After=docker.service
+Description=etcd
+Wants=consul.service docker.service
 
 [Service]
-Restart=always
-ExecStart=/usr/bin/docker start -a redis1
-ExecStop=/usr/bin/docker stop -t 2 redis1
+Type=simple
+User=root
+Group=root
+IOSchedulingClass=2
+IOSchedulingPriority=0
+EnvironmentFile=/etc/environment
+ExecStartPre=/usr/bin/systemctl --quiet is-active docker
+ExecStartPre=/usr/bin/systemctl --quiet is-active consul
+ExecStartPre=/opt/k8s/generate-server-tls.sh
+ExecStartPre=/opt/k8s/etcd_prestart.sh
+ExecStartPre=/usr/local/bin/consul-template -once \
+  -template "/opt/target-ctmpl/k8s-etcd/service-k8s-etcd.json.ctmpl:/etc/consul.d/service-k8s-etcd.json"
+ExecStart=/opt/k8s/startEtcd.sh
+ExecStartPost=/usr/bin/systemctl reload consul
+ExecStartPost=/opt/k8s/etcd_io.sh
+ExecStop=/bin/kill -WINCH ${MAINPID}
+Restart=on-failure
+KillSignal=SIGINT
+StandardOutput=syslog
+StandardError=syslog
+NotifyAccess=all
+RestartSec=10
 
 [Install]
-WantedBy=local.target
+WantedBy=multi-user.target
+
 
