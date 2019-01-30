@@ -235,4 +235,24 @@ Reference file:
         [Install]
         WantedBy=multi-user.target
 
-
+--> Execstart calls this function eventualy:
+         /usr/bin/docker run --rm \
+            --net=host \
+            --name etcd \
+            -v /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:/etc/ssl/certs/ca-certificates.crt \
+            -v /data/etcd:/data \
+            -v /var/lib/etcdbak:/var/lib/etcdbak \
+            -v /opt/k8s/openssl:/opt/k8s/openssl \
+            ${ETCD_TLS_ENV_VAR} \
+            -e ETCD_INITIAL_CLUSTER="$1" \
+            -e ETCD_INITIAL_CLUSTER_STATE="$2" \
+            -e ETCDCTL_API=3 \
+            -e ETCD_SNAPSHOT_COUNT={ETCD_SNAPSHOT_COUNT} \
+            ${K8S_ETCD_CONTAINER}:${ETCD_VERSION} etcd \
+            -name ${LOCAL_IPV4} \
+            -initial-advertise-peer-urls ${ETCD_HTTP_PROTO}://${LOCAL_IPV4}:${ETCD_PEER_PORT:-2380} \
+            -listen-peer-urls ${ETCD_HTTP_PROTO}://0.0.0.0:${ETCD_PEER_PORT:-2380} \
+            -listen-client-urls ${ETCD_HTTP_PROTO}://${GUEST_IPV4:-$LOCAL_IPV4}:${ETCD_PORT:-2379},${ETCD_HTTP_PROTO}://127.0.0.1:${ETCD_PORT:-2379} \
+            -advertise-client-urls ${ETCD_HTTP_PROTO}://${LOCAL_IPV4}:${ETCD_PORT:-2379} \
+            ${ETCD_PEER_PARAM} \
+            -data-dir=/data
