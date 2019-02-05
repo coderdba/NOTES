@@ -210,9 +210,30 @@ After=docker.service
 [Service]
 EnvironmentFile=/opt/k8s/env/etcd.service.env
 Restart=always
-#ExecStart="/usr/bin/echo $ETCD_INITIAL_CLUSTER > /tmp/etcd.service.start 2>> /tmp/etcd.service.start"
+ExecStart=/opt/k8s/etcd/etcd_service_start.sh
 
-ExecStart=/usr/bin/docker run --rm --net=host --name etcd -v ${VOL_DATA} -v ${VOL_BKP} \
+ExecStop=/usr/bin/docker stop -t 2 etcd
+#ExecStop=/opt/k8s/etcd/etcd_service_stop.sh
+#ExecStop=/bin/kill -WINCH ${MAINPID}
+
+[Install]
+WantedBy=local.target
+
+--------------------------------------------------------
+ETCD STARTUP FILE:  /opt/k8s/etcd/etcd_service_start.sh
+--------------------------------------------------------
+#!/bin/bash
+
+exec >> /tmp/etcd_service_start.log 2>> /tmp/start_etcd_service_start.log
+
+echo
+echo INFO - Starting at `date`
+
+# Sourcing of env file not required as that is done in etcd.service file
+#. /opt/k8s/env/etcd.service.env
+
+ExecStart="/usr/bin/docker run --rm --net=host --name etcd 
+ -v ${VOL_DATA} -v ${VOL_BKP} \
  -e ETCD_INITIAL_CLUSTER=${ETCD_INITIAL_CLUSTER} \
  -e ETCD_INITIAL_CLUSTER_STATE=${ETCD_INITIAL_CLUSTER_STATE} \
  ${ETCD_IMAGE} etcd -name ${ETCD_NODE_NAME} \
@@ -222,18 +243,31 @@ ExecStart=/usr/bin/docker run --rm --net=host --name etcd -v ${VOL_DATA} -v ${VO
  -listen-client-urls=${ETCD_LISTEN_CLIENT_URLS} \
  -advertise-client-urls=${ETCD_ADVERTISE_CLIENT_URLS} \
  -auto-tls \
- -peer-auto-tls
+ -peer-auto-tls"
 
-ExecStop=/usr/bin/docker stop -t 2 etcd
-#ExecStop=/bin/kill -WINCH ${MAINPID}
+$ExecStart
 
-[Install]
-WantedBy=local.target
+echo ==================================
 
+--------------------------------------------------------
+ETCD STOP FILE:  /opt/k8s/etcd/etcd_service_stop.sh
+--------------------------------------------------------
+#!/bin/bash
 
-~~~~~~~~~~~~~~
-Reference file:
-~~~~~~~~~~~~~~
+exec >> /tmp/etcd_service_stop.log 2>> /tmp/start_etcd_service_stop.log
+
+echo
+echo INFO - Starting at `date`
+
+ExecStop="/usr/bin/docker stop -t 2 etcd"
+
+$ExecStop
+
+echo ==================================
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Reference etcd.service file:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         [Unit]
         Description=etcd
         Wants=consul.service docker.service
