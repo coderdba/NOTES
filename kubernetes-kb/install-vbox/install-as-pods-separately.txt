@@ -203,21 +203,41 @@ VOL_BKP=/var/lib/etcdbak:/var/lib/etcdbak
 ETCD SERVICE FILE:  /etc/systemd/system/etcd.service
 --------------------------------------------------------
 
+- This worked
+[Unit]
+Description=Start etcd service
+DefaultDependencies=no
+After=docker.service
+
+[Service]
+#Type=simple
+#RemainAfterExit=true
+EnvironmentFile=/opt/k8s/env/etcd.service.env
+ExecStart=/opt/k8s/etcd/etcd_service_start.sh
+ExecStop=/bin/kill -WINCH ${MAINPID}
+
+#Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+
+- Other options
 [Unit]
 Description=ETCD container
+DefaultDependencies=no
 After=docker.service
 
 [Service]
 EnvironmentFile=/opt/k8s/env/etcd.service.env
-Restart=always
 ExecStart=/opt/k8s/etcd/etcd_service_start.sh
+#Restart=always
 
-ExecStop=/usr/bin/docker stop -t 2 etcd
+#ExecStop=/usr/bin/docker stop -t 2 etcd
 #ExecStop=/opt/k8s/etcd/etcd_service_stop.sh
-#ExecStop=/bin/kill -WINCH ${MAINPID}
+ExecStop=/bin/kill -WINCH ${MAINPID}
 
 [Install]
-WantedBy=local.target
+WantedBy=multi-user.target
 
 --------------------------------------------------------
 ETCD STARTUP FILE:  /opt/k8s/etcd/etcd_service_start.sh
