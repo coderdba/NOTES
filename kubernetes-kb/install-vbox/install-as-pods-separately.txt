@@ -294,6 +294,30 @@ SECURING ETCD
 Generate key and certificate
 # openssl req  -nodes -new -x509  -keyout server.key -out server.cert
 
+ETCD startup secure (reference command):
+/usr/bin/docker run --rm --net=host --name etcd 
+-v /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:/etc/ssl/certs/ca-certificates.crt 
+-v /data/etcd:/data -v /var/lib/etcdbak:/var/lib/etcdbak -v /opt/k8s/openssl:/opt/k8s/openssl 
+--env ETCDCTL_CERT=/opt/k8s/openssl/server.crt --env ETCDCTL_KEY=/opt/k8s/openssl/server.key 
+--env ETCDCTL_CACERT=/opt/k8s/openssl/ca.crt -e ETCD_INITIAL_CLUSTER=101.192.217.104=https://101.192.217.104:2380,101.192.217.105=https://101.192.217.105:2380 
+-e ETCD_INITIAL_CLUSTER_STATE=existing -e ETCDCTL_API=3 -e ETCD_SNAPSHOT_COUNT={ETCD_SNAPSHOT_COUNT} 
+gcr.io/google_containers/etcd-amd64:3.1.11 etcd -name 101.192.217.105 -initial-advertise-peer-urls 
+#
+# HTTPS instead of HTTP
+HTTPS://101.192.217.105:2380 -listen-peer-urls HTTPS://0.0.0.0:2380 -listen-client-urls 
+HTTPS://101.192.217.105:2379,HTTPS://127.0.0.1:2379 -advertise-client-urls HTTPS://101.192.217.105:2379 
+#
+# here the certs-keys are
+-cert-file /opt/k8s/openssl/server.crt 
+-key-file /opt/k8s/openssl/server.key 
+-client-cert-auth 
+-trusted-ca-file /opt/k8s/openssl/ca.crt
+#
+# cert-keys for peers
+-peer-cert-file /opt/k8s/openssl/server.crt -peer-key-file /opt/k8s/openssl/server.key 
+-peer-client-cert-auth -peer-trusted-ca-file /opt/k8s/openssl/ca.crt -data-dir=/data
+
+
 ==================================
 APPENDIX
 ==================================
