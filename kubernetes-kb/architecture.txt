@@ -7,9 +7,9 @@ https://medium.com/jorgeacetozi/kubernetes-master-components-etcd-api-server-con
 MASTER
 =======
 Master runs the following:
+- API Server - kube-apiserver
 - Scheduler - kube-scheduler
 - Controller Manager - kube-controller-manager
-- API Server - kube-apiserver
 - ETCD - etcd
 Note: ETCD can be on the master itself or on a different machine
 
@@ -17,5 +17,30 @@ ETCD
 - Stores cluster configuration information and state of the cluster, pods etc
 - Leader, follower, candidate
 - Consensus by Raft algorithm - https://raft.github.io/raft.pdf
-- ETCDCTL command - add/modify/delete keys, verify cluster health, add/remove etcd nodes, generate DB snapshots for backup
+- ETCDCTL command - add/modify/delete keys, verify cluster health, add/remove etcd nodes, generate DB snapshots for backups
+- 'watch' feature notifies watchers like apiserver upon changes to keys
 - Play with 5 node cluster here http://play.etcd.io
+
+API SERVER
+- Main management point
+- Only component that talks to ETCD
+- Watches for new pods, changes to pods, changes to keys ... (watch mechanism)
+- Authenticates and authorizes - all API clients shuould be authenticated and authorized
+
+CONTROLLER MANAGER
+- Watches state of cluster - via watch feature
+- Makes necessary changes to achieve desired state upon notification
+- Shipped with Kubernetes - replication controller, endpoints controller, namespace controller
+
+WHEN A POD IS CREATED
+kubectl writes to the API Server.
+API Server validates the request and persists it to etcd.
+etcd notifies back the API Server.
+API Server invokes the Scheduler.
+Scheduler decides where to run the pod on and return that to the API Server.
+API Server persists it to etcd.
+etcd notifies back the API Server.
+API Server invokes the Kubelet in the corresponding node.
+Kubelet talks to the Docker daemon using the API over the Docker socket to create the container.
+Kubelet updates the pod status to the API Server.
+API Server persists the new state in etcd.
