@@ -50,22 +50,172 @@ Copy helm and tiller from that folder to /usr/local/bin (or, keep them there its
 - INITIALIZE
 https://docs.helm.sh/using_helm/#initialize-helm-and-install-tiller
 
-Setup ~/.kube/config if not done already
+-- Setup ~/.kube/config if not done already
 Using kubectl set current context/cluster
 Verify using kubectl get nodes/pods etc that you are in the right context/cluster
-Then, initialize helm
+
+-- Then, initialize helm
 # helm init
 --> This will install 'tiller' pod on the cluster and does some other initialization work
 --> It will also create ~/.helm on the helm client machine
 
-- The tiller pod on cluster (created on a worker node)
+-- The tiller pod on cluster (created on a worker node)
 # kubectl get pods -o wide --all-namespaces |grep -i tiller
 kube-system   tiller-deploy-69ffbf64bc-4ljds             0/1     ContainerCreating   0          8s     <none>            kc01   <none>           <none>
 
+-- To avoid deployment errors do the following:
+per https://apassionatechie.wordpress.com/tag/service/page/2/
+NOTE:  THIS WORKED (in addition, the pods CIDR should also be different from vm IP range)
+
+kubectl create serviceaccount --namespace kube-system tiller
+kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
+kubectl patch deploy --namespace kube-system tiller-deploy -p '{"spec":{"template":{"spec":{"serviceAccount":"tiller"}}}}'      
+helm init --service-account tiller --upgrade
 
 -----------------------------------------------------------
 CREATE A CHART LOCALLY AND INSTALL IT ON THE CLUSTER
 -----------------------------------------------------------
+https://docs.bitnami.com/kubernetes/how-to/create-your-first-helm-chart/
+
+- Create
+# helm create nginx2
+--> This creates a standard helm folder with default charts - which in turn has nginx itself as deployment!
+--> Modify as needed (see later in this docs for modified files)
+
+- Install
+[root@kubeclient helm]# helm install --dry-run --debug ./nginx2 --set service.type=NodePort
+[debug] Created tunnel using local port: '10694'
+
+[debug] SERVER: "127.0.0.1:10694"
+
+[debug] Original chart version: ""
+[debug] CHART PATH: /root/kube/helm/nginx2
+
+NAME:   virtuous-llama
+REVISION: 1
+RELEASED: Tue Feb 12 18:07:25 2019
+CHART: nginx2-0.1.0
+USER-SUPPLIED VALUES:
+service:
+  type: NodePort
+
+COMPUTED VALUES:
+affinity: {}
+fullnameOverride: ""
+image:
+  pullPolicy: IfNotPresent
+  repository: nginx
+  tag: stable
+ingress:
+  annotations: {}
+  enabled: false
+  hosts:
+  - chart-example.local
+  paths: []
+  tls: []
+name: nginx2
+nameOverride: ""
+nodeSelector: {}
+replicaCount: 2
+resources: {}
+service:
+  port: 80
+  type: NodePort
+tolerations: []
+
+HOOKS:
+---
+# virtuous-llama-nginx2-test-connection
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "virtuous-llama-nginx2-test-connection"
+  labels:
+    app.kubernetes.io/name: nginx2
+    helm.sh/chart: nginx2-0.1.0
+    app.kubernetes.io/instance: virtuous-llama
+    app.kubernetes.io/managed-by: Tiller
+  annotations:
+    "helm.sh/hook": test-success
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command: ['wget']
+      args:  ['virtuous-llama-nginx2:80']
+  restartPolicy: Never
+MANIFEST:
+
+---
+# Source: nginx2/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: virtuous-llama-nginx2
+  labels:
+    app.kubernetes.io/name: nginx2
+    helm.sh/chart: nginx2-0.1.0
+    app.kubernetes.io/instance: virtuous-llama
+    app.kubernetes.io/managed-by: Tiller
+spec:
+  type: NodePort
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: nginx2
+    app.kubernetes.io/instance: virtuous-llama
+---
+# Source: nginx2/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: virtuous-llama-nginx2
+  labels:
+    app.kubernetes.io/name: nginx2
+    helm.sh/chart: nginx2-0.1.0
+    app.kubernetes.io/instance: virtuous-llama
+    app.kubernetes.io/managed-by: Tiller
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nginx2
+      app.kubernetes.io/instance: virtuous-llama
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nginx2
+        app.kubernetes.io/instance: virtuous-llama
+    spec:
+      containers:
+        - name: nginx2
+          image: "nginx:stable"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          resources:
+            {}
+[root@kubeclient helm]# 
+
+
+
+
+------------------------------------
+PREVIOUS UNSUCCESSFUL ATTEMPT
+------------------------------------
 https://docs.bitnami.com/kubernetes/how-to/create-your-first-helm-chart/
 
 - Create
