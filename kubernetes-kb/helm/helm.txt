@@ -82,7 +82,7 @@ https://docs.bitnami.com/kubernetes/how-to/create-your-first-helm-chart/
 --> This creates a standard helm folder with default charts - which in turn has nginx itself as deployment!
 --> Modify as needed (see later in this docs for modified files)
 
-- Install
+- Install - dry run
 [root@kubeclient helm]# helm install --dry-run --debug ./nginx2 --set service.type=NodePort
 [debug] Created tunnel using local port: '10694'
 
@@ -210,6 +210,33 @@ spec:
             {}
 [root@kubeclient helm]# 
 
+- Install - actual install
+
+[root@kubeclient helm]# helm install  ./nginx2 --set service.type=NodePort
+NAME:   wise-elk
+LAST DEPLOYED: Tue Feb 12 18:19:07 2019
+NAMESPACE: default
+STATUS: DEPLOYED
+
+RESOURCES:
+==> v1/Service
+NAME             TYPE      CLUSTER-IP     EXTERNAL-IP  PORT(S)       AGE
+wise-elk-nginx2  NodePort  10.111.45.210  <none>       80:31489/TCP  0s
+
+==> v1/Deployment
+NAME             DESIRED  CURRENT  UP-TO-DATE  AVAILABLE  AGE
+wise-elk-nginx2  2        0        0           0          0s
+
+==> v1/Pod(related)
+NAME                              READY  STATUS   RESTARTS  AGE
+wise-elk-nginx2-545c89bd9f-7qhwt  0/1    Pending  0         0s
+wise-elk-nginx2-545c89bd9f-bf7v2  0/1    Pending  0         0s
+
+NOTES:
+1. Get the application URL by running these commands:
+  export NODE_PORT=$(kubectl get --namespace default -o jsonpath="{.spec.ports[0].nodePort}" services wise-elk-nginx2)
+  export NODE_IP=$(kubectl get nodes --namespace default -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
 
 
 
