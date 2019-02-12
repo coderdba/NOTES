@@ -41,8 +41,29 @@ INSTALL SOFTWARE
 ------------------
 NOTE: This part is common to master and nodes
 
-Install docker
-Install kubelet, kubeadm, ....
+~~~~~~~~~~~
+DOCKER
+~~~~~~~~~~~
+Install docker (see docker notes)
+
+~~~~~~~~~~~~~
+KUBERNETES
+~~~~~~~~~~~~~
+- Create yum repo
+Create file: /etc/yum.repos.d/kubernetes.repo
+With content:
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg
+        https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+        
+- INSTALL KUBERNETES kubeadm, kubelet, kubectl
+
+# yum install -y kubelet kubeadm kubectl
 
 ---------------------------------
 DISABLE SELINUX
@@ -338,3 +359,85 @@ Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
 192.168.248.192 0.0.0.0         255.255.255.192 U     0      0        0 *
 192.168.248.193 0.0.0.0         255.255.255.255 UH    0      0        0 cali8ff997bfcd6
 192.168.248.194 0.0.0.0         255.255.255.255 UH    0      0        0 cali198b5d445b1
+
+===============
+ADD WORKER NODE
+===============
+
+--------------
+PREPARE NODE
+--------------
+See sections in master node prep work above.
+
+Install docker
+Install kubernetes components - kubectl, kubelet, kubeadm
+
+--------------
+ADD NODE
+--------------
+[root@kc01 ~]# which kubeadm
+/usr/bin/kubeadm
+[root@kc01 ~]# kubeadm join 192.168.11.100:6443 --token djto7p.04vgmpibcp70pyv3 --discovery-token-ca-cert-hash sha256:91fe17336fa414c572656ffc56b3bec1275fabfe8c6f688ca1fd9f1220fff78c
+[preflight] Running pre-flight checks
+	[WARNING SystemVerification]: this Docker version is not on the list of validated versions: 18.09.2. Latest validated version: 18.06
+[discovery] Trying to connect to API Server "192.168.11.100:6443"
+[discovery] Created cluster-info discovery client, requesting info from "https://192.168.11.100:6443"
+[discovery] Requesting info from "https://192.168.11.100:6443" again to validate TLS against the pinned public key
+[discovery] Cluster info signature and contents are valid and TLS certificate validates against pinned roots, will use API Server "192.168.11.100:6443"
+[discovery] Successfully established connection with API Server "192.168.11.100:6443"
+[join] Reading configuration from the cluster...
+[join] FYI: You can look at this config file with 'kubectl -n kube-system get cm kubeadm-config -oyaml'
+[kubelet] Downloading configuration for the kubelet from the "kubelet-config-1.13" ConfigMap in the kube-system namespace
+[kubelet-start] Writing kubelet configuration to file "/var/lib/kubelet/config.yaml"
+[kubelet-start] Writing kubelet environment file with flags to file "/var/lib/kubelet/kubeadm-flags.env"
+[kubelet-start] Activating the kubelet service
+[tlsbootstrap] Waiting for the kubelet to perform the TLS Bootstrap...
+[patchnode] Uploading the CRI Socket information "/var/run/dockershim.sock" to the Node API object "kc01" as an annotation
+
+This node has joined the cluster:
+* Certificate signing request was sent to apiserver and a response was received.
+* The Kubelet was informed of the new secure connection details.
+
+Run 'kubectl get nodes' on the master to see this node join the cluster.
+
+- VERIFY
+Note: First it will be 'not ready' and later will be 'ready'
+[root@kc00 ~]# kubectl get nodes
+NAME   STATUS     ROLES    AGE   VERSION
+kc00   Ready      master   40m   v1.13.3
+kc01   NotReady   <none>   18s   v1.13.3
+
+[root@kc00 ~]# kubectl get nodes
+NAME   STATUS   ROLES    AGE     VERSION
+kc00   Ready    master   44m     v1.13.3
+kc01   Ready    <none>   4m37s   v1.13.3
+
+- PREPARE .KUBE FOLDER
+Copy /root/.kube/config file from master on to /root/.kube/config on node.
+
+- VERIFY - PODS AND SERVICES ON WORKER NODE
+
+[root@kc01 /]# kubectl get pods --all-namespaces -o wide
+NAMESPACE     NAME                                       READY   STATUS    RESTARTS   AGE     IP                NODE   NOMINATED NODE   READINESS GATES
+kube-system   calico-etcd-4gbcj                          1/1     Running   0          32m     192.168.11.100    kc00   <none>           <none>
+kube-system   calico-kube-controllers-755fc58dd6-vsflb   1/1     Running   0          32m     192.168.11.100    kc00   <none>           <none>
+kube-system   calico-node-2g5tq                          1/1     Running   7          32m     192.168.11.100    kc00   <none>           <none>
+kube-system   calico-node-49dbn                          1/1     Running   0          6m47s   192.168.11.101    kc01   <none>           <none>
+kube-system   coredns-86c58d9df4-2bs2h                   1/1     Running   0          46m     192.168.248.193   kc00   <none>           <none>
+kube-system   coredns-86c58d9df4-j9xk9                   1/1     Running   0          46m     192.168.248.194   kc00   <none>           <none>
+kube-system   etcd-kc00                                  1/1     Running   0          45m     192.168.11.100    kc00   <none>           <none>
+kube-system   kube-apiserver-kc00                        1/1     Running   0          46m     192.168.11.100    kc00   <none>           <none>
+kube-system   kube-controller-manager-kc00               1/1     Running   0          45m     192.168.11.100    kc00   <none>           <none>
+kube-system   kube-proxy-9btln                           1/1     Running   0          6m47s   192.168.11.101    kc01   <none>           <none>
+kube-system   kube-proxy-wj48z                           1/1     Running   0          46m     192.168.11.100    kc00   <none>           <none>
+kube-system   kube-scheduler-kc00                        1/1     Running   0          45m     192.168.11.100    kc00   <none>           <none>
+
+[root@kc01 /]# kubectl get svc --all-namespaces -o wide
+NAMESPACE     NAME          TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)         AGE   SELECTOR
+default       kubernetes    ClusterIP   10.96.0.1       <none>        443/TCP         47m   <none>
+kube-system   calico-etcd   ClusterIP   10.96.232.136   <none>        6666/TCP        35m   k8s-app=calico-etcd
+kube-system   kube-dns      ClusterIP   10.96.0.10      <none>        53/UDP,53/TCP   47m   k8s-app=kube-dns
+
+
+
+
