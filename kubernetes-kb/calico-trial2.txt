@@ -26,6 +26,8 @@ VM IP (bridged/host-only) - TBD TBD - 192.168.21.100
 KUBERNETES POD IP CIDR  - 172.16.0.0/16  (https://serverfault.com/questions/931061/helm-i-o-timeout-kubernetes)
 --> Don't use the same range as VM (like 192.168.0.0) - which seemed to cause problems in earlier calico trial
 
+Docker I guess uses 172.17.0.1/16  --> so avoid using it
+
 =================
 MASTER
 =================
@@ -254,3 +256,63 @@ Remove the taints on the master so that you can schedule pods on it.
 # kubectl taint nodes --all node-role.kubernetes.io/master-
 node/kc00 untainted
 
+==========================
+NETWORK AT THIS POINT
+==========================
+
+# ip addr list
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default 
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: enp0s3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:10:44:20 brd ff:ff:ff:ff:ff:ff
+    inet 10.0.2.15/24 brd 10.0.2.255 scope global noprefixroute dynamic enp0s3
+       valid_lft 85014sec preferred_lft 85014sec
+    inet6 fe80::2481:bef7:e0d6:5810/64 scope link noprefixroute 
+       valid_lft forever preferred_lft forever
+3: enp0s8: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:7b:13:15 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.11.100/24 brd 192.168.11.255 scope global noprefixroute enp0s8
+       valid_lft forever preferred_lft forever
+    inet6 fe80::5270:6f3b:6966:ad14/64 scope link noprefixroute 
+       valid_lft forever preferred_lft forever
+4: enp0s9: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:ca:34:38 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.21.100/24 brd 192.168.21.255 scope global noprefixroute enp0s9
+       valid_lft forever preferred_lft forever
+    inet6 fe80::b331:1d54:d60b:62c1/64 scope link noprefixroute 
+       valid_lft forever preferred_lft forever
+5: docker0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default 
+    link/ether 02:42:38:7b:c2:72 brd ff:ff:ff:ff:ff:ff
+    inet 172.17.0.1/16 brd 172.17.255.255 scope global docker0
+       valid_lft forever preferred_lft forever
+6: virbr0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default 
+    link/ether 52:54:00:cc:ab:31 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0
+       valid_lft forever preferred_lft forever
+7: virbr0-nic: <BROADCAST,MULTICAST> mtu 1500 qdisc pfifo_fast master virbr0 state DOWN group default qlen 500
+    link/ether 52:54:00:cc:ab:31 brd ff:ff:ff:ff:ff:ff
+8: cali8ff997bfcd6@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1440 qdisc noqueue state UP group default 
+    link/ether ee:ee:ee:ee:ee:ee brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet6 fe80::ecee:eeff:feee:eeee/64 scope link 
+       valid_lft forever preferred_lft forever
+9: cali198b5d445b1@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1440 qdisc noqueue state UP group default 
+    link/ether ee:ee:ee:ee:ee:ee brd ff:ff:ff:ff:ff:ff link-netnsid 1
+    inet6 fe80::ecee:eeff:feee:eeee/64 scope link 
+       valid_lft forever preferred_lft forever
+
+# route -n
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+0.0.0.0         10.0.2.2        0.0.0.0         UG    100    0        0 enp0s3
+10.0.2.0        0.0.0.0         255.255.255.0   U     100    0        0 enp0s3
+172.17.0.0      0.0.0.0         255.255.0.0     U     0      0        0 docker0
+192.168.11.0    0.0.0.0         255.255.255.0   U     101    0        0 enp0s8
+192.168.21.0    0.0.0.0         255.255.255.0   U     102    0        0 enp0s9
+192.168.122.0   0.0.0.0         255.255.255.0   U     0      0        0 virbr0
+192.168.248.192 0.0.0.0         255.255.255.192 U     0      0        0 *
+192.168.248.193 0.0.0.0         255.255.255.255 UH    0      0        0 cali8ff997bfcd6
+192.168.248.194 0.0.0.0         255.255.255.255 UH    0      0        0 cali198b5d445b1
