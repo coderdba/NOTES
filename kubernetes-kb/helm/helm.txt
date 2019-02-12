@@ -63,6 +63,32 @@ CREATE A CHART LOCALLY AND INSTALL IT ON THE CLUSTER
 -----------------------------------------------------------
 https://docs.bitnami.com/kubernetes/how-to/create-your-first-helm-chart/
 
+- Create
+# helm create nginx2
+--> This creates a standard helm folder with default charts - which in turn has nginx itself as deployment!
+--> Modify as needed (see later in this docs for modified files)
+
+- Run
+# helm install --dry-run --debug ./nginx2 --set service.type=NodePort
+Error: no available release name found
+
+- To fix the error:  https://github.com/helm/helm/issues/3055
+
+kubectl create serviceaccount --namespace kube-system tiller
+kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
+kubectl patch deploy --namespace kube-system tiller-deploy -p '{"spec":{"template":{"spec":{"serviceAccount":"tiller"}}}}'
+
+-- commands and results
+[root@kc0 ~]# kubectl create serviceaccount --namespace kube-system tiller
+serviceaccount/tiller created
+[root@kc0 ~]# kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
+clusterrolebinding.rbac.authorization.k8s.io/tiller-cluster-rule created
+[root@kc0 ~]# kubectl patch deploy --namespace kube-system tiller-deploy -p '{"spec":{"template":{"spec":{"serviceAccount":"tiller"}}}}'
+deployment.extensions/tiller-deploy patched
+
+- Re-run helm install
+# helm install --dry-run --debug ./nginx2 --set service.type=NodePort
+
 -----------------------------
 USING CHARTS IN HELM REPO
 -----------------------------
