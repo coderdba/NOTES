@@ -2,14 +2,24 @@
 KUBERNETS WITH CALICO - VBOX VMs, KUBEADM INIT (NO SEPARATE VMs, JUST DEFAULT METHOD OF INSTALLATION)
 =====================================================================================================
 
+Main doc: https://docs.projectcalico.org/v3.4/getting-started/kubernetes/
+https://kubernetes.io/docs/tasks/administer-cluster/network-policy-provider/calico-network-policy/#creating-a-local-calico-cluster-with-kubeadm
+Then, https://docs.projectcalico.org/v3.4/getting-started/kubernetes/tutorials/simple-policy
+
+For prod:
+https://docs.projectcalico.org/v3.4/getting-started/kubernetes/installation/
+
+=======================================
 ROUTABLE/NON-ROUTABLE IP RANGES
+=======================================
 https://stackoverflow.com/questions/528538/non-routable-ip-address
 For IPV4 the non-routable addresses ranges are from 10.1.1.1 to 10.255.255.254, 
 from 172.16.1.1 to 172.31.255.254, and from 192.168.1.1 to 192.168.255.254. 
 These IP addresses will not be recognized outside of a private network.
 
+=======================================
 WHAT IPS TO USE
-
+=======================================
 kc00:
 VM IP (intnet) - 192.168.11.100
 VM IP (bridged/host-only) - TBD TBD - 192.168.21.100
@@ -180,3 +190,28 @@ kube-system   kube-scheduler-kc00            1/1     Running   0          8m15s
 NAMESPACE     NAME         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)         AGE
 default       kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP         10m
 kube-system   kube-dns     ClusterIP   10.96.0.10   <none>        53/UDP,53/TCP   10m
+
+=======================
+INSTALL CALICO
+=======================
+
+-----------------------
+INSTALL ETCD FOR CALICO - SEPARATE ETCD - NOT SAME AS THAT FOR KUBERNETES
+-----------------------
+Install an etcd instance with the following command.
+--> NOTE: This is NOT the kubernetes' own etcd - this is an etcd for calico (see it installs as calico-etcd)
+
+# kubectl apply -f \
+https://docs.projectcalico.org/v3.4/getting-started/kubernetes/installation/hosted/etcd.yaml
+
+--> Screen output
+daemonset.extensions/calico-etcd created
+service/calico-etcd created
+
+-----------------------
+INSTALL CALICO
+-----------------------
+Install Calico with the following command.
+
+# kubectl apply -f https://docs.projectcalico.org/v3.4/getting-started/kubernetes/installation/hosted/calico.yaml
+Note: You can also view the YAML in a new tab.
