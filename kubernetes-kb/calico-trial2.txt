@@ -15,3 +15,46 @@ VM IP (intnet) - 192.168.11.100
 VM IP (bridged/host-only) - TBD TBD - 192.168.21.100
 KUBERNETES POD IP CIDR  - 172.16.0.0/16  (https://serverfault.com/questions/931061/helm-i-o-timeout-kubernetes)
 --> Don't use the same range as VM (like 192.168.0.0) - which seemed to cause problems in earlier calico trial
+
+=================
+MASTER
+=================
+
+- Create a working directory (optional)
+# mkdir /root/kubeinstall
+# cd /root/kubeinstall
+
+------------------
+INSTALL SOFTWARE
+------------------
+NOTE: This part is common to master and nodes
+
+Install docker
+Install kubelet, kubeadm, ....
+
+---------------------------------
+DISABLE SELINUX
+---------------------------------
+# setenforce 0
+
+Edit the file /etc/sysconfig/selinux and set enforcing as disabled
+
+---------------------------------
+DISABLE SWAP
+---------------------------------
+# swapoff -a
+
+Edit /etc/fstab and comment out line of swap
+#/dev/mapper/ol-swap     swap                    swap    defaults        0 0
+
+---------------------------------
+ENABLE br_netfilter
+---------------------------------
+# modprobe br_netfilter
+# echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables
+
+Also, put it in /etc/sysctl.conf as follows:
+net.bridge.bridge-nf-call-iptables = 1
+
+And, make it persistent:
+# sysctl -p
