@@ -249,6 +249,8 @@ INSTALL CALICO
 -----------------------
 INSTALL ETCD FOR CALICO - SEPARATE ETCD - NOT SAME AS THAT FOR KUBERNETES
 -----------------------
+NOTE: This may not bring up a calico-etcd pod immediately - that may happen after the install calico step
+
 Install an etcd instance with the following command.
 --> NOTE: This is NOT the kubernetes' own etcd - this is an etcd for calico (see it installs as calico-etcd)
 
@@ -278,6 +280,10 @@ clusterrole.rbac.authorization.k8s.io/calico-node created
 clusterrolebinding.rbac.authorization.k8s.io/calico-node created
 
 - VERIFY
+NOTE: This may take some time for all pods to come up and show as 'running'
+NOTE: coredns gets IP based on cidr
+
+---- TRANSIENT STATE
 [root@kc00 kube]# kubectl get pods --all-namespaces
 NAMESPACE     NAME                                       READY   STATUS              RESTARTS   AGE
 kube-system   calico-etcd-4gbcj                          0/1     Pending             0          1s
@@ -290,6 +296,20 @@ kube-system   kube-apiserver-kc00                        1/1     Running        
 kube-system   kube-controller-manager-kc00               1/1     Running             0          13m
 kube-system   kube-proxy-wj48z                           1/1     Running             0          14m
 kube-system   kube-scheduler-kc00                        1/1     Running             0          13m
+
+---- STABLE STATE - with all pods running
+[root@kx00 calico]# pods
+NAMESPACE     NAME                                       READY   STATUS    RESTARTS   AGE     IP               NODE   NOMINATED NODE   READINESS GATES
+kube-system   calico-etcd-v6xdj                          1/1     Running   0          2m53s   192.168.11.110   kx00   <none>           <none>
+kube-system   calico-kube-controllers-74887d7bdf-w6hnr   1/1     Running   0          3m56s   192.168.11.110   kx00   <none>           <none>
+kube-system   calico-node-4f88f                          1/1     Running   2          3m56s   192.168.11.110   kx00   <none>           <none>
+kube-system   coredns-86c58d9df4-n676k                   1/1     Running   0          7m38s   172.16.131.65    kx00   <none>           <none>
+kube-system   coredns-86c58d9df4-wt5vl                   1/1     Running   0          7m38s   172.16.131.66    kx00   <none>           <none>
+kube-system   etcd-kx00                                  1/1     Running   0          7m3s    192.168.11.110   kx00   <none>           <none>
+kube-system   kube-apiserver-kx00                        1/1     Running   0          7m3s    192.168.11.110   kx00   <none>           <none>
+kube-system   kube-controller-manager-kx00               1/1     Running   0          7m3s    192.168.11.110   kx00   <none>           <none>
+kube-system   kube-proxy-27q94                           1/1     Running   0          7m38s   192.168.11.110   kx00   <none>           <none>
+kube-system   kube-scheduler-kx00                        1/1     Running   0          7m4s    192.168.11.110   kx00   <none>           <none>
 
 [root@kc00 kube]# kubectl get svc --all-namespaces
 NAMESPACE     NAME          TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)         AGE
