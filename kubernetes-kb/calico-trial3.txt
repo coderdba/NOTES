@@ -1,0 +1,648 @@
+=====================================================================================================
+KUBERNETS WITH CALICO - VBOX VMs, KUBEADM INIT (NO SEPARATE VMs, JUST DEFAULT METHOD OF INSTALLATION)
+=====================================================================================================
+
+Main doc: https://docs.projectcalico.org/v3.4/getting-started/kubernetes/
+		https://docs.projectcalico.org/v3.5/getting-started/kubernetes/
+		
+https://kubernetes.io/docs/tasks/administer-cluster/network-policy-provider/calico-network-policy/#creating-a-local-calico-cluster-with-kubeadm
+Then, https://docs.projectcalico.org/v3.4/getting-started/kubernetes/tutorials/simple-policy
+
+For prod:
+https://docs.projectcalico.org/v3.4/getting-started/kubernetes/installation/
+
+Also check these aspects/topics:
+https://github.com/projectcalico/calico/issues/683  (POD CIDR and Calico IP Pool)
+
+=======================================
+ROUTABLE/NON-ROUTABLE IP RANGES
+=======================================
+https://stackoverflow.com/questions/528538/non-routable-ip-address
+For IPV4 the non-routable addresses ranges are from 10.1.1.1 to 10.255.255.254, 
+from 172.16.1.1 to 172.31.255.254, and from 192.168.1.1 to 192.168.255.254. 
+These IP addresses will not be recognized outside of a private network.
+
+=======================================
+WHAT IPS TO USE
+=======================================
+kc00:
+VM IP (intnet) - 192.168.11.100
+VM IP (bridged/host-only) - TBD TBD - 192.168.21.100
+KUBERNETES POD IP CIDR  - 172.16.0.0/16  (https://serverfault.com/questions/931061/helm-i-o-timeout-kubernetes)
+--> Don't use the same range as VM (like 192.168.0.0) - which seemed to cause problems in earlier calico trial
+
+Docker I guess uses 172.17.0.1/16  --> so avoid using it
+
+=================
+MASTER
+=================
+
+- Create a working directory (optional)
+# mkdir /root/kubeinstall
+# cd /root/kubeinstall
+
+------------------
+INSTALL SOFTWARE
+------------------
+NOTE: This part is common to master and nodes
+
+~~~~~~~~~~~
+DOCKER
+~~~~~~~~~~~
+Install docker (see docker notes)
+
+~~~~~~~~~~~~~
+KUBERNETES
+~~~~~~~~~~~~~
+- Create yum repo
+Create file: /etc/yum.repos.d/kubernetes.repo
+With content:
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg
+        https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+        
+- INSTALL KUBERNETES kubeadm, kubelet, kubectl
+
+# yum install -y kubelet kubeadm kubectl
+
+---------------------------------
+DISABLE SELINUX
+---------------------------------
+# setenforce 0
+
+Edit the file /etc/sysconfig/selinux and set enforcing as disabled
+
+---------------------------------
+DISABLE SWAP
+---------------------------------
+# swapoff -a
+
+Edit /etc/fstab and comment out line of swap
+#/dev/mapper/ol-swap     swap                    swap    defaults        0 0
+
+---------------------------------
+ENABLE br_netfilter
+---------------------------------
+# modprobe br_netfilter
+# echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables
+
+Also, put it in /etc/sysctl.conf as follows:
+net.bridge.bridge-nf-call-iptables = 1
+
+And, make it persistent:
+# sysctl -p
+
+---------------------------------
+SET rp_filter
+---------------------------------
+Calico-node keeps crashing:
+https://github.com/projectcalico/calico/issues/1806 --> mine
+https://success.docker.com/article/fix-ucp-calico-for-rp-filter
+    --> This seemed to work
+    On host: in /etc/sysctl.conf set the rp_filter to 1 instead of 2
+    and then do "sysctl -p"
+
+---------------------------------
+START SERVICES
+---------------------------------
+# systemctl enable docker
+# systemctl enable kubelet
+# service docker start
+
+---------------------------------
+KUBEADM PULL IMAGES
+---------------------------------
+# kubeadm config images pull 
+
+---------------------------------
+PULL SOME USEFUL IMAGES
+---------------------------------
+# docker pull nginx
+# docker pull busybox
+# docker pull busybox:1.28
+
+==== BACKUP THE VM NOW
+
+==================================
+/ETC/HOSTS
+==================================
+Enter the IPs and hostnames of master and other nodes in /etc/hosts
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+192.168.11.100	kc00
+192.168.21.100	kc00-pub
+192.168.11.101	kc01
+192.168.21.101	kc01-pub
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+
+
+==================================
+INITIALIZE CLUSTER - KUBEADM INIT
+==================================
+# kubeadm init --apiserver-advertise-address=192.168.11.100 --pod-network-cidr=172.16.0.0/16 --ignore-preflight-errors=all
+Note: If 192.168.0.0/16 is already in use within your network you must select a different pod network CIDR, 
+      replacing 192.168.0.0/16 in the above command as well as in any manifests applied below.
+     
+JOIN TOKEN - LOOK AT THE END OF THE SCREEN OUTPUT BELOW
+
+[root@kc00 ~]# kubeadm init --apiserver-advertise-address=192.168.11.100 --pod-network-cidr=172.16.0.0/16 --ignore-preflight-errors=all
+[init] Using Kubernetes version: v1.13.3
+[preflight] Running pre-flight checks
+	[WARNING NumCPU]: the number of available CPUs 1 is less than the required 2
+	[WARNING SystemVerification]: this Docker version is not on the list of validated versions: 18.09.2. Latest validated version: 18.06
+[preflight] Pulling images required for setting up a Kubernetes cluster
+[preflight] This might take a minute or two, depending on the speed of your internet connection
+[preflight] You can also perform this action in beforehand using 'kubeadm config images pull'
+[kubelet-start] Writing kubelet environment file with flags to file "/var/lib/kubelet/kubeadm-flags.env"
+[kubelet-start] Writing kubelet configuration to file "/var/lib/kubelet/config.yaml"
+[kubelet-start] Activating the kubelet service
+[certs] Using certificateDir folder "/etc/kubernetes/pki"
+[certs] Generating "etcd/ca" certificate and key
+[certs] Generating "etcd/peer" certificate and key
+[certs] etcd/peer serving cert is signed for DNS names [kc00 localhost] and IPs [192.168.11.100 127.0.0.1 ::1]
+[certs] Generating "etcd/server" certificate and key
+[certs] etcd/server serving cert is signed for DNS names [kc00 localhost] and IPs [192.168.11.100 127.0.0.1 ::1]
+[certs] Generating "apiserver-etcd-client" certificate and key
+[certs] Generating "etcd/healthcheck-client" certificate and key
+[certs] Generating "ca" certificate and key
+[certs] Generating "apiserver-kubelet-client" certificate and key
+[certs] Generating "apiserver" certificate and key
+[certs] apiserver serving cert is signed for DNS names [kc00 kubernetes kubernetes.default kubernetes.default.svc kubernetes.default.svc.cluster.local] and IPs [10.96.0.1 192.168.11.100]
+[certs] Generating "front-proxy-ca" certificate and key
+[certs] Generating "front-proxy-client" certificate and key
+[certs] Generating "sa" key and public key
+[kubeconfig] Using kubeconfig folder "/etc/kubernetes"
+[kubeconfig] Writing "admin.conf" kubeconfig file
+[kubeconfig] Writing "kubelet.conf" kubeconfig file
+[kubeconfig] Writing "controller-manager.conf" kubeconfig file
+[kubeconfig] Writing "scheduler.conf" kubeconfig file
+[control-plane] Using manifest folder "/etc/kubernetes/manifests"
+[control-plane] Creating static Pod manifest for "kube-apiserver"
+[control-plane] Creating static Pod manifest for "kube-controller-manager"
+[control-plane] Creating static Pod manifest for "kube-scheduler"
+[etcd] Creating static Pod manifest for local etcd in "/etc/kubernetes/manifests"
+[wait-control-plane] Waiting for the kubelet to boot up the control plane as static Pods from directory "/etc/kubernetes/manifests". This can take up to 4m0s
+[apiclient] All control plane components are healthy after 23.504478 seconds
+[uploadconfig] storing the configuration used in ConfigMap "kubeadm-config" in the "kube-system" Namespace
+[kubelet] Creating a ConfigMap "kubelet-config-1.13" in namespace kube-system with the configuration for the kubelets in the cluster
+[patchnode] Uploading the CRI Socket information "/var/run/dockershim.sock" to the Node API object "kc00" as an annotation
+[mark-control-plane] Marking the node kc00 as control-plane by adding the label "node-role.kubernetes.io/master=''"
+[mark-control-plane] Marking the node kc00 as control-plane by adding the taints [node-role.kubernetes.io/master:NoSchedule]
+[bootstrap-token] Using token: djto7p.04vgmpibcp70pyv3
+[bootstrap-token] Configuring bootstrap tokens, cluster-info ConfigMap, RBAC Roles
+[bootstraptoken] configured RBAC rules to allow Node Bootstrap tokens to post CSRs in order for nodes to get long term certificate credentials
+[bootstraptoken] configured RBAC rules to allow the csrapprover controller automatically approve CSRs from a Node Bootstrap Token
+[bootstraptoken] configured RBAC rules to allow certificate rotation for all node client certificates in the cluster
+[bootstraptoken] creating the "cluster-info" ConfigMap in the "kube-public" namespace
+[addons] Applied essential addon: CoreDNS
+[addons] Applied essential addon: kube-proxy
+
+Your Kubernetes master has initialized successfully!
+
+To start using your cluster, you need to run the following as a regular user:
+
+  mkdir -p $HOME/.kube
+  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+  sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+You should now deploy a pod network to the cluster.
+Run "kubectl apply -f [podnetwork].yaml" with one of the options listed at:
+  https://kubernetes.io/docs/concepts/cluster-administration/addons/
+
+You can now join any number of machines by running the following on each node
+as root:
+
+  kubeadm join 192.168.11.100:6443 --token djto7p.04vgmpibcp70pyv3 --discovery-token-ca-cert-hash sha256:91fe17336fa414c572656ffc56b3bec1275fabfe8c6f688ca1fd9f1220fff78c
+
+- CREATE .KUBE FOLDER AND FILES
+
+  mkdir -p $HOME/.kube
+  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+  sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+- VERIFY
+
+# kubectl get pods --all-namespaces
+(note: at this time, coredns has no IP and has status 'pending' - needs calico up for it to be Running and with IP)
+NAMESPACE     NAME                           READY   STATUS    RESTARTS   AGE
+kube-system   coredns-86c58d9df4-2bs2h       0/1     Pending   0          9m18s
+kube-system   coredns-86c58d9df4-j9xk9       0/1     Pending   0          9m18s
+kube-system   etcd-kc00                      1/1     Running   0          8m22s
+kube-system   kube-apiserver-kc00            1/1     Running   0          8m43s
+kube-system   kube-controller-manager-kc00   1/1     Running   0          8m26s
+kube-system   kube-proxy-wj48z               1/1     Running   0          9m18s
+kube-system   kube-scheduler-kc00            1/1     Running   0          8m15s
+
+# kubectl get svc --all-namespaces
+NAMESPACE     NAME         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)         AGE
+default       kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP         10m
+kube-system   kube-dns     ClusterIP   10.96.0.10   <none>        53/UDP,53/TCP   10m
+
+=======================
+INSTALL CALICO
+=======================
+
+-----------------------
+INSTALL ETCD FOR CALICO - SEPARATE ETCD - NOT SAME AS THAT FOR KUBERNETES
+-----------------------
+NOTE: This may not bring up a calico-etcd pod immediately - that may happen after the install calico step
+
+Install an etcd instance with the following command.
+--> NOTE: This is NOT the kubernetes' own etcd - this is an etcd for calico (see it installs as calico-etcd)
+
+# kubectl apply -f \
+https://docs.projectcalico.org/v3.4/getting-started/kubernetes/installation/hosted/etcd.yaml
+
+--> Screen output
+daemonset.extensions/calico-etcd created
+service/calico-etcd created
+
+-----------------------
+INSTALL CALICO
+-----------------------
+Install Calico with the following command.
+
+# kubectl apply -f https://docs.projectcalico.org/v3.4/getting-started/kubernetes/installation/hosted/calico.yaml
+
+configmap/calico-config created
+secret/calico-etcd-secrets created
+daemonset.extensions/calico-node created
+serviceaccount/calico-node created
+deployment.extensions/calico-kube-controllers created
+serviceaccount/calico-kube-controllers created
+clusterrole.rbac.authorization.k8s.io/calico-kube-controllers created
+clusterrolebinding.rbac.authorization.k8s.io/calico-kube-controllers created
+clusterrole.rbac.authorization.k8s.io/calico-node created
+clusterrolebinding.rbac.authorization.k8s.io/calico-node created
+
+- VERIFY
+NOTE: This may take some time for all pods to come up and show as 'running'
+NOTE: coredns gets IP based on cidr
+
+---- TRANSIENT STATE
+[root@kc00 kube]# kubectl get pods --all-namespaces
+NAMESPACE     NAME                                       READY   STATUS              RESTARTS   AGE
+kube-system   calico-etcd-4gbcj                          0/1     Pending             0          1s
+kube-system   calico-kube-controllers-755fc58dd6-vsflb   0/1     ContainerCreating   0          28s
+kube-system   calico-node-2g5tq                          0/1     PodInitializing     0          28s
+kube-system   coredns-86c58d9df4-2bs2h                   0/1     ContainerCreating   0          14m
+kube-system   coredns-86c58d9df4-j9xk9                   0/1     ContainerCreating   0          14m
+kube-system   etcd-kc00                                  1/1     Running             0          13m
+kube-system   kube-apiserver-kc00                        1/1     Running             0          13m
+kube-system   kube-controller-manager-kc00               1/1     Running             0          13m
+kube-system   kube-proxy-wj48z                           1/1     Running             0          14m
+kube-system   kube-scheduler-kc00                        1/1     Running             0          13m
+
+---- STABLE STATE - with all pods running
+[root@kx00 calico]# pods
+NAMESPACE     NAME                                       READY   STATUS    RESTARTS   AGE     IP               NODE   NOMINATED NODE   READINESS GATES
+kube-system   calico-etcd-v6xdj                          1/1     Running   0          2m53s   192.168.11.110   kx00   <none>           <none>
+kube-system   calico-kube-controllers-74887d7bdf-w6hnr   1/1     Running   0          3m56s   192.168.11.110   kx00   <none>           <none>
+kube-system   calico-node-4f88f                          1/1     Running   2          3m56s   192.168.11.110   kx00   <none>           <none>
+kube-system   coredns-86c58d9df4-n676k                   1/1     Running   0          7m38s   172.16.131.65    kx00   <none>           <none>
+kube-system   coredns-86c58d9df4-wt5vl                   1/1     Running   0          7m38s   172.16.131.66    kx00   <none>           <none>
+kube-system   etcd-kx00                                  1/1     Running   0          7m3s    192.168.11.110   kx00   <none>           <none>
+kube-system   kube-apiserver-kx00                        1/1     Running   0          7m3s    192.168.11.110   kx00   <none>           <none>
+kube-system   kube-controller-manager-kx00               1/1     Running   0          7m3s    192.168.11.110   kx00   <none>           <none>
+kube-system   kube-proxy-27q94                           1/1     Running   0          7m38s   192.168.11.110   kx00   <none>           <none>
+kube-system   kube-scheduler-kx00                        1/1     Running   0          7m4s    192.168.11.110   kx00   <none>           <none>
+
+[root@kc00 kube]# kubectl get svc --all-namespaces
+NAMESPACE     NAME          TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)         AGE
+default       kubernetes    ClusterIP   10.96.0.1       <none>        443/TCP         14m
+kube-system   calico-etcd   ClusterIP   10.96.232.136   <none>        6666/TCP        2m35s
+kube-system   kube-dns      ClusterIP   10.96.0.10      <none>        53/UDP,53/TCP   14m
+
+==========================
+REMOVE TAINTS ON MASTER
+==========================
+Remove the taints on the master so that you can schedule pods on it.
+
+# kubectl taint nodes --all node-role.kubernetes.io/master-
+node/kc00 untainted
+
+==========================
+NETWORK AT THIS POINT
+==========================
+
+# ip addr list
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default 
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: enp0s3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:10:44:20 brd ff:ff:ff:ff:ff:ff
+    inet 10.0.2.15/24 brd 10.0.2.255 scope global noprefixroute dynamic enp0s3
+       valid_lft 85014sec preferred_lft 85014sec
+    inet6 fe80::2481:bef7:e0d6:5810/64 scope link noprefixroute 
+       valid_lft forever preferred_lft forever
+3: enp0s8: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:7b:13:15 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.11.100/24 brd 192.168.11.255 scope global noprefixroute enp0s8
+       valid_lft forever preferred_lft forever
+    inet6 fe80::5270:6f3b:6966:ad14/64 scope link noprefixroute 
+       valid_lft forever preferred_lft forever
+4: enp0s9: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:ca:34:38 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.21.100/24 brd 192.168.21.255 scope global noprefixroute enp0s9
+       valid_lft forever preferred_lft forever
+    inet6 fe80::b331:1d54:d60b:62c1/64 scope link noprefixroute 
+       valid_lft forever preferred_lft forever
+5: docker0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default 
+    link/ether 02:42:38:7b:c2:72 brd ff:ff:ff:ff:ff:ff
+    inet 172.17.0.1/16 brd 172.17.255.255 scope global docker0
+       valid_lft forever preferred_lft forever
+6: virbr0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default 
+    link/ether 52:54:00:cc:ab:31 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0
+       valid_lft forever preferred_lft forever
+7: virbr0-nic: <BROADCAST,MULTICAST> mtu 1500 qdisc pfifo_fast master virbr0 state DOWN group default qlen 500
+    link/ether 52:54:00:cc:ab:31 brd ff:ff:ff:ff:ff:ff
+8: cali8ff997bfcd6@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1440 qdisc noqueue state UP group default 
+    link/ether ee:ee:ee:ee:ee:ee brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet6 fe80::ecee:eeff:feee:eeee/64 scope link 
+       valid_lft forever preferred_lft forever
+9: cali198b5d445b1@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1440 qdisc noqueue state UP group default 
+    link/ether ee:ee:ee:ee:ee:ee brd ff:ff:ff:ff:ff:ff link-netnsid 1
+    inet6 fe80::ecee:eeff:feee:eeee/64 scope link 
+       valid_lft forever preferred_lft forever
+
+# route -n
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+0.0.0.0         10.0.2.2        0.0.0.0         UG    100    0        0 enp0s3
+10.0.2.0        0.0.0.0         255.255.255.0   U     100    0        0 enp0s3
+172.17.0.0      0.0.0.0         255.255.0.0     U     0      0        0 docker0
+192.168.11.0    0.0.0.0         255.255.255.0   U     101    0        0 enp0s8
+192.168.21.0    0.0.0.0         255.255.255.0   U     102    0        0 enp0s9
+192.168.122.0   0.0.0.0         255.255.255.0   U     0      0        0 virbr0
+192.168.248.192 0.0.0.0         255.255.255.192 U     0      0        0 *
+192.168.248.193 0.0.0.0         255.255.255.255 UH    0      0        0 cali8ff997bfcd6
+192.168.248.194 0.0.0.0         255.255.255.255 UH    0      0        0 cali198b5d445b1
+
+===============
+ADD WORKER NODE
+===============
+
+--------------
+PREPARE NODE
+--------------
+See sections in master node prep work above.
+
+Install docker
+Install kubernetes components - kubectl, kubelet, kubeadm
+
+--------------
+ADD NODE
+--------------
+[root@kc01 ~]# which kubeadm
+/usr/bin/kubeadm
+[root@kc01 ~]# kubeadm join 192.168.11.100:6443 --token djto7p.04vgmpibcp70pyv3 --discovery-token-ca-cert-hash sha256:91fe17336fa414c572656ffc56b3bec1275fabfe8c6f688ca1fd9f1220fff78c
+[preflight] Running pre-flight checks
+	[WARNING SystemVerification]: this Docker version is not on the list of validated versions: 18.09.2. Latest validated version: 18.06
+[discovery] Trying to connect to API Server "192.168.11.100:6443"
+[discovery] Created cluster-info discovery client, requesting info from "https://192.168.11.100:6443"
+[discovery] Requesting info from "https://192.168.11.100:6443" again to validate TLS against the pinned public key
+[discovery] Cluster info signature and contents are valid and TLS certificate validates against pinned roots, will use API Server "192.168.11.100:6443"
+[discovery] Successfully established connection with API Server "192.168.11.100:6443"
+[join] Reading configuration from the cluster...
+[join] FYI: You can look at this config file with 'kubectl -n kube-system get cm kubeadm-config -oyaml'
+[kubelet] Downloading configuration for the kubelet from the "kubelet-config-1.13" ConfigMap in the kube-system namespace
+[kubelet-start] Writing kubelet configuration to file "/var/lib/kubelet/config.yaml"
+[kubelet-start] Writing kubelet environment file with flags to file "/var/lib/kubelet/kubeadm-flags.env"
+[kubelet-start] Activating the kubelet service
+[tlsbootstrap] Waiting for the kubelet to perform the TLS Bootstrap...
+[patchnode] Uploading the CRI Socket information "/var/run/dockershim.sock" to the Node API object "kc01" as an annotation
+
+This node has joined the cluster:
+* Certificate signing request was sent to apiserver and a response was received.
+* The Kubelet was informed of the new secure connection details.
+
+Run 'kubectl get nodes' on the master to see this node join the cluster.
+
+- VERIFY
+Note: First it will be 'not ready' and later will be 'ready'
+[root@kc00 ~]# kubectl get nodes
+NAME   STATUS     ROLES    AGE   VERSION
+kc00   Ready      master   40m   v1.13.3
+kc01   NotReady   <none>   18s   v1.13.3
+
+[root@kc00 ~]# kubectl get nodes
+NAME   STATUS   ROLES    AGE     VERSION
+kc00   Ready    master   44m     v1.13.3
+kc01   Ready    <none>   4m37s   v1.13.3
+
+- PREPARE .KUBE FOLDER
+Copy /root/.kube/config file from master on to /root/.kube/config on node.
+
+- VERIFY - PODS AND SERVICES ON WORKER NODE
+NOTE: calico-node and kube-proxy will be created on both master and worker
+
+[root@kc01 /]# kubectl get pods --all-namespaces -o wide
+[root@kx00 nginx_pod]# pods
+NAMESPACE     NAME                                       READY   STATUS        RESTARTS   AGE     IP               NODE   NOMINATED NODE   READINESS GATES
+kube-system   calico-etcd-v6xdj                          1/1     Running       0          52m     192.168.11.110   kx00   <none>           <none>
+kube-system   calico-kube-controllers-74887d7bdf-w6hnr   1/1     Running       0          53m     192.168.11.110   kx00   <none>           <none>
+kube-system   calico-node-4f88f                          1/1     Running       2          53m     192.168.11.110   kx00   <none>           <none>
+kube-system   calico-node-76qlv                          1/1     Running       0          45m     192.168.11.111   kx01   <none>           <none>
+kube-system   coredns-86c58d9df4-n676k                   1/1     Running       0          57m     172.16.131.65    kx00   <none>           <none>
+kube-system   coredns-86c58d9df4-wt5vl                   1/1     Running       0          57m     172.16.131.66    kx00   <none>           <none>
+kube-system   etcd-kx00                                  1/1     Running       0          56m     192.168.11.110   kx00   <none>           <none>
+kube-system   kube-apiserver-kx00                        1/1     Running       0          56m     192.168.11.110   kx00   <none>           <none>
+kube-system   kube-controller-manager-kx00               1/1     Running       0          56m     192.168.11.110   kx00   <none>           <none>
+kube-system   kube-proxy-27q94                           1/1     Running       0          57m     192.168.11.110   kx00   <none>           <none>
+kube-system   kube-proxy-g77hb                           1/1     Running       0          45m     192.168.11.111   kx01   <none>           <none>
+kube-system   kube-scheduler-kx00                        1/1     Running       0          56m     192.168.11.110   kx00   <none>           <none>
+
+[root@kc01 /]# kubectl get svc --all-namespaces -o wide
+NAMESPACE     NAME          TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)         AGE   SELECTOR
+default       kubernetes    ClusterIP   10.96.0.1        <none>        443/TCP         58m   <none>
+kube-system   calico-etcd   ClusterIP   10.96.232.136    <none>        6666/TCP        55m   k8s-app=calico-etcd
+kube-system   kube-dns      ClusterIP   10.96.0.10       <none>        53/UDP,53/TCP   58m   k8s-app=kube-dns
+
+
+===================
+POD CREATION 1
+===================
+
+Case:
+- Create nginx
+- Create busybox
+- Access nginx from busybox
+
+https://docs.projectcalico.org/v3.4/getting-started/kubernetes/tutorials/simple-policy
+(derived from https://kubernetes.io/docs/tasks/administer-cluster/declare-network-policy/)
+(also see https://kubernetes.io/docs/concepts/services-networking/connect-applications-service/)
+
+- create a namespace 
+# kubectl create ns nginx-ns
+
+- create nginx pod
+# kubectl run --namespace=nginx-ns nginx1 --replicas=2 --image=nginx
+
+- verify pods creation
+# kubectl get pods -n nginx-ns -o wide
+NAME                     READY   STATUS    RESTARTS   AGE   IP              NODE   NOMINATED NODE   READINESS GATES
+nginx1-6d85b46d7-ghl56   1/1     Running   0          25m   172.16.241.66   kx01   <none>           <none>
+nginx1-6d85b46d7-hszxh   1/1     Running   0          25m   172.16.241.65   kx01   <none>           <none>
+
+- verify curl to nginx - from master
+-- FROM KC00 access pod-ip's of containers in worker node kc01
+[root@kc00 ~]# curl http://172.16.241.66:80
+[root@kc00 ~]# curl http://172.16.241.65:80
+
+- verify ping to pod-ip - from master
+
+[root@kx00 /]# ping 172.16.241.66
+PING 172.16.241.66 (172.16.241.66) 56(84) bytes of data.
+64 bytes from 172.16.241.66: icmp_seq=1 ttl=63 time=0.553 ms
+64 bytes from 172.16.241.66: icmp_seq=2 ttl=63 time=0.819 ms
+
+
+- EXPOSE NGINX VIA A SERVICE
+# kubectl expose --namespace=policy-demo deployment nginx1 --port=80
+service/nginx exposed
+
+[root@kx00 nginx_pod]# kubectl get svc -n nginx-ns -o wide
+NAME     TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)   AGE   SELECTOR
+nginx1   ClusterIP   10.105.130.203   <none>        80/TCP    19m   run=nginx1
+
+
+NOTE: You cannot ping the cluster-ip of services
+
+[root@kx00 nginx_pod]# kubectl describe service nginx1 -n nginx-ns
+Name:              nginx1
+Namespace:         nginx-ns
+Labels:            run=nginx1
+Annotations:       <none>
+Selector:          run=nginx1
+Type:              ClusterIP
+IP:                10.105.130.203
+Port:              <unset>  80/TCP
+TargetPort:        80/TCP
+Endpoints:         172.16.241.65:80,172.16.241.66:80
+Session Affinity:  None
+Events:            <none>
+
+- TRY ACCESS THE NGINX NODE FROM BUSYBOX NODE
+
+[root@kc00 ~]# kubectl run --namespace=nginx-ns access --rm -ti --image busybox /bin/sh
+kubectl run --generator=deployment/apps.v1 is DEPRECATED and will be removed in a future version. Use kubectl run --generator=run-pod/v1 or kubectl create instead.
+If you don't see a command prompt, try pressing enter.
+
+<< NOW YOU ARE INSIDE THE BUSYBOX CONTAINER >>
+
+---- Ping the pod IP - not the service IP)
+/ # ping 172.16.241.65
+PING 172.16.241.65 (172.16.241.65): 56 data bytes
+64 bytes from 172.16.241.65: seq=0 ttl=63 time=0.097 ms
+64 bytes from 172.16.241.65: seq=1 ttl=63 time=0.091 ms
+
+---- Wget the nginx pod using pod-IP
+/ # wget -q 172.16.241.65 -O -
+
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+    body {
+        width: 35em;
+        margin: 0 auto;
+        font-family: Tahoma, Verdana, Arial, sans-serif;
+    }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, the nginx web server is successfully installed and
+working. Further configuration is required.</p>
+
+<p>For online documentation and support please refer to
+<a href="http://nginx.org/">nginx.org</a>.<br/>
+Commercial support is available at
+<a href="http://nginx.com/">nginx.com</a>.</p>
+
+<p><em>Thank you for using nginx.</em></p>
+</body>
+</html>
+
+---- Wget nginx1 service
+/ # wget -q nginx1 -O -
+
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+    body {
+        width: 35em;
+        margin: 0 auto;
+        font-family: Tahoma, Verdana, Arial, sans-serif;
+    }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, the nginx web server is successfully installed and
+working. Further configuration is required.</p>
+
+<p>For online documentation and support please refer to
+<a href="http://nginx.org/">nginx.org</a>.<br/>
+Commercial support is available at
+<a href="http://nginx.com/">nginx.com</a>.</p>
+
+<p><em>Thank you for using nginx.</em></p>
+</body>
+</html>
+
+- VERIFY NSLOOKUP OF SERVICE
+/ # nslookup nginx1
+Server:		10.96.0.10
+Address:	10.96.0.10:53
+
+Name:	nginx1.nginx-ns.svc.cluster.local
+Address: 10.105.130.203
+
+<< probably the following are from the company's name servers - via resolv.conf of the laptop >>
+*** Can't find nginx.svc.cluster.local: No answer
+*** Can't find nginx.cluster.local: No answer
+*** Can't find nginx.company.com: No answer
+*** Can't find nginx.policy-demo.svc.cluster.local: No answer
+*** Can't find nginx.svc.cluster.local: No answer
+*** Can't find nginx.cluster.local: No answer
+*** Can't find nginx.company.com: No answer
+
+--- Wget using service IP
+/ # wget -q 10.105.130.203 -O -
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+    body {
+        width: 35em;
+        margin: 0 auto;
+        font-family: Tahoma, Verdana, Arial, sans-serif;
+    }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, the nginx web server is successfully installed and
+working. Further configuration is required.</p>
+
+<p>For online documentation and support please refer to
+<a href="http://nginx.org/">nginx.org</a>.<br/>
+Commercial support is available at
+<a href="http://nginx.com/">nginx.com</a>.</p>
+
+<p><em>Thank you for using nginx.</em></p>
+</body>
+</html>
