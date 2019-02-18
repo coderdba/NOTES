@@ -437,6 +437,12 @@ See sections in master node prep work above.
 Install docker
 Install kubernetes components - kubectl, kubelet, kubeadm
 
+Enable/start services
+# systemctl enable docker
+# systemctl start docker
+# systemctl enable kubelet
+(dont start kubelet yet)
+
 Edit /etc/hosts to contain hostname/IP of all master and workers
 
 --------------
@@ -478,6 +484,18 @@ kc01   NotReady   <none>   18s   v1.13.3
 NAME   STATUS   ROLES    AGE     VERSION
 kc00   Ready    master   44m     v1.13.3
 kc01   Ready    <none>   4m37s   v1.13.3
+
+- Here are the 'required' images for the worker node
+[root@kx01 ~]# docker images
+REPOSITORY              TAG                 IMAGE ID            CREATED             SIZE
+calico/node             v3.5.1              f815de40f360        11 days ago         72.7MB
+calico/cni              v3.5.1              ead63bbb377f        11 days ago         83.6MB
+k8s.gcr.io/kube-proxy   v1.13.3             98db19758ad4        2 weeks ago         80.3MB
+k8s.gcr.io/pause        3.1                 da86e6ba6ca1        14 months ago       742kB
+
+- And kubelet will be running
+[root@kx01 ~]# ps -ef|grep kubelet
+root      6938     1  1 21:06 ?        00:00:07 /usr/bin/kubelet --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf --config=/var/lib/kubelet/config.yaml --cgroup-driver=cgroupfs --network-plugin=cni --pod-infra-container-image=k8s.gcr.io/pause:3.1
 
 - PREPARE .KUBE FOLDER
 Copy /root/.kube/config file from master on to /root/.kube/config on node.
