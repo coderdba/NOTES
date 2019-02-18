@@ -525,6 +525,63 @@ default       kubernetes    ClusterIP   10.96.0.1        <none>        443/TCP  
 kube-system   calico-etcd   ClusterIP   10.96.232.136    <none>        6666/TCP        55m   k8s-app=calico-etcd
 kube-system   kube-dns      ClusterIP   10.96.0.10       <none>        53/UDP,53/TCP   58m   k8s-app=kube-dns
 
+- Routing
+[root@kx00 nginx_pod]# route -n
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+0.0.0.0         10.0.2.2        0.0.0.0         UG    100    0        0 enp0s3
+10.0.2.0        0.0.0.0         255.255.255.0   U     100    0        0 enp0s3
+172.16.83.192   192.168.11.112  255.255.255.192 UG    0      0        0 tunl0
+172.16.131.64   0.0.0.0         255.255.255.192 U     0      0        0 *
+172.16.131.71   0.0.0.0         255.255.255.255 UH    0      0        0 caliec8cedadfdc
+172.16.131.72   0.0.0.0         255.255.255.255 UH    0      0        0 cali14b37ca3077
+172.16.241.64   192.168.11.111  255.255.255.192 UG    0      0        0 tunl0
+172.17.0.0      0.0.0.0         255.255.0.0     U     0      0        0 docker0
+192.168.11.0    0.0.0.0         255.255.255.0   U     101    0        0 enp0s8
+192.168.122.0   0.0.0.0         255.255.255.0   U     0      0        0 virbr0
+
+[root@kx01 ~]# route -n
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+0.0.0.0         10.0.2.2        0.0.0.0         UG    100    0        0 enp0s3
+10.0.2.0        0.0.0.0         255.255.255.0   U     100    0        0 enp0s3
+172.16.83.192   192.168.11.112  255.255.255.192 UG    0      0        0 tunl0
+172.16.131.64   192.168.11.110  255.255.255.192 UG    0      0        0 tunl0
+172.16.241.64   0.0.0.0         255.255.255.192 U     0      0        0 *
+172.16.241.78   0.0.0.0         255.255.255.255 UH    0      0        0 califf7cd47eaaf
+172.17.0.0      0.0.0.0         255.255.0.0     U     0      0        0 docker0
+192.168.11.0    0.0.0.0         255.255.255.0   U     101    0        0 enp0s8
+192.168.122.0   0.0.0.0         255.255.255.0   U     0      0        0 virbr0
+
+[root@kx02 temp]# route -n
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+0.0.0.0         10.0.2.2        0.0.0.0         UG    100    0        0 enp0s3
+10.0.2.0        0.0.0.0         255.255.255.0   U     100    0        0 enp0s3
+172.16.83.192   0.0.0.0         255.255.255.192 U     0      0        0 *
+172.16.83.196   0.0.0.0         255.255.255.255 UH    0      0        0 cali5551f28aecf
+172.16.131.64   192.168.11.110  255.255.255.192 UG    0      0        0 tunl0
+172.16.241.64   192.168.11.111  255.255.255.192 UG    0      0        0 tunl0
+172.17.0.0      0.0.0.0         255.255.0.0     U     0      0        0 docker0
+192.168.11.0    0.0.0.0         255.255.255.0   U     101    0        0 enp0s8
+192.168.122.0   0.0.0.0         255.255.255.0   U     0      0        0 virbr0
+
+
+
+-- Routing - 'destination' on other nodes
+---- on worker nodes
+[root@kx01 ~]# ip a|grep tun
+7: tunl0@NONE: <NOARP,UP,LOWER_UP> mtu 1440 qdisc noqueue state UNKNOWN group default 
+    inet 172.16.241.64/32 brd 172.16.241.64 scope global tunl0
+
+[root@kx02 temp]# ip a |grep tun
+7: tunl0@NONE: <NOARP,UP,LOWER_UP> mtu 1440 qdisc noqueue state UNKNOWN group default 
+    inet 172.16.83.192/32 brd 172.16.83.192 scope global tunl0
+
+---- on master
+[root@kx00 nginx_pod]# ip a |grep tun
+7: tunl0@NONE: <NOARP,UP,LOWER_UP> mtu 1440 qdisc noqueue state UNKNOWN group default 
+    inet 172.16.131.64/32 brd 172.16.131.64 scope global tunl0
 
 ===================
 POD CREATION 1
@@ -562,7 +619,6 @@ nginx1-6d85b46d7-hszxh   1/1     Running   0          25m   172.16.241.65   kx01
 PING 172.16.241.66 (172.16.241.66) 56(84) bytes of data.
 64 bytes from 172.16.241.66: icmp_seq=1 ttl=63 time=0.553 ms
 64 bytes from 172.16.241.66: icmp_seq=2 ttl=63 time=0.819 ms
-
 
 - EXPOSE NGINX VIA A SERVICE
 # kubectl expose --namespace=policy-demo deployment nginx1 --port=80
@@ -717,3 +773,6 @@ https://stackoverflow.com/questions/51589849/kubernetes-cant-ping-pods-across-no
 	(https://github.com/kelseyhightower/kubernetes-the-hard-way)
 	https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/11-pod-network-routes.md
 		https://kubernetes.io/docs/concepts/cluster-administration/networking/#how-to-achieve-this
+
+--> this seemed like due to the second network interface
+	Removed it and it started working fine
