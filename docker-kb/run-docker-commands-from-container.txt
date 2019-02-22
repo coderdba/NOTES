@@ -5,3 +5,57 @@ RUN DOCKER COMMAND ON HOST FROM WITHIN A CONTAINER
 https://forums.docker.com/t/how-can-i-run-docker-command-inside-a-docker-container/337
 
 docker run -it -v /var/run/docker.sock:/var/run/docker.sock ubuntu:latest sh -c "apt-get update ; apt-get install docker.io -y ; bash"
+
+This will bring up a container and lets you in already - due to 'bash'.
+
+In that, do docker ps - you will see containers running on the host.
+
+root@053ee17863ac:/# hostname
+053ee17863ac
+
+root@053ee17863ac:/# which docker
+/usr/bin/docker
+
+root@053ee17863ac:/# docker ps -a
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS                      PORTS                    NAMES
+053ee17863ac        ubuntu:18.04        "sh -c 'apt-get upda…"   16 minutes ago      Up 16 minutes                                        eloquent_snyder
+9ce36298e095        civik/ansible-ci    "/bin/sh"                7 days ago          Exited (0) 7 days ago                                ansible-ci1
+e0772f325fed        redis               "docker-entrypoint.s…"   3 weeks ago         Exited (255) 3 weeks ago    6379/tcp                 redis1
+49708091b9b8        registry:2          "/entrypoint.sh /etc…"   4 months ago        Exited (255) 4 months ago   0.0.0.0:5000->5000/tcp   registry
+
+
+# exit
+
+<<< COME BACK TO HOST >>>
+
+$ docker exec -ti 053ee17863ac /bin/bash
+Error response from daemon: Container 053ee17863ac7f8acc630c35da404a481495770a1a3aabcba03bbbe9a5292af3 is not running
+
+
+$ docker ps 
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+
+$ docker start 053ee17863ac
+053ee17863ac
+
+$ docker ps 
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS                      PORTS                    NAMES
+053ee17863ac        ubuntu:18.04        "sh -c 'apt-get upda…"   17 minutes ago      Up 2 seconds                                         eloquent_snyder
+
+$ docker ps
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS               NAMES
+053ee17863ac        ubuntu:18.04        "sh -c 'apt-get upda…"   17 minutes ago      Up 6 seconds                            eloquent_snyder
+
+$ docker exec -ti 053ee17863ac /bin/bash
+
+<<< BACK INSIDE THE CONTAINER >>>
+root@053ee17863ac:/# docker ps
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS               NAMES
+053ee17863ac        ubuntu:18.04        "sh -c 'apt-get upda…"   17 minutes ago      Up 13 seconds                           eloquent_snyder
+
+root@053ee17863ac:/# docker ps -a
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS                      PORTS                    NAMES
+053ee17863ac        ubuntu:18.04        "sh -c 'apt-get upda…"   17 minutes ago      Up 16 seconds                                        eloquent_snyder
+9ce36298e095        civik/ansible-ci    "/bin/sh"                7 days ago          Exited (0) 7 days ago                                ansible-ci1
+e0772f325fed        redis               "docker-entrypoint.s…"   3 weeks ago         Exited (255) 3 weeks ago    6379/tcp                 redis1
+49708091b9b8        registry:2          "/entrypoint.sh /etc…"   4 months ago        Exited (255) 4 months ago   0.0.0.0:5000->5000/tcp   registry
