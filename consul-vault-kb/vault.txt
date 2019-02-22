@@ -1,0 +1,54 @@
+===============
+HASHICORP VAULT
+===============
+
+Install/deploy - https://learn.hashicorp.com/vault/getting-started/deploy
+
+Issues:
+https://github.com/hashicorp/vault/issues/1147
+
+===============
+INSTALL
+===============
+
+- First create a consul (see other doc TBD)
+
+- Install vault - download and zip 'vault' into /usr/local/bin
+
+Configure: /etc/vault.d/config.hcl
+NOTE: Consul section is for the consul you have created
+
+storage "consul" {
+  address = "101.192.217.4:8500"
+  path    = "vault/"
+  scheme  = "http"
+}
+
+listener "tcp" {
+ address     = "127.0.0.1:8200"
+ # using actual IP is giving problem while accessing or unsealing vault
+ #address     = "10.92.217.4:8200"
+ tls_disable = 1
+  scheme  = "http"
+}
+
+- Start Vault
+NOTE: Run it in 'nohup' or create a systemd service
+
+Command:
+# vault server -config=/etc/vault.d/config.hcl 
+
+- Initialize
+# vault operator init
+Unseal Key 1: axNHQL7sdfsdfskkaGbUJ7BLLBE9KuigR+zx+flsdfpuEVhIaZJ/POy
+Unseal Key 2: nJXwnD0ffQ8UQEkESVYsdfsdfmAQnv1LRDLSOq0+n1y+K+Md+Vh
+Unseal Key 3: pzBvR0Leny5d+dzGqsdfsdyTW97xVyuYCcMonLfXsdfdsryjVQy2kq
+Unseal Key 4: znTqCsFkAcv+jyysdfsdf+eRAdJY3V8EbLvOHwtr/c+I5t7wf//
+Unseal Key 5: UUygBAtZX6dmfYCysdfsdfpR/1lPkt+lhNXMROoRE3QE0JPaEk7
+
+Initial Root Token: 26TIbLMsdfs5CCRMX7XQ6UqxcfyhY
+
+- Unseal the vault (must be done upon vault or server restart)
+vault operator unseal
+
+
