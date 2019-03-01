@@ -1,0 +1,108 @@
+controller manager:
+
+{
+"apiVersion": "v1",
+"kind": "Pod",
+"metadata": {
+  "name":"kube-controller-manager",
+  "namespace": "kube-system",
+  "annotations": {
+    "scheduler.alpha.kubernetes.io/critical-pod": "",
+    "seccomp.security.alpha.kubernetes.io/pod": "docker/default"
+  },
+  "labels": {
+    "tier": "control-plane",
+    "component": "kube-controller-manager"
+  }
+},
+"spec":{
+"hostNetwork": true,
+"containers":[
+    {
+    "name": "kube-controller-manager",
+    "image": "k8s.gcr.io/kube-controller-manager:v1.13.3",
+    "resources": {
+      "requests": {
+        "cpu": "200m"
+      }
+    },
+    "command": [
+                 "/bin/sh",
+                 "-c",
+                 "exec /usr/local/bin/kube-controller-manager --v=2  --cloud-config=/etc/gce.conf --use-service-account-credentials --cloud-provider=gce --kubeconfig=/etc/srv/kubernetes/kube-controller-manager/kubeconfig --root-ca-file=/etc/srv/kubernetes/pki/ca-certificates.crt --service-account-private-key-file=/etc/srv/kubernetes/pki/serviceaccount.key --cluster-name=kubernetes --cluster-cidr=10.64.0.0/14 --cluster-signing-cert-file=/etc/srv/kubernetes/pki/ca.crt --cluster-signing-key-file=/etc/srv/kubernetes/pki/ca.key --service-cluster-ip-range=10.0.0.0/16 --allocate-node-cidrs=true --cidr-allocator-type=CloudAllocator --configure-cloud-routes=false --feature-gates=ExperimentalCriticalPodAnnotation=true --flex-volume-plugin-dir=/home/kubernetes/flexvolume --pv-recycler-pod-template-filepath-nfs=/home/kubernetes/kube-manifests/kubernetes/pv-recycler-template.yaml --pv-recycler-pod-template-filepath-hostpath=/home/kubernetes/kube-manifests/kubernetes/pv-recycler-template.yaml 1>>/var/log/kube-controller-manager.log 2>&1"
+               ],
+    "env":[{"name": "KUBE_CACHE_MUTATION_DETECTOR", "value": "false"}],
+    "livenessProbe": {
+      "httpGet": {
+        "host": "127.0.0.1",
+        "port": 10252,
+        "path": "/healthz"
+      },
+      "initialDelaySeconds": 15,
+      "timeoutSeconds": 15
+    },
+    "volumeMounts": [
+        {"name": "cloudconfigmount","mountPath": "/etc/gce.conf", "readOnly": true},
+        
+        {"name": "pv-recycler-mount","mountPath": "/home/kubernetes/kube-manifests/kubernetes/pv-recycler-template.yaml", "readOnly": true},
+        { "name": "srvkube",
+        "mountPath": "/etc/srv/kubernetes",
+        "readOnly": true},
+        { "name": "flexvolumedir", "mountPath": "/home/kubernetes/flexvolume", "readOnly": true},
+        { "name": "logfile",
+        "mountPath": "/var/log/kube-controller-manager.log",
+        "readOnly": false},
+        { "name": "etcssl",
+        "mountPath": "/etc/ssl",
+        "readOnly": true},
+        { "name": "usrsharecacerts",
+        "mountPath": "/usr/share/ca-certificates",
+        "readOnly": true},
+        { "name": "varssl",
+        "mountPath": "/var/ssl",
+        "readOnly": true},
+        { "name": "etcopenssl",
+        "mountPath": "/etc/openssl",
+        "readOnly": true},
+        { "name": "etcpki",
+        "mountPath": "/etc/pki",
+        "readOnly": true}
+      ]
+    }
+],
+"volumes":[
+  {"name": "cloudconfigmount","hostPath": {"path": "/etc/gce.conf", "type": "FileOrCreate"}},
+  
+  {"name": "pv-recycler-mount","hostPath": {"path": "/home/kubernetes/kube-manifests/kubernetes/pv-recycler-template.yaml", "type": "FileOrCreate"}},
+  { "name": "srvkube",
+    "hostPath": {
+        "path": "/etc/srv/kubernetes"}
+  },
+  { "name": "flexvolumedir", "hostPath": {"path": "/home/kubernetes/flexvolume"}},
+  { "name": "logfile",
+    "hostPath": {
+        "path": "/var/log/kube-controller-manager.log",
+        "type": "FileOrCreate"}
+  },
+  { "name": "etcssl",
+    "hostPath": {
+        "path": "/etc/ssl"}
+  },
+  { "name": "usrsharecacerts",
+    "hostPath": {
+        "path": "/usr/share/ca-certificates"}
+  },
+  { "name": "varssl",
+    "hostPath": {
+        "path": "/var/ssl"}
+  },
+  { "name": "etcopenssl",
+    "hostPath": {
+        "path": "/etc/openssl"}
+  },
+  { "name": "etcpki",
+    "hostPath": {
+        "path": "/etc/pki"}
+  }
+]
+}}
