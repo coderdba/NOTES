@@ -1,0 +1,43 @@
+https://docs.mirantis.com/mcp/q4-18/mcp-operations-guide/kubernetes-operations/k8s-node-ops/k8s-node-remove.html
+
+Remove a Kubernetes Node
+This section describes how to remove a Kubernetes Node from your MCP cluster.
+
+To remove a Kubernetes Node:
+
+Log in to the Kubernetes Node that you want to remove.
+
+Stop and disable the salt-minion service on this node:
+
+systemctl stop salt-minion
+systemctl disable salt-minion
+Log in to the Salt Master node.
+
+Verify that the node name is not registered in salt-key. If the node is present, remove it:
+
+salt-key | grep <node_name><NUM>
+salt-key -d <node_name><NUM>.domain_name
+Log in to any Kubernetes Master node.
+
+Mark the Node as unschedulable to prevent new pods from being assigned to it:
+
+kubectl cordon <node_ID>
+kubectl drain <node_ID>
+Remove the Kubernetes Node:
+
+kubectl delete node cmp<node_ID>
+Wait until the workloads are gracefully deleted and the Kubernetes Node is removed.
+
+Verify that the node is absent in the Kubernetes Nodes list:
+
+kubectl get nodes
+Open your Git project repository with Reclass model on the cluster level.
+
+In infra/config.yml, remove the definition of the Kubernetes Node in question under the reclass:storage:node pillar.
+
+Log in to the Kubernetes Node in question.
+
+Run the following commands:
+
+systemctl stop kubelet
+systemctl disable kubelet
