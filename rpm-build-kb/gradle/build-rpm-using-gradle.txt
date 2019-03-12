@@ -1,6 +1,8 @@
 ==================================
 BUILD RPM WITH GRADLE
 ==================================
+https://github.com/nebula-plugins/gradle-ospackage-plugin/wiki/Usage-Example
+
 For gradlew configuration - https://docs.gradle.org/3.3/userguide/gradle_wrapper.html
 --> Properties -  https://docs.gradle.org/3.3/dsl/org.gradle.api.tasks.wrapper.Wrapper.html
 Specifying properties - https://dzone.com/articles/specifying-gradle-build
@@ -157,3 +159,87 @@ postuninstall scriptlet (using /bin/sh):
 # rpm2cpio testRpm-0-1.noarch.rpm
 07070100000001000041ed0000000000000000000000015965037800000000000000090000000100000000000000000000001d00000000./tmp/install_this_file.file07070100000002000081a4000000000000000000000001596503640000002d000000090000000100000000000000000000003400000000./tmp/install_this_file.file/install_this_file.filethis is a test file to copy to another place
 07070100000000000001a40000000000000000000000010000000000000000000000090000000100000000000000000000000b00000000TRAILER!!!
+
+
+======================
+APPENDIX 
+======================
+
+--------------------
+BUILD.GRADLE EXAMPLE
+--------------------
+https://github.com/nebula-plugins/gradle-ospackage-plugin/wiki/Usage-Example
+
+   buildscript {
+        repositories {
+            jcenter()
+        }
+
+        dependencies {
+            classpath 'com.netflix.nebula:gradle-ospackage-plugin:1.12.2'
+        }
+    }
+
+    apply plugin: 'nebula.ospackage'
+
+    ospackage {
+        packageName = 'foo'
+        version = '1.2.3'
+        release = '1'
+        arch = I386
+        os = LINUX
+
+        installUtils file('scripts/rpm/utils.sh')
+        preInstall file('scripts/rpm/preInstall.sh')
+        postInstall file('scripts/rpm/postInstall.sh')
+        preUninstall 'touch /tmp/myfile'
+        postUninstall file('scripts/rpm/postUninstall.sh')
+
+        requires('qux')
+
+        into '/opt/foo'
+
+        from(jar.outputs.files) {
+            into 'lib'
+        }
+        from(configurations.runtime) {
+            into 'lib'
+        }
+        from('lib') {
+            into 'lib'
+        }
+        from('scripts') {
+            into 'bin'
+            exclude 'database'
+            fileMode = 0550
+        }
+        from('src/main/resources') {
+            fileType CONFIG | NOREPLACE
+            into 'conf'
+        }
+        from('home') {
+            // Creating directory entries (or not) in the RPM is normally left up to redline-rpm library.
+            // Use this to explicitly create an entry -- for setting directory fileMode on system directories.
+            createDirectoryEntry = true
+            fileMode = 0500
+            into 'home'
+        }
+        from('endorsed') {
+            // Will tell redline-rpm not to auto create directories, which
+            // is sometimes necessary to avoid rpm directory conflicts
+            addParentDirs = false
+            into '/usr/share/tomcat/endorsed'
+        }
+
+    }
+
+    buildRpm {
+        requires('bar', '2.2', GREATER | EQUAL)
+        requires('baz', '1.0.1', LESS)
+        link('/etc/init.d/foo’, '/opt/foo/bin/foo.init')
+    }
+
+    buildDeb {
+        requires('bat', '1.0.1')
+        link('/etc/init.d/foo', '/opt/foo/bin/foo.upstart')
+    }
