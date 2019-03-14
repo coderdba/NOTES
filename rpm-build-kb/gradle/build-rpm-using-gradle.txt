@@ -76,9 +76,11 @@ buildRpm {
     user 'root'
     permissionGroup 'root'
   }
-
 }
 
+// This line is needed if building by drone etc.  
+// Even otherwise, do have it for completeness
+project.tasks.build.dependsOn(buildRpm)
 
 $ cat preInstall.sh
 echo `date` > /tmp/preInstall.out
@@ -165,9 +167,9 @@ postuninstall scriptlet (using /bin/sh):
 APPENDIX 
 ======================
 
---------------------
-BUILD.GRADLE EXAMPLE
---------------------
+----------------------
+BUILD.GRADLE EXAMPLE 1 
+----------------------
 https://github.com/nebula-plugins/gradle-ospackage-plugin/wiki/Usage-Example
 
    buildscript {
@@ -243,3 +245,82 @@ https://github.com/nebula-plugins/gradle-ospackage-plugin/wiki/Usage-Example
         requires('bat', '1.0.1')
         link('/etc/init.d/foo', '/opt/foo/bin/foo.upstart')
     }
+
+-------------------------------
+BUILD.GRADLE EXAMPLE 2
+-------------------------------
+import org.apache.tools.ant.filters.ReplaceTokens
+
+plugins {
+  id 'nebula.ospackage' version '3.4.0'
+}
+
+ext {
+  telegrafVersion = '1.10.0-1'
+}
+
+buildRpm {
+
+  // if using drone
+  packageName rpmName
+  version rpmVersion
+  release rpmRelease
+  arch X86_64
+  os LINUX
+
+  // if running manually
+  //packageName "myTelegraf"
+  //version "0"
+  //release "1"
+  //arch X86_64
+  //os LINUX
+
+  requires('telegraf', telegrafVersion, EQUAL)
+
+  preInstall file('pkg_scripts/preInstall.sh')
+  postInstall file('pkg_scripts/postInstall.sh')
+  preUninstall file('pkg_scripts/preUninstall.sh')
+  postUninstall file('pkg_scripts/postUninstall.sh')
+
+  //addParentDirs = false
+
+  def basePath = "/"
+  into basePath
+
+  from("usr/lib/systemd/system/telegraf_k8s.service") {
+    into '/usr/lib/systemd/system/'
+    fileMode 0644
+    user 'root'
+    permissionGroup 'root'
+  }
+
+  from("etc/telegraf/telegraf.d/common_inputs.conf") {
+    into '/etc/telegraf/telegraf.d/'
+    fileMode 0644
+    user 'root'
+    permissionGroup 'root'
+  }
+
+  from("etc/telegraf/telegraf.d/default_outputs_k8s.conf") {
+    into '/etc/telegraf/telegraf.d/'
+    fileMode 0644
+    user 'root'
+    permissionGroup 'root'
+  }
+
+  from("etc/telegraf/telegraf.d/global_tags.conf") {
+    into '/etc/telegraf/telegraf.d/'
+    fileMode 0644
+    user 'root'
+    permissionGroup 'root'
+  }
+
+  from("etc/telegraf/telegraf_k8s.conf") {
+    into '/etc/telegraf/'
+    fileMode 0644
+    user 'root'
+    permissionGroup 'root'
+  }
+}
+
+project.tasks.build.dependsOn(buildRpm)
