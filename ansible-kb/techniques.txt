@@ -1,0 +1,172 @@
+=======================
+ANSIBLE TECHNIQUES
+=======================
+
+----------------------------------
+CHECK IF FILE CONTAINS A STRING
+----------------------------------
+https://stackoverflow.com/questions/30786263/only-check-whether-a-line-present-in-a-file-ansible
+
+-- METHOD1
+
+- name: Check whether /tmp/my.conf contains "127.0.0.1"
+  command: grep -Fxq "127.0.0.1" /tmp/my.conf
+  register: checkmyconf
+  check_mode: no
+  ignore_errors: yes
+  changed_when: no
+
+- name: Greet the world if /tmp/my.conf contains "127.0.0.1"
+  debug: msg="Hello, world!"
+  when: checkmyconf.rc == 0
+
+With this solution, even though you ignore errors, you will still get ugly red error output 
+on the first task if there is no match:
+
+TASK: [Check whether /tmp/my.conf contains "127.0.0.1"] ***********************
+failed: [localhost] => {"changed": false, "cmd": "grep -Fxq "127.0.0.1" /tmp/my.conf", "delta": "0:00:00.018709", 
+"end": "2015-09-27 17:46:18.252024", "rc": 1, "start": "2015-09-27 17:46:18.233315", "stdout_lines": [], "warnings": []}
+...ignoring
+
+Instead, use:
+
+If you want less verbose output, you can use awk instead of grep.  
+awk won't return an error on a non-match, which means the first check task below won't error 
+regardless of a match or non-match:
+
+- name: Check whether /tmp/my.conf contains "127.0.0.1"
+  command: awk /^127.0.0.1$/ /tmp/my.conf
+  register: checkmyconf
+  changed_when: False
+
+- name: Greet the world if /tmp/my.conf contains "127.0.0.1"
+  debug: msg="Hello, world!"
+  when: checkmyconf.stdout | match("127.0.0.1")
+  
+Notice that this second task uses the match filter as awk returns the matched string if it finds a match.
+The alternative above will produce the following output regardless of whether the check task has a match or not:
+
+TASK: [Check whether /tmp/my.conf contains "127.0.0.1"] ***********************
+ok: [localhost]
+
+-- METHOD2
+
+- name: "Ensure /tmp/my.conf contains '127.0.0.1'"
+  lineinfile:
+    name: /tmp/my.conf
+    line: "127.0.0.1"
+    state: present
+  check_mode: yes
+  register: conf
+  failed_when: (conf is changed) or (conf is failed)
+  
+- METHOD3
+
+User robo's regexp & absent method is quite clean, so I've fleshed it out here for easy use:
+
+- name: Ensure /tmp/my.conf contains 127.0.0.1
+  lineinfile:
+    path: /tmp/my.conf
+    regexp: '^127\.0\.0\.1.*whatever'
+    state: absent
+  check_mode: yes
+  register: out
+
+- debug:
+    msg: "Yes, line exists."
+  when: out.changed
+
+- debug:
+    msg: "Line does NOT exist."
+  when: not out.changed
+
+----------------------------------
+ADD A LINE IF IT DOES NOT EXIST
+----------------------------------
+https://stackoverflow.com/questions/30786263/only-check-whether-a-line-present-in-a-file-ansible
+
+Use ansible lineinfile command, but this command will update the file with the line if it does not exists.
+
+- lineinfile: dest=/tmp/my.conf line='127.0.0.1' state=present
+
+Another way is to use the "replace module" then "lineinfile module".
+
+The algo is closed to the one used when you want to change the values of two variables.
+
+First, use "replace module" to detect if the line you are looking for is here and change it with the something else. 
+(Like same line + something at the end).
+Then if "replace" is true, It means your line is here then replace the new line with a particularity, 
+with the new line looking.
+
+Else the line you are looking for is not here.
+
+Example:
+
+# Vars
+- name: Set parameters
+  set_fact:
+    newline      : "hello, i love ansible"
+    lineSearched : "hello"
+    lineModified : "hello you"
+
+# Tasks
+- name: Try to replace the line
+  replace:
+    dest    : /dir/file
+    replace : '{{ lineModified }} '
+    regexp  : '{{ lineSearched }}$'
+    backup  : yes
+  register  : checkIfLineIsHere
+
+- name: Line is here, change it
+  lineinfile:
+    state   : present
+    dest    : /dir/file
+    line    : '{{ newline }}'
+    regexp  : '{{ lineModified }}$'
+  when: checkIfLineIsHere.changed
+  
+If the file contains "hello", it will become "hello you" then "hello, i love ansible" at the end.
+If the file content doesn't contain "hello", the file is not modified.
+
+
+With the same idea, you can do something if the lineSearched is here:
+
+# Vars
+- name: Set parameters
+  set_fact:
+    newline      : "hello, i love ansible"
+    lineSearched : "hello"
+    lineModified : "hello you"
+
+# Tasks
+- name: Try to replace the line
+  replace:
+    dest    : /dir/file
+    replace : '{{ lineModified }} '
+    regexp  : '{{ lineSearched }}$'
+    backup  : yes
+  register  : checkIfLineIsHere
+
+# If the line is here, I want to add something.
+- name: If line is here, do something
+  lineinfile:
+    state   : present
+    dest    : /dir/file
+    line    : '{{ newline }}'
+    regexp  : ''
+    insertafter: EOF
+  when: checkIfLineIsHere.changed
+
+# But I still want this line in the file, Then restore it
+- name: Restore the searched line.
+  lineinfile:
+    state   : present
+    dest    : /dir/file
+    line    : '{{ lineSearched }}'
+    regexp  : '{{ lineModified }}$'
+  when: checkIfLineIsHere.changed
+  
+If the file contains "hello", the line will still contain "hello" and "hello, i love ansible" at the end.
+If the file content doesn't contain "hello", the file is not modified.
+
