@@ -1,0 +1,18 @@
+# A service to fire before shutdown
+# to do stuff like leaving the node from consul
+# remove the node
+#
+# NOTE: $hostname - get the right variable to use here
+
+echo "[Unit]
+Description=Do something required
+DefaultDependencies=no
+Before=shutdown.target reboot.target halt.target
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/consul leave;kubectl delete node $hostname
+
+# Custom scripts can be added here, if required
+[Install]
+WantedBy=halt.target reboot.target shutdown.target" > /etc/systemd/system/pre-shutdown.service
+systemctl enable pre-shutdown.service
