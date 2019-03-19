@@ -1,0 +1,27 @@
+==========================
+Booleans of SELINUX
+==========================
+https://wiki.centos.org/TipsAndTricks/SelinuxBooleans
+getsebool -a
+
+
+========================================================================
+If selinux is preventing nginx forwarding requests to local web server:
+(13: Permission denied) while connecting to upstream:[nginx]
+========================================================================
+Option1:
+Disable selinux
+
+Option2:
+https://stackoverflow.com/questions/23948527/13-permission-denied-while-connecting-to-upstreamnginx
+
+Fix: setsebool -P httpd_can_network_connect 1
+
+Check for errors in the SELinux logs:
+
+sudo cat /var/log/audit/audit.log | grep nginx | grep denied
+And found that running the following commands fixed my issue:
+
+sudo cat /var/log/audit/audit.log | grep nginx | grep denied | audit2allow -M mynginx
+sudo semodule -i mynginx.pp
+
