@@ -1,4 +1,6 @@
 # IN THIS CSR IS NOT GENERATED SEPARATELY
+# Also, there is a step to remove passphrase from key
+
 # https://deliciousbrains.com/ssl-certificate-authority-for-local-https-development/
 
 #- GENERATE KEY
