@@ -1,1 +1,272 @@
-Refer to doc in nginx-kb
+=================================================
+NGINX REVERSE PROXY SETUP (FOR ANSIBLE TOWER AWX)
+=================================================
+This is with nginx software (not nginx docker container)
+For container based see other doc or https://lreed.net/post/2018-01-10-awx-nginx/
+
+(this doc is taken from nginx-kb)
+
+=====================
+SELINUX FIX
+=====================
+NOTE: Do this now, or if you get error as below.
+
+Error:
+You may get permission denied (in /var/log/nginx/error.log) while nginx redirects ssl traffic to localhost non-ssl URL.
+And, the browser may show page moved/or such.
+
+nginx error!
+The page you are looking for is temporarily unavailable. Please try again later.
+
+Cause:
+SELINUX may be preventing it from forwarding to local URL.
+
+To fix:
+
+Option1: Disable selinux
+# setenforce 0
+
+and, modify line in /etc/sysconfig/selinux setting it to disabled
+SELINUX=disabled
+
+
+Option2
+https://stackoverflow.com/questions/23948527/13-permission-denied-while-connecting-to-upstreamnginx
+# setsebool -P httpd_can_network_connect 1
+
+=====================
+GENERATE KEY AND CERT
+=====================
+
+# IN THIS CSR IS NOT GENERATED SEPARATELY
+# https://deliciousbrains.com/ssl-certificate-authority-for-local-https-development/
+
+#- GENERATE KEY
+# NOTE: This asks for a passphrase
+
+openssl genrsa -des3 -out myCA.key.withPassPhrase 2048
+
+#- GENERATE CERT
+# NOTE: This asks for the passphrase entered earlier in key generation
+--> Probably you can give 'localhost' as the hostname in the case of localhost based AWX setup.
+--> Provide FQDN or IP of the host if it must be accessed remotely
+
+openssl req -x509 -new -nodes -key myCA.key.withPassPhrase -sha256 -days 1825 -out myCA.pem
+
+#- REMOVE PASSPHRASE FROM KEY
+# https://serverfault.com/questions/543385/restarting-nginx-keeps-asking-pem-pass-phrase
+# NOTE: Provide the same passphrase entered earlier in key generation
+
+openssl rsa -in myCA.key.withPassPhrase -out myCA.key
+
+=====================
+INSTALL NGINX
+=====================
+# yum install nginx
+
+=========================
+COPY KEYS TO NGINX FOLDER
+=========================
+- KEY
+cp myKey.key /etc/nginx/ssl  (or to /etc/pki/nginx/ssl or /etc/ssl or a subdirectory thereof)
+
+- CERT
+cp myKey.key /etc/nginx/ssl  (or to /etc/pki/nginx/ssl or /etc/ssl or a subdirectory thereof)
+
+=========================
+CONFIGURE REVERSE PROXY
+=========================
+
+- BACKGROUND ON THIS SPECIFIC SETTINGS
+This is for ansible tower (awx) - the awx-web docker container component.
+It listens on 8052 on the docker container - and by default 80 of the host. 
+(This can be changed to 8052 of host in awx setup - which is done in this case)
+
+- SPECIFIC SETTINGS
+
+-- server_name
+server_name  <just underscore (default) or serverFQDN or IP or localhost if only accessing locally>;
+Example:
+servr_name _;
+server_name  localhost;
+server_name  101.201.111.111;
+server_name  abc.def.com;
+
+-- proxy_pass
+--> this can be localhost if nginx and web server are on the same host
+--> if the web server is remote host then give the actual FQDN or hostname
+Examples:
+proxy_pass          http://localhost:8052;  
+proxy_pass          http://101.201.111.111:8052;  
+proxy_pass          http://abc.def.com:8052;  
+
+- THE TLS SETTINGS in /etc/nginx/nginx.conf
+ #Settings for a TLS enabled server.
+
+    server {
+        listen       443 ssl http2 default_server;
+        listen       [::]:443 ssl http2 default_server;
+        server_name  localhost;
+        root         /usr/share/nginx/html;
+
+        #ssl_certificate "/etc/pki/nginx/server.crt";
+        #ssl_certificate_key "/etc/pki/nginx/private/server.key";
+        #ssl_certificate "/etc/nginx/ssl/awx.crt";
+        #ssl_certificate_key "/etc/nginx/ssl/awx.key";
+        ssl_certificate "/etc/nginx/ssl/myCA.pem";
+        ssl_certificate_key "/etc/nginx/ssl/myCA.key";
+        ssl_session_cache shared:SSL:1m;
+        ssl_session_timeout  10m;
+        ssl_ciphers HIGH:!aNULL:!MD5;
+        ssl_prefer_server_ciphers on;
+
+        # Load configuration files for the default server block.
+        include /etc/nginx/default.d/*.conf;
+
+        location / {
+              proxy_set_header    Host $host;
+              proxy_pass          http://localhost:8052;
+              proxy_http_version  1.1;
+              proxy_set_header    Upgrade $http_upgrade;
+              proxy_set_header      Connection "upgrade";
+        }
+
+        error_page 404 /404.html;
+            location = /40x.html {
+        }
+
+        error_page 500 502 503 504 /50x.html;
+            location = /50x.html {
+        }
+    }
+
+=========================
+HTTP REDIRECTION
+=========================
+
+Add the line return 301 as below in the /etc/nginx/nginx.conf
+
+    server {
+        listen       80 default_server;
+        listen       [::]:80 default_server;
+        server_name  _;
+        root         /usr/share/nginx/html;
+
+        # Load configuration files for the default server block.
+        include /etc/nginx/default.d/*.conf;
+
+        return 301 https://$host$request_uri;
+        
+=========================
+RESTART NGINX
+=========================
+# systemctl restart nginx
+
+=========================
+ACCESS NGINX
+=========================
+http://localhost:443
+
+===============================
+APPENDIX
+===============================
+
+- NGINX.CONF
+
+ For more information on configuration, see:
+#   * Official English Documentation: http://nginx.org/en/docs/
+#   * Official Russian Documentation: http://nginx.org/ru/docs/
+
+user nginx;
+worker_processes auto;
+error_log /var/log/nginx/error.log;
+pid /run/nginx.pid;
+
+# Load dynamic modules. See /usr/share/nginx/README.dynamic.
+include /usr/share/nginx/modules/*.conf;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log  /var/log/nginx/access.log  main;
+
+    sendfile            on;
+    tcp_nopush          on;
+    tcp_nodelay         on;
+    keepalive_timeout   65;
+    types_hash_max_size 2048;
+
+    include             /etc/nginx/mime.types;
+    default_type        application/octet-stream;
+
+    # Load modular configuration files from the /etc/nginx/conf.d directory.
+    # See http://nginx.org/en/docs/ngx_core_module.html#include
+    # for more information.
+    include /etc/nginx/conf.d/*.conf;
+
+    server {
+        listen       80 default_server;
+        listen       [::]:80 default_server;
+        server_name  _;
+        root         /usr/share/nginx/html;
+
+        # Load configuration files for the default server block.
+        include /etc/nginx/default.d/*.conf;
+
+        return 301 https://$host$request_uri;
+
+        location / {
+        }
+
+        error_page 404 /404.html;
+            location = /40x.html {
+        }
+
+        error_page 500 502 503 504 /50x.html;
+            location = /50x.html {
+        }
+    }
+
+# Settings for a TLS enabled server.
+
+    server {
+        listen       443 ssl http2 default_server;
+        listen       [::]:443 ssl http2 default_server;
+        #server_name  10.60.38.51;
+        server_name  _;
+        root         /usr/share/nginx/html;
+
+        ssl_certificate "/etc/pki/nginx/server.crt";
+        ssl_certificate_key "/etc/pki/nginx/private/server.key";
+        ssl_session_cache shared:SSL:1m;
+        ssl_session_timeout  10m;
+        ssl_ciphers HIGH:!aNULL:!MD5;
+        ssl_prefer_server_ciphers on;
+
+        # Load configuration files for the default server block.
+        include /etc/nginx/default.d/*.conf;
+
+        location / {
+              proxy_set_header    Host $host;
+              proxy_pass          http://localhost:8052;
+              proxy_http_version  1.1;
+              proxy_set_header    Upgrade $http_upgrade;
+              proxy_set_header      Connection "upgrade";
+        }
+
+        error_page 404 /404.html;
+            location = /40x.html {
+        }
+
+        error_page 500 502 503 504 /50x.html;
+            location = /50x.html {
+        }
+    }
+
+}
