@@ -18,3 +18,62 @@ Get oauth tokens for Bigoli (otherwise they wont let us in)
 How to get the tokens:
 $ kubectx big-lab
 $ kubectl plugin tgt-auth (this is to get OAUTH authorization for the cluster)
+
+-------------------------
+SETUP FROM SCRATCH
+-------------------------
+- Get tokens for a cluster
+# kubectl get secret -n kube-system
+--> from this find the token 'default' which may show as default-token-<some extension>
+
+# kubectl describe secret default-token-jdmf6  -n kube-system
+--> This will give output like the following
+
+Name:         default-token-jsdfs
+Namespace:    kube-system
+Labels:       <none>
+Annotations:  kubernetes.io/service-account.name: default
+              kubernetes.io/service-account.uid: sdfsr23-3e38-w5w-9ca9-5254001927f3
+
+Type:  kubernetes.io/service-account-token
+
+Data
+====
+ca.crt:     2188 bytes
+namespace:  11 bytes
+token:      eyJhbGciOiJSUzI1NiIsImtpZCI6IiJ9.eyxZTktOWNhOS01MjU0MDAxOTI3ZjMiLCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6a3ViZS1zeXN0ZW06ZGVmYXVsdCJ9.S96WFt2Kh-bPZpeLe9VgXqu7OLj8s5BZY4Mq1F0GZpZfXNDO8sWqXQxih_zIqF44kyUOQV9hB8JMzXf25BB3utvX0EJ4KwhoUHliJs7uQSGb_75VBXScnL4sHu_Ix2DDZ2YCjB4IpcdVY6UblLOE9v4hLInSy7w9iM
+
+- Get company ca cert file and copy to /Users/myusername/.company-ca-bundle.crt (or  ~/.kube/.company-ca-bundle.crt)
+
+- Add entry in ~/.kube/config
+
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority: /Users/myusername/.company-ca-bundle.crt
+    server: https://kabc-central1-bigone-prod.cloud.company.internal
+  name: abc-central1-bigone-prod
+- cluster:
+    insecure-skip-tls-verify: true
+    server: https://110.192.217.204:6443
+  name: teye-lab-geews
+
+contexts:
+- context:
+    cluster: abc-central1-bigone-prod
+    namespace: kube-system
+    user: abc-central1-bigone-prod
+  name: abc-central1-bigone-prod
+- context:
+    cluster: teye-lab-geews
+    namespace: kube-system
+    user: teye-lab-geews
+  name: teye-lab-geews
+
+users:
+- name: abc-central1-bigone-prod
+  user:
+    token: eyJ9.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJrdWJlLXN5c3RlbSIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJkZWZhdWx0LXRva2VuLXo2NDR3Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXFxtZi6LU-sqdu2VVn3OTrIq8YSNsEZjPqtLOM
+- name: teye-lab-geews
+  user:
+    token: eyJhbGciOiJSUzI1NiIsImtpZCI6IiJ9.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJrdWJlLXN5c3RlbSIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJkZWZhdWx0LXRva2VuLWpkbWY2Iiwia3ViZXJXNDO8sWqXQxih_zIqF44kyUOQV9hB8JMzXf25BB3utvX0EJ4KwhoUHliJs7uQSGb_75VBXScnL4sHu_Ix2DDZ2YCjB4IpcdVY6UblLOE9v4hLInSy7w9iMMNRpPY8dtHgvDcrOR5EgquAUrROPTaDXf
