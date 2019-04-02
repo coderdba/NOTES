@@ -25,7 +25,7 @@ Create the initial module definition and write it to the go.mod file:
 $ go mod init    
 
 ===========================================================================
-INSIDE GOPATH - CREATING AN EXECUTABLE (not creating a module itself)
+INSIDE GOPATH  EXAMPLE1 - CREATING AN EXECUTABLE (not creating a module itself)
 ===========================================================================
 USING CODE IN - https://roberto.selbach.ca/intro-to-go-modules/
 
@@ -59,7 +59,7 @@ func main() {
 }
 
 $ go build
---> This will download the included packages to /mygo/pkg as follows:
+--> This will download the imported packages to /mygo/pkg (the GOPATH) as follows:
     /mygo/pkg/mod/github.com/robteix/testmod@v1.0.1/testmod.go
     
 --> It will create an executable 'mod' in /mygo/src/roberto1
@@ -71,4 +71,71 @@ Hi, roberto
 INSIDE GOPATH - imports will be downloaded to $GOPATH/pkg folder
 
 
+============================
+INSIDE GOPATH - EXAMPLE2
+============================
+$ mkdir /mygo
+$ cd /mygo
+$ export GOPATH=/mygo
+$ export GO111MODULE=on
 
+$ cd /mygo/src
+$ mkdir -p github.com/coderdba/roberto1
+$ cd github.com/coderdba/roberto1
+
+$ go mod init github.com/coderdba/roberto1
+
+$ cat go.mod
+module github.com/coderdba/roberto1
+
+go 1.12
+
+$ vi main.go  (inside /mygo/src/github.com/coderdba/roberto1)
+package main
+
+import (
+    "fmt"
+
+    "github.com/robteix/testmod"
+)
+
+$ go build
+--> This produces roberto1 executable (not mod as in the other example)
+--> This will download the imported packages to /mygo/pkg (the GOPATH) as follows:
+    /mygo/pkg/mod/github.com/robteix/testmod@v1.0.1/testmod.go
+--> --> uses earlier downloaded if there already - to re-download, remove the previous downloaded stuff
+
+$ ls -l
+total 4176
+-rw-------  1 dbgsm0  wheel                  88 Apr  2 21:57 go.mod
+-rw-------  1 dbgsm0  wheel                 171 Apr  2 21:57 go.sum
+-rw-r--r--  1 dbgsm0  wheel                 125 Apr  2 21:56 main.go
+-rwxr-xr-x  1 dbgsm0  DHC\Domain Users  2124936 Apr  2 21:57 roberto1
+
+
+func main() {
+    fmt.Println(testmod.Hi("roberto"))
+}
+
+
+========================
+NO GOPATH  EXAMPLE1 - CREATING AN EXECUTABLE (not creating a module itself)
+========================
+Unset GOPATH and GO111MODULE (dont even set them)
+$ cd /mygo/src
+$ mkdir roberto2
+$ cd roberto2
+$ go mod init roberto2
+$ vi main.go
+<< same code as before >>
+
+$ go build
+--> This will download imports into OS default location ~/go under ~/go/pkg
+--> This will produce an executable roberto2 in the current folder
+
+========================
+OUTSIDE GOPATH  EXAMPLE1 - CREATING AN EXECUTABLE (not creating a module itself)
+========================
+tbd
+
+/Users/dbgsm0/go/pkg/
