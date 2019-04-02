@@ -1,0 +1,74 @@
+
+
+
+=========================
+BASIC INFO (official doc)
+=========================
+https://github.com/golang/go/wiki/Modules#example
+
+How to Define a Module
+To create a go.mod for an existing project:
+
+--> OUTSIDE GOPATH (desired/future direction)
+Navigate to the root of the module's source tree outside of GOPATH:
+
+$ cd <project path outside $GOPATH/src>         # e.g., cd ~/projects/hello
+Note that outside of GOPATH, you do not need to set GO111MODULE to activate module mode.
+
+--> INSIDE GOPATH
+Alternatively, if you want to work in your GOPATH:
+
+$ export GO111MODULE=on                         # manually active module mode
+$ cd $GOPATH/src/<project path>                 # e.g., cd $GOPATH/src/you/hello
+Create the initial module definition and write it to the go.mod file:
+
+$ go mod init    
+
+===========================================================================
+INSIDE GOPATH - CREATING AN EXECUTABLE (not creating a module itself)
+===========================================================================
+USING CODE IN - https://roberto.selbach.ca/intro-to-go-modules/
+
+$ mkdir /mygo
+$ cd /mygo
+$ export GOPATH=/mygo
+$ export GO111MODULE=on
+
+$ mkdir -p /mygo/src/roberto1
+$ cd /mygo/src/roberto1
+
+$ go mod init mod
+--> the second mod is for the executable it produces
+--> This will create a go.mod in the same directory
+--> go.mod will have the following content at this time
+module mod
+
+go 1.12
+
+$ vi main.go
+package main
+
+import (
+    "fmt"
+
+    "github.com/robteix/testmod"
+)
+
+func main() {
+    fmt.Println(testmod.Hi("roberto"))
+}
+
+$ go build
+--> This will download the included packages to /mygo/pkg as follows:
+    /mygo/pkg/mod/github.com/robteix/testmod@v1.0.1/testmod.go
+    
+--> It will create an executable 'mod' in /mygo/src/roberto1
+
+$ ./mod
+Hi, roberto
+
+- LEARNINGS
+INSIDE GOPATH - imports will be downloaded to $GOPATH/pkg folder
+
+
+
