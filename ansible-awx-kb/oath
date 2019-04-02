@@ -1,0 +1,61 @@
+=======================
+OAUTH TOKEN USAGE
+=======================
+
+=======================
+RUN A JOB USING TOKEN
+=======================
+
+https://docs.ansible.com/ansible-tower/latest/html/administration/oauth2_token_auth.html
+
+- GET TOKEN (for a user using their password)
+TBD: What is the age for this token? (2 Apr 3:24pm)
+
+curl -ku user:pass -H "Content-Type: application/json" -X POST \
+-d '{"description":"Tower CLI", "application":null, "scope":"write"}' \
+https://110.160.151.4/api/v2/users/1/personal_tokens/ | python -m json.tool
+
+
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100   580  100   516  100    64    352     43  0:00:01  0:00:01 --:--:--   352
+{
+    "application": null,
+    "created": "2019-04-02T09:52:44.552130Z",
+    "description": "Tower CLI",
+    "expires": "3018-08-03T09:52:44.544936Z",
+    "id": 1,
+    "modified": "2019-04-02T09:52:44.569069Z",
+    "refresh_token": null,
+    "related": {
+        "activity_stream": "/api/v2/tokens/1/activity_stream/",
+        "user": "/api/v2/users/2/"
+    },
+    "scope": "write",
+    "summary_fields": {
+        "user": {
+            "first_name": "firstname",
+            "id": 2,
+            "last_name": "lastname",
+            "username": "username"
+        }
+    },
+    "token": "SnMOkUdRkek3iciM3bfqCSKU0YnVGy",
+    "type": "o_auth2_access_token",
+    "url": "/api/v2/tokens/1/",
+    "user": 2
+}
+
+
+- USE TOKEN - POST
+
+Comamnd:
+$ curl -k -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -X POST  -d '{}' https://tower/api/v2/job_templates/5/launch/
+
+Example (TBD - NOT WORKING)
+$ curl -k -H "9JrWtzOfCXr4qQF2ZH7sBeNjh8rNMi" -H "Content-Type: application/json" -X POST  -d '{}' https://110.160.151.4/api/v2/job_templates/57/launch
+--> does not give any error, but does not launch job also
+
+- USE TOKEN - GET
+$ curl -k -H "9JrWtzOfCXr4qQF2ZH7sBeNjh8rNMi" -H "Content-Type: application/json" -X GET https://110.160.151.4/api/v2/job_templates/57/
+{"detail":"Authentication credentials were not provided. To establish a login session, visit /api/login/."}
