@@ -1,0 +1,58 @@
+https://www.lewuathe.com/exec-format-error-in-docker-container.html
+
+When you use docker, you may see such error when you launched your docker container like me.
+
+$ docker run lewuathe/test
+standard_init_linux.go:187: exec user process caused "exec format error"
+I found a workaround for this now. In this post, I’ll try to explain how to resolve the issue.
+
+Table of Contents
+Dockerfile
+shebang
+My Dockerfile is this.
+
+FROM ubuntu
+
+ADD test.sh /tmp
+WORKDIR /tmp
+
+ENTRYPOINT ["./test.sh"]
+The shell script of entry point is here.
+
+
+
+#!/bin/bash
+
+echo "This is a script"
+
+Umm, there is no weird point to me. Actually the test.sh works as expected in host OS (macOS).
+
+$ ./test.sh
+This is a script
+I tried to replace ENTRYPOINT with /bin/bash and execute the test script.
+
+FROM ubuntu
+
+ADD test.sh /tmp
+WORKDIR /tmp
+
+# ENTRYPOINT ["./test.sh"]
+ENTRYPOINT ["/bin/bash"]
+
+ 
+$ docker run -it lewuathe/test
+root:/tmp# ls
+test.sh
+root:/tmp# ./test.sh
+This is a script
+Hmm, after all it works. Why cannot I launch test script from ENTRYPOINT directly.
+
+shebang
+The root cause was shebang. Shebang (#!/bin/bash) should be put on the first line because first bytes was checked by kernel.
+
+So after I rewrote test.sh to remove first empty line, the image worked as expected.
+
+#!/bin/bash
+
+echo "This is a script"
+But I’m still not sure why test.sh works in host OS or through bash in Docker container.
