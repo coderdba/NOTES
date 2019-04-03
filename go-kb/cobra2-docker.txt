@@ -212,3 +212,38 @@ alpine                               latest              5cb3aa00f899        3 w
 ======================
 Docker Run Image
 ======================
+
+$ docker run --rm -i -t cobra2
+standard_init_linux.go:190: exec user process caused "exec format error"
+
+$ docker run --rm -i -t cobra2 version
+standard_init_linux.go:190: exec user process caused "exec format error"
+
+---------
+Debugging
+---------
+Changed the dockerfile as follows (removed entrypoint, added chmod)
+FROM alpine as runner
+COPY cobra2 .
+RUN chmod +x ./cobra2
+#ENTRYPOINT [ "/cobra2" ]
+
+
+$ docker run -it --rm cobra2
+This took me to shell of the container
+
+/ # ls -l
+total 12032
+drwxr-xr-x    2 root     root          4096 Mar  4 15:43 bin
+-rwxr-xr-x    1 root     root      12259380 Apr  3 08:27 cobra2 --> it has copied alright
+drwxr-xr-x    5 root     root           360 Apr  3 09:14 dev
+
+/ # export PATH=$PATH:.
+
+/ # cobra2
+H: not foundne 1: ????
+./cobra2: line 2: syntax error: unexpected word (expecting ")")
+
+
+
+
