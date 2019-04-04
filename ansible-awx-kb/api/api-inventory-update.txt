@@ -5,6 +5,8 @@ API Reference: https://docs.ansible.com/ansible-tower/latest/html/towerapi/api_r
 
 Inventory group:
 https://stackoverflow.com/questions/37503408/creating-an-inventory-source-using-ansible-tower-rest-api
+--> It is incorrect information in this post
+
 https://stackoverflow.com/questions/51472573/how-to-add-host-to-group-in-ansible-tower-inventory
 
 Adding a host to an existing inventory: https://www.reddit.com/r/ansible/comments/9rb3nb/adding_a_host_to_ansible_tower_inventory_through/
@@ -35,7 +37,30 @@ curl -u {USER}:{PASS} -X POST -d @payload.json -H "Content-Type: application/jso
 =======================================
 CREATE AN INVENTORY WITH SCM/GIT SOURCE
 =======================================
-https://stackoverflow.com/questions/37503408/creating-an-inventory-source-using-ansible-tower-rest-api
+
+APIs:
+POST /api/v2/inventories/ - create an inventory
+POST /api/v2/inventories/{id}/inventory_sources/ - Create a source for an Inventory
+
+1. CREATE THE INVENTORY (EMPTY INVENTORY)
+NOTE: Organization '2' is the key for the organization - not the name (do a GET on organizations to find the key)
+NOTE: The python call is to format the output properly
+
+$ curl -k -H "Authorization: Bearer abcdefgTOKEN" -H "Content-Type: application/json" -X POST  \
+-d '{"name":"pye-prod-001","description":"pye-prod-001","organization":"2","kind":""}'        \
+https://110.160.151.4/api/v2/inventories/      | python -m json.tool
+
+2. ADD INVENTORY SOURCE TO THE INVENTORY
+NOTE: The source path is the actual path of the file in AWX repo - which is the one downloaded from git by the 'project'
+curl -k -H "Authorization: Bearer abcdefgTOKEN" -H "Content-Type: application/json" -X POST            \
+-d '{"name":"prod-001.inv","description":"prod-001.inv from  k8s playbook", \
+"source":"scm","source_project":"6","update_on_project_update":"true","overwrite":"true", \
+"overwrite_vars":"true","source_path":"/var/lib/awx/projects/_6__k8s_playbook_repo/inv/pye/prod-001.inv"}' \
+https://10.60.151.4/api/v2/inventories/25/inventory_sources/      | python -m json.tool
+
+NOT NEEDED:
+
+This is incorrect information:  https://stackoverflow.com/questions/37503408/creating-an-inventory-source-using-ansible-tower-rest-api
 --> Per this site, first we have to create a group and then add a source to the inventory in it...??
     I ultimately found an answer to this problem- you cannot create a new inventory source by the current API. 
     Instead, it is created for you when you create an inventory group. 
@@ -47,22 +72,7 @@ https://stackoverflow.com/questions/37503408/creating-an-inventory-source-using-
  
 Something like this:
 1. first create an inventory
-2. next create a group for that inventory
-3. then edit the source for the inventory group
-
-
-APIs:
-POST /api/v2/inventories/ - create an inventory
-POST /api/v2/inventories/{id}/groups/ - Create a Group for an Inventory
-
-1. CREATE THE INVENTORY (EMPTY INVENTORY)
-NOTE: Organization '2' is the key for the organization - not the name (do a GET on organizations to find the key)
-NOTE: The python call is to format the output properly
-
-$ curl -k -H "Authorization: Bearer abcdefgTOKEN" -H "Content-Type: application/json" -X POST  \
--d '{"name":"pye-prod-001","description":"pye-prod-001","organization":"2","kind":""}'        \
-https://110.160.151.4/api/v2/inventories/      | python -m json.tool
-
+2. add the source to this inventory
 2. CREATE A GROUP FOR THE INVENTORY (with same name as the inventory for convenience)
 curl -k -H "Authorization: Bearer abcdefgTOKEN" -H "Content-Type: application/json" -X POST  \
 -d '{"name":"pye-prod-001","description":"pye-prod-001"}'        \
