@@ -1,0 +1,119 @@
+==================
+API WITH GORILLA
+==================
+
+https://www.codementor.io/codehakase/building-a-restful-api-with-golang-a6yivzqdo
+
+NOTE - THE 'DELETE' CODE AS-IS SEEMS TO NOT DISPLAY THE CORRECT POST-DATA in the http-writer in that function
+       (though it deletes alright and subsequent GET-all shows that the delete has happened)
+       
+=========
+SETUP
+=========
+GO111MODULE=on
+GOPATH=~/go:/mywork/go
+
+$ mkdir /mywork/golang/src/github.com/coderdba/api1
+$ vi main.go  (and paste the code as given below)
+$ go mod init github.com/coderdba/api1
+$ go build
+$ api1 (run the program)
+
+Access the program:
+$ curl http://localhost:8000/people
+[{"id":"1","firstname":"John","lastname":"Doe","address":{"city":"City X","state":"State X"}},{"id":"2","firstname":"Koko","lastname":"Doe","address":{"city":"City Z","state":"State Y"}}]
+
+$ curl http://localhost:8000/people/1
+{"id":"1","firstname":"John","lastname":"Doe","address":{"city":"City X","state":"State X"}}
+
+$ curl http://localhost:8000/people/2
+{"id":"2","firstname":"Koko","lastname":"Doe","address":{"city":"City Z","state":"State Y"}}
+c4b301b857f3:go dbgsm0$ 
+
+$ curl http://localhost:8000/people/3
+{}
+
+$ curl -k -X POST http://localhost:8000/people/3
+[{"id":"1","firstname":"John","lastname":"Doe","address":{"city":"City X","state":"State X"}},{"id":"2","firstname":"Koko","lastname":"Doe","address":{"city":"City Z","state":"State Y"}},{"id":"3"}]
+
+
+
+=========
+MAIN.GO
+=========
+package main
+
+import (
+    "encoding/json"
+    "github.com/gorilla/mux"
+    "log"
+    "net/http"
+)
+
+// The person Type (more like an object)
+type Person struct {
+    ID        string   `json:"id,omitempty"`
+    Firstname string   `json:"firstname,omitempty"`
+    Lastname  string   `json:"lastname,omitempty"`
+    Address   *Address `json:"address,omitempty"`
+}
+type Address struct {
+    City  string `json:"city,omitempty"`
+    State string `json:"state,omitempty"`
+}
+
+var people []Person
+
+// Display all from the people var name type
+func GetPeople(w http.ResponseWriter, r *http.Request) {
+    json.NewEncoder(w).Encode(people)
+}
+
+// Display a single data
+func GetPerson(w http.ResponseWriter, r *http.Request) {
+    params := mux.Vars(r)
+    for _, item := range people {
+        if item.ID == params["id"] {
+            json.NewEncoder(w).Encode(item)
+            return
+        }
+    }
+    
+    // if no match found, this will just print the brackets {}
+    json.NewEncoder(w).Encode(&Person{})
+}
+
+// create a new item
+func CreatePerson(w http.ResponseWriter, r *http.Request) {
+    params := mux.Vars(r)
+    var person Person
+    _ = json.NewDecoder(r.Body).Decode(&person)
+    person.ID = params["id"]
+    people = append(people, person)
+    json.NewEncoder(w).Encode(people)
+}
+
+// Delete an item
+func DeletePerson(w http.ResponseWriter, r *http.Request) {
+    params := mux.Vars(r)
+    for index, item := range people {
+        if item.ID == params["id"] {
+            people = append(people[:index], people[index+1:]...)
+            break
+        }
+        json.NewEncoder(w).Encode(people)
+    }
+}
+
+// main function to boot up everything
+func main() {
+    router := mux.NewRouter()
+    people = append(people, Person{ID: "1", Firstname: "John", Lastname: "Doe", Address: &Address{City: "City X", State: "State X"}})
+    people = append(people, Person{ID: "2", Firstname: "Koko", Lastname: "Doe", Address: &Address{City: "City Z", State: "State Y"}})
+    router.HandleFunc("/people", GetPeople).Methods("GET")
+    router.HandleFunc("/people/{id}", GetPerson).Methods("GET")
+    router.HandleFunc("/people/{id}", CreatePerson).Methods("POST")
+    router.HandleFunc("/people/{id}", DeletePerson).Methods("DELETE")
+    log.Fatal(http.ListenAndServe(":8000", router))
+}
+
