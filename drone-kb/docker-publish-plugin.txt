@@ -1,0 +1,39 @@
+DRONE-DOCKER PLUGIN TO CREATE DOCKER IMAGE AND PUBLISH TO A DOCKER REPO
+
+Image to pull: plugins/docker
+Image publised at: https://hub.docker.com/r/plugins/docker
+Image github: https://github.com/drone-plugins/drone-docker (though this says drone-docker, it is publised as plugins/docker)
+
+
+===========
+HOW TO USE
+===========
+
+----------
+User guide
+----------
+http://plugins.drone.io/drone-plugins/drone-docker/
+
+----------------------------------------
+Also usage guidance: (in .drone.yml)
+----------------------------------------
+
+secrets:
+artifactoryuserpass: thepassword
+(or, if getting from vault)
+artifactoryuserpass: 
+  path: secret/org/Kubernetes/artifactoryuserpass
+
+pipeline:
+  publish-to-docker-repo:
+    when:
+      branch: master
+      event: tag
+    image: plugins/docker
+    registry: docker.company.com/kubernetes
+    repo: docker.company.com/kubernetes/inventory-getter-docker-image
+    username: artifactoryusername
+    secrets:
+      - source: artifactoryuserpass
+        target: plugin_password
+    tag: [ stable, "${DRONE_TAG}" ]
