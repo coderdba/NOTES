@@ -138,3 +138,32 @@ curl <cluster ip of service> 80 --> ok
 
 curl <node1 ip> 80 --> error
 curl <node1 ip> 30232 --> error
+
+Per https://kubernetes.io/docs/concepts/services-networking/connect-applications-service/
+--> service should exist before pods
+Otherwise, the pod environment will not contain the service
+
+- POD ENVIRONMENT AS OF NOW
+# kubectl exec  nginx1-6d85b46d7-t67zr -n nginx-ns -- printenv | grep SERVICE
+KUBERNETES_SERVICE_HOST=10.96.0.1
+KUBERNETES_SERVICE_PORT=443
+KUBERNETES_SERVICE_PORT_HTTPS=443
+ 
+- STOP AND START PODS
+# kubectl scale deployment nginx1 -n nginx-ns --replicas=0; kubectl scale deployment nginx1 -n nginx-ns --replicas=2;
+
+[root@kx00 nginx_pod]# kubectl exec  nginx1-6d85b46d7-gr7z5 -n nginx-ns -- printenv | grep SERVICE
+KUBERNETES_SERVICE_PORT=443
+NGINX_SERVICE_PORT=tcp://10.105.255.246:80
+NGINX_SERVICE_PORT_80_TCP_PORT=80
+NGINX_SERVICE_PORT_80_TCP=tcp://10.105.255.246:80
+NGINX_SERVICE_PORT_80_TCP_PROTO=tcp
+KUBERNETES_SERVICE_HOST=10.96.0.1
+NGINX_SERVICE_SERVICE_PORT=80
+KUBERNETES_SERVICE_PORT_HTTPS=443
+NGINX_SERVICE_SERVICE_HOST=10.105.255.246
+NGINX_SERVICE_PORT_80_TCP_ADDR=10.105.255.246
+
+[root@kx00 nginx_pod]# curl 192.168.11.111 30232
+curl: (7) Failed connect to 192.168.11.111:80; Connection refused
+curl: (7) Failed to connect to 0.0.118.24: Invalid argument
