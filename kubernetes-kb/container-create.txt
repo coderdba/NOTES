@@ -104,4 +104,21 @@ fead827c5d51        nginx                  "nginx -g 'daemon of…"   9 minutes 
 45f39e64f72b        k8s.gcr.io/pause:3.1   "/pause"                 10 minutes ago      Up 10 minutes                           k8s_POD_nginx-85c8f76bb5-df77c_default_ea105e8c-f220-11e8-b2d7-080027104420_0
 
 
+=======
+TRIAL2 - POD AND SERVICE WITH NODEPORT
+=======
+kubectl create ns nginx-ns
+kubectl run --namespace=nginx-ns nginx1 --replicas=2 --image=nginx
+kubectl get pods -o wide -n nginx-ns
+kubectl expose deployment nginx1 -n nginx-ns --name=nginx-service --port=80 --target-port=80 --type=NodePort
+
+- PODS
+
+NAMESPACE     NAME                                       READY   STATUS    RESTARTS   AGE   IP               NODE   NOMINATED NODE   READINESS GATES
+nginx-ns      nginx1-6d85b46d7-rnrmq                     1/1     Running   0          10s   172.16.241.84    kx01   <none>           <none>
+nginx-ns      nginx1-6d85b46d7-t67zr                     1/1     Running   0          10s   172.16.83.200    kx02   <none>           <none>
+
+- SERVICE
+NAMESPACE     NAME            TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)         AGE     SELECTOR
+nginx-ns      nginx-service   NodePort    10.105.255.246   <none>        80:30232/TCP    2m13s   run=nginx1
 
