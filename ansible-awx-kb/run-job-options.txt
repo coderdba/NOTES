@@ -1,0 +1,74 @@
+ANSIBLE TOWER - RUNNING JOBS - OPTIONS ON HOW 
+
+============
+FROM ANSIBLE 
+============
+Use directive tower_job_launch
+tower_job_launch is supported in Ansible 2.3 and later
+
+https://docs.ansible.com/ansible/latest/modules/tower_job_launch_module.html
+https://stackoverflow.com/questions/43427715/launch-a-job-using-ansible-towerK
+
+Example:
+from https://stackoverflow.com/questions/43427715/launch-a-job-using-ansible-towerK
+
+---
+- name: default_process_backup
+  hosts: webservers
+  tasks:
+    - name: Launch Backup Fetch Files Job
+      tower_job_launch:
+        job_template: "backup_fetch_files"
+    - name: Launch Backup Fetch MariaDB Job
+      tower_job_launch:
+        job_template: "backup_fetch_mariadb"
+    - name: Launch Backup Fetch Postgres Job
+      tower_job_launch:
+        job_template: "backup_fetch_postgres"
+        
+============
+TOWER API
+============
+
+# In this - all are already hardcoded into the job-template - the inventory, extra vars, tags and such
+curl -k -H "Authorization: Bearer abcdsdfsdfsf_token" -H "Content-Type: application/json" -X POST  -d '{}' https://110.160.151.4/api/v2/job_templates/57/launch/
+
+# This one is not working - gives some json error (but, mostly the syntax/usage is correct)
+curl -k -H "Authorization: Bearer abcdsdfsdfsf_token" -H "Content-Type: application/json" -X POST -d '{"job_type":"run","inventory":"16","limit":"110.165.71.203","job_tags":"worker","---\nfull_reroll: \"yes\"\nroll_batch: 1"}' https://10.60.151.4/api/v2/job_templates/60/launch/
+
+============
+TOWER-CLI
+============
+
+------------
+EXAMPLE 1
+------------
+https://stackoverflow.com/questions/47662759/launching-and-monitoring-a-job-at-the-same-time-in-ansible-tower-cli
+
+- LAUNCH THE JOB ID 5
+
+# tower-cli job launch -J 5
+
+This returns the output like:
+
+Resource changed.
+=== ============ ======================== ======= ======= 
+id  job_template         created          status  elapsed 
+=== ============ ======================== ======= ======= 
+119            5 2017-12-05T20:26:31.197Z pending 0.0
+=== ============ ======================== ======= ======= 
+
+- MONITOR THE JOB (get the ID from the screen output above)
+# tower-cli job monitor 119
+
+- OTHER OPTIONS TO RUN AND MONITOR
+
+-- Monitor on screen
+# tower-cli job launch -J 5 --monitor
+
+-- Wait and display output once done
+# tower-cli job launch -J 5 --wait
+
+- AUTOMATION (for the job 119 example above)
+# OUTPUT="$(tower-cli job launch -J 5 | grep -o '[0-9]*' | head -1 )"
+# tower-cli monitor $OUTPUT
