@@ -18,6 +18,34 @@ http://plugins.drone.io/drone-plugins/drone-docker/
 Also usage guidance: (in .drone.yml)
 ----------------------------------------
 
+-------------
+EXAMPLE
+-------------
+secrets:
+  serviceaccount_password:
+    path: secret/org/Kubernetes/serviceaccount
+
+#
+pipeline:
+  docker:
+    image: plugins/docker
+    repo: docker.company.com/kubernetes/sample-app
+    registry: docker.company.com/kubernetes
+    tags:
+      - latest
+      #- "${DRONE_TAG}"  --->  DO NOT USE THIS IF THE EVENT IS NOT TAG
+    #secrets: [ "serviceaccount", svkubernetes_password ] ---> THIS DID NOT WORK
+    username: serviceaccount
+    secrets: 
+      - source: serviceaccount_password
+        target: plugin_password
+    when:
+      event: push
+      branch: master
+
+-------------
+EXAMPLE
+-------------
 secrets:
 artifactoryuserpass: thepassword
 (or, if getting from vault)
