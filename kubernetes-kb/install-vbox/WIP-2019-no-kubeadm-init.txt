@@ -1,3 +1,34 @@
 ==============================
 INSTALL NOT WITH KUBEADM INIT
 ==============================
+
+Reference: WIP-install-baremetal-seprate-vms.txt
+
+For repo setup and some stuff (this uses kubeadm init):
+https://www.itzgeek.com/how-tos/linux/centos-how-tos/how-to-install-kubernetes-on-centos-7-ubuntu-18-04-16-04-debian-9.html
+
+============================================================
+PREPARE MODEL VM - TO CLONE INTO MASTER, ETCD, WORKER VMs
+============================================================
+
+hostname.sh:
+hostnamectl set-hostname oel7k8smodel
+
+firewall-master.sh: (in my case, firewall was not enabled, but this is for if firewall is enabled)
+firewall-cmd --permanent --add-port=6443/tcp
+firewall-cmd --permanent --add-port=2379-2380/tcp
+firewall-cmd --permanent --add-port=10250/tcp
+firewall-cmd --permanent --add-port=10251/tcp
+firewall-cmd --permanent --add-port=10252/tcp
+firewall-cmd --permanent --add-port=10255/tcp
+firewall-cmd --reload
+
+firewall-worker.sh: (in my case, firewall was not enabled, but this is for if firewall is enabled)
+firewall-cmd --permanent --add-port=10251/tcp
+firewall-cmd --permanent --add-port=10255/tcp
+firewall-cmd --reload
+
+selinux.sh:
+setenforce 0
+sed -i 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
+
