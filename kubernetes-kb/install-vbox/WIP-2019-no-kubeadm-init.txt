@@ -64,6 +64,8 @@ Note: Go to http://mirror.centos.org/centos/7/extras/x86_64/Packages/ and find t
 
 yum install http://mirror.centos.org/centos/7/extras/x86_64/Packages/container-selinux-2.74-1.el7.noarch.rpm
 
+Now, Restart the VM so that the new hostname gets set properly
+
 --------------
 INSTALL DOCKER
 --------------
@@ -94,10 +96,13 @@ yum install -y docker-ce-18.06.1.ce
 # Create Docker Directory 
 mkdir /etc/docker
 
-# Setup Docker Daemon
+OPTIONAL - # Setup Docker Daemon
 cat > /etc/docker/daemon.json <<EOF
 {
-"exec-opts": ["native.cgroupdriver=systemd"], --> THIS, BY DEFAULT IS CGROUPFS I think, should this be changed??
+
+"exec-opts": ["native.cgroupdriver=systemd"], 
+--> THIS, BY DEFAULT IS CGROUPFS I think, should this be changed - dont set this - https://stackoverflow.com/questions/45708175/kubelet-failed-with-kubelet-cgroup-driver-cgroupfs-is-different-from-docker-c
+
 "log-driver": "json-file",
 "log-opts": {
 "max-size": "100m"
@@ -109,7 +114,8 @@ cat > /etc/docker/daemon.json <<EOF
 }
 EOF
 
-mkdir -p /etc/systemd/system/docker.service.d
+OPTIONAL - mkdir -p /etc/systemd/system/docker.service.d
+--> If not set, it may default to /usr/lib/systemd/system --> and docker.service gets created there
 
 # Restart Docker Daemon
 systemctl daemon-reload
