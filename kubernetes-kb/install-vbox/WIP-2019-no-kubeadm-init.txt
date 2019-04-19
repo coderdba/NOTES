@@ -229,10 +229,45 @@ busybox             latest              af2f74c517aa        2 weeks ago         
 haproxy             1.9                 f3abd21f393a        2 weeks ago         72.1MB
 
 - Create the config folder for haproxy (this will be mounted to the docker container later)
-# mkdir /etc/haproxy
+# mkdir /etc/haproxy-docker
 
 - Create the config file
+/etc/haproxy-docker/haproxy.cfg
 
+//Put this in the file
+global
+    daemon
+    maxconn 4096
+
+defaults
+    mode http
+    timeout connect 5000ms
+    timeout client 50000ms
+    timeout server 50000ms
+
+frontend http-in
+    bind *:80
+    acl is_site1 hdr_end(host) -i domain1.se
+    acl is_site2 hdr_end(host) -i domain2.com
+
+    use_backend site1 if is_site1
+    use_backend site2 if is_site2
+
+backend site1
+    balance roundrobin
+    option httpclose
+    option forwardfor
+    server s2 127.0.0.1:49153 maxconn 32
+
+backend site2
+    balance roundrobin
+    option httpclose
+    option forwardfor
+    server s1 127.0.0.1:2082 maxconn 32
+
+listen admin
+    bind 127.0.0.1:8080
+    stats enable
 - Start the container
 https://docs.docker.com/samples/library/haproxy/
 $ docker run -d --name k8s-haproxy -v /path/to/etc/haproxy:/usr/local/etc/haproxy:ro haproxy:1.9
