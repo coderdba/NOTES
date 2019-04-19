@@ -232,8 +232,58 @@ haproxy             1.9                 f3abd21f393a        2 weeks ago         
 # mkdir /etc/haproxy-docker
 
 - Create the config file
-/etc/haproxy-docker/haproxy.cfg
+Also reference: http://oskarhane.com/haproxy-as-a-static-reverse-proxy-for-docker-containers/
 
+# vi /etc/haproxy-docker/haproxy.cfg
+
+global
+    daemon
+    maxconn 4096
+
+defaults
+    mode http
+    timeout connect 5000ms
+    timeout client 50000ms
+    timeout server 50000ms
+    
+frontend kubernetes
+    bind        192.168.40.63:6443
+    option      tcplog
+    mode        tcp
+    default_backend kubernetes-master-nodes
+
+backend kubernetes-master-nodes
+    mode    tcp
+    balance roundrobin
+    option  tcp-check
+    server  k8s-master-0 192.168.40.60:6443 check fall 3 rise 2
+    server  k8s-master-1 192.168.40.61:6443 check fall 3 rise 2
+    server  k8s-master-2 192.168.40.62:6443 check fall 3 rise 2
+    
+- Start the haproxy container
+https://docs.docker.com/samples/library/haproxy/
+
+Syntax:
+    $ docker run -d --name k8s-haproxy -v /path/to/etc/haproxy:/usr/local/etc/haproxy:ro haproxy:1.9
+
+Actual:
+# docker run -d --name k8s-haproxy -v /etc/haproxy-docker:/usr/local/etc/haproxy:ro haproxy:1.9
+
+TROUBLESHOOT
+First start did not bring up the container - container just exited immediately
+# docker logs <container id>
+root      1398     1  0 14:47 ?        00:00:15 /usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock
+root      9159  4098  0 16:13 pts/0    00:00:00 grep --color=auto docker
+
+
+==================================================
+APPENDIX
+==================================================
+
+------------------------
+HAPROXY CONFIG FILE
+------------------------
+http://oskarhane.com/haproxy-as-a-static-reverse-proxy-for-docker-containers/
 //Put this in the file
 global
     daemon
@@ -268,8 +318,3 @@ backend site2
 listen admin
     bind 127.0.0.1:8080
     stats enable
-- Start the container
-https://docs.docker.com/samples/library/haproxy/
-$ docker run -d --name k8s-haproxy -v /path/to/etc/haproxy:/usr/local/etc/haproxy:ro haproxy:1.9
-
-
