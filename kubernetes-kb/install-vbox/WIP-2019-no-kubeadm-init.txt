@@ -247,7 +247,8 @@ defaults
     timeout server 50000ms
     
 frontend kubernetes
-    bind        192.168.40.63:6443
+    #bind        192.168.40.63:6443 --> DONT USE IP OF THE HOST - AS IN THE DOCUMENT - AS CONTAINER IP WILL BE DIFFERENT
+    bind        *:6443
     option      tcplog
     mode        tcp
     default_backend kubernetes-master-nodes
@@ -271,11 +272,22 @@ Configuration file is valid
 - Start the haproxy container
 https://docs.docker.com/samples/library/haproxy/
 
-Syntax:
+Syntax (BASIC):
 $ docker run -d --name k8s-haproxy -v /path/to/etc/haproxy:/usr/local/etc/haproxy:ro haproxy:1.9
 
 Actual:
 # docker run -d --name k8s-haproxy -v /etc/haproxy-docker:/usr/local/etc/haproxy:ro -v /run/haproxy-docker:/run/haproxy:rw haproxy:1.9
+
+-- with docker socket also shared with container
+# docker run -d --name k8s-haproxy -p 6443:6443 -v /var/run/docker.sock:/var/run/docker.sock -v /etc/haproxy-docker:/usr/local/etc/haproxy:ro -v /run/haproxy-docker:/run/haproxy haproxy:1.9
+
+- Verify
+[root@k0haproxy haproxy-docker]# netstat -anp |grep haproxy
+--> This will not return any value as the process is inside container
+
+- Verify host port (mapped port - in this case same as container port)
+[root@k0haproxy haproxy-docker]# netstat -anp|grep 6443
+tcp6       0      0 :::6443                 :::*                    LISTEN      16921/docker-proxy  
 
 TROUBLESHOOT
 First start did not bring up the container - container just exited immediately
