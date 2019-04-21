@@ -304,6 +304,9 @@ GENERATE CERTIFICATES
 (maybe, do this in model itself and keep ready)
 https://blog.inkubate.io/deploy-kubernetes-1-9-from-scratch-on-vmware-vsphere/
 
+--------------------------------
+Create a certificate authority
+--------------------------------
 1- Create the certificate authority configuration file (CA)
 
 $ vim ca-config.json
@@ -336,7 +339,7 @@ $ vim ca-csr.json
       "C": "ABC",
       "L": "ABC",
       "O": "Kubernetes",
-      "OU": "ABC",
+      "OU": "Kubernetes",
       "ST": "ABC"
     }
   ]
@@ -346,12 +349,53 @@ $ vim ca-csr.json
 
 $ cfssl gencert -initca ca-csr.json | cfssljson -bare ca
 
-4- Verify that the ca-key.pem and the ca.pem were generated.
+4- Verify that the ca-key.pem and the ca.pem were generated. (also ca.csr)
 
 $ ls -la *pem
 -rw------- 1 root root 1675 Apr 21 09:52 ca-key.pem
 -rw-r--r-- 1 root root 1350 Apr 21 09:52 ca.pem
 
+--------------------------------------
+Generate the Kubernetes certificates
+--------------------------------------
+Each Kubernetes component will need a client and a server certificate to communicate over TLS. 
+We will generate all these certificates in this section.
+
+Admin client certificate
+This certificate will be used to connect to the Kubernetes cluster as an administrator.
+
+1- Create the certificate signing request configuration file.
+
+$ vim admin-csr.json
+{
+  "CN": "admin",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "ABC",
+      "L": "ABC",
+      "O": "system:masters",
+      "OU": "Kubernetes",
+      "ST": "ABC"
+    }
+  ]
+}
+
+2- Generate the certificate and the private key.
+
+$ cfssl gencert \
+-ca=ca.pem \
+-ca-key=ca-key.pem \
+-config=ca-config.json \
+-profile=kubernetes admin-csr.json | \
+cfssljson -bare admin
+
+3- Verify that the admin-key.pem and the admin.pem were generated. (also admin.csr)
+
+$ ls -la
 
 ==================================================
 APPENDIX
