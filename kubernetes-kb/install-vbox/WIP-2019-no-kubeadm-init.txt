@@ -299,6 +299,61 @@ tcp6       0      0 :::6443                 :::*                    LISTEN      
 
 
 ==================================================
+GENERATE CERTIFICATES 
+==================================================
+(maybe, do this in model itself and keep ready)
+https://blog.inkubate.io/deploy-kubernetes-1-9-from-scratch-on-vmware-vsphere/
+
+1- Create the certificate authority configuration file (CA)
+
+$ vim ca-config.json
+{
+  "signing": {
+    "default": {
+      "expiry": "87600h"
+    },
+    "profiles": {
+      "kubernetes": {
+        "usages": ["signing", "key encipherment", "server auth", "client auth"],
+        "expiry": "87600h"
+      }
+    }
+  }
+}
+
+2- Create the certificate authority signing request configuration file (CSR)
+NOTE: Make all attributes ABC for convenience for lab
+
+$ vim ca-csr.json
+{
+  "CN": "Kubernetes",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "ABC",
+      "L": "ABC",
+      "O": "Kubernetes",
+      "OU": "ABC",
+      "ST": "ABC"
+    }
+  ]
+}
+
+3- Generate the certificate authority certificate and private key.
+
+$ cfssl gencert -initca ca-csr.json | cfssljson -bare ca
+
+4- Verify that the ca-key.pem and the ca.pem were generated.
+
+$ ls -la *pem
+-rw------- 1 root root 1675 Apr 21 09:52 ca-key.pem
+-rw-r--r-- 1 root root 1350 Apr 21 09:52 ca.pem
+
+
+==================================================
 APPENDIX
 ==================================================
 
@@ -340,3 +395,4 @@ backend site2
 listen admin
     bind 127.0.0.1:8080
     stats enable
+
