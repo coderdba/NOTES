@@ -297,7 +297,6 @@ tcp6       0      0 :::6443                 :::*                    LISTEN      
 # netstat -anp|grep 6443
 --> nothing shows now 
 
-
 ==================================================
 GENERATE CERTIFICATES 
 ==================================================
@@ -361,7 +360,9 @@ Generate the Kubernetes certificates
 Each Kubernetes component will need a client and a server certificate to communicate over TLS. 
 We will generate all these certificates in this section.
 
+------------------------
 Admin client certificate
+------------------------
 This certificate will be used to connect to the Kubernetes cluster as an administrator.
 
 1- Create the certificate signing request configuration file.
@@ -393,9 +394,108 @@ $ cfssl gencert \
 -profile=kubernetes admin-csr.json | \
 cfssljson -bare admin
 
+You may get this error - which is ok:
+2019/04/21 12:11:07 [WARNING] This certificate lacks a "hosts" field. This makes it unsuitable for
+websites. For more information see the Baseline Requirements for the Issuance and Management
+of Publicly-Trusted Certificates, v.1.1.6, from the CA/Browser Forum (https://cabforum.org);
+specifically, section 10.2.3 ("Information Requirements").
+
 3- Verify that the admin-key.pem and the admin.pem were generated. (also admin.csr)
 
-$ ls -la
+$ ls -la admin*
+
+------------------------------------------------
+Generate the Kubelet client certificates
+------------------------------------------------
+For worker nodes - to join cluster
+
+1- Create a certificate signing request configuration file for the 10.10.40.70 worker node.
+
+$ vim 10.10.40.70-csr.json
+{
+  "CN": "system:node:10.10.40.70",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "ABC",
+      "L": "ABC",
+      "O": "system:nodes",
+      "OU": "Kubernetes",
+      "ST": "ABC."
+    }
+  ]
+}
+2- Generate the certificate and the private key.
+
+$ cfssl gencert \
+-ca=ca.pem \
+-ca-key=ca-key.pem \
+-config=ca-config.json \
+-hostname=10.10.40.70,10.10.40.70 \
+-profile=kubernetes 10.10.40.70-csr.json | \
+cfssljson -bare 10.10.40.70
+
+3- Create a certificate signing request configuration file for the 10.10.40.71 worker node.
+
+$ vim 10.10.40.71-csr.json
+{
+  "CN": "system:node:10.10.40.71",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "ABC",
+      "L": "ABC",
+      "O": "system:nodes",
+      "OU": "Kubernetes",
+      "ST": "ABC."
+    }
+  ]
+}
+4- Generate the certificate and the private key.
+
+$ cfssl gencert \
+-ca=ca.pem \
+-ca-key=ca-key.pem \
+-config=ca-config.json \
+-hostname=10.10.40.71,10.10.40.71 \
+-profile=kubernetes 10.10.40.71-csr.json | \
+cfssljson -bare 10.10.40.71
+
+5- Create a certificate signing request configuration file for the 10.10.40.72 worker node.
+
+$ vim 10.10.40.72-csr.json
+{
+  "CN": "system:node:10.10.40.72",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "ABC",
+      "L": "ABC",
+      "O": "system:nodes",
+      "OU": "Kubernetes",
+      "ST": "ABC."
+    }
+  ]
+}
+
+6- Generate the certificate and the private key.
+
+$ cfssl gencert \
+-ca=ca.pem \
+-ca-key=ca-key.pem \
+-config=ca-config.json \
+-hostname=10.10.40.72,10.10.40.72 \
+-profile=kubernetes 10.10.40.72-csr.json | \
+cfssljson -bare 10.10.40.72
 
 ==================================================
 APPENDIX
