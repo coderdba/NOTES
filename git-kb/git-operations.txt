@@ -157,3 +157,111 @@ $ git branch
   master
 * rollout_april
 
+================================================================================================
+TO MERGE LOCAL BRANCH WITH LATEST CHANGES IN MASTER BRANCH IN GIT
+================================================================================================
+https://stackoverflow.com/questions/3876977/update-git-branches-from-master
+https://stackoverflow.com/questions/40864278/git-fixing-conflict-between-master-and-feature-branch-before-pull-request
+
+First, commit and push the lastest changes to branch into github - as usual
+--> see commands in the basic git operations
+
+Then, (for branch rollout_april)
+
+$ git checkout rollout_april
+$ git branch
+  consul_install
+  master
+* rollout_april
+
+$ git merge master
+Auto-merging group_vars/abc/vars
+CONFLICT (content): Merge conflict in group_vars/abc/vars
+Automatic merge failed; fix conflicts and then commit the result.
+
+(if no conflict messages appear, then you are good - otherwise, just do the conflict checks as given below)
+
+If there are conflicts, it wont allow you to checkout any other branch to work on (locally) until conflicts are cleared:
+
+$ git checkout master
+group_vars/abc/vars: needs merge
+error: you need to resolve your current index first
+$ git branch
+  consul_install
+  master
+* rollout_april
+
+$ git merge master
+error: Merging is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: Exiting because of an unresolved conflict.
+
+$ git branch
+  consul_install
+  master
+* rollout_april
+
+$ git checkout consul_install
+group_vars/abc/vars: needs merge
+error: you need to resolve your current index first
+
+$ git branch
+  consul_install
+  master
+* rollout_april
+
+Therefore, edit the file (it edits the branch version which now shows conflicts also)
+$ cd group_vars/abc
+$ vi vars
+
+use_1: false
+use_2: false
+
+<<<<<<< HEAD
+use_nfs: false
+=======
+use_nfs: true
+
+nfs_size: 100G
+nfs_mount: "/var/lib/vm/nfs"
+vm_mtu: 8900
+>>>>>>> master
+
+network_netmask: 255.255.255.0
+datacenter: dc1
+region: pi
+clustercidr: 10.10.16.0/20
+
+<<<<<<< HEAD
+=======
+ 
+
+something
+something
+something
+
+>>>>>>> master
+
+COMPLETE THE EDITS TO FILE with conflicts
+--> retain what you need
+
+Then, 'add' the file that was manually resolved:
+$ git add group_vars/abv/vars
+
+Then, do a commit and then merge automatically happens
+	Note: Directly doing a merge now gives error
+	$ git merge master
+	fatal: You have not concluded your merge (MERGE_HEAD exists).
+	Please, commit your changes before you merge.
+	
+$ git commit -m "merged with master as of 28 Feb 2019"
+[rollout_april 4854eda0] merged with master as of 28 Feb 2019
+
+$ git merge master                                    
+Already up to date
+.
+$ git branch
+  consul_install
+  master
+* rollout_april
