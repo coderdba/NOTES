@@ -6,3 +6,13 @@ ansible-playbook -i <inv filename> -u <checkout id> --ask-pass --ask-become-pass
 
 - RUN PLAYBOOK WITH KEY
 ansible-playbook -i inventory.inv -u root --private-key=~/.ssh/root.key --ask-vault-pass deploy.yml --tags tag1 -e “full_reroll=yes” --limit 101.192.217.6
+
+- RUN A SHELL COMMAND INSIDE A CONTAINER IN A VM
+NOTE: (for the command below)
+VM is the one in inventory file with IP ending with 233 - which you can replace with the one you need, or do a 'limit'
+
+Syntax:
+# ansible -i <inventory file> *233 --private-key=~/.ssh/root_user_key -u root -v -m shell -a "kubectl exec -it <container name> <the shell command>"
+
+Example:
+# ansible -i my_inventory.inv *233 --private-key=~/.ssh/root_user_key -u root -v -m shell -a "kubectl exec -it my_container_0 -- patronictl -c postgres.yml reinit --force pg_cluster_name pg_member_name"
