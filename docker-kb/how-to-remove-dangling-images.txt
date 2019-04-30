@@ -1,0 +1,40 @@
+================================
+HOW TO REMOVE DANGLING IMAGES
+================================
+https://stackoverflow.com/questions/50126741/how-to-remove-intermediate-images-from-a-build-after-the-build
+
+====================================
+AFTER DOCKER BUILD USING DOCKERFILE
+====================================
+
+----------------------------------------------------------------
+METHOD1 - THIS WILL REMOVE DANGLERS FROM OTHER BUILDS ALSO
+----------------------------------------------------------------
+- BUILD
+docker build -t myimage .
+
+- PRUNE
+docker image prune -f
+
+--------------------------------
+METHOD2 - TARGETED REMOVAL
+--------------------------------
+- PUT A LABEL IN DOCKERFILE
+FROM node as builder
+LABEL stage=builder
+...
+
+FROM node:dubnium-alpine
+...
+
+- BUILD
+docker build -t myimage .
+
+- PRUNE
+docker image prune --filter label=stage=builder
+
+====================================
+GENERAL
+====================================
+docker rmi $(docker images -f "dangling=true" -q)
+
