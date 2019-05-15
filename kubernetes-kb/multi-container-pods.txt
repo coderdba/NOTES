@@ -50,3 +50,27 @@ kubectl apply -f multi-nginx-debian.yml
 ----------------------
 VERIFY
 ----------------------
+- PODS
+Note: does not list both containers (for that, do a -o yaml and check in the output)
+root@kx00 multi-container-pod]# kubectl get pods two-containers
+NAME             READY   STATUS    RESTARTS   AGE
+two-containers   1/2     Running   0          2m27s
+
+- LOGON TO NGINX (the debian container just runs the echo command and exits)
+# kubectl exec -it two-containers -c nginx-container -- /bin/bash
+root@two-containers:/# 
+
+The following file would have been created by debian container with its echo command
+--> the file shared between the two containers - in /usr/share/nginx/html in nginx and /pod-data in debian containers 
+# ls -l /usr/share/nginx/html
+total 4
+-rw-r--r-- 1 root root 32 May 15 06:47 index.html
+
+- INSTALL CURL, AND PS utilities
+# apt-get update
+# apt-get install curl procps
+# ps aux
+
+- CURL AND CHECK
+# curl localhost
+Hello from the debian container
