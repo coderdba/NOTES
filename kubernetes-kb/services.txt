@@ -8,3 +8,54 @@ https://kubernetes.io/docs/tasks/administer-cluster/access-cluster-services/
 https://medium.com/@kyralak/accessing-kubernetes-services-without-ingress-nodeport-or-loadbalancer-de6061b42d72
 --> says, applications 'within' the cluster (i.e. other pods) can access the service by service-name (or clusterIP) and port
 
+
+======================
+ACCESSING BETWEEN PODS
+======================
+To access between pods, we dont need nodeport or hostport and such.
+The clusterIP, service name and port of the container is sufficient.
+
+Example:
+- Create a prometheus pod (details in kubernetes-vm repo)
+- Create a service for the pod
+
+- Create a 'curl' capable pod - ON SAME NAMESPACE
+# kubectl run --namespace=monitoring alpinecurl --rm -ti --image pstauffer/curl /bin/sh
+--> this will give a command prompt of the pod
+/ # 
+
+- List the pods (in the host's command prompt)
+# kubectl get pods -o wide --all-namespaces
+NAMESPACE     NAME                                       READY   STATUS        RESTARTS   AGE   IP               NODE   NOMINATED NODE   READINESS GATES
+monitoring    alpinecurl-c94bb7d97-4jx9k                 1/1     Running       0          46m   172.16.241.103   kx01   <none>           <none>
+monitoring    prometheus-deployment-fd6676489-62k8g      1/1     Running       1          2d    172.16.241.102   kx01   <none>           <none>
+
+- List the services
+# kubectl get services --all-namespaces
+NAMESPACE     NAME                 TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)          AGE   SELECTOR
+default       kubernetes           ClusterIP   10.96.0.1        <none>        443/TCP          91d   <none>
+kube-system   calico-etcd          ClusterIP   10.96.232.136    <none>        6666/TCP         91d   k8s-app=calico-etcd
+kube-system   kube-dns             ClusterIP   10.96.0.10       <none>        53/UDP,53/TCP    91d   k8s-app=kube-dns
+monitoring    prometheus-service   NodePort    10.101.137.248   <none>        8080:30000/TCP   9d    app=prometheus-server
+
+- Go back to the curl pod command prompt
+/ # 
+
+- List /etc/resolv.conf 
+You can see that the nameserver is the cluster-ip of kube-dns service (which maps to core-dns pod in my lab).
+Also search string gives all possible extensions to your services 
+
+/ # cat /etc/resolv.conf
+nameserver 10.96.0.10
+search monitoring.svc.cluster.local svc.cluster.local cluster.local 
+options ndots:5
+
+- Access the prometheus service from the curl pod - by clusterIP and port,  and by service-name and port
+/ # curl http://10.101.137.248:8080
+<a href="/graph">Found</a>.
+
+/ # curl http://prometheus-service:8080
+<a href="/graph">Found</a>.
+
+
+
