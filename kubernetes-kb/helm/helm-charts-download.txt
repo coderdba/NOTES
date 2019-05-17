@@ -5,6 +5,9 @@ DOWNLOAD HELM CHARTS - PUBLIC/PRIVATE
 https://storage.cloud.google.com/cpe-helm/admission-controller-ingress-helm-0.0.101.tgz?_ga=2.199560166.-934324320.1534951380
 https://bin.company.com/artifactory/k8s-charts/xyz-helm.1.4.1.tgz
 
+https://helm.sh/docs/helm/#helm-fetch
+https://github.com/helm/helm/blob/master/docs/helm/helm_fetch.md
+
 =================================
 CREATE THE HELM FOLDERS IN REPO
 =================================
@@ -33,10 +36,41 @@ dependencies:
 
 $ cd repo-name
 
+-- METHOD1 - helm fetch
+--- FETCH LATEST
 $ helm fetch stable/prometheus --untar --untardir=charts
---> This will fetch the latest 'stable' helm of prometheus 
+--> This will fetch the LATEST (as we have not specified the version) 'stable' helm of prometheus 
 --> from https://github.com/helm/charts/tree/master/stable/prometheus
 --> into repo-name/charts/prometheus
 --> and untars files/folders from the tgz file already
 
+--- FETCH SPECIFIC VERSION
+$ helm fetch stable/prometheus --version 8.11.2 --untar --untardir=charts
 
+-- METHOD2 - helm dependency update
+
+$ helm dependency update
+
+--> This will download the helm chart in tgz format into charts directory
+Hang tight while we grab the latest from your chart repositories...
+...Unable to get an update from the "local" chart repository (http://127.0.0.1:8879/charts):
+
+<< LOOKS UP LOCAL REPOS >>
+	Get http://127.0.0.1:8879/charts/index.yaml: dial tcp 127.0.0.1:8879: connect: connection refused
+...Unable to get an update from the "kubernetes-helm" chart repository (https://binrepo.target.com/artifactory/kubernetes-helm):
+
+<< LOOKS UP PRIVATE REPOS >>
+	Get https://artifactory.company.com/artifactory/kubernetes-helm/index.yaml: dial tcp: lookup artifactory.company.com: no such host
+...Unable to get an update from the "tgt-binrepo-helm" chart repository (https://artifactory.company.com/artifactory/kubernetes-charts/):
+	Get https://binrepo.target.com/artifactory/kubernetes-charts/index.yaml: dial tcp: lookup artifactory.company.com: no such host
+
+<< LOOKS UP PUBLIC REPOS >>
+...Successfully got an update from the "cpe-helm" chart repository
+...Successfully got an update from the "stable" chart repository
+Update Complete. ⎈Happy Helming!⎈
+
+$ cd charts
+$ ls -l
+-rw-r--r--  1 USERNAME  1244359605  22457 May 17 10:26 prometheus-8.11.2.tgz
+
+Untar and unzip this file
