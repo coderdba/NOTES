@@ -24,12 +24,18 @@ NOTE: Here we are NOT discussing how to make it multi-node etcd and multi-master
 
 Set up ETCD - docker image and etcd service
 Configure core manifests and addon configurations as given below
-Start etcd
-Start kubelet (it starts kubelet and also creates apiserver, controller manager and scheduler pods)
-Start addons (kubectl apply)
+Run bootstrap script or service, which wll:
+  Start etcd
+  Start kubelet (it starts kubelet and also creates apiserver, controller manager and scheduler pods)
+  Start addons (kubectl apply)
 
 rootfs/etc/systemd/system/etcd.service
 --> calls /opt/k8s/start-etcd.sh
+
+/etc/systemd/system/k8s-bootstrap.service
+--> calls /opt/k8s/k8s-bootstrap.sh
+
+During machine start, the bootstrap script called via the service: 
 /opt/k8s/k8s-bootstrap.sh
 --> Starts kubelet (which starts apiserver and such)
   /etc/kubernetes/manifests  --> CORE MANIFESTS
@@ -38,7 +44,7 @@ rootfs/etc/systemd/system/etcd.service
     kube-scheduler.json
 --> Starts addons
   /etc/kubernetes/addons/  --> ADDONS
-    flannel.yml
+    flannel.yml (or calico)
     kube-dns.yml
     kube-proxy.yml
     nginx-ingress-controller.yml
