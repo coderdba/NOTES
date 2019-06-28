@@ -36,8 +36,41 @@ kubectl describe pod coredns-576cbf47c7-9sbhl -n kube-system
 - describe anything
 kubectl describe pod|deployment|service|... thing_to_describe [-n namespace]
 
-Dump YAML of objects:
+- Dump YAML of objects:
 # kubectl -n kube-system get pod coredns-86c58d9df4-dcl97 -o yaml > coredns.yaml
+
+- Get Json of pod status: (this is used by prometheus metric kube_pod_status_ready as in https://github.com/kubernetes/kube-state-metrics/blob/master/docs/pod-metrics.md)
+
+$ kubectl get pod mypod-lksdjf -o=json | jq .status.conditions
+[
+  {
+    "lastProbeTime": null,
+    "lastTransitionTime": "2019-06-25T21:07:05Z",
+    "status": "True",
+    "type": "Initialized"
+  },
+  {
+    "lastProbeTime": null,
+    "lastTransitionTime": "2019-06-25T21:08:25Z",
+    "status": "True",
+    "type": "Ready"
+  },
+  {
+    "lastProbeTime": null,
+    "lastTransitionTime": "2019-06-25T21:08:25Z",
+    "status": "True",
+    "type": "ContainersReady"
+  },
+  {
+    "lastProbeTime": null,
+    "lastTransitionTime": "2019-06-25T21:06:46Z",
+    "status": "True",
+    "type": "PodScheduled"
+  }
+]
+
+- GET LOGS
+kubectl logs <pod> [<contrainer in multipod>] [-n namespace]
 
 UNTAINT MASTER
 # kubectl taint nodes --all node-role.kubernetes.io/master-
