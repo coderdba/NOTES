@@ -1,0 +1,42 @@
+CA - certificate authority - against which other systems' certificates are validated
+Certificate - local (client) or remote (server) certificate to establish their identity
+Key - to encrypt traffic between client and server
+
+=========================================================
+SUMMARY UNDERSTANDING - BASED ON HELM AND TILLER
+=========================================================
+This summarizes how it works: (helm-tiller setup)
+https://github.com/helm/helm/blob/master/docs/tiller_ssl.md
+
+--------------------
+SUMMARY EXPLANATION
+--------------------
+This configuration sends our client-side certificate to establish identity, 
+uses the client key for encryption, 
+and uses the CA certificate to validate the remote Tiller's identity.
+
+---------------
+TILLER SETUP
+---------------
+$ helm init --tiller-tls --tiller-tls-cert ./tiller.cert.pem --tiller-tls-key ./tiller.key.pem --tiller-tls-verify --tls-ca-cert ca.cert.pem
+
+--------------------
+HELM CLIENT CALL
+--------------------
+
+$ helm ls --tls --tls-ca-cert ca.cert.pem --tls-cert helm.cert.pem --tls-key helm.key.pem
+
+--------------------
+KEYS, CERTS and CA
+--------------------
+Based on the following setup:
+
+  Helm client side:
+  $ cp ca.cert.pem $(helm home)/ca.pem
+  $ cp helm.cert.pem $(helm home)/cert.pem
+  $ cp helm.key.pem $(helm home)/key.pem
+
+  Similarly the remote server Tiller will have:
+  THE SAME ca.pem
+  Different cert.pem - based on the ca.pem
+  Different key.pem
