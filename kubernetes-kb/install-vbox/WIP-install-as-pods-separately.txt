@@ -307,9 +307,10 @@ Pull image as mentioned earlier.
 Create an etcd service with IP settings.
 Start the service so that it starts etcd image as container with correct settings.
 
-------------------
-STEPS
-------------------
+------------------------------------------------------
+STEPS - MANUAL STEPS - A BIT MESSY TO VIEW
+(see etcd service section for more clear code)
+------------------------------------------------------
 REGISTRY=quay.io/coreos/etcd
 # available from v3.2.5
 #REGISTRY=gcr.io/etcd-development/etcd
@@ -473,6 +474,134 @@ NOTE: The IP address 101.192.217.105 and other such of the hosts - not of the co
 /usr/bin/docker run --rm --net=host --name etcd -v /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:/etc/ssl/certs/ca-certificates.crt -v /data/etcd:/data -v /var/lib/etcdbak:/var/lib/etcdbak -v /opt/k8s/openssl:/opt/k8s/openssl --env ETCDCTL_CERT=/opt/k8s/openssl/server.crt --env ETCDCTL_KEY=/opt/k8s/openssl/server.key --env ETCDCTL_CACERT=/opt/k8s/openssl/ca.crt -e ETCD_INITIAL_CLUSTER=101.192.217.104=https://101.192.217.104:2380,101.192.217.105=https://101.192.217.105:2380 -e ETCD_INITIAL_CLUSTER_STATE=existing -e ETCDCTL_API=3 -e ETCD_SNAPSHOT_COUNT={ETCD_SNAPSHOT_COUNT} gcr.io/google_containers/etcd-amd64:3.1.11 etcd -name 101.192.217.105 -initial-advertise-peer-urls HTTPS://101.192.217.105:2380 -listen-peer-urls HTTPS://0.0.0.0:2380 -listen-client-urls HTTPS://101.192.217.105:2379,HTTPS://127.0.0.1:2379 -advertise-client-urls HTTPS://101.192.217.105:2379 -cert-file /opt/k8s/openssl/server.crt -key-file /opt/k8s/openssl/server.key -client-cert-auth -trusted-ca-file /opt/k8s/openssl/ca.crt -peer-cert-file /opt/k8s/openssl/server.crt -peer-key-file /opt/k8s/openssl/server.key -peer-client-cert-auth -peer-trusted-ca-file /opt/k8s/openssl/ca.crt -data-dir=/data
 
 
+
+==================================
+SECURING ETCD - WIP
+==================================
+Generate key and certificate
+# openssl req  -nodes -new -x509  -keyout server.key -out server.cert
+
+ETCD startup secure (reference command):
+/usr/bin/docker run --rm --net=host --name etcd 
+-v /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:/etc/ssl/certs/ca-certificates.crt 
+-v /data/etcd:/data -v /var/lib/etcdbak:/var/lib/etcdbak -v /opt/k8s/openssl:/opt/k8s/openssl 
+--env ETCDCTL_CERT=/opt/k8s/openssl/server.crt --env ETCDCTL_KEY=/opt/k8s/openssl/server.key 
+--env ETCDCTL_CACERT=/opt/k8s/openssl/ca.crt -e ETCD_INITIAL_CLUSTER=101.192.217.104=https://101.192.217.104:2380,101.192.217.105=https://101.192.217.105:2380 
+-e ETCD_INITIAL_CLUSTER_STATE=existing -e ETCDCTL_API=3 -e ETCD_SNAPSHOT_COUNT={ETCD_SNAPSHOT_COUNT} 
+gcr.io/google_containers/etcd-amd64:3.1.11 etcd -name 101.192.217.105 -initial-advertise-peer-urls 
+#
+# HTTPS instead of HTTP
+HTTPS://101.192.217.105:2380 -listen-peer-urls HTTPS://0.0.0.0:2380 -listen-client-urls 
+HTTPS://101.192.217.105:2379,HTTPS://127.0.0.1:2379 -advertise-client-urls HTTPS://101.192.217.105:2379 
+#
+# here the certs-keys are
+-cert-file /opt/k8s/openssl/server.crt 
+-key-file /opt/k8s/openssl/server.key 
+-client-cert-auth 
+-trusted-ca-file /opt/k8s/openssl/ca.crt
+#
+# cert-keys for peers
+-peer-cert-file /opt/k8s/openssl/server.crt -peer-key-file /opt/k8s/openssl/server.key 
+-peer-client-cert-auth -peer-trusted-ca-file /opt/k8s/openssl/ca.crt -data-dir=/data
+
+
+==================================
+APPENDIX
+==================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Reference etcd.service file:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        [Unit]
+        Description=etcd
+        Wants=consul.service docker.service
+
+        [Service]
+        Type=simple
+        User=root
+        Group=root
+        IOSchedulingClass=2
+        IOSchedulingPriority=0
+        EnvironmentFile=/etc/environment
+        ExecStartPre=/usr/bin/systemctl --quiet is-active docker
+        ExecStartPre=/usr/bin/systemctl --quiet is-active consul
+        ExecStartPre=/opt/k8s/generate-server-tls.sh
+        ExecStartPre=/opt/k8s/etcd_prestart.sh
+        ExecStartPre=/usr/local/bin/consul-template -once \
+          -template "/opt/company-ctmpl/k8s-etcd/service-k8s-etcd.json.ctmpl:/etc/consul.d/service-k8s-etcd.json"
+        ExecStart=/opt/k8s/startEtcd.sh
+        ExecStartPost=/usr/bin/systemctl reload consul
+        ExecStartPost=/opt/k8s/etcd_io.sh
+        ExecStop=/bin/kill -WINCH ${MAINPID}
+        Restart=on-failure
+        KillSignal=SIGINT
+        StandardOutput=syslog
+        StandardError=syslog
+        NotifyAccess=all
+        RestartSec=10
+
+        [Install]
+        WantedBy=multi-user.target
+
+--> Execstart calls this function eventualy: (also see HTTP-PROTO section below)
+         /usr/bin/docker run --rm \
+            --net=host \
+            --name etcd \
+            -v /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:/etc/ssl/certs/ca-certificates.crt \
+            -v /data/etcd:/data \
+            -v /var/lib/etcdbak:/var/lib/etcdbak \
+            -v /opt/k8s/openssl:/opt/k8s/openssl \
+            ${ETCD_TLS_ENV_VAR} \
+            -e ETCD_INITIAL_CLUSTER="$1" \
+            -e ETCD_INITIAL_CLUSTER_STATE="$2" \
+            -e ETCDCTL_API=3 \
+            -e ETCD_SNAPSHOT_COUNT={ETCD_SNAPSHOT_COUNT} \
+            ${K8S_ETCD_CONTAINER}:${ETCD_VERSION} etcd \
+            -name ${LOCAL_IPV4} \
+            -initial-advertise-peer-urls ${ETCD_HTTP_PROTO}://${LOCAL_IPV4}:${ETCD_PEER_PORT:-2380} \
+            -listen-peer-urls ${ETCD_HTTP_PROTO}://0.0.0.0:${ETCD_PEER_PORT:-2380} \
+            -listen-client-urls ${ETCD_HTTP_PROTO}://${GUEST_IPV4:-$LOCAL_IPV4}:${ETCD_PORT:-2379},${ETCD_HTTP_PROTO}://127.0.0.1:${ETCD_PORT:-2379} \
+            -advertise-client-urls ${ETCD_HTTP_PROTO}://${LOCAL_IPV4}:${ETCD_PORT:-2379} \
+            ${ETCD_PEER_PARAM} \
+            -data-dir=/data
+
+Basic reference:
+Model: redis service (much basic one) - To start redis1 container - /etc/systemd/system/redis1.service
+    [Unit]
+    Description=Redis container
+    After=docker.service
+
+    [Service]
+    Restart=always
+    ExecStart=/usr/bin/docker start -a redis1
+    ExecStop=/usr/bin/docker stop -t 2 redis1
+
+    [Install]
+    WantedBy=local.target
+
+------------
+HTTP-PROTO
+------------
+Also see: https://coreos.com/etcd/docs/latest/op-guide/security.html
+
+To use https instead of http, cert, key and cacert are required:
+
+  ETCD_TLS_ENV_VAR="--env ETCDCTL_CERT=/opt/k8s/openssl/server.crt \
+                --env ETCDCTL_KEY=/opt/k8s/openssl/server.key \
+                --env ETCDCTL_CACERT=/opt/k8s/openssl/ca.crt"
+  ETCD_PEER_PARAM="-cert-file /opt/k8s/openssl/server.crt \
+                   -key-file /opt/k8s/openssl/server.key \
+                   -client-cert-auth  \
+                   -trusted-ca-file /opt/k8s/openssl/ca.crt \
+                   -peer-cert-file /opt/k8s/openssl/server.crt \
+                   -peer-key-file /opt/k8s/openssl/server.key \
+                   -peer-client-cert-auth  \
+                   -peer-trusted-ca-file   /opt/k8s/openssl/ca.crt"
+  ETCD_HTTP_PROTO="HTTPS"
+
+
+============================================
+REFERENCE 1 - PROD READY METHOD1
+============================================
 -----------------------------------------------------------------
 ETCD SERVICE ENVIRONMENT FILE:  /opt/k8s/env/etcd.service.env
 -----------------------------------------------------------------
@@ -600,126 +729,3 @@ $ExecStop
 
 echo ==================================
 
-
-==================================
-SECURING ETCD - WIP
-==================================
-Generate key and certificate
-# openssl req  -nodes -new -x509  -keyout server.key -out server.cert
-
-ETCD startup secure (reference command):
-/usr/bin/docker run --rm --net=host --name etcd 
--v /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:/etc/ssl/certs/ca-certificates.crt 
--v /data/etcd:/data -v /var/lib/etcdbak:/var/lib/etcdbak -v /opt/k8s/openssl:/opt/k8s/openssl 
---env ETCDCTL_CERT=/opt/k8s/openssl/server.crt --env ETCDCTL_KEY=/opt/k8s/openssl/server.key 
---env ETCDCTL_CACERT=/opt/k8s/openssl/ca.crt -e ETCD_INITIAL_CLUSTER=101.192.217.104=https://101.192.217.104:2380,101.192.217.105=https://101.192.217.105:2380 
--e ETCD_INITIAL_CLUSTER_STATE=existing -e ETCDCTL_API=3 -e ETCD_SNAPSHOT_COUNT={ETCD_SNAPSHOT_COUNT} 
-gcr.io/google_containers/etcd-amd64:3.1.11 etcd -name 101.192.217.105 -initial-advertise-peer-urls 
-#
-# HTTPS instead of HTTP
-HTTPS://101.192.217.105:2380 -listen-peer-urls HTTPS://0.0.0.0:2380 -listen-client-urls 
-HTTPS://101.192.217.105:2379,HTTPS://127.0.0.1:2379 -advertise-client-urls HTTPS://101.192.217.105:2379 
-#
-# here the certs-keys are
--cert-file /opt/k8s/openssl/server.crt 
--key-file /opt/k8s/openssl/server.key 
--client-cert-auth 
--trusted-ca-file /opt/k8s/openssl/ca.crt
-#
-# cert-keys for peers
--peer-cert-file /opt/k8s/openssl/server.crt -peer-key-file /opt/k8s/openssl/server.key 
--peer-client-cert-auth -peer-trusted-ca-file /opt/k8s/openssl/ca.crt -data-dir=/data
-
-
-==================================
-APPENDIX
-==================================
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Reference etcd.service file:
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        [Unit]
-        Description=etcd
-        Wants=consul.service docker.service
-
-        [Service]
-        Type=simple
-        User=root
-        Group=root
-        IOSchedulingClass=2
-        IOSchedulingPriority=0
-        EnvironmentFile=/etc/environment
-        ExecStartPre=/usr/bin/systemctl --quiet is-active docker
-        ExecStartPre=/usr/bin/systemctl --quiet is-active consul
-        ExecStartPre=/opt/k8s/generate-server-tls.sh
-        ExecStartPre=/opt/k8s/etcd_prestart.sh
-        ExecStartPre=/usr/local/bin/consul-template -once \
-          -template "/opt/company-ctmpl/k8s-etcd/service-k8s-etcd.json.ctmpl:/etc/consul.d/service-k8s-etcd.json"
-        ExecStart=/opt/k8s/startEtcd.sh
-        ExecStartPost=/usr/bin/systemctl reload consul
-        ExecStartPost=/opt/k8s/etcd_io.sh
-        ExecStop=/bin/kill -WINCH ${MAINPID}
-        Restart=on-failure
-        KillSignal=SIGINT
-        StandardOutput=syslog
-        StandardError=syslog
-        NotifyAccess=all
-        RestartSec=10
-
-        [Install]
-        WantedBy=multi-user.target
-
---> Execstart calls this function eventualy: (also see HTTP-PROTO section below)
-         /usr/bin/docker run --rm \
-            --net=host \
-            --name etcd \
-            -v /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:/etc/ssl/certs/ca-certificates.crt \
-            -v /data/etcd:/data \
-            -v /var/lib/etcdbak:/var/lib/etcdbak \
-            -v /opt/k8s/openssl:/opt/k8s/openssl \
-            ${ETCD_TLS_ENV_VAR} \
-            -e ETCD_INITIAL_CLUSTER="$1" \
-            -e ETCD_INITIAL_CLUSTER_STATE="$2" \
-            -e ETCDCTL_API=3 \
-            -e ETCD_SNAPSHOT_COUNT={ETCD_SNAPSHOT_COUNT} \
-            ${K8S_ETCD_CONTAINER}:${ETCD_VERSION} etcd \
-            -name ${LOCAL_IPV4} \
-            -initial-advertise-peer-urls ${ETCD_HTTP_PROTO}://${LOCAL_IPV4}:${ETCD_PEER_PORT:-2380} \
-            -listen-peer-urls ${ETCD_HTTP_PROTO}://0.0.0.0:${ETCD_PEER_PORT:-2380} \
-            -listen-client-urls ${ETCD_HTTP_PROTO}://${GUEST_IPV4:-$LOCAL_IPV4}:${ETCD_PORT:-2379},${ETCD_HTTP_PROTO}://127.0.0.1:${ETCD_PORT:-2379} \
-            -advertise-client-urls ${ETCD_HTTP_PROTO}://${LOCAL_IPV4}:${ETCD_PORT:-2379} \
-            ${ETCD_PEER_PARAM} \
-            -data-dir=/data
-
-Basic reference:
-Model: redis service (much basic one) - To start redis1 container - /etc/systemd/system/redis1.service
-    [Unit]
-    Description=Redis container
-    After=docker.service
-
-    [Service]
-    Restart=always
-    ExecStart=/usr/bin/docker start -a redis1
-    ExecStop=/usr/bin/docker stop -t 2 redis1
-
-    [Install]
-    WantedBy=local.target
-
-------------
-HTTP-PROTO
-------------
-Also see: https://coreos.com/etcd/docs/latest/op-guide/security.html
-
-To use https instead of http, cert, key and cacert are required:
-
-  ETCD_TLS_ENV_VAR="--env ETCDCTL_CERT=/opt/k8s/openssl/server.crt \
-                --env ETCDCTL_KEY=/opt/k8s/openssl/server.key \
-                --env ETCDCTL_CACERT=/opt/k8s/openssl/ca.crt"
-  ETCD_PEER_PARAM="-cert-file /opt/k8s/openssl/server.crt \
-                   -key-file /opt/k8s/openssl/server.key \
-                   -client-cert-auth  \
-                   -trusted-ca-file /opt/k8s/openssl/ca.crt \
-                   -peer-cert-file /opt/k8s/openssl/server.crt \
-                   -peer-key-file /opt/k8s/openssl/server.key \
-                   -peer-client-cert-auth  \
-                   -peer-trusted-ca-file   /opt/k8s/openssl/ca.crt"
-  ETCD_HTTP_PROTO="HTTPS"
