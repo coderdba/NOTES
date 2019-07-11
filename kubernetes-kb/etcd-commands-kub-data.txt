@@ -1,0 +1,28 @@
+https://stackoverflow.com/questions/47807892/how-to-access-kubernetes-keys-in-etcd
+
+This does not give key list:
+$ curl -s http://localhost:2379/v2/keys | python -m json.tool
+{
+    "action": "get",
+    "node": {
+        "dir": true
+    }
+}
+
+Use this:
+List keys 
+$ ETCDCTL_API=3 etcdctl --endpoints=<etcd_ip>:2379 get / --prefix --keys-only
+
+If with TLS: (try these, whichever works)
+ETCDCTL_API=3 etcdctl --endpoints <etcd_ip>:2379 --cacert <ca_cert_path> --cert <cert_path> --key <cert_key_path> get / --prefix --keys-only
+
+ETCDCTL_API=3 etcdctl --endpoints <etd_ip>:2379 --cacert /etc/kubernetes/ssl/kube-ca.pem --cert /etc/kubernetes/ssl/kube-node.pem --key /etc/kubernetes/ssl/kube-node-key.pem get / --prefix --keys-only
+
+ETCDCTL_API=3 etcdctl --cacert /etc/ssl/etcd/etcd/peer-ca.crt --cert /etc/ssl/etcd/etcd/peer.crt --key /etc/ssl/etcd/etcd/peer.key get --prefix / --keys-only
+
+ETCDCTL_API=3 etcdctl --endpoints 127.0.0.1:2379 --cacert /etc/kubernetes/pki/etcd/ca.crt --cert /etc/kubernetes/pki/etcd/server.crt --key /etc/kubernetes/pki/etcd/server.key get / --prefix --keys-only
+
+Command help
+$ ETCDCTL_API=3 etcdctl --endpoints=<etcd_ip>:2379 --help 
+
+
