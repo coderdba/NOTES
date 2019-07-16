@@ -1,0 +1,71 @@
+================================================================================
+POD THAT SPINS FOREVER - IN THE CASE IT DOES NOT HAVE A PROPER ENTRYPOINT
+================================================================================
+https://stackoverflow.com/questions/31870222/how-can-i-keep-a-container-running-on-kubernetes
+
+========
+IDEALLY
+========
+In your Dockerfile use this command:
+
+CMD ["sh", "-c", "tail -f /dev/null"]
+
+Build your docker image.
+
+Push it to your cluster or similar, just to make sure the image it's available.
+
+kubectl run debug-container -it --image=<your-image>
+
+========================
+PRACTICALLY
+========================
+0. Sleep forever (ubuntu or busybox - either will do)
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ubuntu
+spec:
+  containers:
+  - name: ubuntu
+    image: ubuntu:latest
+    # Just sleep forever
+    command: [ "sleep" ]
+    args: [ "infinity" ]
+    
+1. Sleep Command
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: busybox
+  labels:
+    app: busybox
+spec:
+  containers:
+  - name: busybox
+    image: busybox
+    ports:
+    - containerPort: 80
+    command: ["/bin/sh", "-ec", "sleep 1000"]
+  nodeSelector:
+    beta.kubernetes.io/os: linux
+    
+2. Infinite Loop
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: busybox
+  labels:
+    app: busybox
+spec:
+  containers:
+  - name: busybox
+    image: busybox
+    ports:
+    - containerPort: 80
+    command: ["/bin/sh", "-ec", "while :; do echo '.'; sleep 5 ; done"]
+  nodeSelector:
+    beta.kubernetes.io/os: linux
+    
