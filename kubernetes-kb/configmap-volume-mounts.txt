@@ -57,6 +57,9 @@ Pod
 - then volume mounts will be mapped to configmap (which in turh contains filenames and contents)
 - thereby the files with names and content as defined in the configmap get mounted into the volumes/folders in the pod
 
+-----------
+ EXAMPLE1
+-----------
 - THE CONFIGMAP
 apiVersion: v1
 kind: ConfigMap
@@ -120,4 +123,63 @@ this is file1/etc/config
 /etc/config # 
 /etc/config # exit
 
+---------
+EXAMPLE2
+---------
+- CONFIGMAP
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cmfilebased2
+  namespace: default
+data:
+  {file1.txt: "this is file1", file2.json: '[{"targets": ["esx01.company.com", "esx02.company.com", "esx03.company.com"]}]', file3.json: '{"targets": ["esx04.company.com", "esx05.company.com", "esx06.company.com"]}'}
+  
+- POD
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pod2
+spec:
+  containers:
+    - name: test-container
+      image: k8s.gcr.io/busybox
+      # original command line
+      #command: [ "/bin/sh", "-c", "ls /etc/config/" ]
+      # alternative command to make it sleep and be alive
+      #command: [ "/bin/bash", "-c", "--" ]
+      #args: [ "while true; do sleep 30; done;" ]
+      command: ["/bin/sh", "-ec", "sleep 1000"]
+      volumeMounts:
+      - name: config-volume
+        mountPath: /etc/config
+  volumes:
+    - name: config-volume
+      configMap:
+        # Provide the name of the ConfigMap containing the files you want
+        # to add to the container
+        name: cmfilebased2
+  restartPolicy: Never
+
+- VERIFY
+c4b301b857f3:volume-mount-file dbgsm0$ ./kubectl exec -ti test-pod2 -n default "/bin/sh"
+
+/ # cd /etc/config
+
+/etc/config # ls -l
+total 0
+lrwxrwxrwx    1 root     root            16 Jul 16 11:00 file1.txt -> ..data/file1.txt
+lrwxrwxrwx    1 root     root            17 Jul 16 11:00 file2.json -> ..data/file2.json
+lrwxrwxrwx    1 root     root            17 Jul 16 11:00 file3.json -> ..data/file3.json
+
+/etc/config # cat file2.json
+[{"targets": ["esx01.company.com", "esx02.company.com", "esx03.company.com"]}]
+
+/etc/config # cat file2.json
+[{"targets": ["esx01.company.com", "esx02.company.com", "esx03.company.com"]}]
+
+/etc/config # cat file3.json
+{"targets": ["esx04.company.com", "esx05.company.com", "esx06.company.com"]}
+
+/etc/config # exit
 
