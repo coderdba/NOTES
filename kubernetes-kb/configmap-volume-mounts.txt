@@ -40,9 +40,84 @@ Note that this path is derived from the volume’s mountPath and the path keyed 
 Caution: You must create a ConfigMap before you can use it.
 Note: A Container using a ConfigMap as a subPath volume mount will not receive ConfigMap updates.
 
-=====
+=============================================================
+CONFIGMAP WITH FILES DEFINED - TO BE MOUNTED ONTO PODS
+=============================================================
 https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/#add-configmap-data-to-a-volume
-=====
-TBD - make notes from the above URL
+(Based on the above URL)
+
+This method will enable us to create files inside pods in specific directories 
+- with file names and contents defined in the configmap
+These files in turn can be referenced by other pods by name like /etc/config/file1.txt (like in Prometheus file_sd_configs)
+
+- FLOW
+- Configmap defines filenames and their contents (does not really create the files)
+Pod
+- Defines volume mounts - with volume names and mount points like /etc/config directory
+- then volume mounts will be mapped to configmap (which in turh contains filenames and contents)
+- thereby the files with names and content as defined in the configmap get mounted into the volumes/folders in the pod
+
+- THE CONFIGMAP
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cmfilebased1
+  namespace: default
+data:
+  file1.txt: "this is file1"
+  file2.json: '{"targets": ["esx01.company.com", "1esx02.company.com", "esx03.company.com"]}'
+
+- THE POD
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pod
+spec:
+  containers:
+    - name: test-container
+      image: k8s.gcr.io/busybox
+      # original command line
+      #command: [ "/bin/sh", "-c", "ls /etc/config/" ]
+      # alternative command to make it sleep and be alive
+      #command: [ "/bin/bash", "-c", "--" ]
+      #args: [ "while true; do sleep 30; done;" ]
+      command: ["/bin/sh", "-ec", "sleep 1000"]
+      volumeMounts:
+      - name: config-volume
+        mountPath: /etc/config
+  volumes:
+    - name: config-volume
+      configMap:
+        # Provide the name of the ConfigMap containing the files you want
+        # to add to the container
+        name: cmfilebased1
+  restartPolicy: Never
+  
+- CREATE 
+NOTE1: first create configmap and then the pod
+NOTE2: any content already in the pod's volumes will be overwritten (in the case the docker image had something there)
+
+kubectl apply -f ./configmap.yml
+kubectl apply -f ./pod.yml
+
+- VERIFY
+kubectl exec -ti test-pod -n default "/bin/sh"
+
+/ # (now, you are inside the container of the pod)
+/ # cd /etc/config
+
+/etc/config # ls -l
+total 0
+lrwxrwxrwx    1 root     root            16 Jul 16 10:48 file1.txt -> ..data/file1.txt
+lrwxrwxrwx    1 root     root            17 Jul 16 10:48 file2.json -> ..data/file2.json
+
+/etc/config # cat file1.txt
+this is file1/etc/config 
+
+# cat file2.json
+{"targets": ["esx01.company.com", "1esx02.company.com", "esx03.company.com"]}
+
+/etc/config # 
+/etc/config # exit
 
 
