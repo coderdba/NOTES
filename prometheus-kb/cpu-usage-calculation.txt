@@ -1,1 +1,51 @@
 https://utcc.utoronto.ca/~cks/space/blog/sysadmin/PrometheusCPUStats
+
+NOTE:
+Boils down to: (however, need to understand it better)
+(sum(irate(node_cpu_seconds_total {mode ="idle"} [5m])) without (cpu)) / count(node_cpu_seconds_total) without (cpu)
+
+NOTE: See comments also
+
+Getting a CPU utilization breakdown in Prometheus's query language, PromQL
+October 13, 2018
+A certain amount of Prometheus's query language is reasonably obvious, but once you start getting into the details and the clever tricks you wind up needing to wrap your mind around how PromQL wants you to think about its world. Today I want to tackle one apparently obvious thing, which is getting a graph (or numbers) of CPU utilization.
+
+Prometheus's host agent (its 'node exporter') gives us per-CPU, per mode usage stats as a running counter of seconds in that mode (which is basically what the Linux kernel gives us). A given data point of this looks like:
+
+node_cpu_seconds_total{cpu="1", instance="comps1:9100", job="node", mode="user"} 3632.28
+Suppose that we want to know how our machine's entire CPU state breaks down over a time period. Our starting point is the rate over non-idle CPU modes:
+
+irate(node_cpu_seconds_total {mode!="idle"} [1m])
+(I'm adding some spaces here to make things wrap better here on Wandering Thoughts; in practice, it's conventional to leave them all out.)
+
+Unfortunately this gives us the rate of individual CPUs (expressed as time in that mode per second, because rate() gives us a per second rate). No problem, let's sum that over everything but the CPUs:
+
+sum(irate(node_cpu_seconds_total {mode!="idle"} [1m])) without (cpu)
+If you do this on a busy system with multiple CPUs, you will soon observe that the numbers add up to more than 1 second. This is because we're summing over multiple CPUs; if each of them is in user mode for all of the time, the summed rate of user mode is however many CPUs we have. In order to turn this into a percentage, we need to divide by how many CPUs the machine has. We could hardcode this, but we may have different numbers of CPUs on different machines. So how do we count how many CPUs we have in a machine?
+
+As a stand-alone expression, counting CPUs is (sort of):
+
+count(node_cpu_seconds_total) without (cpu)
+Let's break this down, since I breezed over 'without (cpu)' before. This takes our per-CPU, per-host node_cpu_seconds_total Prometheus metric, and counts up how many things there are in each distinct set of labels when you ignore the cpu label. This doesn't give us a CPU count number; instead it gives us a CPU count per CPU mode:
+
+{instance="comps1:9100", job="node", mode="user"} 32
+Fortunately this is what we want in the full expression:
+
+(sum(irate(node_cpu_seconds_total {mode!="idle"} [1m])) without (cpu)) / count(node_cpu_seconds_total) without (cpu)
+Our right side is a vector, and when you divide by vectors in PromQL, you divide by matching elements (ie, the same set of labels). On the left we have labels and values like this:
+
+{instance="comps1:9100", job="node", mode="user"} 2.9826666666675776
+And on the right we have a matching set of labels, as we saw, that gives us the number '32'. So it all works out.
+
+In general, when you're doing this sort of cross-metric operation you need to make it so that the labels come out the same on each side. If you try too hard to turn your CPU count into a pure number, well, it can work if you get the magic right but you probably want to go at it the PromQL way and match the labels the way we have.
+
+(I'm writing this down today because while it all seems obvious and clear to me now, that's because I've spent much of the last week immersed in Prometheus and Grafana. Once we get our entire system set up, it's quite likely that I'll not deal with Prometheus for months at a time and thus will have forgotten all of this 'obvious' stuff by the next time I have to touch something here.)
+
+PS: The choice of irate() versus rate() is a complicated subject that requires an entry of its own. The short version is that if you are looking at statistics over a short time range with a small query step, you probably want to use irate() with a range selector that is normally a couple of times your basic sampling interval.
+
+Comments on this page:
+By Alex at 2019-03-01 05:36:38:
+I think, AVG looks better then SUM/COUNT in this case
+
+By cks at 2019-03-11 13:24:28:
+Belatedly: you're right, AVG works just as well here and avoids the performance issues I wrote about in a followup entry. Now that I've seen your comment it seems silly to have missed it in the first place, since the sum divided by the count is exactly the definition of the average.
