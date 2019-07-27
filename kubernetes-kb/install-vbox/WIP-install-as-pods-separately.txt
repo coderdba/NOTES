@@ -525,7 +525,31 @@ INSTALL KUBERNETES COMPONENTS
 Basic - https://medium.com/containerum/4-ways-to-bootstrap-a-kubernetes-cluster-de0d5150a1e4
 More settings - https://blog.inkubate.io/deploy-kubernetes-1-9-from-scratch-on-vmware-vsphere/
 
+kubelet service file /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf:
+[Service]
+Environment="KUBELET_SYSTEM_PODS_ARGS=--pod-manifest-path=/etc/kubernetes/manifests  --pod-infra-container-image=k8s.gcr.io/pause-amd64:3.1"
+ExecStart=
+ExecStart=/usr/bin/kubelet $KUBELET_SYSTEM_PODS_ARGS
+
+# ORIGINAL CODE
+#[Service]
+#Environment="KUBELET_KUBECONFIG_ARGS=--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf"
+#Environment="KUBELET_CONFIG_ARGS=--config=/var/lib/kubelet/config.yaml"
+## This is a file that "kubeadm init" and "kubeadm join" generates at runtime, populating the KUBELET_KUBEADM_ARGS variable dynamically
+#EnvironmentFile=-/var/lib/kubelet/kubeadm-flags.env
+## This is a file that the user can use for overrides of the kubelet args as a last resort. Preferably, the user should use
+## the .NodeRegistration.KubeletExtraArgs object in the configuration files instead. KUBELET_EXTRA_ARGS should be sourced from this file.
+#EnvironmentFile=-/etc/sysconfig/kubelet
+#ExecStart=
+#ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS
+
+# REFERENCE
+Environment="KUBELET_SYSTEM_PODS_ARGS=--pod-manifest-path=/etc/kubernetes/manifests --allow-privileged=true --pod-infra-container-image=app/unimatrix-platform/pause-amd64:3.1 --feature-gates=PodPriority=true --serialize-image-pulls=false --image-pull-progress-deadline=30m0s --max-pods=150 --kube-reserved=cpu=2,memory=1Gi --system-reserved=cpu=1,memory=2Gi --eviction-hard=memory.available<512Mi"
+
+
 /etc/kubernetes/manifests/kube-apiserver.yaml:
+NOTE: Change the advertise-address for each node
+
 apiVersion: v1
 kind: Pod
 metadata:
@@ -541,15 +565,17 @@ spec:
   containers:
   - command:
     - kube-apiserver
+    - --advertise-address=192.168.40.101
     - --insecure-bind-address=127.0.0.1
-    - --etcd-servers=https://192.168.40.101:2379,https://192.168.40.102:2379,https://192.168.40.101:2379 \
+    - --bind-address=0.0.0.0
+    - --etcd-servers=https://192.168.40.101:2379,https://192.168.40.102:2379,https://192.168.40.101:2379 
+    - --cluster-cidr=10.20.0.0/16
     - --service-cluster-ip-range=10.96.0.0/12
     - --admission-control=NamespaceLifecycle,LimitRanger,SecurityContextDeny,ServiceAccount,ResourceQuota
     image: gcr.io/google_containers/kube-apiserver-amd64:v1.15.0
     name: kube-apiserver
 
-
-kube-controller-manager.yaml
+/etc/kubernetes/manifests/kube-controller-manager.yaml:
 apiVersion: v1
 kind: Pod
 metadata:
@@ -564,11 +590,136 @@ spec:
   containers:
   - command:
     - kube-controller-manager
+    - --cluster-name=kubernetes
     - --master=http://127.0.0.1:8080
+    - --leader-elect=true
+    - --cluster-cidr=10.20.0.0/16
+    - --service-cluster-ip-range=10.96.0.0/12
     image: gcr.io/google_containers/kube-controller-manager-amd64:v1.15.0
     name: kube-controller-manager
   hostNetwork: true
+
+/etc/kubernetes/manifests/kube-scheduler.yaml:
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    scheduler.alpha.kubernetes.io/critical-pod: ""
+  labels:
+    component: kube-scheduler
+    tier: control-plane
+  name: kube-scheduler
+  namespace: kube-system
+spec:
+  containers:
+  - command:
+    - kube-scheduler
+    - --master=http://127.0.0.1:8080
+    - --leader-elect=true
+    image: gcr.io/google_containers/kube-scheduler-amd64:v1.15.0
+    name: kube-scheduler
+  hostNetwork: true
+
+/etc/kubernetes/kubelet-config.yaml:
+apiVersion: v1
+clusters:
+- cluster:
+    server: http://127.0.0.1:8080
+  name: kubernetes
+contexts:
+- context:
+    cluster: kubernetes
+    user: kubelet
+  name: kubelet@kubernetes
+current-context: kubelet@kubernetes
+kind: Config
+preferences: {}
+users:
+- name: kubelet@kubernetes
   
+-------
+ERROR while starting kubelet
+-------
+
+All pods except apiserver came up.
+
+Jul 27 12:44:20 k1 systemd[1]: kubelet.service: main process exited, code=exited, status=255/n/a
+Jul 27 12:44:20 k1 systemd[1]: Unit kubelet.service entered failed state.
+Jul 27 12:44:20 k1 systemd[1]: kubelet.service failed.
+Jul 27 12:44:30 k1 systemd[1]: kubelet.service holdoff time over, scheduling restart.
+Jul 27 12:44:30 k1 systemd[1]: Started kubelet: The Kubernetes Node Agent.
+Jul 27 12:44:30 k1 systemd[1]: Starting kubelet: The Kubernetes Node Agent...
+Jul 27 12:44:30 k1 kubelet[22514]: Flag --pod-manifest-path has been deprecated, This parameter should be set via the config file specified by the Kubelet's --config flag. See https://kubernetes.io/docs/tasks/administer-cluster/kubelet-config-file/ for more information.
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.732449   22514 server.go:425] Version: v1.15.0
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.732587   22514 plugins.go:103] No cloud provider specified.
+Jul 27 12:44:30 k1 kubelet[22514]: W0727 12:44:30.732600   22514 server.go:564] standalone mode, no API client
+Jul 27 12:44:30 k1 kubelet[22514]: W0727 12:44:30.812272   22514 server.go:482] No api server defined - no events will be sent to API server.
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.812291   22514 server.go:661] --cgroups-per-qos enabled, but --cgroup-root was not specified.  defaulting to /
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.812550   22514 container_manager_linux.go:261] container manager verified user specified cgroup-root exists: []
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.812562   22514 container_manager_linux.go:266] Creating Container Manager object based on Node Config: {RuntimeCgroupsName: SystemCgroupsName: KubeletCgroupsName: ContainerRuntime:docker CgroupsPerQOS:true CgroupRoot:/ CgroupDriver:cgroupfs KubeletRootDir:/var/lib/kubelet ProtectKernelDefaults:false NodeAllocatableConfig:{KubeReservedCgroupName: SystemReservedCgroupName: EnforceNodeAllocatable:map[pods:{}] KubeReserved:map[] SystemReserved:map[] HardEvictionThresholds:[{Signal:memory.available Operator:LessThan Value:{Quantity:100Mi Percentage:0} GracePeriod:0s MinReclaim:<nil>} {Signal:nodefs.available Operator:LessThan Value:{Quantity:<nil> Percentage:0.1} GracePeriod:0s MinReclaim:<nil>} {Signal:nodefs.inodesFree Operator:LessThan Value:{Quantity:<nil> Percentage:0.05} GracePeriod:0s MinReclaim:<nil>} {Signal:imagefs.available Operator:LessThan Value:{Quantity:<nil> Percentage:0.15} GracePeriod:0s MinReclaim:<nil>}]} QOSReserved:map[] ExperimentalCPUManagerPolicy:none ExperimentalCPUManagerReconcilePeriod:10s ExperimentalPodPidsLimit:-1 EnforceCPULimits:true CPUCFSQuotaPeriod:100ms}
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.812638   22514 container_manager_linux.go:286] Creating device plugin manager: true
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.812657   22514 state_mem.go:36] [cpumanager] initializing new in-memory state store
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.812849   22514 state_mem.go:84] [cpumanager] updated default cpuset: ""
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.812862   22514 state_mem.go:92] [cpumanager] updated cpuset assignments: "map[]"
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.812944   22514 kubelet.go:281] Adding pod path: /etc/kubernetes/manifests
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.859446   22514 client.go:75] Connecting to docker on unix:///var/run/docker.sock
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.859469   22514 client.go:104] Start docker client with request timeout=2m0s
+Jul 27 12:44:30 k1 kubelet[22514]: W0727 12:44:30.862049   22514 docker_service.go:561] Hairpin mode set to "promiscuous-bridge" but kubenet is not enabled, falling back to "hairpin-veth"
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.862068   22514 docker_service.go:238] Hairpin mode set to "hairpin-veth"
+Jul 27 12:44:30 k1 kubelet[22514]: W0727 12:44:30.862148   22514 cni.go:213] Unable to update cni config: No networks found in /etc/cni/net.d
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.869974   22514 docker_service.go:253] Docker cri networking managed by kubernetes.io/no-op
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.905068   22514 docker_service.go:258] Docker Info: &{ID:4OJF:7RMI:ZVR3:BAYU:RCIF:PR53:6HRM:MJOI:BJWU:LJGV:7LIZ:ZINC Containers:6 ContainersRunning:6 ContainersPaused:0 ContainersStopped:0 Images:14 Driver:overlay2 DriverStatus:[[Backing Filesystem xfs] [Supports d_type true] [Native Overlay Diff false]] SystemStatus:[] Plugins:{Volume:[local] Network:[bridge host macvlan null overlay] Authorization:[] Log:[awslogs fluentd gcplogs gelf journald json-file local logentries splunk syslog]} MemoryLimit:true SwapLimit:true KernelMemory:true KernelMemoryTCP:false CPUCfsPeriod:true CPUCfsQuota:true CPUShares:true CPUSet:true PidsLimit:false IPv4Forwarding:true BridgeNfIptables:true BridgeNfIP6tables:true Debug:false NFd:56 OomKillDisable:true NGoroutines:72 SystemTime:2019-07-27T12:44:30.870918504+05:30 LoggingDriver:json-file CgroupDriver:cgroupfs NEventsListener:0 KernelVersion:4.1.12-112.16.4.el7uek.x86_64 OperatingSystem:Oracle Linux Server 7.5 OSType:linux Architecture:x86_64 IndexServerAddress:https://index.docker.io/v1/ RegistryConfig:0xc000421960 NCPU:1 MemTotal:2095595520 GenericResources:[] DockerRootDir:/var/lib/docker HTTPProxy: HTTPSProxy: NoProxy: Name:k1 Labels:[] ExperimentalBuild:false ServerVersion:18.09.5 ClusterStore: ClusterAdvertise: Runtimes:map[runc:{Path:runc Args:[]}] DefaultRuntime:runc Swarm:{NodeID: NodeAddr: LocalNodeState:inactive ControlAvailable:false Error: RemoteManagers:[] Nodes:0 Managers:0 Cluster:<nil> Warnings:[]} LiveRestoreEnabled:false Isolation: InitBinary:docker-init ContainerdCommit:{ID:bb71b10fd8f58240ca47fbb579b9d1028eea7c84 Expected:bb71b10fd8f58240ca47fbb579b9d1028eea7c84} RuncCommit:{ID:2b18fe1d885ee5083ef9f0838fee39b62d653e30 Expected:2b18fe1d885ee5083ef9f0838fee39b62d653e30} InitCommit:{ID:fec3683 Expected:fec3683} SecurityOptions:[name=seccomp,profile=default] ProductLicense:Community Engine Warnings:[]}
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.905134   22514 docker_service.go:271] Setting cgroupDriver to cgroupfs
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.942072   22514 remote_runtime.go:59] parsed scheme: ""
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.942088   22514 remote_runtime.go:59] scheme "" not registered, fallback to default scheme
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.942113   22514 remote_image.go:50] parsed scheme: ""
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.942118   22514 remote_image.go:50] scheme "" not registered, fallback to default scheme
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.944218   22514 asm_amd64.s:1337] ccResolverWrapper: sending new addresses to cc: [{/var/run/dockershim.sock 0  <nil>}]
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.944239   22514 clientconn.go:796] ClientConn switching balancer to "pick_first"
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.944278   22514 balancer_conn_wrappers.go:131] pickfirstBalancer: HandleSubConnStateChange: 0xc000542490, CONNECTING
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.944391   22514 balancer_conn_wrappers.go:131] pickfirstBalancer: HandleSubConnStateChange: 0xc000542490, READY
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.944405   22514 asm_amd64.s:1337] ccResolverWrapper: sending new addresses to cc: [{/var/run/dockershim.sock 0  <nil>}]
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.944411   22514 clientconn.go:796] ClientConn switching balancer to "pick_first"
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.944426   22514 balancer_conn_wrappers.go:131] pickfirstBalancer: HandleSubConnStateChange: 0xc000542940, CONNECTING
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.944477   22514 balancer_conn_wrappers.go:131] pickfirstBalancer: HandleSubConnStateChange: 0xc000542940, READY
+Jul 27 12:44:51 k1 kubelet[22514]: E0727 12:44:51.260009   22514 aws_credentials.go:77] while getting AWS credentials NoCredentialProviders: no valid providers in chain. Deprecated.
+Jul 27 12:44:51 k1 kubelet[22514]: For verbose messaging see aws.Config.CredentialsChainVerboseErrors
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.262337   22514 kuberuntime_manager.go:205] Container runtime docker initialized, version: 18.09.5, apiVersion: 1.39.0
+Jul 27 12:44:51 k1 kubelet[22514]: W0727 12:44:51.262415   22514 volume_host.go:78] kubeClient is nil. Skip initialization of CSIDriverLister
+Jul 27 12:44:51 k1 kubelet[22514]: W0727 12:44:51.262558   22514 csi_plugin.go:215] kubernetes.io/csi: kubeclient not set, assuming standalone kubelet
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.264259   22514 server.go:1083] Started kubelet
+Jul 27 12:44:51 k1 kubelet[22514]: E0727 12:44:51.264375   22514 kubelet.go:1293] Image garbage collection failed once. Stats initialization may not have completed yet: failed to get imageFs info: unable to find data in memory cache
+Jul 27 12:44:51 k1 kubelet[22514]: W0727 12:44:51.264404   22514 kubelet.go:1395] No api server defined - no node status update will be sent.
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.265019   22514 fs_resource_analyzer.go:64] Starting FS ResourceAnalyzer
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.265038   22514 status_manager.go:148] Kubernetes client is nil, not starting status manager.
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.265045   22514 kubelet.go:1805] Starting kubelet main sync loop.
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.265059   22514 kubelet.go:1822] skipping pod synchronization - [container runtime status check may not have completed yet, PLEG is not healthy: pleg has yet to be successful]
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.265126   22514 server.go:144] Starting to listen on 0.0.0.0:10250
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.265826   22514 server.go:350] Adding debug handlers to kubelet server.
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.274008   22514 volume_manager.go:243] Starting Kubelet Volume Manager
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.278039   22514 desired_state_of_world_populator.go:130] Desired state populator starts to run
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.318270   22514 clientconn.go:440] parsed scheme: "unix"
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.318284   22514 clientconn.go:440] scheme "unix" not registered, fallback to default scheme
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.318308   22514 asm_amd64.s:1337] ccResolverWrapper: sending new addresses to cc: [{unix:///run/containerd/containerd.sock 0  <nil>}]
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.318317   22514 clientconn.go:796] ClientConn switching balancer to "pick_first"
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.318343   22514 balancer_conn_wrappers.go:131] pickfirstBalancer: HandleSubConnStateChange: 0xc0002b84f0, CONNECTING
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.318419   22514 balancer_conn_wrappers.go:131] pickfirstBalancer: HandleSubConnStateChange: 0xc0002b84f0, READY
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.369041   22514 kubelet.go:1822] skipping pod synchronization - container runtime status check may not have completed yet
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.451455   22514 kubelet_node_status.go:286] Setting node annotation to enable volume controller attach/detach
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.453781   22514 cpu_manager.go:155] [cpumanager] starting with none policy
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.453791   22514 cpu_manager.go:156] [cpumanager] reconciling every 10s
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.453803   22514 policy_none.go:42] [cpumanager] none policy: Start
+Jul 27 12:44:51 k1 kubelet[22514]: F0727 12:44:51.454428   22514 kubelet.go:1370] Failed to start ContainerManager failed to initialize top level QOS containers: failed to update top level Burstable QOS cgroup : failed to set supported cgroup subsystems for cgroup [kubepods burstable]: Failed to find subsystem mount for required subsystem: pids
+Jul 27 12:44:51 k1 systemd[1]: kubelet.service: main process exited, code=exited, status=255/n/a
+Jul 27 12:44:51 k1 systemd[1]: Unit kubelet.service entered failed state.
+Jul 27 12:44:51 k1 systemd[1]: kubelet.service failed.
+^C
+[root@k1 kubelet.service.d]# 
+[root@k1 kubelet.service.d]# 
+[root@k1 kubelet.service.d]# systemctl stop kubelet
+system[root@k1 kubelet.service.d]# systemctl disable kubelet
+Removed symlink /etc/systemd/system/multi-user.target.wants/kubelet.service.
+
 
 
 ---------------
