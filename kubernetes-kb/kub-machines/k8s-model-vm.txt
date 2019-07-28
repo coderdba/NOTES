@@ -1,0 +1,48 @@
+==========================
+K8S MODEL VM
+==========================
+
+==========================
+SETUP
+==========================
+
+---------------------------------
+DISABLE SELINUX
+---------------------------------
+# setenforce 0
+
+Edit the file /etc/sysconfig/selinux and set enforcing as disabled
+
+---------------------------------
+DISABLE SWAP
+---------------------------------
+# swapoff -a
+
+Edit /etc/fstab and comment out line of swap
+#/dev/mapper/ol-swap     swap                    swap    defaults        0 0
+
+---------------------------------
+ENABLE br_netfilter
+---------------------------------
+# modprobe br_netfilter
+# echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables
+
+Also, put it in /etc/sysctl.conf as follows:
+net.bridge.bridge-nf-call-iptables = 1
+
+And, make it persistent:
+# sysctl -p
+
+---------------------------------
+SET rp_filter
+---------------------------------
+Calico-node keeps crashing:
+https://github.com/projectcalico/calico/issues/1806 --> mine
+https://success.docker.com/article/fix-ucp-calico-for-rp-filter
+    --> This seemed to work
+    On host: in /etc/sysctl.conf set the rp_filter to 1 instead of 2
+    and then do "sysctl -p"
+
+==========================
+SOFTWARE INSTALL
+==========================
