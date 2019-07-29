@@ -29,7 +29,7 @@ TOKEN=my-etcd-token
 CLUSTER_STATE=new
 CLUSTER="ks1=http://192.168.60.101:2380"
 DATA_DIR=/var/lib/etcd
-THIS_NAME=k1
+THIS_NAME=ks1
 THIS_IP=192.168.60.101
 
 ----
@@ -82,7 +82,18 @@ systemctl start etcd
 -- Verify
 # ps -ef| grep etcd
 --> THE DOCKER COMMAND, INVOKED BY THE SERVICE
-root       687     1  0 Jul09 ?        00:00:03 /usr/bin/docker run --rm --net=host -p 2379:2379 -p 2380:2380 --volume=/var/lib/etcd:/etcd-data --name etcd quay.io/coreos/etcd:v3.3 /usr/local/bin/etcd --data-dir=/etcd-data --name k1 --initial-advertise-peer-urls http://192.168.40.101:2380 --listen-peer-urls http://0.0.0.0:2380 --advertise-client-urls http://192.168.40.101:2379 --listen-client-urls http://0.0.0.0:2379 --initial-cluster k1=http://192.168.40.101:2380,k2=http://192.168.40.102:2380,k3=http://192.168.40.103:2380 --initial-cluster-state new --initial-cluster-token my-etcd-token
+root      7702     1  0 18:33 ?        00:00:00 /usr/bin/docker run --rm --net=host -p 2379:2379 -p 2380:2380 --volume=/var/lib/etcd:/etcd-data --name etcd quay.io/coreos/etcd:v3.2.24 /usr/local/bin/etcd --data-dir=/etcd-data --name ks1 --initial-advertise-peer-urls http://192.168.60.101:2380 --listen-peer-urls http://0.0.0.0:2380 --advertise-client-urls http://192.168.60.101:2379 --listen-client-urls http://0.0.0.0:2379 --initial-cluster ks1=http://192.168.60.101:2380 --initial-cluster-state new --initial-cluster-token my-etcd-token
 
 --> THE ETCD EXECUTABLE INSIDE CONTAINER
-root      1933  1918  1 Jul09 ?        00:26:19 /usr/local/bin/etcd --data-dir=/etcd-data --name k1 --initial-advertise-peer-urls http://192.168.40.101:2380 --listen-peer-urls http://0.0.0.0:2380 --advertise-client-urls http://192.168.40.101:2379 --listen-client-urls http://0.0.0.0:2379 --initial-cluster k1=http://192.168.40.101:2380,k2=http://192.168.40.102:2380,k3=http://192.168.40.103:2380 --initial-cluster-state new --initial-cluster-token my-etcd-token
+root      7723  7708  0 18:33 ?        00:00:00 /usr/local/bin/etcd --data-dir=/etcd-data --name ks1 --initial-advertise-peer-urls http://192.168.60.101:2380 --listen-peer-urls http://0.0.0.0:2380 --advertise-client-urls http://192.168.60.101:2379 --listen-client-urls http://0.0.0.0:2379 --initial-cluster ks1=http://192.168.60.101:2380 --initial-cluster-state new --initial-cluster-token my-etcd-token
+
+-- Verify cluster members
+# docker exec -ti etcd /bin/sh
+/ # (now, this is etcd container's shell)
+
+/ # etcdctl member list
+438ee572a442fb6c: name=ks1 peerURLs=http://192.168.60.101:2380 clientURLs=http://192.168.60.101:2379 isLeader=true
+
+
+
+
