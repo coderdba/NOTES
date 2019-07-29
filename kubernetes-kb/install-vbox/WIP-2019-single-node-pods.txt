@@ -189,6 +189,32 @@ spec:
     name: kube-scheduler
   hostNetwork: true
 
+/etc/systemd/system/kubelet.service:
+https://github.com/kubernetes-retired/contrib/blob/master/init/systemd/kubelet.service
+(reference from https://medium.com/containerum/4-ways-to-bootstrap-a-kubernetes-cluster-de0d5150a1e4)
 
+[Unit]
+Description=Kubernetes Kubelet Server
+Documentation=https://kubernetes.io/docs/concepts/overview/components/#kubelet https://kubernetes.io/docs/reference/generated/kubelet/
+After=docker.service
+Requires=docker.service
 
+[Service]
+WorkingDirectory=/var/lib/kubelet
+EnvironmentFile=-/etc/kubernetes/config
+EnvironmentFile=-/etc/kubernetes/kubelet
+ExecStart=/usr/bin/kubelet \
+	    $KUBE_LOGTOSTDERR \
+	    $KUBE_LOG_LEVEL \
+	    $KUBELET_KUBECONFIG \
+	    $KUBELET_ADDRESS \
+	    $KUBELET_PORT \
+	    $KUBELET_HOSTNAME \
+	    $KUBE_ALLOW_PRIV \
+	    $KUBELET_ARGS
+Restart=on-failure
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target
 
