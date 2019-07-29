@@ -95,5 +95,100 @@ root      7723  7708  0 18:33 ?        00:00:00 /usr/local/bin/etcd --data-dir=/
 438ee572a442fb6c: name=ks1 peerURLs=http://192.168.60.101:2380 clientURLs=http://192.168.60.101:2379 isLeader=true
 
 
+=================================
+CREATE CONFIG AND MANIFEST FILES
+=================================
+
+/etc/kubernetes/kubelet-config.yaml:
+(taken from https://medium.com/containerum/4-ways-to-bootstrap-a-kubernetes-cluster-de0d5150a1e4)
+
+apiVersion: v1
+clusters:
+- cluster:
+    server: http://127.0.0.1:8080
+  name: kubernetes-systemd
+contexts:
+- context:
+    cluster: kubernetes-systemd
+    user: system:node:ks1
+  name: system:node:ks1@kubernetes
+current-context: system:node:ks1@kubernetes
+kind: Config
+preferences: {}
+users:
+- name: system:node:ks1
+
+/etc/kubernetes/manifests/kube-apiserver.yaml:
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    scheduler.alpha.kubernetes.io/critical-pod: ""
+  labels:
+    component: kube-apiserver
+    tier: control-plane
+  name: kube-apiserver
+  namespace: kube-system
+spec:
+  hostNetwork: true
+  containers:
+  - command:
+    - kube-apiserver
+    - --advertise-address=192.168.60.101
+    - --insecure-bind-address=127.0.0.1
+    - --bind-address=0.0.0.0
+    - --etcd-servers=https://192.168.60.101:2379
+    - --cluster-cidr=10.20.0.0/16
+    - --service-cluster-ip-range=10.96.0.0/12
+    - --admission-control=NamespaceLifecycle,LimitRanger,SecurityContextDeny,ServiceAccount,ResourceQuota
+    image: gcr.io/google_containers/kube-apiserver-amd64:v1.12.8
+    name: kube-apiserver
+
+/etc/kubernetes/manifests/kube-controller-manager.yaml:
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    scheduler.alpha.kubernetes.io/critical-pod: ""
+  labels:
+    component: kube-controller-manager
+    tier: control-plane
+  name: kube-controller-manager
+  namespace: kube-system
+spec:
+  containers:
+  - command:
+    - kube-controller-manager
+    - --cluster-name=kubernetes
+    - --master=http://127.0.0.1:8080
+    - --leader-elect=true
+    - --cluster-cidr=10.20.0.0/16
+    - --service-cluster-ip-range=10.96.0.0/12
+    image: gcr.io/google_containers/kube-controller-manager-amd64:v1.12.8
+    name: kube-controller-manager
+  hostNetwork: true
+
+/etc/kubernetes/manifests/kube-scheduler.yaml:
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    scheduler.alpha.kubernetes.io/critical-pod: ""
+  labels:
+    component: kube-scheduler
+    tier: control-plane
+  name: kube-scheduler
+  namespace: kube-system
+spec:
+  containers:
+  - command:
+    - kube-scheduler
+    - --master=http://127.0.0.1:8080
+    - --leader-elect=true
+    image: gcr.io/google_containers/kube-scheduler-amd64:v1.12.8
+    name: kube-scheduler
+  hostNetwork: true
+
+
 
 
