@@ -1,0 +1,88 @@
+==========================================
+SINGLE NODE CLUSTER WITH PODS
+==========================================
+
+======
+VMs
+======
+VM1
+hostname = ks1
+IP = 192.168.60.101
+
+=========
+ETCD
+=========
+
+----
+File: /etc/environment
+----
+# ETCD RELATED ENVIRONMENT
+REGISTRY=quay.io/coreos/etcd
+# available from v3.2.5
+#REGISTRY=gcr.io/etcd-development/etcd
+
+# For each machine
+#ETCD_VERSION=latest
+ETCD_VERSION=v3.2.24
+# Note: TOKEN can be any string
+TOKEN=my-etcd-token
+CLUSTER_STATE=new
+CLUSTER="ks1=http://192.168.60.101:2380"
+DATA_DIR=/var/lib/etcd
+THIS_NAME=k1
+THIS_IP=192.168.60.101
+
+----
+File: /etc/systemd/system/etcd.service:
+----
+[Unit]
+Description=etcd
+Documentation=https://github.com/coreos
+Wants=docker.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+IOSchedulingClass=2
+IOSchedulingPriority=0
+EnvironmentFile=/etc/environment
+
+# START ETCD
+ExecStart=/usr/bin/docker run --rm\
+  --net=host \
+  -p 2379:2379 \
+  -p 2380:2380 \
+  --volume=${DATA_DIR}:/etcd-data \
+  --name etcd ${REGISTRY}:${ETCD_VERSION} \
+  /usr/local/bin/etcd \
+  --data-dir=/etcd-data --name ${THIS_NAME} \
+  --initial-advertise-peer-urls http://${THIS_IP}:2380 --listen-peer-urls http://0.0.0.0:2380 \
+  --advertise-client-urls http://${THIS_IP}:2379 --listen-client-urls http://0.0.0.0:2379 \
+  --initial-cluster ${CLUSTER} \
+  --initial-cluster-state ${CLUSTER_STATE} --initial-cluster-token ${TOKEN}
+
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+
+
+- NOW, START ETCD SERVICE
+-- Reload the daemon configuration.
+systemctl daemon-reload
+
+-- Enable etcd to start at boot time.
+systemctl enable etcd
+
+-- Start etcd.
+systemctl start etcd
+
+-- Verify
+# ps -ef| grep etcd
+--> THE DOCKER COMMAND, INVOKED BY THE SERVICE
+root       687     1  0 Jul09 ?        00:00:03 /usr/bin/docker run --rm --net=host -p 2379:2379 -p 2380:2380 --volume=/var/lib/etcd:/etcd-data --name etcd quay.io/coreos/etcd:v3.3 /usr/local/bin/etcd --data-dir=/etcd-data --name k1 --initial-advertise-peer-urls http://192.168.40.101:2380 --listen-peer-urls http://0.0.0.0:2380 --advertise-client-urls http://192.168.40.101:2379 --listen-client-urls http://0.0.0.0:2379 --initial-cluster k1=http://192.168.40.101:2380,k2=http://192.168.40.102:2380,k3=http://192.168.40.103:2380 --initial-cluster-state new --initial-cluster-token my-etcd-token
+
+--> THE ETCD EXECUTABLE INSIDE CONTAINER
+root      1933  1918  1 Jul09 ?        00:26:19 /usr/local/bin/etcd --data-dir=/etcd-data --name k1 --initial-advertise-peer-urls http://192.168.40.101:2380 --listen-peer-urls http://0.0.0.0:2380 --advertise-client-urls http://192.168.40.101:2379 --listen-client-urls http://0.0.0.0:2379 --initial-cluster k1=http://192.168.40.101:2380,k2=http://192.168.40.102:2380,k3=http://192.168.40.103:2380 --initial-cluster-state new --initial-cluster-token my-etcd-token
