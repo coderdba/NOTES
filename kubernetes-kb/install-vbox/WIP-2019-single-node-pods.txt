@@ -113,12 +113,29 @@ contexts:
 - context:
     cluster: kubernetes-systemd
     user: system:node:ks1
-  name: system:node:ks1@kubernetes
-current-context: system:node:ks1@kubernetes
+  name: system:node:ks1@kubernetes-systemd
+current-context: system:node:ks1@kubernetes-systemd
 kind: Config
 preferences: {}
 users:
 - name: system:node:ks1
+
+--- REFERENCE
+apiVersion: v1
+clusters:
+- cluster:
+    server: http://127.0.0.1:8080
+  name: kubernetes-systemd
+contexts:
+- context:
+    cluster: kubernetes-systemd
+    user: system:node:<HOSTNAME>
+  name: system:node:<HOSTNAME>@kubernetes-systemd
+current-context: system:node:<HOSTNAME>@kubernetes-systemd
+kind: Config
+preferences: {}
+users:
+- name: system:node:<HOSTNAME>
 
 ------------------------------------------------------------------------------------
 /etc/kubernetes/manifests/kube-apiserver.yaml:
@@ -147,6 +164,29 @@ spec:
     image: gcr.io/google_containers/kube-apiserver-amd64:v1.12.8
     name: kube-apiserver
 
+--- REFERENCE
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    scheduler.alpha.kubernetes.io/critical-pod: ""
+  labels:
+    component: kube-apiserver
+    tier: control-plane
+  name: kube-apiserver
+  namespace: kube-system
+spec:
+  hostNetwork: true
+  containers:
+  - command:
+    - kube-apiserver
+    - --insecure-bind-address=127.0.0.1
+    - --etcd-servers=http://127.0.0.1:2379
+    - --service-cluster-ip-range=10.96.0.0/12
+    - --admission-control=NamespaceLifecycle,LimitRanger,SecurityContextDeny,ServiceAccount,ResourceQuota
+    image: gcr.io/google_containers/kube-apiserver-amd64:v1.9.6
+    name: kube-apiserver
+    
 ------------------------------------------------------------------------------------
 /etc/kubernetes/manifests/kube-controller-manager.yaml:
 ------------------------------------------------------------------------------------
@@ -173,6 +213,26 @@ spec:
     name: kube-controller-manager
   hostNetwork: true
 
+--- REFERENCE 
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    scheduler.alpha.kubernetes.io/critical-pod: ""
+  labels:
+    component: kube-controller-manager
+    tier: control-plane
+  name: kube-controller-manager
+  namespace: kube-system
+spec:
+  containers:
+  - command:
+    - kube-controller-manager
+    - --master=http://127.0.0.1:8080
+    image: gcr.io/google_containers/kube-controller-manager-amd64:v1.9.6
+    name: kube-controller-manager
+  hostNetwork: true
+  
 ------------------------------------------------------------------------------------
 /etc/kubernetes/manifests/kube-scheduler.yaml:
 ------------------------------------------------------------------------------------
@@ -196,6 +256,25 @@ spec:
     name: kube-scheduler
   hostNetwork: true
 
+--- REFERENCE
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    scheduler.alpha.kubernetes.io/critical-pod: ""
+  labels:
+    component: kube-scheduler
+    tier: control-plane
+  name: kube-scheduler
+  namespace: kube-system
+spec:
+  containers:
+  - command:
+    - kube-scheduler
+    - --master=http://127.0.0.1:8080
+    image: gcr.io/google_containers/kube-scheduler-amd64:v1.9.6
+    name: kube-scheduler
+  hostNetwork: true
 
 ----------------
 Kubelet service
