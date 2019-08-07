@@ -200,18 +200,21 @@ spec:
 ----------------
 Kubelet service
 ----------------
+NOTE:
+Installing kubelet also will install a couple of service files:
+/usr/lib/systemd/system/kubelet.service
+--> which references indirectly this - /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf
 
 File: /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf:
 
 # Note: This dropin only works with kubeadm and kubelet v1.11+
 [Service]
-
-## COMMENTED OUT BY ME
+# -- commented
 #Environment="KUBELET_KUBECONFIG_ARGS=--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf"
-
-## COMMENTED OUT BY ME
+# -- commented
 #Environment="KUBELET_CONFIG_ARGS=--config=/var/lib/kubelet/config.yaml"
-## ADDED BY ME
+#
+# -- added
 Environment="KUBELET_CONFIG_ARGS=--kubeconfig=/etc/kubernetes/kubelet-config.yaml --pod-manifest-path=/etc/kubernetes/manifests"
 
 # This is a file that "kubeadm init" and "kubeadm join" generates at runtime, populating the KUBELET_KUBEADM_ARGS variable dynamically
@@ -220,12 +223,19 @@ EnvironmentFile=-/var/lib/kubelet/kubeadm-flags.env
 # the .NodeRegistration.KubeletExtraArgs object in the configuration files instead. KUBELET_EXTRA_ARGS should be sourced from this file.
 EnvironmentFile=-/etc/sysconfig/kubelet
 ExecStart=
-## ADDED THE MANIFEST FOLDER PATH BY ME (/etc/kubernetes/manifests)
-ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS
+ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS 
+
 
 - START KUBELET
 # systemctl enable kubelet
 # systemctl start kubelet
+
+Ideally, after it starts, we should be able to see this:
+# kubectl get pods --all-namespaces
+NAMESPACE     NAME                          READY   STATUS    RESTARTS   AGE
+kube-system   kube-apiserver-ks1            1/1     Running   0          8m33s
+kube-system   kube-controller-manager-ks1   1/1     Running   0          8m57s
+kube-system   kube-scheduler-ks1            1/1     Running   0          8m50s
 
 
 == TROUBLESHOOTING 1
@@ -272,8 +282,6 @@ Aug 07 13:17:42 ks2 kubelet[12155]: E0807 13:17:42.074896   12155 kubelet.go:163
 Aug 07 13:17:42 ks2 kubelet[12155]: E0807 13:17:42.080510   12155 kubelet.go:1637] Failed creating a mirror pod for "kube-controller-manager-ks2_kube-system(7b4edec443fb47a1d2aa7c66fa065598)": pods "kube-controller-manager-ks2" already exists
 Aug 07 13:17:42 ks2 kubelet[12155]: E0807 13:17:42.080681   12155 kubelet.go:1637] Failed creating a mirror pod for "kube-apiserver-ks2_kube-system(a73022fd2d7a2a14ebc70b55736a8d4c)": pods "kube-apiserver-ks2" already exists
 Aug 07 13:17:42 ks2 kubelet[12155]: I0807 13:17:42.211010   12155 reconciler.go:154] Reconciler: start to sync state
-
-
 
 -- NOTES --
 Installing kubelet also will install a couple of service files:
