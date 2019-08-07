@@ -9,6 +9,7 @@ MASTER
 =======
 https://medium.com/jorgeacetozi/kubernetes-master-components-etcd-api-server-controller-manager-and-scheduler-3a0179fc8186
 
+namespace - kube-system
 Verified in p:
 etcd
 kube-apiserver
@@ -23,7 +24,7 @@ kube-apiserver
 kube-controller-manager
 kube-scheduler
 kube-proxy
-calico --> required as there is no routable IPs
+calico-node --> required as there is no routable IPs
 kube-addon-manager
 
 
@@ -32,18 +33,27 @@ Master runs the following:
 - Scheduler - kube-scheduler - core component
 - Controller Manager - kube-controller-manager - core component
 - ETCD - etcd - - core component - image gcr.io/google_containers/etcd-amd64 
-
-- kube-proxy - core component - (not really required on maser)
-- coredns - core component
 - overlay (flannel or calico) - core component
 - kube-addon-manager - additional component
+- kube-proxy - core component - (if master is also schedulable)
+- coredns - core component - (if master is also schedulable)
 
 Note: ETCD can be on the master itself or on a different machine
 
 ================
 NODES (WORKERS)
 ================
+namespace - kube-system
+on p:
+none in kube-system namespace
 
+on bigone:
+kube-proxy
+calico-node --> required as there is no routable IPs
+calico-typha --> ??
+coredns - mapped to kube-dns service
+
+haproxy-ingress-np --> not a core component - this is for ingress control
 
 =================
 COMPONENT DETAILS
