@@ -212,7 +212,7 @@ File: /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf:
 ## COMMENTED OUT BY ME
 #Environment="KUBELET_CONFIG_ARGS=--config=/var/lib/kubelet/config.yaml"
 ## ADDED BY ME
-Environment="KUBELET_CONFIG_ARGS=--config=/etc/kubernetes/kubelet-config.yaml --pod-manifest-path=/etc/kubernetes/manifests"
+Environment="KUBELET_CONFIG_ARGS=--kubeconfig=/etc/kubernetes/kubelet-config.yaml --pod-manifest-path=/etc/kubernetes/manifests"
 
 # This is a file that "kubeadm init" and "kubeadm join" generates at runtime, populating the KUBELET_KUBEADM_ARGS variable dynamically
 EnvironmentFile=-/var/lib/kubelet/kubeadm-flags.env
@@ -227,6 +227,8 @@ ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELE
 # systemctl enable kubelet
 # systemctl start kubelet
 
+
+== TROUBLESHOOTING 1
 All containers started, except kube-apiserver - which exited with the following error:
 
 # docker logs d5fa03e15ed9
@@ -235,6 +237,41 @@ F0730 11:08:59.338023       1 storage_decorator.go:57] Unable to create storage 
 https://github.com/kubernetes/kubernetes/issues/72102
 https://stackoverflow.com/questions/50865788/kube-apiserver-unable-to-create-storage-backend
 http://dockone.io/question/4034
+
+- FIX
+ETCD URL was incorrectly specified in kube-apiserver.yaml as https while cert-key security was not yet in place
+Change that to http as follows:
+- --etcd-servers=http://192.168.60.101:2379
+
+== TROUBLESHOOTING 2
+Kubelet not registering node:
+...
+...
+Aug 07 13:13:43 ks2 kubelet[9938]: E0807 13:13:43.150737    9938 kubelet.go:2236] node "ks2" not found
+Aug 07 13:13:43 ks2 kubelet[9938]: E0807 13:13:43.253045    9938 kubelet.go:2236] node "ks2" not found
+Aug 07 13:13:43 ks2 kubelet[9938]: I0807 13:13:43.272527    9938 kubelet_node_status.go:73] Successfully registered node ks2
+Aug 07 13:13:43 ks2 kubelet[9938]: I0807 13:13:43.279047    9938 reconciler.go:154] Reconciler: start to sync state
+Aug 07 13:13:43 ks2 kubelet[9938]: E0807 13:13:43.351997    9938 kubelet_node_status.go:378] Error updating node status, will retry: error getting node "ks2": nodes "ks2" not found
+
+- FIX
+Restart kubelet seemed to fix it.
+
+Aug 07 13:17:41 ks2 kubelet[12155]: I0807 13:17:41.341795   12155 volume_manager.go:248] Starting Kubelet Volume Manager
+Aug 07 13:17:41 ks2 kubelet[12155]: I0807 13:17:41.344390   12155 desired_state_of_world_populator.go:130] Desired state populator starts to run
+Aug 07 13:17:41 ks2 kubelet[12155]: I0807 13:17:41.442935   12155 kubelet.go:1821] skipping pod synchronization - [container runtime is down]
+Aug 07 13:17:41 ks2 kubelet[12155]: I0807 13:17:41.442978   12155 kubelet_node_status.go:277] Setting node annotation to enable volume controller attach/detach
+Aug 07 13:17:41 ks2 kubelet[12155]: I0807 13:17:41.624051   12155 kubelet_node_status.go:70] Attempting to register node ks2
+Aug 07 13:17:41 ks2 kubelet[12155]: I0807 13:17:41.651884   12155 kubelet_node_status.go:112] Node ks2 was previously registered
+Aug 07 13:17:41 ks2 kubelet[12155]: I0807 13:17:41.651906   12155 kubelet_node_status.go:73] Successfully registered node ks2
+Aug 07 13:17:41 ks2 kubelet[12155]: I0807 13:17:41.660025   12155 kubelet.go:1821] skipping pod synchronization - [container runtime is down]
+Aug 07 13:17:41 ks2 kubelet[12155]: I0807 13:17:41.803039   12155 setters.go:518] Node became not ready: {Type:Ready Status:False LastHeartbeatTime:2019-08-07 13:17:41.803019378 +0530 IST m=+1.104673113 LastTransitionTime:2019-08-07 13:17:41.803019378 +0530 IST m=+1.104673113 Reason:KubeletNotReady Message:container runtime is down}
+Aug 07 13:17:41 ks2 kubelet[12155]: I0807 13:17:41.973846   12155 cpu_manager.go:155] [cpumanager] starting with none policy
+Aug 07 13:17:41 ks2 kubelet[12155]: I0807 13:17:41.973868   12155 cpu_manager.go:156] [cpumanager] reconciling every 10s
+Aug 07 13:17:41 ks2 kubelet[12155]: I0807 13:17:41.973875   12155 policy_none.go:42] [cpumanager] none policy: Start
+Aug 07 13:17:42 ks2 kubelet[12155]: E0807 13:17:42.074896   12155 kubelet.go:1637] Failed creating a mirror pod for "kube-scheduler-ks2_kube-system(50c22c6953e39f9c091c1e41cf6efa3b)": pods "kube-scheduler-ks2" already exists
+Aug 07 13:17:42 ks2 kubelet[12155]: E0807 13:17:42.080510   12155 kubelet.go:1637] Failed creating a mirror pod for "kube-controller-manager-ks2_kube-system(7b4edec443fb47a1d2aa7c66fa065598)": pods "kube-controller-manager-ks2" already exists
+Aug 07 13:17:42 ks2 kubelet[12155]: E0807 13:17:42.080681   12155 kubelet.go:1637] Failed creating a mirror pod for "kube-apiserver-ks2_kube-system(a73022fd2d7a2a14ebc70b55736a8d4c)": pods "kube-apiserver-ks2" already exists
+Aug 07 13:17:42 ks2 kubelet[12155]: I0807 13:17:42.211010   12155 reconciler.go:154] Reconciler: start to sync state
 
 
 
