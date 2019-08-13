@@ -306,7 +306,9 @@ EnvironmentFile=-/etc/sysconfig/kubelet
 ExecStart=
 ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS 
 
-- START KUBELET
+----------------
+START KUBELET
+----------------
 # systemctl enable kubelet
 # systemctl start kubelet
 
@@ -316,6 +318,59 @@ NAMESPACE     NAME                          READY   STATUS    RESTARTS   AGE
 kube-system   kube-apiserver-ks1            1/1     Running   0          8m33s
 kube-system   kube-controller-manager-ks1   1/1     Running   0          8m57s
 kube-system   kube-scheduler-ks1            1/1     Running   0          8m50s
+
+
+===================================
+CERTIFICATES
+===================================
+
+-----------------
+CREATE CA
+-----------------
+
+ca-config.json:
+
+{
+  "signing": {
+    "default": {
+      "expiry": "8760h"
+    },
+    "profiles": {
+      "kubernetes": {
+        "usages": ["signing", "key encipherment", "server auth", "client auth"],
+        "expiry": "8760h"
+      }
+    }
+  }
+}
+
+ca-csr.json:
+
+{
+  "CN": "Kubernetes",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "IN",
+      "L": "INDIA",
+      "O": "Kubernetes",
+      "OU": "Kubernetes"
+    }
+  ]
+}
+
+Run command: (gen.sh)
+
+cfssl gencert -initca ca-csr.json | cfssljson -bare ca
+
+Get these:
+
+ca.csr - file containing the csr
+ca.pem - ca certificate
+ca-key.pem - ca key
 
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
