@@ -4,3 +4,20 @@ Add keyring: https://askubuntu.com/questions/31286/additional-keyrings-for-apt-i
 
 - CREATE KEY, CSR and CERT (self signed)
 https://www.thegeekstuff.com/2009/07/Linux-Apache-mod-ssl-generate-key-csr-crt-file/
+https://superuser.com/questions/746283/what-is-the-role-of-cakey-pem-and-cacert-pem-in-addition-to-key-and-crt-based
+
+- EXAMPLE - using openssl
+From https://superuser.com/questions/746283/what-is-the-role-of-cakey-pem-and-cacert-pem-in-addition-to-key-and-crt-based
+
+Here’s a guide to create a self-signed CA and sign a certificate with it, taken from Parallels:
+(http://kb.parallels.com/en/118354)
+
+openssl genrsa -out rootCA.key 2048
+openssl req -x509 -new -nodes -key rootCA.key -days 3650 -out rootCA.pem
+openssl genrsa -out server.key 2048
+openssl req -new -key server.key -out server.csr
+openssl x509 -req -in server.csr -CA rootCA.pem -CAkey rootCA.key -CAcreateserial -out server.crt -days 730
+
+- EXAMPLE - using cfssl
+
+https://blog.inkubate.io/deploy-kubernetes-1-9-from-scratch-on-vmware-vsphere/
