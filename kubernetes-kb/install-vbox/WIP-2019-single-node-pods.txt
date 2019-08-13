@@ -566,6 +566,7 @@ ExecStart=/usr/bin/docker run --rm\
   -p 2379:2379 \
   -p 2380:2380 \
   --volume=${DATA_DIR}:/etcd-data \
+  --volume=/etc/kubernetes/pki:/etc/kubernetes/pki \
   --name etcd ${REGISTRY}:${ETCD_VERSION} \
   /usr/local/bin/etcd \
   --data-dir=/etcd-data --name ${THIS_NAME} \
@@ -575,16 +576,17 @@ ExecStart=/usr/bin/docker run --rm\
   --initial-cluster-state ${CLUSTER_STATE} --initial-cluster-token ${TOKEN} \
   --cert-file=/etc/kubernetes/pki/kubernetes.pem \
   --key-file=/etc/kubernetes/pki/kubernetes-key.pem \
+  --trusted-ca-file=/etc/kubernetes/pki/ca.pem \
   --peer-cert-file=/etc/kubernetes/pki/kubernetes.pem \
   --peer-key-file=/etc/kubernetes/pki/kubernetes-key.pem \
-  --trusted-ca-file=/etc/kubernetes/pki/ca.pem \
-  --peer-trusted-ca-file=/etc/kubernetes/pki/ca.pem \
+  --peer-trusted-ca-file=/etc/kubernetes/pki/ca.pem 
 
 Restart=on-failure
 RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
+
 
 - RESTART ETCD SERVICE (now with certificates)
 systemctl daemon-reload
