@@ -6,6 +6,49 @@ https://kubernetes.io/docs/concepts/overview/components/
 https://supergiant.io/blog/understanding-kubernetes-kube-proxy/
 
 ===================================
+MASTER AND NODE (WORKER) COMPONENTS
+===================================
+https://elastisys.com/wp-content/uploads/2018/01/kubernetes-ha-setup.pdf
+
+- The master components manage the state of the cluster. 
+This includes accepting client requests 
+(describing the desired state), 
+scheduling containers and running control loops to drive the actual cluster state towards the desired state. 
+
+These components are:
+
+apiserver: a REST API supporting basic CRUD operations on API objects (such as pods, deployments, and services).
+This is the endpoint that a cluster administrator communicates with, for example, using kubectl. The apiserver, in
+itself, is stateless. Instead it uses a distributed key-value storage system (etcd) as its backend 
+for storing all cluster state.
+
+controller managers: runs the control/reconciliation loops that watch the desired state in the apiserver and attempt to
+move the actual state towards the desired state. Internally it consists of many different controllers, of which the
+replication controller is a prominent one ensuring that the right number of replica pods are running for each
+deployment.
+
+scheduler: takes care of pod placement across the set of availabile nodes, striving to balance resource consumption
+to not place excessive load on any cluster node. It also takes user scheduling restrictions into account, such as 
+(anti-)affinity rules.
+
+- The node components run on every cluster node. These include:
+
+container runtime: such as Docker, to execute containers on the node.
+
+kubelet: executes containers (pods) on the node as dictated by the control plane’s scheduling, and ensures the
+health of those pods (for example, by restarting failed pods).
+
+kube-proxy: a network proxy/loadbalancer that implements the Service abstraction. It programs the iptables rules on
+the node to redirect service IP requests to one of its registered backend pods.
+
+There is no formal requirement for master components to run on any particular host in the cluster, however, typically
+these control-plane components are grouped together to run one or more master nodes. With the exception of etcd,
+which may be set up to run on its own machine(s), these master nodes typically include all components — both the
+control plane master components and the node components — but are dedicated to running the control plane and to
+not process any application workloads (typically by being tainted).
+Other nodes are typically designated as worker nodes (or simply nodes) and only include the node components.
+
+===================================
 CONFIG FILES FOLDER STRUCTURE
 ===================================
 Assuming same nodes host etcd, master and worker
@@ -52,8 +95,8 @@ etcd
 kube-apiserver
 kube-controller-manager
 kube-scheduler
-kube-proxy 
-calico-node --> required as there is no routable IPs
+kube-proxy --> not a standard requirement in master
+calico-node --> required as there is no routable IPs --> not a standard requirement in master??
 kube-addon-manager
 
 
