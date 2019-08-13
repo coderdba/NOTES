@@ -325,10 +325,10 @@ CERTIFICATES
 ===================================
 
 -----------------
-CREATE CA
+CREATE CA CERT
 -----------------
 
-ca-config.json:
+ca-config.json file:
 
 {
   "signing": {
@@ -344,7 +344,7 @@ ca-config.json:
   }
 }
 
-ca-csr.json:
+ca-csr.json file:
 
 {
   "CN": "Kubernetes",
@@ -357,7 +357,8 @@ ca-csr.json:
       "C": "IN",
       "L": "INDIA",
       "O": "Kubernetes",
-      "OU": "Kubernetes"
+      "OU": "Kubernetes",
+      "ST": "Kubernetes"
     }
   ]
 }
@@ -369,8 +370,48 @@ cfssl gencert -initca ca-csr.json | cfssljson -bare ca
 Get these:
 
 ca.csr - file containing the csr
-ca.pem - ca certificate
-ca-key.pem - ca key
+ca.pem - ca public certificate
+ca-key.pem - ca private key
+
+------------------------
+Admin client certificate
+------------------------
+This certificate will be used to connect to the Kubernetes cluster as an administrator.
+
+admin-csr.json file:
+
+{
+  "CN": "admin",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "IN",
+      "L": "INDIA",
+      "O": "system:masters",
+      "OU": "Kubernetes",
+      "ST": "Kubernetes"
+    }
+  ]
+}
+
+Run command:
+
+cfssl gencert \
+-ca=ca.pem \
+-ca-key=ca-key.pem \
+-config=ca-config.json \
+-profile=kubernetes admin-csr.json | \
+cfssljson -bare admin
+
+Get these:
+
+admin.csr
+admin-key.pem
+admin.pem
+
 
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
