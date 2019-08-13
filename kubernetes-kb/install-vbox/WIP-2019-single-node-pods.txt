@@ -543,6 +543,51 @@ cp *pem /etc/kubernetes/pki
 (worker node part - ca.pem, 192.168.60.102-key.pem, 192.168.60.102.pem )
 
 
+-------------------------------
+etcd.service - with certificates
+-------------------------------
+
+[Unit]
+Description=etcd
+Documentation=https://github.com/coreos
+Wants=docker.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+IOSchedulingClass=2
+IOSchedulingPriority=0
+EnvironmentFile=/etc/environment
+
+# START ETCD
+ExecStart=/usr/bin/docker run --rm\
+  --net=host \
+  -p 2379:2379 \
+  -p 2380:2380 \
+  --volume=${DATA_DIR}:/etcd-data \
+  --name etcd ${REGISTRY}:${ETCD_VERSION} \
+  /usr/local/bin/etcd \
+  --data-dir=/etcd-data --name ${THIS_NAME} \
+#
+  --initial-advertise-peer-urls https://${THIS_IP}:2380 --listen-peer-urls https://0.0.0.0:2380 \
+  --advertise-client-urls https://${THIS_IP}:2379 --listen-client-urls https://0.0.0.0:2379 \
+  --initial-cluster ${CLUSTER} \
+  --initial-cluster-state ${CLUSTER_STATE} --initial-cluster-token ${TOKEN}
+#
+  --cert-file=/etc/kubernetes/pki/kubernetes.pem \
+  --key-file=/etc/kubernetes/pki/kubernetes-key.pem \
+  --peer-cert-file=/etc/kubernetes/pki/kubernetes.pem \
+  --peer-key-file=/etc/kubernetes/pki/kubernetes-key.pem \
+  --trusted-ca-file=/etc/kubernetes/pki/ca.pem \
+  --peer-trusted-ca-file=/etc/etcd/ca.pem \
+
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 TROUBLESHOOTING
