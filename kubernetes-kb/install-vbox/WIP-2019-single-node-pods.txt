@@ -455,7 +455,7 @@ Get these:
 192.168.60.102.pem
 
 --------------------------------------------
-Generate the kube-proxy client certificate
+Generate the kube-proxy client certificate (worker nodes)
 --------------------------------------------
 
 kube-proxy-csr.json file:
@@ -489,6 +489,44 @@ Get these:
 kube-proxy.csr
 kube-proxy-key.pem
 kube-proxy.pem
+
+--------------------------------------------
+Generate the API server certificate
+--------------------------------------------
+
+kubernetes-csr.json file: 
+
+{
+  "CN": "kubernetes",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "IN",
+      "L": "INDIA",
+      "O": "Kubernetes",
+      "OU": "Kubernetes",
+      "ST": "Kubernetes"
+    }
+  ]
+}
+
+Run command : (kubernetes-gen.sh)
+
+cfssl gencert \
+-ca=ca.pem \
+-ca-key=ca-key.pem \
+-config=ca-config.json \
+-hostname=192.168.60.102,127.0.0.1,kubernetes.default \
+-profile=kubernetes kubernetes-csr.json | \
+cfssljson -bare kubernetes
+
+Get these:
+kubernetes.pem
+kubernetes-key.pem
+kubernetes.csr
 
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
