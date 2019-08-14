@@ -806,9 +806,10 @@ ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELE
 systemctl daemon-reload
 systemctl restart kubelet
 journalctl -fu kubelet
+
 --> At this time kubelet did not start properly - see 'ERROR 1' down below
 
-- ClusterRole and ClusterRoleBinding
+- TO FIX - CREATE ClusterRole and ClusterRoleBinding
 on master (here, same node)
 
 To make apiserver talk to kubelets in woker nodes (here, same node)
@@ -867,6 +868,8 @@ kubectl create -f kube-apiserver-to-kubelet-bind.yaml
 systemctl start kubelet
 journalctl -fu kubelet
 kubectl get nodes -o wide
+curl --cacert ./ca.pem https://192.168.60.102:6443/version
+netstat -anp |grep 6443
 
 --> This time it seemed to start properly and nodes were listed (see logs below)
 --> However, curl to API does not work yet (see listings below)
@@ -964,6 +967,12 @@ Aug 14 18:56:08 ks2 kubelet[29087]: I0814 18:56:08.512560   29087 reconciler.go:
 NAME   STATUS   ROLES    AGE   VERSION   INTERNAL-IP      EXTERNAL-IP   OS-IMAGE                KERNEL-VERSION          CONTAINER-RUNTIME
 ks2    Ready    <none>   21m   v1.12.8   192.168.60.102   <none>        CentOS Linux 7 (Core)   3.10.0-957.el7.x86_64   docker://19.3.1
 
+[root@ks2 certs]# netstat -anp |grep 6443
+tcp        0      0 192.168.60.102:49812    192.168.60.102:6443     ESTABLISHED 29087/kubelet       
+tcp6       0      0 :::6443                 :::*                    LISTEN      27797/kube-apiserve 
+tcp6       0      0 ::1:6443                ::1:56884               ESTABLISHED 27797/kube-apiserve 
+tcp6       0      0 ::1:56884               ::1:6443                ESTABLISHED 27797/kube-apiserve 
+tcp6       0      0 192.168.60.102:6443     192.168.60.102:49812    ESTABLISHED 27797/kube-apiserve 
 
 
 - ERROR 1 RESTARTING KUBELET WITH NO CLUSTER-ROLE AND CLUSTER-ROLE-BINDING
