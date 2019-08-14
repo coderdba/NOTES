@@ -887,8 +887,9 @@ netstat -anp |grep 6443
 
 --> This time it seemed to start properly and nodes were listed (see logs below)
 --> However, curl to API does not work yet (see listings below)
---> Also 'role' for node in kubectl get nodes is 'none' instead of master or worker (is it because it is both master and worker?)
+--> This is ok - Also 'role' for node in kubectl get nodes is 'none' instead of master or worker (is it because it is both master and worker?)
 --> And, a busybee pod creation got some errors
+	- these went away after adding ks2 as hostname in kubelet and kubernetes cert generation steps
 
 [root@ks2 certs]# systemctl start kubelet; journalctl -fu kubelet;
 -- Logs begin at Wed 2019-08-14 13:59:42 IST. --
@@ -992,20 +993,37 @@ tcp6       0      0 192.168.60.102:6443     192.168.60.102:49812    ESTABLISHED 
 
 
 - CREATE BUSYBEE POD
+(expected behaviour below)
 # kubectl run access --rm -ti --image busybox /bin/sh
 kubectl run --generator=deployment/apps.v1beta1 is DEPRECATED and will be removed in a future version. Use kubectl create instead.
 If you don't see a command prompt, try pressing enter.
-Error attaching, falling back to logs: error dialing backend: x509: certificate is not valid for any names, but wanted to match ks2
+/ # 
+/ # hostname
+access-56ff88b445-z5968
+/ # exit
+Session ended, resume using 'kubectl attach access-56ff88b445-z5968 -c access -i -t' command when the pod is running
+deployment.apps "access" deleted
+[root@ks2 ~]# kubectl get pods
+NAME                      READY   STATUS        RESTARTS   AGE
+access-56ff88b445-z5968   0/1     Terminating   0          77s
 
-# kubectl config get-contexts
-CURRENT   NAME      CLUSTER      AUTHINFO                     NAMESPACE
-*         default   kubernetes   system:node:192.168.60.102 
 
-# kubectl get pods
-NAME                      READY   STATUS    RESTARTS   AGE
-access-56ff88b445-k4vql   1/1     Running   0          11m
-[root@ks2 .kube]# kubectl exec -ti access-56ff88b445-k4vql /bin/sh
-Error from server: error dialing backend: x509: certificate is not valid for any names, but wanted to match ks2
+Earlier errors - when ks2 hostname was not applied to kubelet and apiserver certificates
+	# kubectl run access --rm -ti --image busybox /bin/sh
+	kubectl run --generator=deployment/apps.v1beta1 is DEPRECATED and will be removed in a future version. Use kubectl create instead.
+	If you don't see a command prompt, try pressing enter.
+	Error attaching, falling back to logs: error dialing backend: x509: certificate is not valid for any names, but wanted to match ks2
+
+	# kubectl config get-contexts
+	CURRENT   NAME      CLUSTER      AUTHINFO                     NAMESPACE
+	*         default   kubernetes   system:node:192.168.60.102 
+
+	# kubectl get pods
+	NAME                      READY   STATUS    RESTARTS   AGE
+	access-56ff88b445-k4vql   1/1     Running   0          11m
+	
+	[root@ks2 .kube]# kubectl exec -ti access-56ff88b445-k4vql /bin/sh
+	Error from server: error dialing backend: x509: certificate is not valid for any names, but wanted to match ks2
 
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
