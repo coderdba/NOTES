@@ -660,6 +660,67 @@ spec:
       type: Directory
     name: k8s-certs
 
+----------------------------
+kube-controller-manager.yaml
+----------------------------
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    scheduler.alpha.kubernetes.io/critical-pod: ""
+  labels:
+    component: kube-controller-manager
+    tier: control-plane
+  name: kube-controller-manager
+  namespace: kube-system
+spec:
+  hostNetwork: true
+  containers:
+  - command:
+    - kube-controller-manager
+    - --cluster-name=kubernetes
+    - --master=http://127.0.0.1:8080
+    - --leader-elect=true
+    - --cluster-cidr=10.20.0.0/16
+    - --service-cluster-ip-range=10.96.0.0/12
+    - --cluster-signing-cert-file=/etc/kubernetes/pki/ca.pem 
+    - --cluster-signing-key-file=/etc/kubernetes/pki/ca-key.pem
+    - --root-ca-file=/etc/kubernetes/pki/ca.pem
+    - --service-account-private-key-file=/etc/kubernetes/pki/ca-key.pem
+    image: gcr.io/google_containers/kube-controller-manager-amd64:v1.12.8
+    name: kube-controller-manager
+    volumeMounts:
+    - mountPath: /etc/kubernetes/pki
+      name: k8s-certs
+      readOnly: true
+  volumes:
+  - hostPath:
+      path: /etc/kubernetes/pki
+      type: Directory
+    name: k8s-certs
+
+--------------------
+kube-scheduler.yaml
+--------------------
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    scheduler.alpha.kubernetes.io/critical-pod: ""
+  labels:
+    component: kube-scheduler
+    tier: control-plane
+  name: kube-scheduler
+  namespace: kube-system
+spec:
+  containers:
+  - command:
+    - kube-scheduler
+    - --master=http://127.0.0.1:8080
+    - --leader-elect=true
+    image: gcr.io/google_containers/kube-scheduler-amd64:v1.12.8
+    name: kube-scheduler
+  hostNetwork: true
 
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
