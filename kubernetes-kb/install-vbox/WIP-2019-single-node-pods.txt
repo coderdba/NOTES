@@ -742,6 +742,415 @@ Error attaching, falling back to logs: error dialing backend: x509: certificate 
 deployment.apps "access" deleted
 Error from server: Get https://ks2:10250/containerLogs/default/access-56ff88b445-gstms/access: x509: certificate signed by unknown authority
 
+-----------------------------------
+KUBECONFIG AND SECURITY FOR KUBELET
+-----------------------------------
+
+-  CREATE A kubeconfig FILE FOR KUBELET - 192.168.60.102.kubeconfig
+# Add the cluster information for 192.168.60.102
+kubectl config set-cluster kubernetes \
+--certificate-authority=ca.pem \
+--embed-certs=true \
+--server=https://192.168.60.102:6443 \
+--kubeconfig=192.168.60.102.kubeconfig
+
+# Add the credentials for 192.168.60.102.
+
+kubectl config set-credentials system:node:192.168.60.102 \
+--client-certificate=192.168.60.102.pem \
+--client-key=192.168.60.102-key.pem \
+--embed-certs=true \
+--kubeconfig=192.168.60.102.kubeconfig
+
+# Add the context for 192.168.60.102.
+
+kubectl config set-context default \
+--cluster=kubernetes \
+--user=system:node:192.168.60.102 \
+--kubeconfig=192.168.60.102.kubeconfig
+
+# Use the context for 192.168.60.102.
+kubectl config use-context default --kubeconfig=192.168.60.102.kubeconfig
+
+-- THEN, COPY THAT FILE TO /etc/kubernetes/kubelet-kubeconfig
+
+- MODIFY /usr/lib/systemd/system/10-kubeadm.conf
+
+# Note: This dropin only works with kubeadm and kubelet v1.11+
+[Service]
+# -- commented
+#Environment="KUBELET_KUBECONFIG_ARGS=--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf"
+# -- commented
+#Environment="KUBELET_CONFIG_ARGS=--config=/var/lib/kubelet/config.yaml"
+#
+# -- added
+Environment="KUBELET_CONFIG_ARGS=--kubeconfig=/etc/kubernetes/kubelet-config.yaml --pod-manifest-path=/etc/kubernetes/manifests"
+
+# This is a file that "kubeadm init" and "kubeadm join" generates at runtime, populating the KUBELET_KUBEADM_ARGS variable dynamically
+EnvironmentFile=-/var/lib/kubelet/kubeadm-flags.env
+# This is a file that the user can use for overrides of the kubelet args as a last resort. Preferably, the user should use
+# the .NodeRegistration.KubeletExtraArgs object in the configuration files instead. KUBELET_EXTRA_ARGS should be sourced from this file.
+EnvironmentFile=-/etc/sysconfig/kubelet
+ExecStart=
+ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS   --client-ca-file=/etc/kubernetes/pki/ca.pem --tls-cert-file=/etc/kubernetes/pki/192.168.60.102.pem --tls-private-key-file=/var/lib/kubelet/192.168.60.102-key.pem --kubeconfig=/etc/kubernetes/kubelet-kubeconfig
+
+- RESTART KUBELET
+systemctl daemon-reload
+systemctl restart kubelet
+journalctl -fu kubelet
+
+[root@ks2 kubernetes]# systemctl start kubelet; journalctl -fu kubelet;
+-- Logs begin at Wed 2019-08-14 13:59:42 IST. --
+Aug 14 17:16:54 ks2 kubelet[18883]: E0814 17:16:54.037175   18883 kubelet.go:2236] node "ks2" not found
+Aug 14 17:16:54 ks2 kubelet[18883]: E0814 17:16:54.137841   18883 kubelet.go:2236] node "ks2" not found
+Aug 14 17:16:54 ks2 kubelet[18883]: E0814 17:16:54.238409   18883 kubelet.go:2236] node "ks2" not found
+Aug 14 17:16:54 ks2 kubelet[18883]: E0814 17:16:54.338646   18883 kubelet.go:2236] node "ks2" not found
+Aug 14 17:16:54 ks2 kubelet[18883]: E0814 17:16:54.439476   18883 kubelet.go:2236] node "ks2" not found
+Aug 14 17:16:54 ks2 kubelet[18883]: E0814 17:16:54.540019   18883 kubelet.go:2236] node "ks2" not found
+Aug 14 17:16:54 ks2 kubelet[18883]: E0814 17:16:54.640534   18883 kubelet.go:2236] node "ks2" not found
+Aug 14 17:16:54 ks2 systemd[1]: Stopping kubelet: The Kubernetes Node Agent...
+Aug 14 17:16:54 ks2 systemd[1]: Stopped kubelet: The Kubernetes Node Agent.
+Aug 14 17:18:50 ks2 systemd[1]: Started kubelet: The Kubernetes Node Agent.
+Aug 14 17:18:51 ks2 kubelet[20136]: Flag --pod-manifest-path has been deprecated, This parameter should be set via the config file specified by the Kubelet's --config flag. See https://kubernetes.io/docs/tasks/administer-cluster/kubelet-config-file/ for more information.
+Aug 14 17:18:51 ks2 kubelet[20136]: Flag --client-ca-file has been deprecated, This parameter should be set via the config file specified by the Kubelet's --config flag. See https://kubernetes.io/docs/tasks/administer-cluster/kubelet-config-file/ for more information.
+Aug 14 17:18:51 ks2 kubelet[20136]: Flag --tls-cert-file has been deprecated, This parameter should be set via the config file specified by the Kubelet's --config flag. See https://kubernetes.io/docs/tasks/administer-cluster/kubelet-config-file/ for more information.
+Aug 14 17:18:51 ks2 kubelet[20136]: Flag --tls-private-key-file has been deprecated, This parameter should be set via the config file specified by the Kubelet's --config flag. See https://kubernetes.io/docs/tasks/administer-cluster/kubelet-config-file/ for more information.
+Aug 14 17:18:51 ks2 kubelet[20136]: I0814 17:18:51.006236   20136 server.go:408] Version: v1.12.8
+Aug 14 17:18:51 ks2 kubelet[20136]: I0814 17:18:51.006373   20136 plugins.go:99] No cloud provider specified.
+Aug 14 17:18:51 ks2 kubelet[20136]: I0814 17:18:51.155240   20136 server.go:667] --cgroups-per-qos enabled, but --cgroup-root was not specified.  defaulting to /
+Aug 14 17:18:51 ks2 kubelet[20136]: I0814 17:18:51.155501   20136 container_manager_linux.go:247] container manager verified user specified cgroup-root exists: []
+Aug 14 17:18:51 ks2 kubelet[20136]: I0814 17:18:51.155513   20136 container_manager_linux.go:252] Creating Container Manager object based on Node Config: {RuntimeCgroupsName: SystemCgroupsName: KubeletCgroupsName: ContainerRuntime:docker CgroupsPerQOS:true CgroupRoot:/ CgroupDriver:cgroupfs KubeletRootDir:/var/lib/kubelet ProtectKernelDefaults:false NodeAllocatableConfig:{KubeReservedCgroupName: SystemReservedCgroupName: EnforceNodeAllocatable:map[pods:{}] KubeReserved:map[] SystemReserved:map[] HardEvictionThresholds:[{Signal:memory.available Operator:LessThan Value:{Quantity:100Mi Percentage:0} GracePeriod:0s MinReclaim:<nil>} {Signal:nodefs.available Operator:LessThan Value:{Quantity:<nil> Percentage:0.1} GracePeriod:0s MinReclaim:<nil>} {Signal:nodefs.inodesFree Operator:LessThan Value:{Quantity:<nil> Percentage:0.05} GracePeriod:0s MinReclaim:<nil>} {Signal:imagefs.available Operator:LessThan Value:{Quantity:<nil> Percentage:0.15} GracePeriod:0s MinReclaim:<nil>}]} QOSReserved:map[] ExperimentalCPUManagerPolicy:none ExperimentalCPUManagerReconcilePeriod:10s ExperimentalPodPidsLimit:-1 EnforceCPULimits:true CPUCFSQuotaPeriod:100ms}
+Aug 14 17:18:51 ks2 kubelet[20136]: I0814 17:18:51.155594   20136 container_manager_linux.go:271] Creating device plugin manager: true
+Aug 14 17:18:51 ks2 kubelet[20136]: I0814 17:18:51.155623   20136 state_mem.go:36] [cpumanager] initializing new in-memory state store
+Aug 14 17:18:51 ks2 kubelet[20136]: I0814 17:18:51.155738   20136 state_mem.go:84] [cpumanager] updated default cpuset: ""
+Aug 14 17:18:51 ks2 kubelet[20136]: I0814 17:18:51.155747   20136 state_mem.go:92] [cpumanager] updated cpuset assignments: "map[]"
+Aug 14 17:18:51 ks2 kubelet[20136]: I0814 17:18:51.155815   20136 kubelet.go:279] Adding pod path: /etc/kubernetes/manifests
+Aug 14 17:18:51 ks2 kubelet[20136]: I0814 17:18:51.155848   20136 kubelet.go:304] Watching apiserver
+Aug 14 17:18:51 ks2 kubelet[20136]: I0814 17:18:51.173306   20136 client.go:75] Connecting to docker on unix:///var/run/docker.sock
+Aug 14 17:18:51 ks2 kubelet[20136]: I0814 17:18:51.173326   20136 client.go:104] Start docker client with request timeout=2m0s
+Aug 14 17:18:51 ks2 kubelet[20136]: E0814 17:18:51.173552   20136 reflector.go:125] k8s.io/kubernetes/pkg/kubelet/kubelet.go:451: Failed to list *v1.Node: Get https://192.168.60.102:6443/api/v1/nodes?fieldSelector=metadata.name%3Dks2&limit=500&resourceVersion=0: dial tcp 192.168.60.102:6443: connect: connection refused
+Aug 14 17:18:51 ks2 kubelet[20136]: E0814 17:18:51.173610   20136 reflector.go:125] k8s.io/kubernetes/pkg/kubelet/kubelet.go:442: Failed to list *v1.Service: Get https://192.168.60.102:6443/api/v1/services?limit=500&resourceVersion=0: dial tcp 192.168.60.102:6443: connect: connection refused
+Aug 14 17:18:51 ks2 kubelet[20136]: E0814 17:18:51.173664   20136 reflector.go:125] k8s.io/kubernetes/pkg/kubelet/config/apiserver.go:47: Failed to list *v1.Pod: Get https://192.168.60.102:6443/api/v1/pods?fieldSelector=spec.nodeName%3Dks2&limit=500&resourceVersion=0: dial tcp 192.168.60.102:6443: connect: connection refused
+Aug 14 17:18:51 ks2 kubelet[20136]: W0814 17:18:51.236749   20136 docker_service.go:540] Hairpin mode set to "promiscuous-bridge" but kubenet is not enabled, falling back to "hairpin-veth"
+Aug 14 17:18:51 ks2 kubelet[20136]: I0814 17:18:51.236776   20136 docker_service.go:236] Hairpin mode set to "hairpin-veth"
+Aug 14 17:18:51 ks2 kubelet[20136]: W0814 17:18:51.236852   20136 cni.go:188] Unable to update cni config: No networks found in /etc/cni/net.d
+Aug 14 17:18:51 ks2 kubelet[20136]: I0814 17:18:51.240548   20136 docker_service.go:251] Docker cri networking managed by kubernetes.io/no-op
+Aug 14 17:18:51 ks2 kubelet[20136]: I0814 17:18:51.272279   20136 docker_service.go:256] Docker Info: &{ID:KS4G:JVF5:BFCF:ER3E:4DCO:W73D:RLCY:3WRI:PAIY:LL2G:6FJX:DDC5 Containers:1 ContainersRunning:1 ContainersPaused:0 ContainersStopped:0 Images:7 Driver:overlay2 DriverStatus:[[Backing Filesystem xfs] [Supports d_type true] [Native Overlay Diff true]] SystemStatus:[] Plugins:{Volume:[local] Network:[bridge host ipvlan macvlan null overlay] Authorization:[] Log:[awslogs fluentd gcplogs gelf journald json-file local logentries splunk syslog]} MemoryLimit:true SwapLimit:true KernelMemory:true CPUCfsPeriod:true CPUCfsQuota:true CPUShares:true CPUSet:true IPv4Forwarding:true BridgeNfIptables:true BridgeNfIP6tables:true Debug:false NFd:32 OomKillDisable:true NGoroutines:52 SystemTime:2019-08-14T17:18:51.241633966+05:30 LoggingDriver:json-file CgroupDriver:cgroupfs NEventsListener:0 KernelVersion:3.10.0-957.el7.x86_64 OperatingSystem:CentOS Linux 7 (Core) OSType:linux Architecture:x86_64 IndexServerAddress:https://index.docker.io/v1/ RegistryConfig:0xc420160690 NCPU:1 MemTotal:2096295936 GenericResources:[] DockerRootDir:/var/lib/docker HTTPProxy: HTTPSProxy: NoProxy: Name:ks2 Labels:[] ExperimentalBuild:false ServerVersion:19.03.1 ClusterStore: ClusterAdvertise: Runtimes:map[runc:{Path:runc Args:[]}] DefaultRuntime:runc Swarm:{NodeID: NodeAddr: LocalNodeState:inactive ControlAvailable:false Error: RemoteManagers:[] Nodes:0 Managers:0 Cluster:<nil>} LiveRestoreEnabled:false Isolation: InitBinary:docker-init ContainerdCommit:{ID:894b81a4b802e4eb2a91d1ce216b8817763c29fb Expected:894b81a4b802e4eb2a91d1ce216b8817763c29fb} RuncCommit:{ID:425e105d5a03fabd737a126ad93d62a9eeede87f Expected:425e105d5a03fabd737a126ad93d62a9eeede87f} InitCommit:{ID:fec3683 Expected:fec3683} SecurityOptions:[name=seccomp,profile=default]}
+Aug 14 17:18:51 ks2 kubelet[20136]: I0814 17:18:51.272344   20136 docker_service.go:269] Setting cgroupDriver to cgroupfs
+Aug 14 17:18:51 ks2 kubelet[20136]: I0814 17:18:51.344877   20136 kuberuntime_manager.go:197] Container runtime docker initialized, version: 19.03.1, apiVersion: 1.40.0
+Aug 14 17:18:51 ks2 kubelet[20136]: I0814 17:18:51.422807   20136 server.go:1013] Started kubelet
+Aug 14 17:18:51 ks2 kubelet[20136]: E0814 17:18:51.423243   20136 kubelet.go:1287] Image garbage collection failed once. Stats initialization may not have completed yet: failed to get imageFs info: unable to find data in memory cache
+Aug 14 17:18:51 ks2 kubelet[20136]: I0814 17:18:51.423625   20136 fs_resource_analyzer.go:66] Starting FS ResourceAnalyzer
+Aug 14 17:18:51 ks2 kubelet[20136]: I0814 17:18:51.423647   20136 status_manager.go:152] Starting to sync pod status with apiserver
+Aug 14 17:18:51 ks2 kubelet[20136]: I0814 17:18:51.423659   20136 kubelet.go:1804] Starting kubelet main sync loop.
+Aug 14 17:18:51 ks2 kubelet[20136]: I0814 17:18:51.423671   20136 kubelet.go:1821] skipping pod synchronization - [container runtime is down PLEG is not healthy: pleg was last seen active 2562047h47m16.854775807s ago; threshold is 3m0s]
+Aug 14 17:18:51 ks2 kubelet[20136]: I0814 17:18:51.423770   20136 server.go:133] Starting to listen on 0.0.0.0:10250
+Aug 14 17:18:51 ks2 kubelet[20136]: I0814 17:18:51.424270   20136 server.go:318] Adding debug handlers to kubelet server.
+Aug 14 17:18:51 ks2 kubelet[20136]: I0814 17:18:51.425609   20136 volume_manager.go:248] Starting Kubelet Volume Manager
+Aug 14 17:18:51 ks2 kubelet[20136]: I0814 17:18:51.430199   20136 desired_state_of_world_populator.go:130] Desired state populator starts to run
+Aug 14 17:18:51 ks2 kubelet[20136]: E0814 17:18:51.454203   20136 event.go:212] Unable to write event: 'Post https://192.168.60.102:6443/api/v1/namespaces/default/events: dial tcp 192.168.60.102:6443: connect: connection refused' (may retry after sleeping)
+Aug 14 17:18:51 ks2 kubelet[20136]: I0814 17:18:51.550070   20136 kubelet.go:1821] skipping pod synchronization - [container runtime is down PLEG is not healthy: pleg was last seen active 2562047h47m16.854775807s ago; threshold is 3m0s]
+Aug 14 17:18:51 ks2 kubelet[20136]: I0814 17:18:51.550107   20136 kubelet_node_status.go:277] Setting node annotation to enable volume controller attach/detach
+Aug 14 17:18:51 ks2 kubelet[20136]: E0814 17:18:51.550582   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:51 ks2 kubelet[20136]: E0814 17:18:51.650737   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:51 ks2 kubelet[20136]: I0814 17:18:51.718944   20136 kubelet_node_status.go:70] Attempting to register node ks2
+Aug 14 17:18:51 ks2 kubelet[20136]: E0814 17:18:51.729067   20136 kubelet_node_status.go:92] Unable to register node "ks2" with API server: Post https://192.168.60.102:6443/api/v1/nodes: dial tcp 192.168.60.102:6443: connect: connection refused
+Aug 14 17:18:51 ks2 kubelet[20136]: I0814 17:18:51.773563   20136 kubelet.go:1821] skipping pod synchronization - [container runtime is down]
+Aug 14 17:18:51 ks2 kubelet[20136]: E0814 17:18:51.773585   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:51 ks2 kubelet[20136]: E0814 17:18:51.877518   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:51 ks2 kubelet[20136]: I0814 17:18:51.886830   20136 kubelet_node_status.go:277] Setting node annotation to enable volume controller attach/detach
+Aug 14 17:18:51 ks2 kubelet[20136]: I0814 17:18:51.936686   20136 kubelet_node_status.go:277] Setting node annotation to enable volume controller attach/detach
+Aug 14 17:18:51 ks2 kubelet[20136]: E0814 17:18:51.982354   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:52 ks2 kubelet[20136]: I0814 17:18:52.004510   20136 cpu_manager.go:155] [cpumanager] starting with none policy
+Aug 14 17:18:52 ks2 kubelet[20136]: I0814 17:18:52.004523   20136 cpu_manager.go:156] [cpumanager] reconciling every 10s
+Aug 14 17:18:52 ks2 kubelet[20136]: I0814 17:18:52.004529   20136 policy_none.go:42] [cpumanager] none policy: Start
+Aug 14 17:18:52 ks2 kubelet[20136]: E0814 17:18:52.005536   20136 eviction_manager.go:247] eviction manager: failed to get get summary stats: failed to get node info: node "ks2" not found
+Aug 14 17:18:52 ks2 kubelet[20136]: I0814 17:18:52.034332   20136 kubelet_node_status.go:70] Attempting to register node ks2
+Aug 14 17:18:52 ks2 kubelet[20136]: E0814 17:18:52.034659   20136 kubelet_node_status.go:92] Unable to register node "ks2" with API server: Post https://192.168.60.102:6443/api/v1/nodes: dial tcp 192.168.60.102:6443: connect: connection refused
+Aug 14 17:18:52 ks2 kubelet[20136]: E0814 17:18:52.082479   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:52 ks2 kubelet[20136]: W0814 17:18:52.174139   20136 pod_container_deletor.go:75] Container "38539fa89aa4c28e390a5e10470db11f0fb4aac8cb9a772ef9ca5da9648aa647" not found in pod's containers
+Aug 14 17:18:52 ks2 kubelet[20136]: W0814 17:18:52.174179   20136 pod_container_deletor.go:75] Container "612d794e45f109e0cec4f2497b6bacf46f3edaaf48f0b66a6858c72bed9cb376" not found in pod's containers
+Aug 14 17:18:52 ks2 kubelet[20136]: W0814 17:18:52.174191   20136 pod_container_deletor.go:75] Container "e178abbef63bf21f1948855aa026351605aafd5854f7cf1f14720601ef963340" not found in pod's containers
+Aug 14 17:18:52 ks2 kubelet[20136]: I0814 17:18:52.174355   20136 kubelet_node_status.go:277] Setting node annotation to enable volume controller attach/detach
+Aug 14 17:18:52 ks2 kubelet[20136]: E0814 17:18:52.175610   20136 reflector.go:125] k8s.io/kubernetes/pkg/kubelet/kubelet.go:451: Failed to list *v1.Node: Get https://192.168.60.102:6443/api/v1/nodes?fieldSelector=metadata.name%3Dks2&limit=500&resourceVersion=0: dial tcp 192.168.60.102:6443: connect: connection refused
+Aug 14 17:18:52 ks2 kubelet[20136]: E0814 17:18:52.187436   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:52 ks2 kubelet[20136]: E0814 17:18:52.194382   20136 reflector.go:125] k8s.io/kubernetes/pkg/kubelet/kubelet.go:442: Failed to list *v1.Service: Get https://192.168.60.102:6443/api/v1/services?limit=500&resourceVersion=0: dial tcp 192.168.60.102:6443: connect: connection refused
+Aug 14 17:18:52 ks2 kubelet[20136]: E0814 17:18:52.194455   20136 reflector.go:125] k8s.io/kubernetes/pkg/kubelet/config/apiserver.go:47: Failed to list *v1.Pod: Get https://192.168.60.102:6443/api/v1/pods?fieldSelector=spec.nodeName%3Dks2&limit=500&resourceVersion=0: dial tcp 192.168.60.102:6443: connect: connection refused
+Aug 14 17:18:52 ks2 kubelet[20136]: I0814 17:18:52.244028   20136 kubelet_node_status.go:277] Setting node annotation to enable volume controller attach/detach
+Aug 14 17:18:52 ks2 kubelet[20136]: I0814 17:18:52.244440   20136 kubelet_node_status.go:277] Setting node annotation to enable volume controller attach/detach
+Aug 14 17:18:52 ks2 kubelet[20136]: E0814 17:18:52.289592   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:52 ks2 kubelet[20136]: W0814 17:18:52.364159   20136 status_manager.go:485] Failed to get status for pod "kube-scheduler-ks2_kube-system(50c22c6953e39f9c091c1e41cf6efa3b)": Get https://192.168.60.102:6443/api/v1/namespaces/kube-system/pods/kube-scheduler-ks2: dial tcp 192.168.60.102:6443: connect: connection refused
+Aug 14 17:18:52 ks2 kubelet[20136]: I0814 17:18:52.382063   20136 kubelet_node_status.go:277] Setting node annotation to enable volume controller attach/detach
+Aug 14 17:18:52 ks2 kubelet[20136]: I0814 17:18:52.382647   20136 kubelet_node_status.go:277] Setting node annotation to enable volume controller attach/detach
+Aug 14 17:18:52 ks2 kubelet[20136]: I0814 17:18:52.393266   20136 reconciler.go:207] operationExecutor.VerifyControllerAttachedVolume started for volume "k8s-certs" (UniqueName: "kubernetes.io/host-path/24885ad2245b362846991d1569f43690-k8s-certs") pod "kube-apiserver-ks2" (UID: "24885ad2245b362846991d1569f43690")
+Aug 14 17:18:52 ks2 kubelet[20136]: E0814 17:18:52.393334   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:52 ks2 kubelet[20136]: I0814 17:18:52.441559   20136 kubelet_node_status.go:277] Setting node annotation to enable volume controller attach/detach
+Aug 14 17:18:52 ks2 kubelet[20136]: E0814 17:18:52.496896   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:52 ks2 kubelet[20136]: I0814 17:18:52.496957   20136 reconciler.go:207] operationExecutor.VerifyControllerAttachedVolume started for volume "k8s-certs" (UniqueName: "kubernetes.io/host-path/d95dcce69327a2d64d92144e1f40b5f1-k8s-certs") pod "kube-controller-manager-ks2" (UID: "d95dcce69327a2d64d92144e1f40b5f1")
+Aug 14 17:18:52 ks2 kubelet[20136]: E0814 17:18:52.601841   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:52 ks2 kubelet[20136]: I0814 17:18:52.610589   20136 kubelet_node_status.go:277] Setting node annotation to enable volume controller attach/detach
+Aug 14 17:18:52 ks2 kubelet[20136]: W0814 17:18:52.638011   20136 status_manager.go:485] Failed to get status for pod "kube-apiserver-ks2_kube-system(24885ad2245b362846991d1569f43690)": Get https://192.168.60.102:6443/api/v1/namespaces/kube-system/pods/kube-apiserver-ks2: dial tcp 192.168.60.102:6443: connect: connection refused
+Aug 14 17:18:52 ks2 kubelet[20136]: I0814 17:18:52.698055   20136 kubelet_node_status.go:70] Attempting to register node ks2
+Aug 14 17:18:52 ks2 kubelet[20136]: E0814 17:18:52.698363   20136 kubelet_node_status.go:92] Unable to register node "ks2" with API server: Post https://192.168.60.102:6443/api/v1/nodes: dial tcp 192.168.60.102:6443: connect: connection refused
+Aug 14 17:18:52 ks2 kubelet[20136]: E0814 17:18:52.704213   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:52 ks2 kubelet[20136]: E0814 17:18:52.809312   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:52 ks2 kubelet[20136]: W0814 17:18:52.812496   20136 status_manager.go:485] Failed to get status for pod "kube-controller-manager-ks2_kube-system(d95dcce69327a2d64d92144e1f40b5f1)": Get https://192.168.60.102:6443/api/v1/namespaces/kube-system/pods/kube-controller-manager-ks2: dial tcp 192.168.60.102:6443: connect: connection refused
+Aug 14 17:18:52 ks2 kubelet[20136]: E0814 17:18:52.909471   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:53 ks2 kubelet[20136]: E0814 17:18:53.011403   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:53 ks2 kubelet[20136]: E0814 17:18:53.115125   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:53 ks2 kubelet[20136]: E0814 17:18:53.177047   20136 reflector.go:125] k8s.io/kubernetes/pkg/kubelet/kubelet.go:451: Failed to list *v1.Node: Get https://192.168.60.102:6443/api/v1/nodes?fieldSelector=metadata.name%3Dks2&limit=500&resourceVersion=0: dial tcp 192.168.60.102:6443: connect: connection refused
+Aug 14 17:18:53 ks2 kubelet[20136]: E0814 17:18:53.211321   20136 reflector.go:125] k8s.io/kubernetes/pkg/kubelet/kubelet.go:442: Failed to list *v1.Service: Get https://192.168.60.102:6443/api/v1/services?limit=500&resourceVersion=0: dial tcp 192.168.60.102:6443: connect: connection refused
+Aug 14 17:18:53 ks2 kubelet[20136]: E0814 17:18:53.211369   20136 reflector.go:125] k8s.io/kubernetes/pkg/kubelet/config/apiserver.go:47: Failed to list *v1.Pod: Get https://192.168.60.102:6443/api/v1/pods?fieldSelector=spec.nodeName%3Dks2&limit=500&resourceVersion=0: dial tcp 192.168.60.102:6443: connect: connection refused
+Aug 14 17:18:53 ks2 kubelet[20136]: E0814 17:18:53.216817   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:53 ks2 kubelet[20136]: I0814 17:18:53.224781   20136 kubelet_node_status.go:277] Setting node annotation to enable volume controller attach/detach
+Aug 14 17:18:53 ks2 kubelet[20136]: E0814 17:18:53.321285   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:53 ks2 kubelet[20136]: E0814 17:18:53.422228   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:53 ks2 kubelet[20136]: I0814 17:18:53.502044   20136 kubelet_node_status.go:277] Setting node annotation to enable volume controller attach/detach
+Aug 14 17:18:53 ks2 kubelet[20136]: E0814 17:18:53.522715   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:53 ks2 kubelet[20136]: E0814 17:18:53.627986   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:53 ks2 kubelet[20136]: E0814 17:18:53.728544   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:53 ks2 kubelet[20136]: W0814 17:18:53.800080   20136 pod_container_deletor.go:75] Container "a1f1d26c2d58d5a01e47d0c0c49f2f7f579417aa46e875f99da6165559b699c2" not found in pod's containers
+Aug 14 17:18:53 ks2 kubelet[20136]: E0814 17:18:53.829482   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:53 ks2 kubelet[20136]: E0814 17:18:53.934500   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:53 ks2 kubelet[20136]: I0814 17:18:53.946245   20136 kubelet_node_status.go:70] Attempting to register node ks2
+Aug 14 17:18:53 ks2 kubelet[20136]: E0814 17:18:53.946529   20136 kubelet_node_status.go:92] Unable to register node "ks2" with API server: Post https://192.168.60.102:6443/api/v1/nodes: dial tcp 192.168.60.102:6443: connect: connection refused
+Aug 14 17:18:54 ks2 kubelet[20136]: E0814 17:18:54.035772   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:54 ks2 kubelet[20136]: E0814 17:18:54.166892   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:54 ks2 kubelet[20136]: E0814 17:18:54.205199   20136 reflector.go:125] k8s.io/kubernetes/pkg/kubelet/kubelet.go:451: Failed to list *v1.Node: Get https://192.168.60.102:6443/api/v1/nodes?fieldSelector=metadata.name%3Dks2&limit=500&resourceVersion=0: dial tcp 192.168.60.102:6443: connect: connection refused
+Aug 14 17:18:54 ks2 kubelet[20136]: E0814 17:18:54.229607   20136 reflector.go:125] k8s.io/kubernetes/pkg/kubelet/config/apiserver.go:47: Failed to list *v1.Pod: Get https://192.168.60.102:6443/api/v1/pods?fieldSelector=spec.nodeName%3Dks2&limit=500&resourceVersion=0: dial tcp 192.168.60.102:6443: connect: connection refused
+Aug 14 17:18:54 ks2 kubelet[20136]: E0814 17:18:54.229672   20136 reflector.go:125] k8s.io/kubernetes/pkg/kubelet/kubelet.go:442: Failed to list *v1.Service: Get https://192.168.60.102:6443/api/v1/services?limit=500&resourceVersion=0: dial tcp 192.168.60.102:6443: connect: connection refused
+Aug 14 17:18:54 ks2 kubelet[20136]: E0814 17:18:54.268393   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:54 ks2 kubelet[20136]: E0814 17:18:54.368816   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:54 ks2 kubelet[20136]: E0814 17:18:54.471692   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:54 ks2 kubelet[20136]: E0814 17:18:54.573692   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:54 ks2 kubelet[20136]: E0814 17:18:54.674227   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:54 ks2 kubelet[20136]: E0814 17:18:54.777546   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:54 ks2 kubelet[20136]: E0814 17:18:54.880409   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:54 ks2 kubelet[20136]: E0814 17:18:54.981994   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:55 ks2 kubelet[20136]: E0814 17:18:55.083287   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:55 ks2 kubelet[20136]: E0814 17:18:55.184369   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:55 ks2 kubelet[20136]: E0814 17:18:55.207200   20136 reflector.go:125] k8s.io/kubernetes/pkg/kubelet/kubelet.go:451: Failed to list *v1.Node: Get https://192.168.60.102:6443/api/v1/nodes?fieldSelector=metadata.name%3Dks2&limit=500&resourceVersion=0: dial tcp 192.168.60.102:6443: connect: connection refused
+Aug 14 17:18:55 ks2 kubelet[20136]: E0814 17:18:55.236475   20136 reflector.go:125] k8s.io/kubernetes/pkg/kubelet/config/apiserver.go:47: Failed to list *v1.Pod: Get https://192.168.60.102:6443/api/v1/pods?fieldSelector=spec.nodeName%3Dks2&limit=500&resourceVersion=0: dial tcp 192.168.60.102:6443: connect: connection refused
+Aug 14 17:18:55 ks2 kubelet[20136]: E0814 17:18:55.261837   20136 reflector.go:125] k8s.io/kubernetes/pkg/kubelet/kubelet.go:442: Failed to list *v1.Service: Get https://192.168.60.102:6443/api/v1/services?limit=500&resourceVersion=0: dial tcp 192.168.60.102:6443: connect: connection refused
+Aug 14 17:18:55 ks2 kubelet[20136]: E0814 17:18:55.286524   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:55 ks2 kubelet[20136]: E0814 17:18:55.397716   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:55 ks2 kubelet[20136]: E0814 17:18:55.503365   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:55 ks2 kubelet[20136]: W0814 17:18:55.544364   20136 docker_container.go:202] Deleted previously existing symlink file: "/var/log/pods/24885ad2245b362846991d1569f43690/kube-apiserver/0.log"
+Aug 14 17:18:55 ks2 kubelet[20136]: I0814 17:18:55.550247   20136 kubelet_node_status.go:277] Setting node annotation to enable volume controller attach/detach
+Aug 14 17:18:55 ks2 kubelet[20136]: E0814 17:18:55.609021   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:55 ks2 kubelet[20136]: E0814 17:18:55.716308   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:55 ks2 kubelet[20136]: E0814 17:18:55.849921   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:55 ks2 kubelet[20136]: I0814 17:18:55.907994   20136 kubelet_node_status.go:277] Setting node annotation to enable volume controller attach/detach
+Aug 14 17:18:55 ks2 kubelet[20136]: E0814 17:18:55.962957   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:56 ks2 kubelet[20136]: E0814 17:18:56.064785   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:56 ks2 kubelet[20136]: I0814 17:18:56.081431   20136 kubelet_node_status.go:277] Setting node annotation to enable volume controller attach/detach
+Aug 14 17:18:56 ks2 kubelet[20136]: E0814 17:18:56.166127   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:56 ks2 kubelet[20136]: I0814 17:18:56.184208   20136 kubelet_node_status.go:70] Attempting to register node ks2
+Aug 14 17:18:56 ks2 kubelet[20136]: E0814 17:18:56.267208   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:56 ks2 kubelet[20136]: E0814 17:18:56.377438   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:56 ks2 kubelet[20136]: E0814 17:18:56.483025   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:56 ks2 kubelet[20136]: E0814 17:18:56.583508   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:56 ks2 kubelet[20136]: E0814 17:18:56.688122   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:56 ks2 kubelet[20136]: E0814 17:18:56.789238   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:56 ks2 kubelet[20136]: E0814 17:18:56.890208   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:56 ks2 kubelet[20136]: E0814 17:18:56.991842   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:57 ks2 kubelet[20136]: I0814 17:18:57.090136   20136 kubelet_node_status.go:277] Setting node annotation to enable volume controller attach/detach
+Aug 14 17:18:57 ks2 kubelet[20136]: E0814 17:18:57.101393   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:57 ks2 kubelet[20136]: I0814 17:18:57.138975   20136 kubelet_node_status.go:277] Setting node annotation to enable volume controller attach/detach
+Aug 14 17:18:57 ks2 kubelet[20136]: E0814 17:18:57.207967   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:57 ks2 kubelet[20136]: I0814 17:18:57.213866   20136 kubelet_node_status.go:277] Setting node annotation to enable volume controller attach/detach
+Aug 14 17:18:57 ks2 kubelet[20136]: E0814 17:18:57.315756   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:57 ks2 kubelet[20136]: E0814 17:18:57.426012   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:57 ks2 kubelet[20136]: E0814 17:18:57.526789   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:57 ks2 kubelet[20136]: E0814 17:18:57.628251   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:57 ks2 kubelet[20136]: E0814 17:18:57.737491   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:57 ks2 kubelet[20136]: E0814 17:18:57.838104   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:57 ks2 kubelet[20136]: E0814 17:18:57.938955   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:58 ks2 kubelet[20136]: E0814 17:18:58.045099   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:58 ks2 kubelet[20136]: E0814 17:18:58.147466   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:58 ks2 kubelet[20136]: I0814 17:18:58.229316   20136 kubelet_node_status.go:277] Setting node annotation to enable volume controller attach/detach
+Aug 14 17:18:58 ks2 kubelet[20136]: I0814 17:18:58.229642   20136 kubelet_node_status.go:277] Setting node annotation to enable volume controller attach/detach
+Aug 14 17:18:58 ks2 kubelet[20136]: E0814 17:18:58.251078   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:58 ks2 kubelet[20136]: E0814 17:18:58.358409   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:58 ks2 kubelet[20136]: E0814 17:18:58.466267   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:58 ks2 kubelet[20136]: E0814 17:18:58.570996   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:58 ks2 kubelet[20136]: E0814 17:18:58.672202   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:58 ks2 kubelet[20136]: E0814 17:18:58.775599   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:58 ks2 kubelet[20136]: E0814 17:18:58.883281   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:58 ks2 kubelet[20136]: E0814 17:18:58.990412   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:59 ks2 kubelet[20136]: E0814 17:18:59.094879   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:59 ks2 kubelet[20136]: E0814 17:18:59.198024   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:59 ks2 kubelet[20136]: E0814 17:18:59.299583   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:59 ks2 kubelet[20136]: E0814 17:18:59.400370   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:59 ks2 kubelet[20136]: E0814 17:18:59.507960   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:59 ks2 kubelet[20136]: E0814 17:18:59.610862   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:59 ks2 kubelet[20136]: E0814 17:18:59.724140   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:59 ks2 kubelet[20136]: E0814 17:18:59.834680   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:18:59 ks2 kubelet[20136]: E0814 17:18:59.947921   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:00 ks2 kubelet[20136]: E0814 17:19:00.048236   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:00 ks2 kubelet[20136]: E0814 17:19:00.152609   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:00 ks2 kubelet[20136]: E0814 17:19:00.254956   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:00 ks2 kubelet[20136]: E0814 17:19:00.363403   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:00 ks2 kubelet[20136]: E0814 17:19:00.470503   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:00 ks2 kubelet[20136]: E0814 17:19:00.581278   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:00 ks2 kubelet[20136]: E0814 17:19:00.684676   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:00 ks2 kubelet[20136]: E0814 17:19:00.787920   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:00 ks2 kubelet[20136]: E0814 17:19:00.896363   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:00 ks2 kubelet[20136]: E0814 17:19:00.999418   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:01 ks2 kubelet[20136]: E0814 17:19:01.105124   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:01 ks2 kubelet[20136]: E0814 17:19:01.208157   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:01 ks2 kubelet[20136]: E0814 17:19:01.318257   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:01 ks2 kubelet[20136]: E0814 17:19:01.431748   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:01 ks2 kubelet[20136]: E0814 17:19:01.535784   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:01 ks2 kubelet[20136]: E0814 17:19:01.645462   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:01 ks2 kubelet[20136]: E0814 17:19:01.752587   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:01 ks2 kubelet[20136]: E0814 17:19:01.857130   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:01 ks2 kubelet[20136]: E0814 17:19:01.960906   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:02 ks2 kubelet[20136]: E0814 17:19:02.008274   20136 eviction_manager.go:247] eviction manager: failed to get get summary stats: failed to get node info: node "ks2" not found
+Aug 14 17:19:02 ks2 kubelet[20136]: E0814 17:19:02.080414   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:02 ks2 kubelet[20136]: E0814 17:19:02.182500   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:02 ks2 kubelet[20136]: E0814 17:19:02.298075   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:02 ks2 kubelet[20136]: E0814 17:19:02.398345   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:02 ks2 kubelet[20136]: E0814 17:19:02.500638   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:02 ks2 kubelet[20136]: E0814 17:19:02.607985   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:02 ks2 kubelet[20136]: E0814 17:19:02.716452   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:02 ks2 kubelet[20136]: E0814 17:19:02.820984   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:02 ks2 kubelet[20136]: E0814 17:19:02.924199   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:03 ks2 kubelet[20136]: E0814 17:19:03.028338   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:03 ks2 kubelet[20136]: E0814 17:19:03.132233   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:03 ks2 kubelet[20136]: E0814 17:19:03.247782   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:03 ks2 kubelet[20136]: E0814 17:19:03.348269   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:03 ks2 kubelet[20136]: E0814 17:19:03.458560   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:03 ks2 kubelet[20136]: E0814 17:19:03.561009   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:03 ks2 kubelet[20136]: E0814 17:19:03.666353   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:03 ks2 kubelet[20136]: E0814 17:19:03.767989   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:03 ks2 kubelet[20136]: E0814 17:19:03.872987   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:03 ks2 kubelet[20136]: E0814 17:19:03.978305   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:04 ks2 kubelet[20136]: E0814 17:19:04.087819   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:04 ks2 kubelet[20136]: E0814 17:19:04.188116   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:04 ks2 kubelet[20136]: E0814 17:19:04.294574   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:04 ks2 kubelet[20136]: E0814 17:19:04.396271   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:04 ks2 kubelet[20136]: E0814 17:19:04.503851   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:04 ks2 kubelet[20136]: E0814 17:19:04.606657   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:04 ks2 kubelet[20136]: E0814 17:19:04.715296   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:04 ks2 kubelet[20136]: E0814 17:19:04.824557   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:04 ks2 kubelet[20136]: E0814 17:19:04.929320   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:05 ks2 kubelet[20136]: E0814 17:19:05.038514   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:05 ks2 kubelet[20136]: E0814 17:19:05.148111   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:05 ks2 kubelet[20136]: E0814 17:19:05.249985   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:05 ks2 kubelet[20136]: E0814 17:19:05.362554   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:05 ks2 kubelet[20136]: E0814 17:19:05.463420   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:05 ks2 kubelet[20136]: E0814 17:19:05.578039   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:05 ks2 kubelet[20136]: E0814 17:19:05.683516   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:05 ks2 kubelet[20136]: E0814 17:19:05.789238   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:05 ks2 kubelet[20136]: E0814 17:19:05.890519   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:05 ks2 kubelet[20136]: E0814 17:19:05.996369   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:06 ks2 kubelet[20136]: E0814 17:19:06.101787   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:06 ks2 kubelet[20136]: E0814 17:19:06.192003   20136 kubelet_node_status.go:92] Unable to register node "ks2" with API server: Post https://192.168.60.102:6443/api/v1/nodes: net/http: TLS handshake timeout
+Aug 14 17:19:06 ks2 kubelet[20136]: E0814 17:19:06.207448   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:06 ks2 kubelet[20136]: E0814 17:19:06.228500   20136 reflector.go:125] k8s.io/kubernetes/pkg/kubelet/kubelet.go:451: Failed to list *v1.Node: Get https://192.168.60.102:6443/api/v1/nodes?fieldSelector=metadata.name%3Dks2&limit=500&resourceVersion=0: net/http: TLS handshake timeout
+Aug 14 17:19:06 ks2 kubelet[20136]: E0814 17:19:06.247899   20136 reflector.go:125] k8s.io/kubernetes/pkg/kubelet/config/apiserver.go:47: Failed to list *v1.Pod: Get https://192.168.60.102:6443/api/v1/pods?fieldSelector=spec.nodeName%3Dks2&limit=500&resourceVersion=0: net/http: TLS handshake timeout
+Aug 14 17:19:06 ks2 kubelet[20136]: E0814 17:19:06.265869   20136 reflector.go:125] k8s.io/kubernetes/pkg/kubelet/kubelet.go:442: Failed to list *v1.Service: Get https://192.168.60.102:6443/api/v1/services?limit=500&resourceVersion=0: net/http: TLS handshake timeout
+Aug 14 17:19:06 ks2 kubelet[20136]: W0814 17:19:06.307661   20136 status_manager.go:485] Failed to get status for pod "kube-scheduler-ks2_kube-system(50c22c6953e39f9c091c1e41cf6efa3b)": Get https://192.168.60.102:6443/api/v1/namespaces/kube-system/pods/kube-scheduler-ks2: net/http: TLS handshake timeout
+Aug 14 17:19:06 ks2 kubelet[20136]: E0814 17:19:06.307693   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:06 ks2 kubelet[20136]: E0814 17:19:06.413800   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:06 ks2 kubelet[20136]: E0814 17:19:06.516799   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:06 ks2 kubelet[20136]: E0814 17:19:06.625042   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:06 ks2 kubelet[20136]: E0814 17:19:06.730589   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:06 ks2 kubelet[20136]: E0814 17:19:06.837732   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:06 ks2 kubelet[20136]: E0814 17:19:06.946300   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:07 ks2 kubelet[20136]: E0814 17:19:07.058524   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:07 ks2 kubelet[20136]: E0814 17:19:07.166075   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:07 ks2 kubelet[20136]: E0814 17:19:07.274335   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:07 ks2 kubelet[20136]: E0814 17:19:07.378462   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:07 ks2 kubelet[20136]: E0814 17:19:07.395430   20136 event.go:212] Unable to write event: 'Post https://192.168.60.102:6443/api/v1/namespaces/default/events: net/http: TLS handshake timeout' (may retry after sleeping)
+Aug 14 17:19:07 ks2 kubelet[20136]: E0814 17:19:07.484210   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:07 ks2 kubelet[20136]: E0814 17:19:07.584569   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:07 ks2 kubelet[20136]: E0814 17:19:07.687984   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:07 ks2 kubelet[20136]: E0814 17:19:07.798092   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:07 ks2 kubelet[20136]: E0814 17:19:07.908301   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:08 ks2 kubelet[20136]: E0814 17:19:08.014547   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:08 ks2 kubelet[20136]: E0814 17:19:08.118562   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:08 ks2 kubelet[20136]: E0814 17:19:08.224152   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:08 ks2 kubelet[20136]: E0814 17:19:08.325719   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:08 ks2 kubelet[20136]: E0814 17:19:08.427721   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:08 ks2 kubelet[20136]: E0814 17:19:08.535307   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:08 ks2 kubelet[20136]: E0814 17:19:08.565992   20136 reflector.go:125] k8s.io/kubernetes/pkg/kubelet/kubelet.go:442: Failed to list *v1.Service: Unauthorized
+Aug 14 17:19:08 ks2 kubelet[20136]: E0814 17:19:08.566049   20136 reflector.go:125] k8s.io/kubernetes/pkg/kubelet/config/apiserver.go:47: Failed to list *v1.Pod: Unauthorized
+Aug 14 17:19:08 ks2 kubelet[20136]: E0814 17:19:08.566086   20136 reflector.go:125] k8s.io/kubernetes/pkg/kubelet/kubelet.go:451: Failed to list *v1.Node: Unauthorized
+Aug 14 17:19:08 ks2 kubelet[20136]: W0814 17:19:08.566115   20136 status_manager.go:485] Failed to get status for pod "kube-apiserver-ks2_kube-system(24885ad2245b362846991d1569f43690)": Unauthorized
+Aug 14 17:19:08 ks2 kubelet[20136]: W0814 17:19:08.595312   20136 status_manager.go:485] Failed to get status for pod "kube-controller-manager-ks2_kube-system(d95dcce69327a2d64d92144e1f40b5f1)": Unauthorized
+Aug 14 17:19:08 ks2 kubelet[20136]: E0814 17:19:08.636991   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:08 ks2 kubelet[20136]: E0814 17:19:08.738934   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:08 ks2 kubelet[20136]: E0814 17:19:08.840243   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:08 ks2 kubelet[20136]: E0814 17:19:08.952010   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:09 ks2 kubelet[20136]: E0814 17:19:09.057120   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:09 ks2 kubelet[20136]: E0814 17:19:09.157744   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:09 ks2 kubelet[20136]: E0814 17:19:09.265995   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:09 ks2 kubelet[20136]: E0814 17:19:09.366514   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:09 ks2 kubelet[20136]: I0814 17:19:09.395431   20136 kubelet_node_status.go:277] Setting node annotation to enable volume controller attach/detach
+Aug 14 17:19:09 ks2 kubelet[20136]: E0814 17:19:09.467277   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:09 ks2 kubelet[20136]: I0814 17:19:09.489346   20136 kubelet_node_status.go:70] Attempting to register node ks2
+Aug 14 17:19:09 ks2 kubelet[20136]: E0814 17:19:09.490703   20136 kubelet_node_status.go:92] Unable to register node "ks2" with API server: Unauthorized
+Aug 14 17:19:09 ks2 kubelet[20136]: E0814 17:19:09.567763   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:09 ks2 kubelet[20136]: E0814 17:19:09.568045   20136 reflector.go:125] k8s.io/kubernetes/pkg/kubelet/kubelet.go:442: Failed to list *v1.Service: Unauthorized
+Aug 14 17:19:09 ks2 kubelet[20136]: E0814 17:19:09.570035   20136 reflector.go:125] k8s.io/kubernetes/pkg/kubelet/config/apiserver.go:47: Failed to list *v1.Pod: Unauthorized
+Aug 14 17:19:09 ks2 kubelet[20136]: E0814 17:19:09.571493   20136 reflector.go:125] k8s.io/kubernetes/pkg/kubelet/kubelet.go:451: Failed to list *v1.Node: Unauthorized
+Aug 14 17:19:09 ks2 kubelet[20136]: E0814 17:19:09.668126   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:09 ks2 kubelet[20136]: E0814 17:19:09.768323   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:09 ks2 kubelet[20136]: E0814 17:19:09.868674   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:09 ks2 kubelet[20136]: E0814 17:19:09.968967   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:10 ks2 kubelet[20136]: E0814 17:19:10.069437   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:10 ks2 kubelet[20136]: E0814 17:19:10.169782   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:10 ks2 kubelet[20136]: E0814 17:19:10.270058   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:10 ks2 kubelet[20136]: E0814 17:19:10.370733   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:10 ks2 kubelet[20136]: E0814 17:19:10.471075   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:10 ks2 kubelet[20136]: E0814 17:19:10.569864   20136 reflector.go:125] k8s.io/kubernetes/pkg/kubelet/kubelet.go:442: Failed to list *v1.Service: Unauthorized
+Aug 14 17:19:10 ks2 kubelet[20136]: E0814 17:19:10.571702   20136 reflector.go:125] k8s.io/kubernetes/pkg/kubelet/config/apiserver.go:47: Failed to list *v1.Pod: Unauthorized
+Aug 14 17:19:10 ks2 kubelet[20136]: E0814 17:19:10.572514   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:10 ks2 kubelet[20136]: E0814 17:19:10.573379   20136 reflector.go:125] k8s.io/kubernetes/pkg/kubelet/kubelet.go:451: Failed to list *v1.Node: Unauthorized
+Aug 14 17:19:10 ks2 kubelet[20136]: E0814 17:19:10.672815   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:10 ks2 kubelet[20136]: E0814 17:19:10.773592   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:10 ks2 kubelet[20136]: E0814 17:19:10.874212   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:10 ks2 kubelet[20136]: E0814 17:19:10.974667   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:11 ks2 kubelet[20136]: E0814 17:19:11.075209   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:11 ks2 kubelet[20136]: E0814 17:19:11.175815   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:11 ks2 kubelet[20136]: E0814 17:19:11.276026   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:11 ks2 kubelet[20136]: E0814 17:19:11.376803   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:11 ks2 kubelet[20136]: E0814 17:19:11.477162   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:11 ks2 kubelet[20136]: E0814 17:19:11.571509   20136 reflector.go:125] k8s.io/kubernetes/pkg/kubelet/kubelet.go:442: Failed to list *v1.Service: Unauthorized
+Aug 14 17:19:11 ks2 kubelet[20136]: E0814 17:19:11.572656   20136 reflector.go:125] k8s.io/kubernetes/pkg/kubelet/config/apiserver.go:47: Failed to list *v1.Pod: Unauthorized
+Aug 14 17:19:11 ks2 kubelet[20136]: E0814 17:19:11.573900   20136 reflector.go:125] k8s.io/kubernetes/pkg/kubelet/kubelet.go:451: Failed to list *v1.Node: Unauthorized
+Aug 14 17:19:11 ks2 kubelet[20136]: E0814 17:19:11.577343   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:11 ks2 kubelet[20136]: E0814 17:19:11.677902   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:11 ks2 kubelet[20136]: E0814 17:19:11.778329   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:11 ks2 kubelet[20136]: E0814 17:19:11.878955   20136 kubelet.go:2236] node "ks2" not found
+Aug 14 17:19:11 ks2 kubelet[20136]: E0814 17:19:11.980078   20136 kubelet.go:2236] node "ks2" not found
+^C
+[root@ks2 kubernetes]# 
+[root@ks2 kubernetes]# 
+[root@ks2 kubernetes]# docker ps -a
+CONTAINER ID        IMAGE                         COMMAND                  CREATED             STATUS              PORTS               NAMES
+da99b06966a1        dab16944dfce                  "kube-apiserver --ad…"   25 seconds ago      Up 23 seconds                           k8s_kube-apiserver_kube-apiserver-ks2_kube-system_24885ad2245b362846991d1569f43690_0
+f22d1f321e71        6ccd44dc061f                  "kube-controller-man…"   25 seconds ago      Up 23 seconds                           k8s_kube-controller-manager_kube-controller-manager-ks2_kube-system_d95dcce69327a2d64d92144e1f40b5f1_0
+37bb82483ede        c09febff85d6                  "kube-scheduler --ma…"   26 seconds ago      Up 24 seconds                           k8s_kube-scheduler_kube-scheduler-ks2_kube-system_50c22c6953e39f9c091c1e41cf6efa3b_0
+7efbf11a0c48        k8s.gcr.io/pause:3.1          "/pause"                 27 seconds ago      Up 25 seconds                           k8s_POD_kube-controller-manager-ks2_kube-system_d95dcce69327a2d64d92144e1f40b5f1_0
+0e39f88b6369        k8s.gcr.io/pause:3.1          "/pause"                 27 seconds ago      Up 25 seconds                           k8s_POD_kube-apiserver-ks2_kube-system_24885ad2245b362846991d1569f43690_0
+a1f1d26c2d58        k8s.gcr.io/pause:3.1          "/pause"                 27 seconds ago      Up 26 seconds                           k8s_POD_kube-scheduler-ks2_kube-system_50c22c6953e39f9c091c1e41cf6efa3b_0
+df76936fe6fd        quay.io/coreos/etcd:v3.2.24   "/usr/local/bin/etcd…"   3 hours ago         Up 3 hours                              etcd
+
+[root@ks2 kubernetes]# kubectl get nodes
+NAME   STATUS     ROLES    AGE     VERSION
+ks2    NotReady   <none>   3h30m   v1.12.8
+
+[root@ks2 kubernetes]# 
+# kubectl get pods --all-namespaces
+NAMESPACE     NAME                          READY   STATUS    RESTARTS   AGE
+kube-system   kube-apiserver-ks2            1/1     Running   0          3h18m
+kube-system   kube-controller-manager-ks2   1/1     Running   3          3h30m
+kube-system   kube-scheduler-ks2            1/1     Running   3          3h30m
+
+
 
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
