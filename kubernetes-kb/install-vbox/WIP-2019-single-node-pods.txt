@@ -806,6 +806,7 @@ ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELE
 systemctl daemon-reload
 systemctl restart kubelet
 journalctl -fu kubelet
+--> At this time kubelet did not start properly - see 'ERROR 1' down below
 
 - ClusterRole and ClusterRoleBinding
 on master (here, same node)
@@ -862,9 +863,110 @@ kubectl create -f kube-apiserver-to-kubelet-bind.yaml
 
 --> clusterrolebinding.rbac.authorization.k8s.io/system:kube-apiserver created
 
+- RESTART KUBELET
+systemctl start kubelet
+journalctl -fu kubelet
+kubectl get nodes -o wide
+
+--> This time it seemed to start properly and nodes were listed (see logs below)
+--> However, curl to API does not work yet (see listings below)
+
+[root@ks2 certs]# systemctl start kubelet; journalctl -fu kubelet;
+-- Logs begin at Wed 2019-08-14 13:59:42 IST. --
+Aug 14 18:35:52 ks2 kubelet[28500]: I0814 18:35:52.070153   28500 cpu_manager.go:156] [cpumanager] reconciling every 10s
+Aug 14 18:35:52 ks2 kubelet[28500]: I0814 18:35:52.070164   28500 policy_none.go:42] [cpumanager] none policy: Start
+Aug 14 18:35:52 ks2 kubelet[28500]: I0814 18:35:52.181498   28500 reconciler.go:207] operationExecutor.VerifyControllerAttachedVolume started for volume "k8s-certs" (UniqueName: "kubernetes.io/host-path/54e421728991976be2cb402ba87859f9-k8s-certs") pod "kube-apiserver-ks2" (UID: "54e421728991976be2cb402ba87859f9")
+Aug 14 18:35:52 ks2 kubelet[28500]: I0814 18:35:52.181551   28500 reconciler.go:207] operationExecutor.VerifyControllerAttachedVolume started for volume "k8s-certs" (UniqueName: "kubernetes.io/host-path/d95dcce69327a2d64d92144e1f40b5f1-k8s-certs") pod "kube-controller-manager-ks2" (UID: "d95dcce69327a2d64d92144e1f40b5f1")
+Aug 14 18:35:52 ks2 kubelet[28500]: I0814 18:35:52.181573   28500 reconciler.go:154] Reconciler: start to sync state
+Aug 14 18:35:52 ks2 kubelet[28500]: E0814 18:35:52.604791   28500 kubelet.go:1637] Failed creating a mirror pod for "kube-scheduler-ks2_kube-system(50c22c6953e39f9c091c1e41cf6efa3b)": pods "kube-scheduler-ks2" already exists
+Aug 14 18:35:53 ks2 kubelet[28500]: W0814 18:35:53.358954   28500 kubelet_getters.go:271] Path "/var/lib/kubelet/pods/24885ad2245b362846991d1569f43690/volumes" does not exist
+Aug 14 18:36:09 ks2 systemd[1]: Stopping kubelet: The Kubernetes Node Agent...
+Aug 14 18:36:09 ks2 systemd[1]: Stopped kubelet: The Kubernetes Node Agent.
+Aug 14 18:56:07 ks2 systemd[1]: Started kubelet: The Kubernetes Node Agent.
+Aug 14 18:56:07 ks2 kubelet[29087]: Flag --pod-manifest-path has been deprecated, This parameter should be set via the config file specified by the Kubelet's --config flag. See https://kubernetes.io/docs/tasks/administer-cluster/kubelet-config-file/ for more information.
+Aug 14 18:56:07 ks2 kubelet[29087]: Flag --client-ca-file has been deprecated, This parameter should be set via the config file specified by the Kubelet's --config flag. See https://kubernetes.io/docs/tasks/administer-cluster/kubelet-config-file/ for more information.
+Aug 14 18:56:07 ks2 kubelet[29087]: Flag --tls-cert-file has been deprecated, This parameter should be set via the config file specified by the Kubelet's --config flag. See https://kubernetes.io/docs/tasks/administer-cluster/kubelet-config-file/ for more information.
+Aug 14 18:56:07 ks2 kubelet[29087]: Flag --tls-private-key-file has been deprecated, This parameter should be set via the config file specified by the Kubelet's --config flag. See https://kubernetes.io/docs/tasks/administer-cluster/kubelet-config-file/ for more information.
+Aug 14 18:56:07 ks2 kubelet[29087]: Flag --authorization-mode has been deprecated, This parameter should be set via the config file specified by the Kubelet's --config flag. See https://kubernetes.io/docs/tasks/administer-cluster/kubelet-config-file/ for more information.
+Aug 14 18:56:07 ks2 kubelet[29087]: I0814 18:56:07.151020   29087 server.go:408] Version: v1.12.8
+Aug 14 18:56:07 ks2 kubelet[29087]: I0814 18:56:07.151157   29087 plugins.go:99] No cloud provider specified.
+Aug 14 18:56:07 ks2 kubelet[29087]: I0814 18:56:07.302441   29087 server.go:667] --cgroups-per-qos enabled, but --cgroup-root was not specified.  defaulting to /
+Aug 14 18:56:07 ks2 kubelet[29087]: I0814 18:56:07.302720   29087 container_manager_linux.go:247] container manager verified user specified cgroup-root exists: []
+Aug 14 18:56:07 ks2 kubelet[29087]: I0814 18:56:07.302731   29087 container_manager_linux.go:252] Creating Container Manager object based on Node Config: {RuntimeCgroupsName: SystemCgroupsName: KubeletCgroupsName: ContainerRuntime:docker CgroupsPerQOS:true CgroupRoot:/ CgroupDriver:cgroupfs KubeletRootDir:/var/lib/kubelet ProtectKernelDefaults:false NodeAllocatableConfig:{KubeReservedCgroupName: SystemReservedCgroupName: EnforceNodeAllocatable:map[pods:{}] KubeReserved:map[] SystemReserved:map[] HardEvictionThresholds:[{Signal:nodefs.available Operator:LessThan Value:{Quantity:<nil> Percentage:0.1} GracePeriod:0s MinReclaim:<nil>} {Signal:nodefs.inodesFree Operator:LessThan Value:{Quantity:<nil> Percentage:0.05} GracePeriod:0s MinReclaim:<nil>} {Signal:imagefs.available Operator:LessThan Value:{Quantity:<nil> Percentage:0.15} GracePeriod:0s MinReclaim:<nil>} {Signal:memory.available Operator:LessThan Value:{Quantity:100Mi Percentage:0} GracePeriod:0s MinReclaim:<nil>}]} QOSReserved:map[] ExperimentalCPUManagerPolicy:none ExperimentalCPUManagerReconcilePeriod:10s ExperimentalPodPidsLimit:-1 EnforceCPULimits:true CPUCFSQuotaPeriod:100ms}
+Aug 14 18:56:07 ks2 kubelet[29087]: I0814 18:56:07.302808   29087 container_manager_linux.go:271] Creating device plugin manager: true
+Aug 14 18:56:07 ks2 kubelet[29087]: I0814 18:56:07.302836   29087 state_mem.go:36] [cpumanager] initializing new in-memory state store
+Aug 14 18:56:07 ks2 kubelet[29087]: I0814 18:56:07.302926   29087 state_mem.go:84] [cpumanager] updated default cpuset: ""
+Aug 14 18:56:07 ks2 kubelet[29087]: I0814 18:56:07.302936   29087 state_mem.go:92] [cpumanager] updated cpuset assignments: "map[]"
+Aug 14 18:56:07 ks2 kubelet[29087]: I0814 18:56:07.303003   29087 kubelet.go:279] Adding pod path: /etc/kubernetes/manifests
+Aug 14 18:56:07 ks2 kubelet[29087]: I0814 18:56:07.303026   29087 kubelet.go:304] Watching apiserver
+Aug 14 18:56:07 ks2 kubelet[29087]: I0814 18:56:07.324165   29087 client.go:75] Connecting to docker on unix:///var/run/docker.sock
+Aug 14 18:56:07 ks2 kubelet[29087]: I0814 18:56:07.324185   29087 client.go:104] Start docker client with request timeout=2m0s
+Aug 14 18:56:07 ks2 kubelet[29087]: W0814 18:56:07.398077   29087 docker_service.go:540] Hairpin mode set to "promiscuous-bridge" but kubenet is not enabled, falling back to "hairpin-veth"
+Aug 14 18:56:07 ks2 kubelet[29087]: I0814 18:56:07.398103   29087 docker_service.go:236] Hairpin mode set to "hairpin-veth"
+Aug 14 18:56:07 ks2 kubelet[29087]: W0814 18:56:07.398165   29087 cni.go:188] Unable to update cni config: No networks found in /etc/cni/net.d
+Aug 14 18:56:07 ks2 kubelet[29087]: I0814 18:56:07.401798   29087 docker_service.go:251] Docker cri networking managed by kubernetes.io/no-op
+Aug 14 18:56:07 ks2 kubelet[29087]: I0814 18:56:07.422786   29087 docker_service.go:256] Docker Info: &{ID:KS4G:JVF5:BFCF:ER3E:4DCO:W73D:RLCY:3WRI:PAIY:LL2G:6FJX:DDC5 Containers:7 ContainersRunning:7 ContainersPaused:0 ContainersStopped:0 Images:7 Driver:overlay2 DriverStatus:[[Backing Filesystem xfs] [Supports d_type true] [Native Overlay Diff true]] SystemStatus:[] Plugins:{Volume:[local] Network:[bridge host ipvlan macvlan null overlay] Authorization:[] Log:[awslogs fluentd gcplogs gelf journald json-file local logentries splunk syslog]} MemoryLimit:true SwapLimit:true KernelMemory:true CPUCfsPeriod:true CPUCfsQuota:true CPUShares:true CPUSet:true IPv4Forwarding:true BridgeNfIptables:true BridgeNfIP6tables:true Debug:false NFd:62 OomKillDisable:true NGoroutines:76 SystemTime:2019-08-14T18:56:07.402841739+05:30 LoggingDriver:json-file CgroupDriver:cgroupfs NEventsListener:0 KernelVersion:3.10.0-957.el7.x86_64 OperatingSystem:CentOS Linux 7 (Core) OSType:linux Architecture:x86_64 IndexServerAddress:https://index.docker.io/v1/ RegistryConfig:0xc4209dff80 NCPU:1 MemTotal:2096295936 GenericResources:[] DockerRootDir:/var/lib/docker HTTPProxy: HTTPSProxy: NoProxy: Name:ks2 Labels:[] ExperimentalBuild:false ServerVersion:19.03.1 ClusterStore: ClusterAdvertise: Runtimes:map[runc:{Path:runc Args:[]}] DefaultRuntime:runc Swarm:{NodeID: NodeAddr: LocalNodeState:inactive ControlAvailable:false Error: RemoteManagers:[] Nodes:0 Managers:0 Cluster:<nil>} LiveRestoreEnabled:false Isolation: InitBinary:docker-init ContainerdCommit:{ID:894b81a4b802e4eb2a91d1ce216b8817763c29fb Expected:894b81a4b802e4eb2a91d1ce216b8817763c29fb} RuncCommit:{ID:425e105d5a03fabd737a126ad93d62a9eeede87f Expected:425e105d5a03fabd737a126ad93d62a9eeede87f} InitCommit:{ID:fec3683 Expected:fec3683} SecurityOptions:[name=seccomp,profile=default]}
+Aug 14 18:56:07 ks2 kubelet[29087]: I0814 18:56:07.422840   29087 docker_service.go:269] Setting cgroupDriver to cgroupfs
+Aug 14 18:56:07 ks2 kubelet[29087]: I0814 18:56:07.564337   29087 kuberuntime_manager.go:197] Container runtime docker initialized, version: 19.03.1, apiVersion: 1.40.0
+Aug 14 18:56:07 ks2 kubelet[29087]: I0814 18:56:07.620059   29087 server.go:1013] Started kubelet
+Aug 14 18:56:07 ks2 kubelet[29087]: E0814 18:56:07.620502   29087 kubelet.go:1287] Image garbage collection failed once. Stats initialization may not have completed yet: failed to get imageFs info: unable to find data in memory cache
+Aug 14 18:56:07 ks2 kubelet[29087]: I0814 18:56:07.620929   29087 fs_resource_analyzer.go:66] Starting FS ResourceAnalyzer
+Aug 14 18:56:07 ks2 kubelet[29087]: I0814 18:56:07.620948   29087 status_manager.go:152] Starting to sync pod status with apiserver
+Aug 14 18:56:07 ks2 kubelet[29087]: I0814 18:56:07.620959   29087 kubelet.go:1804] Starting kubelet main sync loop.
+Aug 14 18:56:07 ks2 kubelet[29087]: I0814 18:56:07.620975   29087 kubelet.go:1821] skipping pod synchronization - [container runtime is down PLEG is not healthy: pleg was last seen active 2562047h47m16.854775807s ago; threshold is 3m0s]
+Aug 14 18:56:07 ks2 kubelet[29087]: I0814 18:56:07.621059   29087 server.go:133] Starting to listen on 0.0.0.0:10250
+Aug 14 18:56:07 ks2 kubelet[29087]: I0814 18:56:07.621476   29087 server.go:318] Adding debug handlers to kubelet server.
+Aug 14 18:56:07 ks2 kubelet[29087]: I0814 18:56:07.622641   29087 volume_manager.go:248] Starting Kubelet Volume Manager
+Aug 14 18:56:07 ks2 kubelet[29087]: I0814 18:56:07.632117   29087 desired_state_of_world_populator.go:130] Desired state populator starts to run
+Aug 14 18:56:07 ks2 kubelet[29087]: I0814 18:56:07.727478   29087 kubelet.go:1821] skipping pod synchronization - [container runtime is down]
+Aug 14 18:56:07 ks2 kubelet[29087]: I0814 18:56:07.727518   29087 kubelet_node_status.go:277] Setting node annotation to enable volume controller attach/detach
+Aug 14 18:56:07 ks2 kubelet[29087]: I0814 18:56:07.881972   29087 kubelet_node_status.go:70] Attempting to register node ks2
+Aug 14 18:56:07 ks2 kubelet[29087]: I0814 18:56:07.921860   29087 kubelet_node_status.go:112] Node ks2 was previously registered
+Aug 14 18:56:07 ks2 kubelet[29087]: I0814 18:56:07.921880   29087 kubelet_node_status.go:73] Successfully registered node ks2
+Aug 14 18:56:07 ks2 kubelet[29087]: I0814 18:56:07.950837   29087 kubelet.go:1821] skipping pod synchronization - [container runtime is down]
+Aug 14 18:56:08 ks2 kubelet[29087]: I0814 18:56:08.129149   29087 setters.go:518] Node became not ready: {Type:Ready Status:False LastHeartbeatTime:2019-08-14 18:56:08.129133899 +0530 IST m=+1.100086773 LastTransitionTime:2019-08-14 18:56:08.129133899 +0530 IST m=+1.100086773 Reason:KubeletNotReady Message:container runtime is down}
+Aug 14 18:56:08 ks2 kubelet[29087]: I0814 18:56:08.210657   29087 cpu_manager.go:155] [cpumanager] starting with none policy
+Aug 14 18:56:08 ks2 kubelet[29087]: I0814 18:56:08.210674   29087 cpu_manager.go:156] [cpumanager] reconciling every 10s
+Aug 14 18:56:08 ks2 kubelet[29087]: I0814 18:56:08.210682   29087 policy_none.go:42] [cpumanager] none policy: Start
+Aug 14 18:56:08 ks2 kubelet[29087]: E0814 18:56:08.366719   29087 kubelet.go:1637] Failed creating a mirror pod for "kube-apiserver-ks2_kube-system(54e421728991976be2cb402ba87859f9)": pods "kube-apiserver-ks2" already exists
+Aug 14 18:56:08 ks2 kubelet[29087]: E0814 18:56:08.368833   29087 kubelet.go:1637] Failed creating a mirror pod for "kube-scheduler-ks2_kube-system(50c22c6953e39f9c091c1e41cf6efa3b)": pods "kube-scheduler-ks2" already exists
+Aug 14 18:56:08 ks2 kubelet[29087]: E0814 18:56:08.373922   29087 kubelet.go:1637] Failed creating a mirror pod for "kube-controller-manager-ks2_kube-system(d95dcce69327a2d64d92144e1f40b5f1)": pods "kube-controller-manager-ks2" already exists
+Aug 14 18:56:08 ks2 kubelet[29087]: I0814 18:56:08.512351   29087 reconciler.go:207] operationExecutor.VerifyControllerAttachedVolume started for volume "k8s-certs" (UniqueName: "kubernetes.io/host-path/54e421728991976be2cb402ba87859f9-k8s-certs") pod "kube-apiserver-ks2" (UID: "54e421728991976be2cb402ba87859f9")
+Aug 14 18:56:08 ks2 kubelet[29087]: I0814 18:56:08.512535   29087 reconciler.go:207] operationExecutor.VerifyControllerAttachedVolume started for volume "k8s-certs" (UniqueName: "kubernetes.io/host-path/d95dcce69327a2d64d92144e1f40b5f1-k8s-certs") pod "kube-controller-manager-ks2" (UID: "d95dcce69327a2d64d92144e1f40b5f1")
+Aug 14 18:56:08 ks2 kubelet[29087]: I0814 18:56:08.512560   29087 reconciler.go:154] Reconciler: start to sync state
+^C
+
+[root@ks2 certs]# curl --cacert ./ca.pem https://192.168.60.102:6443/version
+{
+  "kind": "Status",
+  "apiVersion": "v1",
+  "metadata": {
+    
+  },
+  "status": "Failure",
+  "message": "Unauthorized",
+  "reason": "Unauthorized",
+  "code": 401
+}[root@ks2 certs]# curl -k https://192.168.60.102:6443/api/v1/nodes
+{
+  "kind": "Status",
+  "apiVersion": "v1",
+  "metadata": {
+    
+  },
+  "status": "Failure",
+  "message": "Unauthorized",
+  "reason": "Unauthorized",
+  "code": 401
+}
+
+[root@ks2 certs]# kubectl get nodes -o wide
+NAME   STATUS   ROLES    AGE   VERSION   INTERNAL-IP      EXTERNAL-IP   OS-IMAGE                KERNEL-VERSION          CONTAINER-RUNTIME
+ks2    Ready    <none>   21m   v1.12.8   192.168.60.102   <none>        CentOS Linux 7 (Core)   3.10.0-957.el7.x86_64   docker://19.3.1
 
 
-- ERROR RESTARTING KUBELET WITH NO CLUSTER-ROLE AND CLUSTER-ROLE-BINDING
+
+- ERROR 1 RESTARTING KUBELET WITH NO CLUSTER-ROLE AND CLUSTER-ROLE-BINDING
 
 [root@ks2 kubernetes]# systemctl start kubelet; journalctl -fu kubelet;
 -- Logs begin at Wed 2019-08-14 13:59:42 IST. --
