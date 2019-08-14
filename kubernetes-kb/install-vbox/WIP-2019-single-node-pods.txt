@@ -616,25 +616,50 @@ WantedBy=multi-user.target
 systemctl daemon-reload
 systemctl restart etcd
 
--- Errors:
-1. Thinks trusted-ca = /etc/etcd/ca.pem
-2. Does not find /etc/kubernetes/pki/kubernetes.pem
+----------------------
+kube-apiserver.yaml
+----------------------
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    scheduler.alpha.kubernetes.io/critical-pod: ""
+  labels:
+    component: kube-apiserver
+    tier: control-plane
+  name: kube-apiserver
+  namespace: kube-system
+spec:
+  hostNetwork: true
+  containers:
+  - command:
+    - kube-apiserver
+    - --advertise-address=192.168.60.102
+    - --insecure-bind-address=127.0.0.1
+    - --bind-address=0.0.0.0
+    - --etcd-servers=https://192.168.60.102:2379
+    - --service-cluster-ip-range=10.96.0.0/12
+    - --admission-control=NamespaceLifecycle,LimitRanger,SecurityContextDeny,ServiceAccount,ResourceQuota
+    - --etcd-cafile=/etc/kubernetes/pki/ca.pem 
+    - --etcd-certfile=/etc/kubernetes/pki/kubernetes.pem 
+    - --etcd-keyfile=/etc/kubernetes/pki/kubernetes-key.pem 
+    - --kubelet-certificate-authority=/etc/kubernetes/pki/ca.pem 
+    - --kubelet-client-certificate=/etc/kubernetes/pki/kubernetes.pem 
+    - --kubelet-client-key=/etc/kubernetes/pki/kubernetes-key.pem 
+    - --service-account-key-file=/etc/kubernetes/pki/ca-key.pem 
+    - --tls-cert-file=/etc/kubernetes/pki/kubernetes.pem 
+    - --tls-private-key-file=/etc/kubernetes/pki/kubernetes-key.pem
+    image: gcr.io/google_containers/kube-apiserver-amd64:v1.12.8
+    name: kube-apiserver
+    volumeMounts:
+    - mountPath: /etc/kubernetes/pki
+      name: k8s-certs
+  volumes:
+  - hostPath:
+      path: /etc/kubernetes/pki
+      type: Directory
+    name: k8s-certs
 
-Aug 13 16:58:01 ks2 docker[1913]: WARNING: Published ports are discarded when using host network mode
-Aug 13 16:58:01 ks2 docker[1913]: 2019-08-13 11:28:01.197699 I | etcdmain: etcd Version: 3.2.24
-Aug 13 16:58:01 ks2 docker[1913]: 2019-08-13 11:28:01.197747 I | etcdmain: Git SHA: 420a45226
-Aug 13 16:58:01 ks2 docker[1913]: 2019-08-13 11:28:01.197752 I | etcdmain: Go Version: go1.8.7
-Aug 13 16:58:01 ks2 docker[1913]: 2019-08-13 11:28:01.197757 I | etcdmain: Go OS/Arch: linux/amd64
-Aug 13 16:58:01 ks2 docker[1913]: 2019-08-13 11:28:01.197760 I | etcdmain: setting maximum number of CPUs to 1, total number of available CPUs is 1
-Aug 13 16:58:01 ks2 docker[1913]: 2019-08-13 11:28:01.197789 N | etcdmain: the server is already initialized as member before, starting as etcd member...
-Aug 13 16:58:01 ks2 docker[1913]: 2019-08-13 11:28:01.197808 I | embed: peerTLS: cert = /etc/kubernetes/pki/kubernetes.pem, key = /etc/kubernetes/pki/kubernetes-key.pem, ca = , trusted-ca = /etc/etcd/ca.pem, client-cert-auth = false
-Aug 13 16:58:01 ks2 docker[1913]: 2019-08-13 11:28:01.197886 C | etcdmain: open /etc/kubernetes/pki/kubernetes.pem: no such file or directory
-Aug 13 16:58:01 ks2 systemd[1]: etcd.service: main process exited, code=exited, status=1/FAILURE
-Aug 13 16:58:01 ks2 systemd[1]: Unit etcd.service entered failed state.
-Aug 13 16:58:01 ks2 systemd[1]: etcd.service failed.
-Aug 13 16:58:06 ks2 systemd[1]: etcd.service holdoff time over, scheduling restart.
-Aug 13 16:58:06 ks2 systemd[1]: Stopped etcd.
-Aug 13 16:58:06 ks2 systemd[1]: Started etcd.
 
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
