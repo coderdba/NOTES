@@ -14,9 +14,13 @@ certificate san -  https://kubernetes.io/docs/setup/best-practices/certificates/
 ======
 VMs
 ======
-VM1
-hostname = ks1
+One of these is used - mostly ks1 for no-certificates and ks2 for certificate based
+
+VM1= ks1
 IP = 192.168.60.101
+
+VM2= ks2
+IP = 192.168.60.102
 
 =========
 ETCD
@@ -332,7 +336,10 @@ kube-system   kube-scheduler-ks1            1/1     Running   0          8m50s
 ===================================
 CERTIFICATES
 ===================================
-Note: The element 'ST' could be something like 'MyCompany Inc'
+Notes: 
+- "--client-ca-file=/etc/kubernetes/pki/ca.pem" in kubelet is important
+- "--client-ca-file=/var/lib/kubernetes/ca.pem" in kube-apiserver is important
+- The element 'ST' could be something like 'MyCompany Inc'
 
 -----------------
 CREATE CA CERT
@@ -449,12 +456,13 @@ kubelet-192.168.60.102-csr.json file:
 }
 
 Run command : (kubelet-192.168.60.102-gen.sh)
+NOTE: hostname has IP and hostname (not just IP as in the web 'deploying...' example)
 
 cfssl gencert \
 -ca=ca.pem \
 -ca-key=ca-key.pem \
 -config=ca-config.json \
--hostname=192.168.60.102 \
+-hostname=192.168.60.102,ks2 \
 -profile=kubernetes kubelet-192.168.60.102-csr.json | \
 cfssljson -bare 192.168.60.102
 
@@ -524,12 +532,13 @@ kubernetes-csr.json file:
 }
 
 Run command : (kubernetes-gen.sh)
+NOTE: hostname has IP and hostname (not just IP as in the web 'deploying...' example)
 
 cfssl gencert \
 -ca=ca.pem \
 -ca-key=ca-key.pem \
 -config=ca-config.json \
--hostname=192.168.60.102,127.0.0.1,kubernetes.default \
+-hostname=192.168.60.102,127.0.0.1,ks2,kubernetes.default \
 -profile=kubernetes kubernetes-csr.json | \
 cfssljson -bare kubernetes
 
