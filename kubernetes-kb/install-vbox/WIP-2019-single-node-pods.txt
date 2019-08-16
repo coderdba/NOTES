@@ -1067,7 +1067,6 @@ kubectl create -f kube-apiserver-to-kubelet-bind.yaml
   "code": 401
 }
 
-
 =========================
 KUBE-PROXY
 =========================
@@ -1078,7 +1077,84 @@ some reference - https://github.com/kelseyhightower/intro-to-kubernetes-workshop
 
 IMAGES - docker pull gcr.io/google-containers/kube-proxy-amd64:v1.12.8 (already done in k8s-base-VM)
 
+-- File kube-proxy-ds.yaml : (adapted from model files)
 
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    k8s-app: kube-proxy
+    addonmanager.kubernetes.io/mode: Reconcile
+  name: kube-proxy
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      k8s-app: kube-proxy
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 10%
+  template:
+    metadata:
+      labels:
+        k8s-app: kube-proxy
+    spec:
+      priorityClassName: system-node-critical
+      hostNetwork: true
+      nodeSelector:
+        node.kubernetes.io/kube-proxy-ds-ready: "true"
+      tolerations:
+      - operator: "Exists"
+        effect: "NoExecute"
+      - operator: "Exists"
+        effect: "NoSchedule"
+      containers:
+      - name: kube-proxy
+        image: docker pull gcr.io/google-containers/kube-proxy-amd64:v1.12.8
+        resources:
+          requests:
+            cpu: 100m
+        command:
+        - /usr/local/bin/kube-proxy
+        - --kubeconfig=/var/lib/kube-proxy/kubeconfig.conf
+        - --master=https://$(MASTER_IP):6443
+        - --cluster-cidr=10.20.0.0/16
+        - --masquerade-all
+        env:
+        - name: MASTER_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - mountPath: /var/log
+          name: varlog
+          readOnly: false
+        - mountPath: /run/xtables.lock
+          name: xtables-lock
+          readOnly: false
+        - mountPath: /lib/modules
+          name: lib-modules
+          readOnly: true
+      volumes:
+      - name: varlog
+        hostPath:
+          path: /var/log
+      - name: xtables-lock
+        hostPath:
+          path: /run/xtables.lock
+          type: FileOrCreate
+      - name: lib-modules
+        hostPath:
+          path: /lib/modules
+      serviceAccountName: kube-proxy
+
+
+~~~~~~~~~~~~~~~~~~~~
+MODEL FILES
+~~~~~~~~~~~~~~~~~~~~
 -- File kube-proxy-rbac.yaml :
 (From https://github.com/kubernetes/kubernetes/blob/master/cluster/addons/kube-proxy/kube-proxy-rbac.yaml)
 
