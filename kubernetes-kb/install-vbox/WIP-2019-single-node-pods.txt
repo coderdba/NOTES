@@ -832,6 +832,10 @@ kubectl config use-context default --kubeconfig=192.168.60.102.kubeconfig
 cp 192.168.60.102.kubeconfig /etc/kubernetes/kubelet-kubeconfig
 
 - MODIFY /usr/lib/systemd/system/10-kubeadm.conf
+NOTE: 1. allow-privileged is necessary for creating kube-proxy and such
+      2. /var/lab/kubelet/... for key locations are replaced with /etc/kubernetes/pki
+
+File content:
 
 # Note: This dropin only works with kubeadm and kubelet v1.11+
 [Service]
@@ -849,7 +853,7 @@ EnvironmentFile=-/var/lib/kubelet/kubeadm-flags.env
 # the .NodeRegistration.KubeletExtraArgs object in the configuration files instead. KUBELET_EXTRA_ARGS should be sourced from this file.
 EnvironmentFile=-/etc/sysconfig/kubelet
 ExecStart=
-ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS   --client-ca-file=/etc/kubernetes/pki/ca.pem --tls-cert-file=/etc/kubernetes/pki/192.168.60.102.pem --tls-private-key-file=/var/lib/kubelet/192.168.60.102-key.pem --kubeconfig=/etc/kubernetes/kubelet-kubeconfig
+ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS   --client-ca-file=/etc/kubernetes/pki/ca.pem --tls-cert-file=/etc/kubernetes/pki/192.168.60.102.pem --tls-private-key-file=/etc/kubernetes/pki/192.168.60.102-key.pem --kubeconfig=/etc/kubernetes/kubelet-kubeconfig --allow-privileged
 
 - RESTART KUBELET
 systemctl daemon-reload
