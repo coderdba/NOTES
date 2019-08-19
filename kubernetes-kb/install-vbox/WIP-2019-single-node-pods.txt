@@ -1077,8 +1077,35 @@ some reference - https://github.com/kelseyhightower/intro-to-kubernetes-workshop
 
 IMAGES - docker pull gcr.io/google-containers/kube-proxy-amd64:v1.12.8 (already done in k8s-base-VM)
 
--- File kube-proxy-ds.yaml : (adapted from model files)
+Combine two model files into one kube-proxy.yaml
+Copy the file into /etc/kubernetes/manifests - so that kubelet can pick it up and create the pod
 
+File kube-proxy.yaml :
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kube-proxy
+  namespace: kube-system
+  labels:
+    addonmanager.kubernetes.io/mode: Reconcile
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: system:kube-proxy
+  labels:
+    addonmanager.kubernetes.io/mode: Reconcile
+subjects:
+  - kind: ServiceAccount
+    name: kube-proxy
+    namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: system:node-proxier
+  apiGroup: rbac.authorization.k8s.io
+
+---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -1150,6 +1177,18 @@ spec:
         hostPath:
           path: /lib/modules
       serviceAccountName: kube-proxy
+
+
+- ERROR
+
+Aug 19 16:30:47 ks2 kubelet[18240]: E0819 16:30:47.254493   18240 file.go:108] Unable to process watch event: can't process config file "/etc/kubernetes/manifests/kube-proxy.yaml": /etc/kubernetes/manifests/kube-proxy.yaml: couldn't parse as pod(invalid pod: &core.ServiceAccount{TypeMeta:v1.TypeMeta{Kind:"", APIVersion:""}, ObjectMeta:v1.ObjectMeta{Name:"kube-proxy", GenerateName:"", Namespace:"kube-system", SelfLink:"", UID:"", ResourceVersion:"", Generation:0, CreationTimestamp:v1.Time{Time:time.Time{wall:0x0, ext:0, loc:(*time.Location)(nil)}}, DeletionTimestamp:(*v1.Time)(nil), DeletionGracePeriodSeconds:(*int64)(nil), Labels:map[string]string{"addonmanager.kubernetes.io/mode":"Reconcile"}, Annotations:map[string]string(nil), OwnerReferences:[]v1.OwnerReference(nil), Initializers:(*v1.Initializers)(nil), Finalizers:[]string(nil), ClusterName:""}, Secrets:[]core.ObjectReference(nil), ImagePullSecrets:[]core.LocalObjectReference(nil), AutomountServiceAccountToken:(*bool)(nil)}), please check config file.
+
+Aug 19 16:30:47 ks2 kubelet[18240]: E0819 16:30:47.254682   18240 file.go:108] Unable to process watch event: can't process config file "/etc/kubernetes/manifests/kube-proxy.yaml": /etc/kubernetes/manifests/kube-proxy.yaml: couldn't parse as pod(invalid pod: &core.ServiceAccount{TypeMeta:v1.TypeMeta{Kind:"", APIVersion:""}, ObjectMeta:v1.ObjectMeta{Name:"kube-proxy", GenerateName:"", Namespace:"kube-system", SelfLink:"", UID:"", ResourceVersion:"", Generation:0, CreationTimestamp:v1.Time{Time:time.Time{wall:0x0, ext:0, loc:(*time.Location)(nil)}}, DeletionTimestamp:(*v1.Time)(nil), DeletionGracePeriodSeconds:(*int64)(nil), Labels:map[string]string{"addonmanager.kubernetes.io/mode":"Reconcile"}, Annotations:map[string]string(nil), OwnerReferences:[]v1.OwnerReference(nil), Initializers:(*v1.Initializers)(nil), Finalizers:[]string(nil), ClusterName:""}, Secrets:[]core.ObjectReference(nil), ImagePullSecrets:[]core.LocalObjectReference(nil), AutomountServiceAccountToken:(*bool)(nil)}), please check config file.
+
+Aug 19 16:30:51 ks2 kubelet[18240]: E0819 16:30:51.203871   18240 file.go:187] Can't process manifest file "/etc/kubernetes/manifests/kube-proxy.yaml": /etc/kubernetes/manifests/kube-proxy.yaml: couldn't parse as pod(invalid pod: &core.ServiceAccount{TypeMeta:v1.TypeMeta{Kind:"", APIVersion:""}, ObjectMeta:v1.ObjectMeta{Name:"kube-proxy", GenerateName:"", Namespace:"kube-system", SelfLink:"", UID:"", ResourceVersion:"", Generation:0, CreationTimestamp:v1.Time{Time:time.Time{wall:0x0, ext:0, loc:(*time.Location)(nil)}}, DeletionTimestamp:(*v1.Time)(nil), DeletionGracePeriodSeconds:(*int64)(nil), Labels:map[string]string{"addonmanager.kubernetes.io/mode":"Reconcile"}, Annotations:map[string]string(nil), OwnerReferences:[]v1.OwnerReference(nil), Initializers:(*v1.Initializers)(nil), Finalizers:[]string(nil), ClusterName:""}, Secrets:[]core.ObjectReference(nil), ImagePullSecrets:[]core.LocalObjectReference(nil), AutomountServiceAccountToken:(*bool)(nil)}), please check config file.
+
+Aug 19 16:31:11 ks2 kubelet[18240]: E0819 16:31:11.203647   18240 file.go:187] Can't process manifest file "/etc/kubernetes/manifests/kube-proxy.yaml": /etc/kubernetes/manifests/kube-proxy.yaml: couldn't parse as pod(invalid pod: &core.ServiceAccount{TypeMeta:v1.TypeMeta{Kind:"", APIVersion:""}, ObjectMeta:v1.ObjectMeta{Name:"kube-proxy", GenerateName:"", Namespace:"kube-system", SelfLink:"", UID:"", ResourceVersion:"", Generation:0, CreationTimestamp:v1.Time{Time:time.Time{wall:0x0, ext:0, loc:(*time.Location)(nil)}}, DeletionTimestamp:(*v1.Time)(nil), DeletionGracePeriodSeconds:(*int64)(nil), Labels:map[string]string{"addonmanager.kubernetes.io/mode":"Reconcile"}, Annotations:map[string]string(nil), OwnerReferences:[]v1.OwnerReference(nil), Initializers:(*v1.Initializers)(nil), Finalizers:[]string(nil), ClusterName:""}, Secrets:[]core.ObjectReference(nil), ImagePullSecrets:[]core.LocalObjectReference(nil), AutomountServiceAccountToken:(*bool)(nil)}), please check config file.
+^C
 
 
 ~~~~~~~~~~~~~~~~~~~~
