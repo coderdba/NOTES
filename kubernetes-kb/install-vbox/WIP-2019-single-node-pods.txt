@@ -1086,9 +1086,13 @@ IMAGES - docker pull gcr.io/google-containers/kube-proxy-amd64:v1.12.8 (already 
 Combine two model files into one kube-proxy.yaml
 Copy the file into /etc/kubernetes/manifests - so that kubelet can pick it up and create the pod
 
+-------------------------
+CRETAE kube-proxy.yaml
+-------------------------
+
 File kube-proxy.yaml :
 
-# FROM RBAC.YAML
+# FROM kube-proxy-rbac.yaml
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -1112,7 +1116,7 @@ roleRef:
   name: system:node-proxier
   apiGroup: rbac.authorization.k8s.io
 
-# FROM DS.YAML
+# FROM kube-proxy-ds.yaml
 ---
 apiVersion: apps/v1
 kind: DaemonSet
@@ -1137,8 +1141,8 @@ spec:
     spec:
       priorityClassName: system-node-critical
       hostNetwork: true
-      nodeSelector:
-        node.kubernetes.io/kube-proxy-ds-ready: "true"
+      #nodeSelector:
+        #node.kubernetes.io/kube-proxy-ds-ready: "true"
       tolerations:
       - operator: "Exists"
         effect: "NoExecute"
@@ -1146,13 +1150,14 @@ spec:
         effect: "NoSchedule"
       containers:
       - name: kube-proxy
-        image: docker pull gcr.io/google-containers/kube-proxy-amd64:v1.12.8
+        #image: docker pull gcr.io/google-containers/kube-proxy-amd64:v1.12.8
+        image: gcr.io/google_containers/kube-proxy-amd64:v1.12.8
         resources:
           requests:
             cpu: 100m
         command:
         - /usr/local/bin/kube-proxy
-        - --kubeconfig=/var/lib/kube-proxy/kubeconfig.conf
+        - --kubeconfig=/etc/kubernetes/kube-proxy.kubeconfig
         - --master=https://$(MASTER_IP):6443
         - --cluster-cidr=10.20.0.0/16
         - --masquerade-all
@@ -1186,10 +1191,53 @@ spec:
           path: /lib/modules
       serviceAccountName: kube-proxy
 
-- CREATE KUBECONFIG FILE
+------------------------------------------
+CREATE KUBECONFIG FILE FOR KUBE-PROXY
+------------------------------------------
+
+Script: kubeconfig-kube-proxy-gen.sh
+
+ kubectl config set-cluster kubernetes \
+--certificate-authority=ca.pem \
+--embed-certs=true \
+--server=https://192.168.60.102:6443 \
+--kubeconfig=kube-proxy.kubeconfig
+
+kubectl config set-credentials kube-proxy \
+--client-certificate=kube-proxy.pem \
+--client-key=kube-proxy-key.pem \
+--embed-certs=true \
+--kubeconfig=kube-proxy.kubeconfig
+
+kubectl config set-context default \
+--cluster=kubernetes \
+--user=kube-proxy \
+--kubeconfig=kube-proxy.kubeconfig
+
+kubectl config use-context default --kubeconfig=kube-proxy.kubeconfig
+
+Get this file:
+kube-proxy.kubeconfig
+
+Copy the file to /etc/kubernetes:
+cp kube-proxy.kubeconfig /etc/kubernetes/kube-proxy.kubeconfig
+
+---------------------
+DEPLOY KUBE-PROXY
+---------------------
+mkdir /etc/kubernetes/addons
+cp kube-proxy.yaml /etc/kubernetes/addons/.
+kubectl create -f /etc/kubernetes/addons/kube-proxy.yaml
+
+-------
+VERIFY
+-------
 
 
-- ERROR
+------------------------------------------------------------------------------------
+- ERROR - IF YOU PLACE kube-proxy.yaml in /etc/kubernetes/manifests
+	- because kube-proxy is a daemonset and not pod - manifests take only pods
+------------------------------------------------------------------------------------
 
 Aug 19 16:30:47 ks2 kubelet[18240]: E0819 16:30:47.254493   18240 file.go:108] Unable to process watch event: can't process config file "/etc/kubernetes/manifests/kube-proxy.yaml": /etc/kubernetes/manifests/kube-proxy.yaml: couldn't parse as pod(invalid pod: &core.ServiceAccount{TypeMeta:v1.TypeMeta{Kind:"", APIVersion:""}, ObjectMeta:v1.ObjectMeta{Name:"kube-proxy", GenerateName:"", Namespace:"kube-system", SelfLink:"", UID:"", ResourceVersion:"", Generation:0, CreationTimestamp:v1.Time{Time:time.Time{wall:0x0, ext:0, loc:(*time.Location)(nil)}}, DeletionTimestamp:(*v1.Time)(nil), DeletionGracePeriodSeconds:(*int64)(nil), Labels:map[string]string{"addonmanager.kubernetes.io/mode":"Reconcile"}, Annotations:map[string]string(nil), OwnerReferences:[]v1.OwnerReference(nil), Initializers:(*v1.Initializers)(nil), Finalizers:[]string(nil), ClusterName:""}, Secrets:[]core.ObjectReference(nil), ImagePullSecrets:[]core.LocalObjectReference(nil), AutomountServiceAccountToken:(*bool)(nil)}), please check config file.
 
