@@ -1381,6 +1381,55 @@ FLANNEL
 https://github.com/coreos/flannel
 --> https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
 
+Without an overlay network, pods get only docker IPs
+To give them cluster-CIDR IPs, overlay network like Flannel, Calico should be installed
+
+--------------------------------------------
+NGINX POD WITHOUT FLANNEL
+--------------------------------------------
+
+File: nginx-dep.yaml
+
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  replicas: 2 # tells deployment to run 2 pods matching the template
+  #replicas: 1 # tells deployment to run 2 pods matching the template
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 80
+
+
+File: nginx-dep.sh
+
+kubectl apply -f nginx-dep.yaml
+
+- Verify
+
+[root@ks2 ~]# kubectl get pods 
+NAME                                READY   STATUS    RESTARTS   AGE
+nginx-deployment-57db5dc57d-2497h   1/1     Running   0          17m
+nginx-deployment-57db5dc57d-zvl57   1/1     Running   0          17m
+
+[root@ks2 ~]# kubectl get pods -o wide
+NAME                                READY   STATUS    RESTARTS   AGE   IP           NODE   NOMINATED NODE
+nginx-deployment-57db5dc57d-2497h   1/1     Running   0          17m   172.17.0.2   ks2    <none>
+nginx-deployment-57db5dc57d-zvl57   1/1     Running   0          17m   172.17.0.3   ks2    <none>
+
+
 ----------------------------------
 CREATE THESE FOLDERS IN THE HOSE
 ----------------------------------
