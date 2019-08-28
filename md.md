@@ -6,4 +6,4 @@
 
 - ##### five
 
-__* star
+'*.company.star
