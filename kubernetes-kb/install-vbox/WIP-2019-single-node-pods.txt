@@ -675,10 +675,18 @@ systemctl restart etcd
 # curl -k https://localhost:2379/health
 {"health": "true"}
 
-TBD: 'etcdctl' command is erroring out, though API works fine
-[root@ksn1 system]# docker exec -ti etcd etcdctl member list
-client: etcd cluster is unavailable or misconfigured; error #0: malformed HTTP response "\x15\x03\x01\x00\x02\x02"
-; error #1: dial tcp 127.0.0.1:4001: getsockopt: connection refused
+SOLVED (TBD): 'etcdctl' command is erroring out, though API works fine
+	[root@ksn1 system]# docker exec -ti etcd etcdctl member list
+	client: etcd cluster is unavailable or misconfigured; error #0: malformed HTTP response "\x15\x03\x01\x00\x02\x02"
+	; error #1: dial tcp 127.0.0.1:4001: getsockopt: connection refused
+
+# docker exec -ti etcd /bin/sh
+Now, inside the etcd container
+~# cd /etc/kubernetes/pki
+/etc/kubernetes/pki # ETCDCTL_API=3 etcdctl --cacert=./ca.pem --cert=./kubernetes.pem --key=./kubernetes-key.pem member list
+--> OUTPUT IS OK:
+5b1fda1c3621a072, started, ksn1, https://192.168.8.11:2380, https://192.168.8.11:2379
+
 
 ----------------------
 kube-apiserver.yaml
