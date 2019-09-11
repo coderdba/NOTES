@@ -1,0 +1,56 @@
+---
+driver:
+  name: vagrant
+  vagrantfiles:
+    - Vagrant.Disk.rb
+  network:
+    - ["forwarded_port", {guest: 80, host: 8880}]
+    - ["forwarded_port", {guest: 873, host: 8873}]
+
+provisioner:
+  name: chef_zero
+  #product_name: chef
+  #product_version: 13.6.4
+
+verifier:
+  name: inspec
+
+platforms:
+  - name: centos-7.6
+  #- name: ezrepo-fedora-30
+  #  driver:
+  #    box: bentos-centos-7.6-chef
+
+driver:
+  name: vagrant
+  synced_folders:
+    - ['.', '/home/vagrant/my-project']
+
+suites:
+  - name: default
+    run_list:
+      - recipe[yumrepomirror::dockercesetup]
+      - recipe[yumrepomirror::role_primary]
+      - recipe[yumrepomirror::role_remote]
+    attributes:
+      ezrepo:
+        vip: 'http://localhost:8880'
+        mirrorlist:
+        - 'http://127.0.0.1:8880'
+        - 'http://localhost:8880'
+        pull:
+          app: 'dummy-app'
+          frontdoor: 'https://influx.company.com/write?db=metrics'
+        # products:
+        #   centos-7:
+        #     conf:
+        #       base:
+        #         mirrorlist: ''
+        #       updates:
+        #         mirrorlist: ''
+        #       qemu-ev:
+        #         mirrorlist: ''
+        #       centosplus:
+        #         mirrorlist: ''
+        #       base-debuginfo:
+        #         mirrorlist: ''
