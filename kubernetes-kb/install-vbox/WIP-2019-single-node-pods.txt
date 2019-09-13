@@ -911,15 +911,23 @@ kubectl get nodes -o wide
 curl --cacert ./ca.pem https://192.168.60.102:6443/version
 netstat -anp |grep 6443
 
+WORKING ITEMS:
 --> This time it seemed to start properly and nodes were listed (see logs below)
+
+--> Also 'role' for node in kubectl get nodes is 'none' instead of master or worker 
+    - This is ok - it is because it is both master and worker
+ 
+FIXED ITEMS:
+--> And, a busybee pod creation got some errors
+	- these went away after adding ks2 as hostname in kubelet and kubernetes cert generation steps
+	
+TBD ITEMS:
 --> However, curl to API does not work yet (see listings below)
 	TO FIX - need to get a token
 	- see - https://stackoverflow.com/questions/34306082/kubernetes-https-api-return-unauthorized
 	- and also the 'deploy on vmware' document
---> This is ok - Also 'role' for node in kubectl get nodes is 'none' instead of master or worker 
-    - (is it because it is both master and worker?)
---> And, a busybee pod creation got some errors
-	- these went away after adding ks2 as hostname in kubelet and kubernetes cert generation steps
+	
+
 
 [root@ks2 certs]# systemctl start kubelet; journalctl -fu kubelet;
 -- Logs begin at Wed 2019-08-14 13:59:42 IST. --
@@ -1086,7 +1094,7 @@ kubectl create -f kube-apiserver-to-kubelet-bind.yaml
 
 --> clusterrolebinding.rbac.authorization.k8s.io/system:kube-apiserver created
 
-
+TBD: This curl is not working yet - see in the TBD earlier about the fix for this
 [root@ks2 certs]# curl --cacert ./ca.pem https://192.168.60.102:6443/version
 {
   "kind": "Status",
