@@ -1331,6 +1331,35 @@ In the downloaded file, change the following settings:
 __PILLAR__DNS__SERVER__ = 10.96.0.10 (derive this from the service ip range in kube-apiserver.yaml)
 __PILLAR__DNS__MEMORY__LIMIT__ = 150mi
 __PILLAR__DNS__DOMAIN__ = cluster.local. (which is usual standard)
+--> NOTE - cluster.local. (with a dot at the end) in "domain=" section
+-->.       without dot in the other sections
+
+Here is the difference between the base (downloaded) and the modified one:
+[root@ksn1 addons]# diff *base *dns*l
+33c33
+<   clusterIP: __PILLAR__DNS__SERVER__
+---
+>   clusterIP: 10.96.0.10
+110c110
+<             memory: __PILLAR__DNS__MEMORY__LIMIT__
+---
+>             memory: 150mi
+133c133
+<         - --domain=__PILLAR__DNS__DOMAIN__.
+---
+>         - --domain=cluster.local.
+175c175
+<         - --server=/__PILLAR__DNS__DOMAIN__/127.0.0.1#10053
+---
+>         - --server=/cluster.local/127.0.0.1#10053
+207,208c207,208
+<         - --probe=kubedns,127.0.0.1:10053,kubernetes.default.svc.__PILLAR__DNS__DOMAIN__,5,SRV
+<         - --probe=dnsmasq,127.0.0.1:53,kubernetes.default.svc.__PILLAR__DNS__DOMAIN__,5,SRV
+---
+>         - --probe=kubedns,127.0.0.1:10053,kubernetes.default.svc.cluster.local,5,SRV
+>         - --probe=dnsmasq,127.0.0.1:53,kubernetes.default.svc.cluster.local,5,SRV
+
+
 
 
 File:  /etc/kubernetes/addons/kube-dns.yaml
