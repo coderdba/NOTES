@@ -1823,12 +1823,21 @@ spec:
             cpu: 10m
       dnsPolicy: Default  # Don't use cluster DNS.
       serviceAccountName: kube-dns
-
  
  - DEPLOY KUBE-DNS
- kubectl apply -f /etc/kubernetes/addons/kube-dns.yaml
+kubectl apply -f /etc/kubernetes/addons/kube-dns.yaml
+service/kube-dns created
+serviceaccount/kube-dns created
+configmap/kube-dns created
+deployment.apps/kube-dns created
 
-- VERIFY STUFF AS OF NOW
+- VERIFY STUFF AS OF NOW 
+NOTE: There SHOULD be a kube-dns pod - only a deployment and a service is being seen now
+
+# kubectl get deployment --all-namespaces
+NAMESPACE     NAME       DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+kube-system   kube-dns   1         0         0            0           23h
+
 # kubectl get pods --all-namespaces -o wide
 NAMESPACE     NAME                           READY   STATUS    RESTARTS   AGE    IP             NODE   NOMINATED NODE
 kube-system   kube-apiserver-ksn1            1/1     Running   0          4d1h   192.168.8.11   ksn1   <none>
@@ -1836,6 +1845,13 @@ kube-system   kube-controller-manager-ksn1   1/1     Running   0          4d1h  
 kube-system   kube-proxy-c58ll               1/1     Running   0          26h    192.168.8.11   ksn1   <none>
 kube-system   kube-scheduler-ksn1            1/1     Running   0          4d1h   192.168.8.11   ksn1   <none>
 
+# kubectl get svc --all-namespaces
+NAMESPACE     NAME         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)         AGE
+default       kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP         5d
+kube-system   kube-dns     ClusterIP   10.96.0.10   <none>        53/UDP,53/TCP   23h
+
+You may have to scale up the number pods: (at least it should have created one pod - but it did not)
+# kubectl --namespace=kube-system scale deployment kube-dns --replicas=1
 
 ===========================
 APPENDIX
