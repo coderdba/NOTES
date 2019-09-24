@@ -368,7 +368,16 @@ Installing kubelet also will install a couple of service files:
 /usr/lib/systemd/system/kubelet.service
 --> which references indirectly this - /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf
 
+
+NOTE: IMPORTANT IMPORTANT - FOR FLANNEL
+If using flannel,
+1. Add this environment:
+Environment="KUBELET_NETWORK_ARGS=--network-plugin=cni --cni-conf-dir=/etc/cni/net.d --cni-bin-dir=/opt/cni/bin --node-ip=192.168.60.102"
+
+2. And in kubelet command in that file, reference that environment variable KUBELET_NETWORK_ARGS
+
 File: /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf:
+(this is without Flannel related stuff mentioned above)
 
 # Note: This dropin only works with kubeadm and kubelet v1.11+
 [Service]
@@ -387,6 +396,7 @@ EnvironmentFile=-/var/lib/kubelet/kubeadm-flags.env
 EnvironmentFile=-/etc/sysconfig/kubelet
 ExecStart=
 ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS 
+
 
 ----------------
 START KUBELET
@@ -919,7 +929,17 @@ CURRENT   NAME      CLUSTER      AUTHINFO                   NAMESPACE
 NOTE: 1. allow-privileged is necessary for creating kube-proxy and such
       2. /var/lab/kubelet/... for key locations are replaced with /etc/kubernetes/pki
 
-File content:
+
+NOTE: IMPORTANT IMPORTANT IMPORTNT
+IF USING FLANNEL:
+1. Add this environment:
+Environment="KUBELET_NETWORK_ARGS=--network-plugin=cni --cni-conf-dir=/etc/cni/net.d --cni-bin-dir=/opt/cni/bin --node-ip=192.168.60.102"
+
+2. And in kubelet command in that file, reference that environment variable KUBELET_NETWORK_ARGS
+
+
+File: /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf
+(without flannel settings mentioned above)
 
 # Note: This dropin only works with kubeadm and kubelet v1.11+
 [Service]
@@ -1987,7 +2007,7 @@ In kube-flannel.yml add the following line mentioning the interface to use (the 
         - --kube-subnet-mgr
         - --iface=enp0s8
 
-2. For the certificates (TBD)
+2. For the certificates 
 https://github.com/kelseyhightower/kubernetes-the-hard-way/issues/420
 
 - add 10.96.0.1 to kube-apiserver certificate (regenerate the certificate and copy to /etc/kubernetes/pki)
@@ -2019,60 +2039,38 @@ From: https://github.com/coreos/flannel/issues/728
 [root@ksn1 certs-ip-and-host-based]# 
 
 To fix it:
-Add this to kube-controller-manager.yaml:
+a. Add this to kube-controller-manager.yaml:
 - "- --allocate-node-cidrs"
 Then, restart kubelet
+
+b. Add this to /usr/lib/systemd/system/kubelet.d/10-kubeadm.conf
+# -- added
+Environment="KUBELET_NETWORK_ARGS=--network-plugin=cni --cni-conf-dir=/etc/cni/net.d --cni-bin-dir=/opt/cni/bin --node-ip=192.168.8.11"
+
+And in kubelet command in that file, reference that environment variable KUBELET_NETWORK_ARGS:
+ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS $KUBELET_NETWORK_ARGS  --client-ca-file=/etc/kubernetes/pki/ca.pem --tls-cert-file=/etc/kubernetes/pki/kubelet-192.168.8.11.pem --tls-private-key-file=/etc/kubernetes/pki/kubelet-192.168.8.11-key.pem --kubeconfig=/etc/kubernetes/kubeconfig.kubelet-192.168.8.11 --allow-privileged
+
+Then restart kubelet
 
 From: https://coreos.com/flannel/docs/latest/kubernetes.html
 Add the kubeadm based --pod-network-cidr=10.20.0.0/24 to flannel network config file
 --> otherwise, even with the other fix above, pods get docker IPs
 
-
 Verify:
 # kubectl get nodes -o jsonpath='{.items[*].spec.podCIDR}'
 10.20.0.0/24 --> THIS THE POD-CIDR RANGE IN CONTROLLER MANAGER
 
+Then, let us assume we created kube-dns - and get pods now:
+NOTE: Now you can see the kube-dns pod has CIDR IP
 # kubectl get pods --all-namespaces -o wide
 NAMESPACE     NAME                           READY   STATUS    RESTARTS   AGE     IP             NODE   NOMINATED NODE
-kube-system   kube-apiserver-ksn1            1/1     Running   1          33m     192.168.8.11   ksn1   <none>
-kube-system   kube-controller-manager-ksn1   1/1     Running   0          2m27s   192.168.8.11   ksn1   <none>
-kube-system   kube-flannel-ds-amd64-pjk5v    1/1     Running   15         29m     192.168.8.11   ksn1   <none>
-kube-system   kube-proxy-c58ll               1/1     Running   3          8d      192.168.8.11   ksn1   <none>
-kube-system   kube-scheduler-ksn1            1/1     Running   4          11d     192.168.8.11   ksn1   <none>
+kube-system   kube-apiserver-ksn1            1/1     Running   2          104m    192.168.8.11   ksn1   <none>
+kube-system   kube-controller-manager-ksn1   1/1     Running   1          73m     192.168.8.11   ksn1   <none>
+kube-system   kube-dns-cbc549dbd-7n658       3/3     Running   0          4m50s   10.20.0.2      ksn1   <none>
+kube-system   kube-flannel-ds-amd64-pjk5v    1/1     Running   16         100m    192.168.8.11   ksn1   <none>
+kube-system   kube-proxy-c58ll               1/1     Running   4          8d      192.168.8.11   ksn1   <none>
+kube-system   kube-scheduler-ksn1            1/1     Running   5          11d     192.168.8.11   ksn1   <none>
 
-# kubectl logs kube-flannel-ds-amd64-pjk5v  -n kube-system
-I0924 13:31:05.921651       1 main.go:527] Using interface with name enp0s8 and address 192.168.8.11
-I0924 13:31:05.921836       1 main.go:540] Using 192.168.8.11 as external address
-I0924 13:31:06.116579       1 kube.go:126] Waiting 10m0s for node controller to sync
-I0924 13:31:06.117227       1 kube.go:309] Starting kube subnet manager
-I0924 13:31:07.118524       1 kube.go:133] Node controller sync successful
-I0924 13:31:07.118775       1 main.go:244] Created subnet manager: Kubernetes Subnet Manager - ksn1
-I0924 13:31:07.118802       1 main.go:247] Installing signal handlers
-I0924 13:31:07.119575       1 main.go:386] Found network config - Backend type: vxlan
-I0924 13:31:07.120024       1 vxlan.go:120] VXLAN config: VNI=1 Port=0 GBP=false DirectRouting=false
-I0924 13:31:07.322398       1 main.go:351] Current network or subnet (10.244.0.0/16, 10.20.0.0/24) is not equal to previous one (0.0.0.0/0, 0.0.0.0/0), trying to recycle old iptables rules
-I0924 13:31:07.517395       1 iptables.go:167] Deleting iptables rule: -s 0.0.0.0/0 -d 0.0.0.0/0 -j RETURN
-I0924 13:31:07.717401       1 iptables.go:167] Deleting iptables rule: -s 0.0.0.0/0 ! -d 224.0.0.0/4 -j MASQUERADE --random-fully
-I0924 13:31:07.824453       1 iptables.go:167] Deleting iptables rule: ! -s 0.0.0.0/0 -d 0.0.0.0/0 -j RETURN
-I0924 13:31:08.018095       1 iptables.go:167] Deleting iptables rule: ! -s 0.0.0.0/0 -d 0.0.0.0/0 -j MASQUERADE --random-fully
-I0924 13:31:08.224574       1 main.go:317] Wrote subnet file to /run/flannel/subnet.env
-I0924 13:31:08.224602       1 main.go:321] Running backend.
-I0924 13:31:08.224625       1 main.go:339] Waiting for all goroutines to exit
-I0924 13:31:08.224807       1 vxlan_network.go:60] watching for new subnet leases
-I0924 13:31:08.714699       1 iptables.go:145] Some iptables rules are missing; deleting and recreating rules
-I0924 13:31:08.714774       1 iptables.go:167] Deleting iptables rule: -s 10.244.0.0/16 -d 10.244.0.0/16 -j RETURN
-I0924 13:31:08.716301       1 iptables.go:145] Some iptables rules are missing; deleting and recreating rules
-I0924 13:31:08.716347       1 iptables.go:167] Deleting iptables rule: -s 10.244.0.0/16 -j ACCEPT
-I0924 13:31:08.916292       1 iptables.go:167] Deleting iptables rule: -s 10.244.0.0/16 ! -d 224.0.0.0/4 -j MASQUERADE --random-fully
-I0924 13:31:08.918200       1 iptables.go:167] Deleting iptables rule: -d 10.244.0.0/16 -j ACCEPT
-I0924 13:31:09.119027       1 iptables.go:167] Deleting iptables rule: ! -s 10.244.0.0/16 -d 10.20.0.0/24 -j RETURN
-I0924 13:31:09.217473       1 iptables.go:155] Adding iptables rule: -s 10.244.0.0/16 -j ACCEPT
-I0924 13:31:09.415386       1 iptables.go:167] Deleting iptables rule: ! -s 10.244.0.0/16 -d 10.244.0.0/16 -j MASQUERADE --random-fully
-I0924 13:31:09.617474       1 iptables.go:155] Adding iptables rule: -s 10.244.0.0/16 -d 10.244.0.0/16 -j RETURN
-I0924 13:31:09.621261       1 iptables.go:155] Adding iptables rule: -d 10.244.0.0/16 -j ACCEPT
-I0924 13:31:09.915533       1 iptables.go:155] Adding iptables rule: -s 10.244.0.0/16 ! -d 224.0.0.0/4 -j MASQUERADE --random-fully
-I0924 13:31:10.122244       1 iptables.go:155] Adding iptables rule: ! -s 10.244.0.0/16 -d 10.20.0.0/24 -j RETURN
-I0924 13:31:10.320308       1 iptables.go:155] Adding iptables rule: ! -s 10.244.0.0/16 -d 10.244.0.0/16 -j MASQUERADE --random-fully
 
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
