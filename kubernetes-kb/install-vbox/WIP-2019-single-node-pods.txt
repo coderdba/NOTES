@@ -1853,6 +1853,35 @@ kube-system   kube-dns     ClusterIP   10.96.0.10   <none>        53/UDP,53/TCP 
 You may have to scale up the number pods: (at least it should have created one pod - but it did not)
 # kubectl --namespace=kube-system scale deployment kube-dns --replicas=1
 
+- ERROR DIAGNOSIS
+It has created also a replicaset
+
+# kubectl get rs --all-namespaces
+NAMESPACE     NAME                 DESIRED   CURRENT   READY   AGE
+kube-system   kube-dns-cbc549dbd   1         0         0       6d21h
+
+# kubectl scale rs kube-dns-cbc549dbd  -n kube-system --replicas=0
+# kubectl scale rs kube-dns-cbc549dbd  -n kube-system --replicas=1
+
+# kubectl describe rs kube-dns-cbc549dbd  -n kube-system
+Conditions:
+  Type             Status  Reason
+  ----             ------  ------
+  ReplicaFailure   True    FailedCreate
+Events:
+  Type     Reason        Age                     From                   Message
+  ----     ------        ----                    ----                   -------
+  Warning  FailedCreate  6d2h                    replicaset-controller  Error creating: pods "kube-dns-cbc549dbd-rvqcc" is forbidden: pod.Spec.SecurityContext.SupplementalGroups is forbidden
+...
+...
+  Warning  FailedCreate  4m6s (x25 over 20m)     replicaset-controller  (combined from similar events): Error creating: pods "kube-dns-cbc549dbd-mlkvd" is forbidden: pod.Spec.SecurityContext.SupplementalGroups is forbidden
+
+-- CAUSE
+https://github.com/kubernetes/kubernetes/issues/45324
+- Did your apiserver switch on SecurityContextDeny admission controller ?
+- https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#securitycontextdeny
+- https://kubernetes.io/docs/concepts/policy/pod-security-policy/ (READ THIS - ALSO FOR GENERAL INFO)
+
 ===========================
 APPENDIX
 ===========================
