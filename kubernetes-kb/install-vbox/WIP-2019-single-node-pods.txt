@@ -1938,12 +1938,31 @@ wget https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-
 kubectl apply -f kube-flannel.yml
 
 - ERROR AND TROUBLESHOOTING
+There are two errors below:
+1. It is using the nat interface which is the first interface in the list of interfaces in the VM
+2. It is not liking the certificate of mostly kube-apiserver
+
 [root@ksn1 addons]# kubectl logs kube-flannel-ds-amd64-2hbhp -n kube-system
 I0924 11:11:47.616440       1 main.go:514] Determining IP address of default interface
 I0924 11:11:47.619268       1 main.go:527] Using interface with name enp0s3 and address 10.0.2.15
 I0924 11:11:47.619331       1 main.go:544] Defaulting external address to interface address (10.0.2.15)
 E0924 11:11:47.745209       1 main.go:241] Failed to create SubnetManager: error retrieving pod spec for 'kube-system/kube-flannel-ds-amd64-2hbhp': Get https://10.96.0.1:443/api/v1/namespaces/kube-system/pods/kube-flannel-ds-amd64-2hbhp: x509: certificate is valid for 192.168.8.11, 127.0.0.1, not 10.96.0.1
 
+Fixes:
+1. For NAT interface thing
+https://stackoverflow.com/questions/47845739/configuring-flannel-to-use-a-non-default-interface-in-kubernetes
+In kube-flannel.yml add the following line mentioning the interface to use (the one of the vm IP used in certs)
+      containers:
+      - name: kube-flannel
+        image: quay.io/coreos/flannel:v0.11.0-amd64
+        command:
+        - /opt/bin/flanneld
+        args:
+        - --ip-masq
+        - --kube-subnet-mgr
+        - --iface=enp0s8
+
+2. For the certificates (TBD)
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ===========================
