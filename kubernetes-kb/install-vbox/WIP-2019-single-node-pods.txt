@@ -2009,7 +2009,12 @@ I0924 13:23:33.734464       1 vxlan.go:120] VXLAN config: VNI=1 Port=0 GBP=false
 E0924 13:23:33.735789       1 main.go:289] Error registering network: failed to acquire lease: node "ksn1" pod cidr not assigned
 I0924 13:23:33.735922       1 main.go:366] Stopping shutdownHandler...
 
-https://github.com/coreos/flannel/issues/728
+
+FIXES:
+- https://github.com/coreos/flannel/issues/728
+- https://coreos.com/flannel/docs/latest/kubernetes.html
+
+From: https://github.com/coreos/flannel/issues/728
 [root@ksn1 certs-ip-and-host-based]# kubectl get nodes -o jsonpath='{.items[*].spec.podCIDR}'
 [root@ksn1 certs-ip-and-host-based]# 
 
@@ -2017,6 +2022,11 @@ To fix it:
 Add this to kube-controller-manager.yaml:
 - "- --allocate-node-cidrs"
 Then, restart kubelet
+
+From: https://coreos.com/flannel/docs/latest/kubernetes.html
+Add the kubeadm based --pod-network-cidr=10.20.0.0/24 to flannel network config file
+--> otherwise, even with the other fix above, pods get docker IPs
+
 
 Verify:
 # kubectl get nodes -o jsonpath='{.items[*].spec.podCIDR}'
