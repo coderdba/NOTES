@@ -33,6 +33,15 @@ Option 2: self-hosted
 This option is very similar to the previous one but instead of downloading binaries and running them in systemd, we will use container images with those components. Self-hosted means that we only launch kubelet binary in systemd. When it is running, it searches for manifests in /etc/kubernetes/manifests directory (where we will put the rest of components) and launches them in containers.
 First add the following flag to kubelet config: --pod-manifest-path=/etc/kubernetes/manifests
 
+===================================
+ABOUT POD IP ADDRESSES
+===================================
+These will run under host/vm IP address 
+- not the IP given by overlay networker like flannel/calico (or docker in the absence of flannel/calico
+- kube-apiserver, kube-controller-manager, kube-scheduler, kube-proxy, flannel/calico
+
+Overlay/Docker IP are given to all other pods (maybe there are some exceptions)
+
 =====================
 ESSENTIAL COMPONENTS
 =====================
@@ -1838,6 +1847,15 @@ configmap/kube-dns created
 deployment.apps/kube-dns created
 
 - VERIFY STUFF AS OF NOW 
+# kubectl get pods --all-namespaces -o wide
+NAMESPACE     NAME                           READY   STATUS    RESTARTS   AGE     IP             NODE   NOMINATED NODE
+kube-system   kube-apiserver-ksn1            1/1     Running   0          2m26s   192.168.8.11   ksn1   <none>
+kube-system   kube-controller-manager-ksn1   1/1     Running   3          10d     192.168.8.11   ksn1   <none>
+kube-system   kube-dns-cbc549dbd-29m87       2/3     Running   1          105s    172.17.0.2     ksn1   <none>
+kube-system   kube-proxy-c58ll               1/1     Running   2          8d      192.168.8.11   ksn1   <none>
+kube-system   kube-scheduler-ksn1            1/1     Running   3          10d     192.168.8.11   ksn1   <none>
+
+- ERROR DIAGNOSIS (before successful creation)
 NOTE: There SHOULD be a kube-dns pod - only a deployment and a service is being seen now
 
 # kubectl get deployment --all-namespaces
@@ -1859,7 +1877,6 @@ kube-system   kube-dns     ClusterIP   10.96.0.10   <none>        53/UDP,53/TCP 
 You may have to scale up the number pods: (at least it should have created one pod - but it did not)
 # kubectl --namespace=kube-system scale deployment kube-dns --replicas=1
 
-- ERROR DIAGNOSIS
 It has created also a replicaset
 
 # kubectl get rs --all-namespaces
@@ -1887,6 +1904,9 @@ https://github.com/kubernetes/kubernetes/issues/45324
 - Did your apiserver switch on SecurityContextDeny admission controller ?
 - https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#securitycontextdeny
 - https://kubernetes.io/docs/concepts/policy/pod-security-policy/ (READ THIS - ALSO FOR GENERAL INFO)
+
+-- FIX
+Removed the directive securitycontextdeny from kube-apiserver.yml and restarted kubelet
 
 ===========================
 APPENDIX
