@@ -9,8 +9,32 @@ docker pull prom/node-exporter
 ==========================================
 START NODE EXPORTER CONTAINER - BITNAMI
 ==========================================
+NOTE: THIS DID NOT WORK ALRIGHT
 
 https://github.com/bitnami/bitnami-docker-node-exporter#how-to-use-this-image
 
 https://hub.docker.com/r/bitnami/node-exporter/
 docker run --name node-exporter bitnami/node-exporter:latest
+--> THIS RUNS IT IN FOREGROUND
+
+BACKGROUND RUN AS DAEMON DID NOT WORK
+
+
+==========================================
+START NODE EXPORTER CONTAINER - PROM
+==========================================
+https://github.com/prometheus/node_exporter
+https://devconnected.com/how-to-install-prometheus-with-docker-on-ubuntu-18-04/
+
+docker run -d \
+  --net="host" \
+  --pid="host" \
+  -v "/:/host:ro,rslave" \
+  quay.io/prometheus/node-exporter \
+  --path.rootfs=/host
+
+docker run -d -p 9100:9100 --user 995:995 \
+-v "/:/hostfs" \
+--net="host" \
+prom/node-exporter \
+--path.rootfs=/hostfs
