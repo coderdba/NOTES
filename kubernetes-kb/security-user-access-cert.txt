@@ -65,7 +65,7 @@ kubectl config --kubeconfig=config-demo set-cluster development --server=https:/
 
 - ACTUAL
 kubectl config --kubeconfig=user-cert-config set-cluster kubernetes-dev \
---server=https://192.168.8.11 \
+--server=https://192.168.8.11:6443 \
 --certificate-authority=/etc/kubernetes/pki/ca.pem
 
 -----------------------
@@ -83,6 +83,8 @@ kubectl config --kubeconfig=user-cert-config set-credentials user-for-kube-syste
 ----------------------------------------------
 ADD CONTEXT FOR THIS USER-CLUSTER COMBINATION
 ----------------------------------------------
+NOTE: The 'user' is the argument to "set-credentials"  - that is user-for-kube-system
+
 - SYNTAX 
 kubectl config --kubeconfig=config-demo set-context dev-frontend --cluster=development --namespace=frontend --user=developer
 
@@ -114,14 +116,29 @@ kubectl config --kubeconfig=user-cert-config current-context
 -----------------------
 GET THE PODS
 -----------------------
-TBD - SOMEHOW, THIS SHOWS DEFAULT NAMESPACE PODS - NOT KUBE-SYSTEM NAMESPACE PODS
+- kubectl without kubeconfig directive
+-- Copy the kubeconfig file user-cert-config as ~/.kube/config 
+(or, add on to the existing ~/.kube/config - or set environment variable to consider multiple kubeconfig files)
+
+-- And, then run 
+
 # kubectl get pods
-NAME                             READY   STATUS    RESTARTS   AGE
-alpine                           1/1     Running   4          4d1h
-alpine-dep-57f9cd5b48-hgfgg      1/1     Running   14         4d2h
-alpine-dep-cm-5459c7fbdf-nmdkj   1/1     Running   6          4d2h
-alpine-pod-cm-envvar             1/1     Running   4          45h
-alpine-pod-cm-envvar2            1/1     Running   4          45h
-busybox                          1/1     Running   4          4d1h
+NAME                           READY   STATUS    RESTARTS   AGE
+kube-apiserver-ksn1            1/1     Running   2          77m
+kube-controller-manager-ksn1   1/1     Running   12         6d22h
+kube-dns-cbc549dbd-7n658       3/3     Running   21         6d21h
+kube-flannel-ds-amd64-pjk5v    1/1     Running   23         6d22h
+kube-proxy-c58ll               1/1     Running   11         15d
+kube-scheduler-ksn1            1/1     Running   17         18d
+
+- kubectl with kubeconfig directive
+# kubectl get pods --kubeconfig=user-cert-config 
+NAME                           READY   STATUS    RESTARTS   AGE
+kube-apiserver-ksn1            1/1     Running   2          77m
+kube-controller-manager-ksn1   1/1     Running   12         6d22h
+kube-dns-cbc549dbd-7n658       3/3     Running   21         6d21h
+kube-flannel-ds-amd64-pjk5v    1/1     Running   23         6d22h
+kube-proxy-c58ll               1/1     Running   11         15d
+kube-scheduler-ksn1            1/1     Running   17         18d
 
 
