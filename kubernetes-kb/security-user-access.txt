@@ -1,1 +1,54 @@
 https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/
+
+
+===========================
+USER-PASSWORD BASED ACCESS
+===========================
+
+SYNTAX
+- create
+kubectl config --kubeconfig=config-demo set-cluster scratch --server=https://5.6.7.8 --insecure-skip-tls-verify
+kubectl config --kubeconfig=config-demo set-credentials experimenter --username=exp --password=some-password
+kubectl config --kubeconfig=config-demo set-context exp-scratch --cluster=scratch --namespace=default --user=experimenter
+- verify
+kubectl config --kubeconfig=config-demo view
+kubectl config --kubeconfig=user-pass-config view --minify
+- use context
+kubectl config --kubeconfig=config-demo use-context dev-frontend
+
+ACTUAL COMMANDS
+- CREATE
+kubectl config --kubeconfig=user-pass-config set-cluster scratch --server=https://192.168.8.11 --insecure-skip-tls-verify
+kubectl config --kubeconfig=user-pass-config set-credentials developers --username=devuser1 --password=devuser1pass
+kubectl config --kubeconfig=user-pass-config set-context scratch-default-ns --cluster=scratch --namespace=default --user=devuser1
+kubectl config --kubeconfig=user-pass-config set-credentials developers --username=devuser2 --password=devuser2pass
+kubectl config --kubeconfig=user-pass-config set-context scratch-default-ns --cluster=scratch --namespace=kube-system --user=devuser2
+
+- VERIFY
+
+kubectl config --kubeconfig=user-pass-config view
+(the output is actually the content of the user-pass-config file)
+
+apiVersion: v1
+clusters:
+- cluster:
+    insecure-skip-tls-verify: true
+    server: https://192.168.8.11
+  name: scratch
+contexts:
+- context:
+    cluster: scratch
+    namespace: default
+    user: devuser1
+  name: scratch-default-ns
+current-context: ""
+kind: Config
+preferences: {}
+users:
+- name: developers
+  user:
+    password: devuser1pass
+    username: devuser1
+
+- USE CONTEXT
+kubectl config --kubeconfig=user-pass-config use-context scratch-default-ns
