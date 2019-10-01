@@ -8,6 +8,81 @@ Each context is a triple (cluster, user, namespace)
 ===========================
 USER-PASSWORD BASED ACCESS
 ===========================
+
+--------------------------
+CREATE A USER-PASS FILE
+--------------------------
+/etc/kubernetes/userpass/userpass.csv
+
+Format:
+password,user,uid,"group1,group2,group3"
+
+Examples:
+devuser1pass,devuser1,101,"group1,group2,group3"
+devuser2pass,devuser2,103,"group1,group2,group3"
+
+-----------------------------------------------
+REFERENCE THE USER-PASS FILE IN KUBE-APISERVER
+-----------------------------------------------
+NOTE:
+1. Add "- --basic-auth-file=/etc/kubernetes/userpass/userpass.csv"
+2. Mount the host volume "/etc/kubernetes/userpass" onto apiserver pod - if using pods
+
+# cat kube-apiserver.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    scheduler.alpha.kubernetes.io/critical-pod: ""
+  labels:
+    component: kube-apiserver
+    tier: control-plane
+  name: kube-apiserver
+  namespace: kube-system
+spec:
+  hostNetwork: true
+  containers:
+  - command:
+    - kube-apiserver
+    - --allow-privileged=true
+    - --advertise-address=192.168.8.11
+    - --insecure-bind-address=127.0.0.1
+    - --bind-address=0.0.0.0
+    - --etcd-servers=https://192.168.8.11:2379
+    - --service-cluster-ip-range=10.96.0.0/12
+    - --admission-control=NamespaceLifecycle,LimitRanger,ServiceAccount,ResourceQuota
+    - --client-ca-file=/etc/kubernetes/pki/ca.pem
+    - --etcd-cafile=/etc/kubernetes/pki/ca.pem 
+    - --etcd-certfile=/etc/kubernetes/pki/kubernetes.pem 
+    - --etcd-keyfile=/etc/kubernetes/pki/kubernetes-key.pem 
+    - --kubelet-certificate-authority=/etc/kubernetes/pki/ca.pem 
+    - --kubelet-client-certificate=/etc/kubernetes/pki/kubernetes.pem 
+    - --kubelet-client-key=/etc/kubernetes/pki/kubernetes-key.pem 
+    - --service-account-key-file=/etc/kubernetes/pki/ca-key.pem 
+    - --tls-cert-file=/etc/kubernetes/pki/kubernetes.pem 
+    - --tls-private-key-file=/etc/kubernetes/pki/kubernetes-key.pem
+    - --secure-port=6443
+    - --basic-auth-file=/etc/kubernetes/userpass/userpass.csv
+    image: gcr.io/google_containers/kube-apiserver-amd64:v1.12.8
+    name: kube-apiserver
+    volumeMounts:
+    - mountPath: /etc/kubernetes/pki
+      name: k8s-certs
+    - mountPath: /etc/kubernetes/userpass
+      name: k8s-userpass
+  volumes:
+  - hostPath:
+      path: /etc/kubernetes/pki
+      type: Directory
+    name: k8s-certs
+  - hostPath:
+      path: /etc/kubernetes/userpass
+      type: Directory
+    name: k8s-userpass
+
+
+--------------------------
+--------------------------
 https://kubernetes.io/docs/reference/access-authn-authz/authentication/
 - read section 'static password file'
 https://stackoverflow.com/questions/46618383/how-to-config-simple-login-pass-authentication-for-kubernetes-desktop-ui
