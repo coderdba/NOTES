@@ -6,8 +6,14 @@ https://hub.docker.com/r/prom/node-exporter/
 docker pull bitnami/node-exporter
 docker pull prom/node-exporter
 
+=========================
+PREP
+=========================
+Use IP for VM which is in the range of its virtual network's vboxnet network
+- that will help access app URLs with VM IP and port from laptop/host
+
 ==========================================
-START NODE EXPORTER CONTAINER - BITNAMI
+START NODE EXPORTER CONTAINER - BITNAMI --> DID NOT WORK
 ==========================================
 NOTE: THIS DID NOT WORK ALRIGHT
 
@@ -26,7 +32,8 @@ START NODE EXPORTER CONTAINER - PROM
 https://github.com/prometheus/node_exporter
 https://devconnected.com/how-to-install-prometheus-with-docker-on-ubuntu-18-04/
 
-- SYNTAX
+- COMMAND (not actual command used)
+--> syntax
 docker run -d \
   --net="host" \
   --pid="host" \
@@ -34,12 +41,35 @@ docker run -d \
   quay.io/prometheus/node-exporter \
   --path.rootfs=/host
 
-- COMMAND
-docker run -d -p 9100:9100 --user 995:995 \
+--> actual command - replaced the image with prom/node-exporter
+docker run -d \
+  --net="host" \
+  --pid="host" \
+  -v "/:/host:ro,rslave" \
+  prom/node-exporter \
+  --path.rootfs=/host
+
+- ALTERNATIVE COMMAND
+NOTE: the -p directive is not needed if we use --net=host - you will get the warning message as below
+      - it is automatic that the container's app will listen on host's same ort as container's
+
+NOTE: also, The host networking driver only works on Linux hosts, and is not supported on Docker Desktop for Mac, 
+      Docker Desktop for Windows, or Docker EE for Windows Server.
+      (from https://docs.docker.com/network/host/ )
+      
+NOTE: The --user directive to docker is to make the container run as the user and not root (however, my user is root for now)
+
+docker run -d \
+-p 9100:9100 \
+--user 995:995 \
 -v "/:/hostfs" \
 --net="host" \
 prom/node-exporter \
 --path.rootfs=/hostfs
+
+--> Message from the command
+WARNING: Published ports are discarded when using host network mode
+62e2f57525faca8db46f1b0209e3b6d13dcc904a53a1e1c3ff750e01d44e0ca0
 
 - VERIFY
  curl http://localhost:9100/health
