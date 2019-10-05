@@ -1,0 +1,37 @@
+====================
+DOCKER RUN REFERENCE
+====================
+https://docs.docker.com/engine/reference/run/
+
+CONSIDER THES COMMANDS
+
+docker run -d \
+  --net="host" \
+  --pid="host" \
+  -v "/:/host:ro,rslave" \
+  prom/node-exporter \
+  --path.rootfs=/host
+  
+
+docker run -d \
+-p 9100:9100 \
+--user 995:995 \
+-v "/:/hostfs" \
+--net="host" \
+prom/node-exporter \
+--path.rootfs=/hostfs
+
+NOTE: the -p directive is not needed if we use --net=host - you will get the warning message as below
+      - it is automatic that the container's app will listen on host's same ort as container's
+
+NOTE: also, The host networking driver only works on Linux hosts, and is not supported on Docker Desktop for Mac, 
+      Docker Desktop for Windows, or Docker EE for Windows Server.
+      (from https://docs.docker.com/network/host/ )
+      
+NOTE: The --user directive to docker is to make the container run as the user and not root (however, my user is root for now)
+
+NOTE: --pid="host" uses host's PID namespace
+
+[root@prometheus1 ~]# ps -ef|grep node-exporter
+nfsnobo+ 27088 27071  0 20:37 ?        00:00:00 /bin/node_exporter --path.rootfs=/host
+
