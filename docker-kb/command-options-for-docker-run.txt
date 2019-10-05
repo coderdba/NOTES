@@ -3,16 +3,18 @@ DOCKER RUN REFERENCE
 ====================
 https://docs.docker.com/engine/reference/run/
 
+========================================
 CONSIDER THES COMMANDS
-
+========================================
+https://github.com/prometheus/node_exporter
 docker run -d \
   --net="host" \
   --pid="host" \
   -v "/:/host:ro,rslave" \
   prom/node-exporter \
   --path.rootfs=/host
-  
 
+https://devconnected.com/how-to-install-prometheus-with-docker-on-ubuntu-18-04/
 docker run -d \
 -p 9100:9100 \
 --user 995:995 \
@@ -20,6 +22,16 @@ docker run -d \
 --net="host" \
 prom/node-exporter \
 --path.rootfs=/hostfs
+
+-d: detached mode, will run the node exporter even if we are not directly interacting with it;
+-p: as the node exporter runs on port 9100, we are going to expose this port to Prometheus;
+–user: the node exporter user ID, for security purposes.
+-v: the host filesystem (the machine you are monitoring) is mapped to a folder in the Docker image.
+    (first part before colon is the host's fs -  and second part after the colon is the fs on the container)
+–net: sets the Docker image and the host to share the same network.
+–path.rootfs: instructs the node exporter to look for the filesystem in the hostfs folder. 
+              This way, the Node exporter is not monitoring your Docker filesystem, but the mapped filesystem from your host.
+
 
 NOTE: the -p directive is not needed if we use --net=host - you will get the warning message as below
       - it is automatic that the container's app will listen on host's same ort as container's
