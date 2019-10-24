@@ -1,0 +1,48 @@
+==========================
+CREATING A VM FROM A IMAGE
+==========================
+NOTE:
+1. The cdrom device is an ISO file with user-data and meta-data files
+2. The root_disk_path variable is the path to the qcow2 that has the VM image (with OS and the other stuff)
+3. The other disks are various disks to be used by the VM
+
+virt-install \
+  --name=$vm_name \
+  --ram=$MEM \
+  --vcpus=$CPU \
+  --disk path=${root_disk_path},format=qcow2 \
+  --disk path=${docker_disk_path},format=qcow2 \
+  --disk path=${etcd_disk_path},format=qcow2 \
+  --disk path=${certs_disk_path},format=qcow2 \
+  --disk path=${inject_files_path},format=RAW \
+  --disk path=${shared_disk_path},format=RAW \
+  --disk path=${local_persistent_disk_path},format=qcow2 \
+  --disk path=${seed_path},device=cdrom \
+  --network bridge=br10,model=virtio \
+  --network bridge=br10,model=virtio \
+  --os-type=linux \
+  --os-variant rhel7 \
+  --nographics \
+  --import
+  
+==========================
+USER-DATA EXAMPLE
+==========================
+NOTE:
+1. write_files section writes one or more files
+2. runcmd section runs a command in the VM - that is already there - or created dynamically by one more write_files module
+
+write_files:
+-    encoding: b64
+     content: LS0tLS1CRUdJTiBDRVJUlkjsdflsNTcUdTSWIzRFFFQkN31TWpJeUxqUTVQUE0S.....987dsLJSDHFLKJ
+     path: /tmp/pki/ca.pem
+     permissions: '0644'
+write_files:
+-    content: echo "running cloud init " `date` `hostname` > /tmp/cloud-init-begin.log
+     path: /tmp/cloud-init-begin.sh
+     permissions: '0700'
+runcmd:
+  - /tmp/cloud-init-begin.sh
+  - K8_STR_NAME=S1234 K8_NODE_NAME=S1234k0001 K8_VER=1.10.0 K8_IP_ADDR=101.224.182.111 VENAFI_API_PASSWORD=abcd12ojsd012 /opt/k8/cloud_init.sh
+  - echo "a98u@dsfjh" | passwd --stdin root
+  - yum -y remove cloud-init
