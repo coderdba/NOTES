@@ -67,7 +67,7 @@ metadata:
   namespace: kube-system
 type: Opaque
 
-- POD
+- POD - to test
 kind: Pod
 apiVersion: v1
 metadata:
@@ -81,8 +81,38 @@ spec:
       - while true; do
         sleep 86400;
         done;
+      env:
+        - name: MY_SECRET1
+          valueFrom:
+            secretKeyRef:
+              key: MY_SECRET1
+              name: SECRET_MY_SECRETS
       envFrom:
         - configMapRef:
             name: cm-venafi-env
 
-  
+ - POD - that can actually use the environments
+kind: Pod
+apiVersion: v1
+metadata:
+  name: pod-env-tester
+spec:
+  containers:
+    - name: pod-env-tester
+      image: busybox
+      command: [ "sh", "-c"]
+      args:
+      - while true; do
+        dumb-init /my_go_program -VENAFI_USERNAME=$MY_VENAFI_USERNAME -VENAFI_PASSWORD=$MY_VENAFI_PASSWORD -MOUNT_PATH="/mycerts" -SECRET1=$MY_SECRET1;
+
+        sleep 86400;
+        done;
+      env:
+        - name: MY_SECRET1
+          valueFrom:
+            secretKeyRef:
+              key: MY_SECRET1
+              name: SECRET_MY_SECRETS
+      envFrom:
+        - configMapRef:
+            name: cm-venafi-env
