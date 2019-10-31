@@ -1,0 +1,48 @@
+- Dockerfile
+FROM busybox
+
+ADD sleep.sh /tmp
+WORKDIR /tmp
+
+ENTRYPOINT [ "./sleep.sh" ]
+
+- sleep.sh
+NOTE: The "!/bin/sh" is important - otherwise busybox gives exec error
+
+#!/bin/sh
+
+while true 
+do
+
+/bin/sleep 2000
+
+done
+
+- Build
+docker build -t image1 .
+
+- Run a foreground container
+docker run --name cont_image1 --rm -ti image1
+
+docker ps -a
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+d91b8db796d6        image1              "./sleep.sh"        3 seconds ago       Up 2 seconds                            cont_image1
+
+- Run a daemon container
+docker run --name cont_image1 -d image1
+4965e9805a80501f6faa073ecb3894ecc58ab28f8ed84572eaf7f1816cae3fb0
+
+docker ps -a
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+4965e9805a80        image1              "./sleep.sh"        4 seconds ago       Up 2 seconds                            cont_image1
+
+- Logon to the container
+NOTE: It goes to the working directory /tmp set in Dockerfile
+
+docker exec -ti cont_image1 sh
+/tmp # 
+/tmp # ps -ef|grep sleep
+    1 root      0:00 {sleep.sh} /bin/sh ./sleep.sh
+    6 root      0:00 /bin/sleep 2000
+   14 root      0:00 grep sleep
+
