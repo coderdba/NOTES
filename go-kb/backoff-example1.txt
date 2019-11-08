@@ -1,0 +1,41 @@
+func (a *Agent) DoThis(node Node, filePath string, filePath2 string) {
+
+	backoffToBackout := backoff.Backoff{
+		Min:    60 * time.Second,
+		Max:    15 * time.Minute,
+		Factor: 2,
+		Jitter: true,
+	}
+  
+	attemptMax := float64(15)
+  
+	for true {
+  
+		d := repushBackoff.Duration()
+    
+		if isFilePresent (filePath, filePath2) {
+			log.Printf("Yes, Files present!")
+			return
+		} else {
+			  log.Printf("Files not present.")
+        // if backoff attempts are exhausted then call backout-deployment routine
+			  if backoffToBackout.Attempt() > attemptMax {
+			  	log.Printf("All attempts completed - no more attemptas left", backoffToBackout.Attempt())
+			  	a.BackoutDeployment(machineName, true) // Note: This call above takes control back to elsewhere and next steps in this function will be ignored 
+		  	}
+       // try pulling files
+		  	log.Printf("Pulling missing files")
+		  	err := a.PullFiles (node) // calling the function to pull files
+		  	if err != nil {
+		  		log.Printf("Could not pull ", err)
+		  	}
+		  	log.Printf("Wait before next attempt %s", d.String())
+		  	time.Sleep(d)
+        
+		  } // end of if isFilePresent 'else' section
+      
+	} // end of for loop
+  
+	log.Printf("All files pulled")
+	return
+}
