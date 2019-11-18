@@ -2,6 +2,7 @@ Create a machine to run packer
 - see other notes on what packages that machine should have 
 
 Create a 'OS base image' qcow2 (or other format) image using packer and DVD-ISO
+(with packer)
 - Give url or filename of the ISO file in config json
 - use kickstart file for f/s and other config in config json (with a http server dynamically created by packer to serve it)
 - embed root password in the builder packer config json
@@ -13,13 +14,20 @@ Create a 'OS base image' qcow2 (or other format) image using packer and DVD-ISO
       ]
       
 Create custom images (for different purposes - K8S, Oracle, Postgress etc)
-- Use the base image further with packer - instead of using DVD-ISO, use the base image qcow2
-- Do a cloud-init of this itself with seed-ISO mounted
+(with packer)
+- Use the base image qcow2 further with packer - instead of using DVD-ISO, use the base image qcow2
+- CLOUD-INIT with seed-ISO mounted
     - Change root password if necessary by embedding a new one
     - Copy files onto the VM
     - Install more packages
+    - Syntax in json:
+        "qemuargs": [
+      [ "-m", "1024M"],
+      [ "-cdrom", "seed.iso" ]
+    ]
 
 Create VMs using virt-install 
+(with virt-install)
 - Use the base or custom images - as needed
 - Inject customizations 
   - like root password change using cloud-init ISO file as cdrom (with user-data)
@@ -27,4 +35,4 @@ Create VMs using virt-install
 - setup network with directives like
   --network bridge=br0,model=virtio \
   --network bridge=br0,model=virtio \
-  --disk path=${seed_path},device=cdrom \. --> This is the cloud-init here
+  --disk path=${seed_path},device=cdrom \. --> This is the CLOUD-INIT here
