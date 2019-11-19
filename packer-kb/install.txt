@@ -28,3 +28,51 @@ We should get the word either vmx or svm in the output, otherwise CPU doesn’t 
 
 Install packages
 # yum install qemu-kvm qemu-img virt-manager libvirt libvirt-python libvirt-client virt-install virt-viewer bridge-utils
+
+Verify modules
+# lsmod | grep kvm
+--> this should return values like the following
+    but it did not - possibly because it is a virtualbox vm
+kvm_intel             162153  0
+kvm                   525409  1 kvm_intel
+
+# modprobe kvm
+# lsmod |grep kvm
+kvm                   586948  0 
+irqbypass              13503  1 kvm
+
+[root@centos7gmmodel centos7-base]# modprobe kvm-intel
+modprobe: ERROR: could not insert 'kvm_intel': Operation not supported
+
+Start service
+Note: See the errors that it could not open /dev/kvm
+# systemctl start libvirtd
+# systemctl enable libvirtd
+# systemctl status libvirtd
+● libvirtd.service - Virtualization daemon
+   Loaded: loaded (/usr/lib/systemd/system/libvirtd.service; enabled; vendor preset: enabled)
+   Active: active (running) since Tue 2019-11-19 16:21:53 IST; 5s ago
+     Docs: man:libvirtd(8)
+           https://libvirt.org
+ Main PID: 6391 (libvirtd)
+    Tasks: 19 (limit: 32768)
+   CGroup: /system.slice/libvirtd.service
+           ├─3743 /usr/sbin/dnsmasq --conf-file=/var/lib/libvirt/dnsmasq/default.conf --leasefile-ro --dhcp-script=/usr/libexec/libvirt_leaseshelper
+           ├─3744 /usr/sbin/dnsmasq --conf-file=/var/lib/libvirt/dnsmasq/default.conf --leasefile-ro --dhcp-script=/usr/libexec/libvirt_leaseshelper
+           └─6391 /usr/sbin/libvirtd
+
+Nov 19 16:21:53 centos7gmmodel systemd[1]: Starting Virtualization daemon...
+Nov 19 16:21:53 centos7gmmodel systemd[1]: Started Virtualization daemon.
+Nov 19 16:21:54 centos7gmmodel dnsmasq[3743]: read /etc/hosts - 2 addresses
+Nov 19 16:21:54 centos7gmmodel dnsmasq[3743]: read /var/lib/libvirt/dnsmasq/default.addnhosts - 0 addresses
+Nov 19 16:21:54 centos7gmmodel dnsmasq-dhcp[3743]: read /var/lib/libvirt/dnsmasq/default.hostsfile
+Nov 19 16:21:54 centos7gmmodel libvirtd[6391]: 2019-11-19 10:51:54.651+0000: 6407: info : libvirt version: 4.5.0, package: 23.el7_7.1 (CentOS BuildSy...ntos.org)
+Nov 19 16:21:54 centos7gmmodel libvirtd[6391]: 2019-11-19 10:51:54.651+0000: 6407: info : hostname: centos7gmmodel
+Nov 19 16:21:54 centos7gmmodel libvirtd[6391]: 2019-11-19 10:51:54.651+0000: 6407: error : virHostCPUGetTscInfo:1389 : Unable to open /dev/kvm: No su...directory
+Nov 19 16:21:54 centos7gmmodel libvirtd[6391]: 2019-11-19 10:51:54.678+0000: 6407: error : virHostCPUGetTscInfo:1389 : Unable to open /dev/kvm: No su...directory
+Nov 19 16:21:54 centos7gmmodel libvirtd[6391]: 2019-11-19 10:51:54.681+0000: 6407: error : virHostCPUGetTscInfo:1389 : Unable to open /dev/kvm: No su...directory
+Hint: Some lines were ellipsized, use -l to show in full.
+
+
+
+
