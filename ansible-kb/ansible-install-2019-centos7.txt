@@ -2,6 +2,7 @@
 ANSIBLE INSTALL ON CENTOS7 VBOX VM
 ====================================
 https://www.cyberciti.biz/python-tutorials/linux-tutorial-install-ansible-configuration-management-and-it-automation-tool/
+https://docs.ansible.com/ansible/latest/cli/ansible-playbook.html
 
 ====================================
 INSTALL ANSIBLE
@@ -20,5 +21,29 @@ ansible 2.4.2.0
 GENERATE AND COPY KEYS TO HOSTS
 ====================================
 ssh-keygen -t rsa
+
+It will create id_rsa and id_rsa.pub
+Rename them as id_rsa.rootlab and id_rsa.pub.rootlab for convenience - and reuse in all labs
+
+- TO COPY TO THE LOCALHOST and OTHER HOSTS
+For localhost: Add the contents of id_rsa.pub.rootlab to ~/.ssh/authorized_keys
+
+For all hosts: Using ansible (to copy to all hosts, including localhost)
+- Add to /etc/ansible/hosts the following line
+[all]
+localhost
+host1_ip
+host2_ip
+
+- Run the following command
+ansible all -m copy -a "src=~/.ssh/id_rsa.pub.rootlab dest=/tmp/id_rsa.pub" --ask-pass -u root
+- OR - 
+ansible localhost -m copy -a "src=~/.ssh/id_rsa.pub.rootlab dest=/tmp/id_rsa.pub" --ask-pass -u root -c sshpass
+(not sure if the sshpass is required if we are supplying the password with --ask-pass)
+
+- Then run the following commands
+ansible all -m shell -a "cat /tmp/id_rsa.pub >> /root/.ssh/authorized_keys" --ask-pass -c sshpass
+ansible all -m shell -a "/bin/rm /tmp/id_rsa.pub" --ask-pass -c sshpass
+
 
 
