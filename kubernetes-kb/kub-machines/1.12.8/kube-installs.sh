@@ -1,0 +1,17 @@
+echo INFO - installing kubelet
+yum install -y kubelet-1.12.8-0
+
+echo INFO - installing kubectl
+yum install -y kubectl-1.12.8-0
+
+echo INFO - installing kubeadm
+yum install -y kubeadm-1.12.8-0
+
+echo
+echo
+echo verifying
+echo
+rpm -qa |grep kube
+which kubelet
+which kubectl
+which kubeadm
