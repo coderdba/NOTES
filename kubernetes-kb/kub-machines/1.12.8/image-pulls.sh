@@ -13,3 +13,10 @@ docker pull quay.io/coreos/flannel:v0.9.0-amd64
 
 # latest as in kube-flannel.yml 
 docker pull quay.io/coreos/flannel:v0.11.0-amd64 
+
+echo
+echo
+echo VERIFY
+echo
+docker images
+
