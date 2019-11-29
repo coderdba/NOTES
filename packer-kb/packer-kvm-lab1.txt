@@ -129,7 +129,10 @@ network --bootproto=dhcp --hostname=centos7-base-gp
 auth --enableshadow --passalgo=sha512
 
 # Root password
-rootpw CHANGEME
+# NOTE: Use crypted password taking from /etc/shadow on a test box or use a encrypter command
+#       Without crypted subsequent creation of more images using the base images did not work - got invalid user/pass
+#rootpw CHANGEME
+rootpw --iscrypted $6$dAEFnlnAiCxVI0pncwEVDnBFQ58CxBHggAnNq0LjKwvd7kABiAyb46k........
 
 # Selinux in permissive mode (will be disabled by provisioners)
 selinux --permissive
@@ -297,3 +300,21 @@ echo Removing the temporary folder centos7-base-img
 rmdir centos7-base-img
 
 echo Ending `date`
+
+==================================
+PASSWORD GENERATOR SCRIPTS
+==================================
+# method 1
+python -c 'import crypt; print(crypt.crypt("CHANGEME", "$6$My Salt"))'
+
+# method 2
+echo 'import crypt,getpass; print crypt.crypt(getpass.getpass(), "$5$16_CHARACTER_SALT_HERE")' | python
+
+# method 3 - this will prompt for a pw
+grub-crypt --sha-256
+
+# method 4 - this will prompt for a pw
+grub-crypt --md5
+
+# method 5 - this will prompt for a pw
+openssl passwd -1 "password here"
