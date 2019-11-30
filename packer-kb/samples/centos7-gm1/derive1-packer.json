@@ -16,8 +16,8 @@
       "format": "qcow2",
       "net_device": "virtio-net",
 
-      "iso_url": "file:///data/images/centos7-gm-0.0.1.qcow2",
-      "iso_checksum": "bfa6e6bcec8c39665616cbb69b0605bb3805d7ef7bc68b0f0a2134dc225bffa5",
+      "iso_url": "file:///var/lib/packer-work/images/centos7-gm1-base-0.0.1.qcow2",
+      "iso_checksum": "99e66d70270d43004f439887dea0b233cd2ee1b54ec51886e78c05025b9a7c5a",
       "iso_checksum_type": "sha256",
 
       "vm_name": "centos7",
@@ -36,8 +36,31 @@
       "boot_command":
       [
       ], 
-      "shutdown_command": "shutdown -P now"
-
+      "shutdown_command": "shutdown -P now",
+      "qemuargs": [
+        [ "-m", "1024M"],
+        [ "-cdrom", "seed.iso" ]
+      ]
+    }
+  ],
+  "provisioners":
+  [
+    {
+      "type": "shell",
+      "pause_before": "5s",
+      "inline": [
+        "yum install -y cloud-init"
+      ]
+    },
+    {
+      "type": "shell",
+      "pause_before": "50s",
+      "inline": [
+         "echo GREP CLOUD IN /var/log/messages",
+         "grep cloud /var/log/messages",
+         "echo LISTING /tmp",
+         "ls -l /tmp" 
+      ]
     }
   ]
 }
