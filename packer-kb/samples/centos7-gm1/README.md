@@ -18,9 +18,10 @@ qemu-args cdrom seems to be not mounting the iso file.
 base-run.sh --> creates base image from iso - based on base-ks.cfg and base-packer.json - using DVD iso of the OS. 
 
 derive1-run.sh --> creates an image with cloud-init package installed - based on the base image created by base-run.sh. 
-- uses derive-packer.json
+- Uses derive1-packer.json
 - This mounts an iso file in json, but the user-data file in that iso does not really run - so, it is a DUMMY. 
 
 derive1-virt-install.sh --> creates an actual VM based on the image created by derive1-run.sh.  
 - This uses iso file seed-virt-install.iso created by seed-iso-virt-install-create.sh - with files in seed-virt-install folder. 
+- ISSUE - cloud-init is not running the user-data in the iso - need to debug
 
