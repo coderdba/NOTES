@@ -1,4 +1,4 @@
-yum install cloud-init
+yum install -y cloud-init
 
 chkconfig network on
 service network start
