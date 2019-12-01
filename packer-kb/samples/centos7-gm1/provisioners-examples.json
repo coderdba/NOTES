@@ -1,0 +1,40 @@
+# A SHELL PROVISIONER WITH ENVIRONMENT VARIABLES AND A LOCAL SCRIPT  
+# https://www.packer.io/docs/templates/engine.html
+#
+# NOTE: THIS SCRIPT DOES NOT HAVE TO BE COPIED ON TO THE VM IMAGE WITH 'FILE' DIRECTIVE
+#
+# NOTE: echo 'cloud-user' may not be necessary if we dont have that user or if we are using root instead
+
+    {
+      "type": "shell",
+      "environment_vars": [
+        "MY_PROVISIONER={{user `provisioner`}}",
+        "MY_PROVISIONER_VERSION={{user `provisioner_version`}}",
+        "MY_BUILD_OS_VERSION={{user `os_version`}}",
+        "MY_ARTIFACTORY_URL={{user `artifactory_url`}}",
+        "MY_BUILDER_TYPE={{user `builder_type`}}",
+        "MY_BUILD_USER_ID={{user `build_user_id`}}",
+        "MY_SOURCEAMI={{user `source_ami`}}",
+        "MY_BUILD_LOC={{user `build_loc`}}",
+        "MY_BUILD_FOR_USEIN={{user `build_for_usein`}}",
+        "MY_RUN_LIST={{user `run_list`}}",
+        "MY_RPM={{user `rpm`}}"
+      ],
+      "execute_command": "echo 'cloud-user' | {{.Vars}} sudo -E -S bash '{{.Path}}'",
+      "scripts": [
+        "scripts/install_packages.sh"
+      ]
+    }
+    
+    
+    {
+    "provisioners": [
+        {
+            "type": "shell",
+            "execute_command": "{{.Vars}} sudo -E -S bash '{{.Path}}'",
+            "scripts": [
+                "scripts/bootstrap.sh"
+            ]
+        }
+      ]
+    }
