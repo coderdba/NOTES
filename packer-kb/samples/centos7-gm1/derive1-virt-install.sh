@@ -1,4 +1,5 @@
 root_disk_path=/var/lib/vm/gm1-root.qcow2
+seed_file_path=/var/lib/packer-work/repos/centos7-gm1/seed-virt-install.iso
 image_file=/var/lib/packer-work/images/centos7-gm1-derive1-0.0.1.qcow2
 
 cp $image_file $root_disk_path
@@ -26,8 +27,8 @@ virt-install \
   --name=gm1 \
   --ram=1024 \
   --vcpus=2 \
-  --disk path=/var/lib/vm/gm1-root.qcow2,format=qcow2 \
-  --disk path=seed-virt-install.iso,device=cdrom \
+  --disk path=${root_disk_path},format=qcow2 \
+  --disk path=${seed_file_path},device=cdrom \
   --network bridge=br0,model=virtio \
   --network bridge=br0,model=virtio \
   --os-type=linux \
