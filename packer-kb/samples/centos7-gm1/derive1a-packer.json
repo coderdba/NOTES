@@ -1,0 +1,85 @@
+{
+  "builders":
+  [
+    {
+      "type": "qemu",
+      "accelerator": "kvm",
+      "qemu_binary": "/usr/libexec/qemu-kvm",
+      "headless": true,
+      "qemuargs": [
+        [ "-m", "1024M" ],
+        [ "-smp", "cpus=1,maxcpus=16,cores=4" ]
+      ],
+      "disk_image": "true",
+      "disk_interface": "virtio",
+      "disk_size": 100000,
+      "format": "qcow2",
+      "net_device": "virtio-net",
+
+      "iso_url": "file:///var/lib/packer-work/images/centos7-gm1-base-0.0.1.qcow2",
+      "iso_checksum": "99e66d70270d43004f439887dea0b233cd2ee1b54ec51886e78c05025b9a7c5a",
+      "iso_checksum_type": "sha256",
+
+      "vm_name": "centos7",
+      "output_directory": "img",
+
+      "ssh_host_port_min": 2222,
+      "ssh_host_port_max": 2229,
+
+      "communicator": "ssh",
+      "ssh_username": "root",
+      "ssh_password": "packer-test",
+      "ssh_port": 22,
+      "ssh_wait_timeout": "1200s",
+
+      "boot_wait": "20s",
+      "boot_command":
+      [
+      ], 
+      "shutdown_command": "shutdown -P now",
+      "qemuargs": [
+        [ "-m", "1024M"],
+        [ "-cdrom", "seed.iso" ]
+      ]
+    }
+  ],
+  "provisioners":
+  [
+    {
+      "type": "shell",
+      "pause_before": "5s",
+      "inline": [
+         "echo LISTING /tmp",
+         "ls -l /tmp/*"
+      ]
+    },
+    {
+      "type": "shell-local",
+      "command": "tar zcf derive1-files-to-install.tar.gz derive1-files-to-install/"
+    },
+    {
+      "type": "file",
+      "source": "derive1-files-to-install.tar.gz",
+      "destination": "/tmp/derive1-files-to-install.tar.gz"
+    },
+    {
+      "type": "shell",
+      "pause_before": "5s",
+      "inline": [
+        "echo INFO - GOING INTO /tmp",
+        "cd /tmp/",
+        "tar zxf derive1-files-to-install.tar.gz",
+        "pwd",
+        "ls -l",
+        "cd derive1-files-to-install/",
+        "pwd",
+        "ls -l",
+        "echo INFO - Running package installer script",
+        "chmod +x packages.sh",
+        "ls -l",
+        "./packages.sh",
+        "rm -rf /tmp/derive1-files-to-install*"
+      ]
+    }
+  ]
+}
