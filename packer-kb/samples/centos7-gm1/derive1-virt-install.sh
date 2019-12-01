@@ -1,3 +1,6 @@
+./derive1-destroy.sh
+./seed-iso-virt-install-create.sh
+
 root_disk_path=/var/lib/vm/gm1-root.qcow2
 seed_file_path=/var/lib/packer-work/repos/centos7-gm1/seed-virt-install.iso
 image_file=/var/lib/packer-work/images/centos7-gm1-derive1-0.0.1.qcow2
