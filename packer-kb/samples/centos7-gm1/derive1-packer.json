@@ -32,7 +32,7 @@
       "ssh_port": 22,
       "ssh_wait_timeout": "1200s",
 
-      "boot_wait": "50s",
+      "boot_wait": "20s",
       "boot_command":
       [
       ], 
@@ -49,17 +49,39 @@
       "type": "shell",
       "pause_before": "5s",
       "inline": [
-        "yum install -y cloud-init"
+         "echo LISTING /tmp",
+         "ls -l /tmp/*"
       ]
     },
     {
+      "type": "shell-local",
+      "command": "tar zcf derive1-files-to-install.tar.gz derive1-files-to-install/"
+    },
+    {
+      "type": "file",
+      "source": "derive1-files-to-install.tar.gz",
+      "destination": "/tmp/derive1-files-to-install.tar.gz"
+    },
+    {
       "type": "shell",
-      "pause_before": "50s",
+      "pause_before": "5s",
       "inline": [
-         "echo GREP CLOUD IN /var/log/messages",
-         "grep cloud /var/log/messages",
-         "echo LISTING /tmp",
-         "ls -l /tmp" 
+        "echo INFO - GOING INTO /tmp",
+        "cd /tmp/",
+        "tar zxf derive1-files-to-install.tar.gz",
+        "pwd",
+        "ls -l",
+        "cd derive1-files-to-install/",
+        "pwd",
+        "ls -l",
+        "echo INFO - Running package installer script",
+        "chmod +x packages.sh",
+        "ls -l",
+        "./packages.sh",
+        "echo INFO - Copying cloud-init.sh to /opt/cloud-init",
+        "mkdir -p /opt/cloud-init",
+        "cp /tmp/derive1-files-to-install/cloud-init.sh /opt/cloud-init/cloud-init.sh",
+        "rm -rf /tmp/derive1-files-to-install*"
       ]
     }
   ]
