@@ -1,0 +1,108 @@
+https://www.theurbanpenguin.com/using-cloud-images-in-kvm/
+
+Using Cloud Images in KVM
+NOVEMBER 12, 2018 by THE URBAN PENGUIN
+
+We want to show you the advantages of using Cloud Images with KVM. One of the advantages with using OpenStack is the ability to make use of Cloud Images. These Cloud Images can be downloaded from the Distribution website and are a prebuilt version of their OS. No installation needed. The downside is that you will normally need to inject SSH keys to login. With OpenStack this is easy, the Horizon interface allows you to choose a key to add. If you don’t want to go the whole hog with OpenStack but you want to make the most effective use of these images with QEMU and KVM you can, and it is not that difficult. In this module, we will learn how to download the cloud images and create a cloud-init disk to customize the image on first boot. You will see how you can create Virtual Machines quickly using cloud images in KVM without the need of OpenStack. 
+
+Downloading Cloud Images, the first step is to locate thecloud image you need. I would suggest using your favoured search engine andlook for “<distro> clould images”:
+
+Ubuntu: https://cloud-images.ubuntu.com/
+CentOS: https://cloud.centos.org/centos/
+Debian: https://cdimage.debian.org/cdimage/openstack/current/
+Once downloaded, I would recommend leaving the image untouched on the download location such as home directory. It can be copied to the correct images directory later. Copy the file than move, as it leaves you an untouched master image that you can copy again later should you need it again.
+
+To download the latest Ubuntu 18.04 Server image:
+
+$ wget https://cloud-images.ubuntu.com/bionic/current/bionic-server-cloudimg-amd64.img
+To download a recent CentOS 7 image:
+
+$ wget https://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud-1809.qcow2
+The default user account on Ubuntu is “ubuntu” and on CentOS it is “centos”.
+
+Resize Virtual Disk Size
+The virtual disk size is likely to be quite small. We may choose to increase the size before we use it for any virtual system. We can query the current size:
+
+$ qemu-img info bionic-server-cloudimg-amd64.img 
+image: bionic-server-cloudimg-amd64.img
+file format: qcow2
+virtual size: 2.2G (2361393152 bytes)
+disk size: 324M
+cluster_size: 65536
+Format specific information:
+    compat: 0.10
+    refcount bits: 16
+
+ 
+We can see that the default size is 2.2 GB. We can increase the size by a set amount, ( +5G ) , or to a target size, ( 10G ). We will use the target size and make a virtual disk of 10GB. The actual size used should not change very much if at all:
+
+$ qemu-img resize bionic-server-cloudimg-amd64.img 10G
+Image resized.
+On checking the information again, we can see the resize worked:
+
+$ qemu-img info bionic-server-cloudimg-amd64.img 
+image: bionic-server-cloudimg-amd64.img
+file format: qcow2
+virtual size: 10G (10737418240 bytes)
+disk size: 324M
+cluster_size: 65536
+Format specific information:
+    compat: 0.10
+    refcount bits: 16
+Copy Master Disk
+We can now copy the disk file to /var/lib/libvirt/images/ in readiness to be used by a Virtual Machine. We also can use the qemu-img command to run the copy.
+
+$ sudo qemu-img convert -f qcow2bionic-server-cloudimg-amd64.img /var/lib/libvirt/images/proxy1.img
+
+ 
+Even through the image we downloaded was in the correct qcow2 format we still are able to use this command as an effective copy and ensures that the target file is qcow2 irrelevant of the format downloaded.
+
+Create a Cloud-Config file
+We will need to customize the image at first boot. We mentioned before that the cloud systems are normally limited to key based authentication over SSH. This means that we cannot use a username and password.We will either need to inject SSH keys or set the password for the default user. We will also take the opportunity to set the host name. We will create a text file, this file must start with #cloud-config
+
+#cloud-config
+password: Password1
+chpasswd: { expire: False }
+ssh_pwauth: True
+hostname: proxy1
+
+ 
+For my test systems I usually use the same password, but of course you can choose a password that suits your security requirements. The file is self-explanatory but we need to copy this across as on ISO file to be used when the system boots. We will use the command cloud-localds for this. If this package is not installed, you can add it with:
+
+$ sudo apt install cloud-init-tools
+Once installed we can create the ISO file proxy1.iso in the images directory from the text file cloud.txt:
+
+$ sudo cloud-localds /var/lib/libvirt/images/proxy1.isocloud.txt
+
+ 
+We now have two disks for a virtual machine that we willcreate, proxy1.img and proxy1.iso. We are ready to import these disks to the QEMU/ KVM virtual machine now. We can use either virt-install or virt-manager to do this. For ease of instruction, we will make use of the command line and the virt-install comand.
+
+Creating the Virtual Machine
+As we mentioned before the great feature of these cloud images is the ability to run a virtual machine very quickly, no installation is required. We just need to import the disk image and combined with the cloud config ISO file the image will be customized allowing password authentication. We will use virt-install from the CLI to do this. If needed you can install the package with the following command:
+
+$ sudo apt install virtinstall
+Once installed we can either create a script to import the disks or run directly from the command line. Here is an example using the disk I created previously:
+
+sudo virt-install \
+            --name proxy1\
+            --memory 1024 \
+            --disk /var/lib/libvirt/images/proxy1.img,device=disk,bus=virtio \
+            --disk /var/lib/libvirt/images/proxy1.iso,device=cdrom \
+            --os-type linux \
+            --os-variant ubuntu16.04 \
+            --virt-type kvm \
+            --graphics none \
+            --network network=default, model=virtio \
+            --import
+
+ 
+On running the command, the Virtual Machine meta-data will be created and the image will fire up. We will be connected to the console of the system. We can log in as the user Ubuntu with the password we supplied to cloud-config.
+
+If you recall, we also increased the size of the virtual disk, we can see the result of this using the command lsblk:
+
+$ lsblk /dev/vda
+NAME    MAJ:MINRM  SIZE RO TYPE MOUNTPOINT
+vda     252:0    0  10G  0 disk 
+├─vda1  252:1    0 9.9G  0 part /
+├─vda14 252:14  0    4M  0 part 
+└─vda15 252:15  0  106M  0 part /boot/efi
