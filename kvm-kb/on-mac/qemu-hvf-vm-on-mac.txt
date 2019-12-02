@@ -1,0 +1,119 @@
+========================================================
+UBUNTU VM - USING QEMU and USING HVF ACCELDRATOR ON MAC
+========================================================
+Based on: https://graspingtech.com/ubuntu-desktop-18.04-virtual-machine-macos-qemu/
+
+Mac does not support kvm - but supports something called hvf as accelerator.
+
+
+
+=========
+REFERENCE
+=========
+https://graspingtech.com/ubuntu-desktop-18.04-virtual-machine-macos-qemu/
+
+Creating a Ubuntu Desktop 18.04 Virtual Machine on macOS with QEMU
+04 Oct 2019
+This tutorial will show you how to create a Ubuntu Desktop 18.04 virtual machine and run it on macOS with QEMU and hardware acceleration.
+
+
+ 
+Before we begin, I suggest you create a folder on your Mac to store the virtual machine disk image, the Ubuntu ISO and startup script. You don’t have to do this but it will make following this tutorial easier.
+
+I’ll be storing everything in ~/QEMU.
+
+Step 1: Install QEMU
+We’re gonna use Homebrew to install QEMU, so if you haven’t got Homebrew installed on your machine. You’ll need to do that first by following the Homebrew installation guide.
+
+With Homebrew installed, run the following command to install QEMU.
+
+brew install qemu
+Once the install is finished, run the following command to make sure QEMU is installed and ready for the next steps:
+
+qemu-system-x86_64 --version
+Output:
+
+QEMU emulator version 4.1.0
+Copyright (c) 2003-2019 Fabrice Bellard and the QEMU Project developers
+As you can see, as of writing, the latest version is 4.1.0.
+
+Step 2: Download Ubuntu ISO
+Go to the Ubuntu website and download the Ubuntu Desktop 18.04 ISO. Move the ISO to the ~/QEMU folder as it will make the QEMU command easier.
+
+Step 3: Create a Disk Image
+Run the following command to create an 10 GB hard disk (or adjust to your needs) for the virtual machine.
+
+qemu-img create -f qcow2 ~/QEMU/ubuntu-desktop-18.04.qcow2 10G
+You should now have a folder containing the Ubuntu ISO and the hard disk which Ubuntu will be installed on.
+
+ls -l ~/QEMU/
+ubuntu-18.04.3-desktop-amd64.iso
+ubuntu-desktop-18.04.qcow2
+Step 4: Launch QEMU with Ubuntu ISO attached
+Run the following command to launch a QEMU virtual machine with the Ubuntu ISO and hard disk we created in the previous step attached.
+
+qemu-system-x86_64 \
+  -m 2048 \
+  -vga virtio \
+  -show-cursor \
+  -usb \
+  -device usb-tablet \
+  -enable-kvm \
+  -cdrom ~/QEMU/ubuntu-18.04.3-desktop-amd64.iso \
+  -drive file=~/QEMU/ubuntu-desktop-18.04.qcow2,if=virtio \
+  -accel hvf \
+  -cpu host
+Step 5: Install Ubuntu
+Hopefully if everything went to plan with the above command you should be presented with the Ubuntu installer. Click on Install Ubuntu.
+
+Ubuntu Desktop 18.04 install wizard - step 1
+
+Select your language and keyboard layout.
+
+Ubuntu Desktop 18.04 install wizard - step 2
+
+Select Minimal installation and then click Continue.
+
+Ubuntu Desktop 18.04 install wizard - step 3
+
+Select Erase disk and install Ubuntu then click Install Now.
+
+Ubuntu Desktop 18.04 install wizard - step 4
+
+Specify your username, machine name and password then click Continue.
+
+Ubuntu Desktop 18.04 install wizard - step 5
+
+Wait for the installation to complete then click Restart Now.
+
+Ubuntu Desktop 18.04 install wizard - step 6
+
+When asked to remove the installation medium, power off the machine and in the next step we’ll adjust the command to power on the VM without the CD-ROM attached.
+
+Ubuntu Desktop 18.04 install wizard - step 7
+
+Step 6: Reboot without Ubuntu ISO attached
+Once the machine is powered off. Run the command below to power it back on without the CD-ROM attached.
+
+qemu-system-x86_64 \
+  -m 2048 \
+  -vga virtio \
+  -show-cursor \
+  -usb \
+  -device usb-tablet \
+  -enable-kvm \
+  -drive file=~/QEMU/ubuntu-desktop-18.04.qcow2,if=virtio \
+  -accel hvf \
+  -cpu host
+NOTE:
+You can increase or decrease the memory with the -m option. The command above assigns 2 GB to the virtual machine.
+
+Conclusion
+Ubuntu should now be installed and it should run fast on macOS since we enabled hardware acceleration by specifying the -accel hvf option.
+
+Tips
+Create a script to run the command above. Call it run.sh and make it executable then you can just type ./run.sh to start the VM.
+On first boot after installing Ubuntu, the screen resolution might be too low. Right click on the desktop and open a terminal then run sudo apt update and sudo apt upgrade to install updates. Restart the system and the screen should then be big enough to increase the resolution in the Devices section of settings. 1440x900 works best for my MacBook Pro (2017 13.3-inch 2560 x 1600).
+If you need to SSH onto the system, you can add the following settings to the QEMU command: -net user,hostfwd=tcp::2222-:22 -net nic. Then you can connect via ssh user@loclhost -p 2222.
+You can enter and leave full screen by pressing Command + F when the mouse cursor is at the very top of the screen.
+
