@@ -1,0 +1,131 @@
+https://groups.google.com/forum/#!topic/packer-tool/je2D0LRhWj0
+
+Packer ›
+Building QEMU VMs with HVF (Hypervisor.framework) acceleration
+3 posts by 2 authors 
+
+Corban Johnson	
+6/13/18
+Is anyone successfully using QEMU HVF acceleration to build images on macOS? I've been experimenting with it to little success.
+
+My target guest platform is CentOS 7.5 x86_64, running Packer 1.2.4 on macOS 10.13.5. The guest will boot but hang early after init at "dracut-initqueue".
+
+Calling qemu-system-x86_64 directly with the Packer-generated arguments produces the same results unless I remove the arguments for both NIC and virtual disk.
+
+Packer JSON follows. Largely cribbed from Bento.
+
+{                                                                                                     
+
+  "variables": {                                                                                      
+
+    "cpus": "2",                                                                                      
+
+    "disk_size": "8192",                                                                              
+
+    "iso_checksum": "714acc0aefb32b7d51b515e25546835e55a90da9fb00417fbee2d03a62801efd",               
+
+    "iso_checksum_type": "sha256",                                                                    
+
+    "iso_name": "CentOS-7-x86_64-Minimal-1804.iso",                                                   
+
+    "ks_path": "thermopylae.ks",                                                                      
+
+    "memory": "2048",                                                                                 
+
+    "mirror": "http://mirrors.kernel.org/centos",                                                     
+
+    "mirror_directory": "7.5.1804/isos/x86_64"                                                        
+
+  },                                                                                                  
+
+  "builders": [                                                                                       
+
+    {                                                                                                 
+
+      "boot_command": [                                                                               
+
+        "<up><wait><tab> text ks=http://{{ .HTTPIP }}:{{ .HTTPPort }}/{{user `ks_path`}}<enter><wait>"
+
+      ],                                                                                              
+
+      "boot_wait": "10s",                                                                             
+
+      "disk_size": "{{user `disk_size`}}",                                                            
+
+      "headless": "true",                                                                             
+
+      "http_directory": "http",                                                                       
+
+      "iso_checksum": "{{user `iso_checksum`}}",                                                      
+
+      "iso_checksum_type": "{{user `iso_checksum_type`}}",                                            
+
+      "iso_url": "{{user `mirror`}}/{{user `mirror_directory`}}/{{user `iso_name`}}",                 
+
+      "output_directory": "builds",                                                                   
+
+      "shutdown_command": "echo 'build' | sudo -S /sbin/halt -h -p",                                  
+
+      "ssh_password": "build",                                                                        
+
+      "ssh_port": 22,                                                                                 
+
+      "ssh_username": "build",                                                                        
+
+      "ssh_wait_timeout": "10000s",                                                                   
+
+      "type": "qemu",                                                                                 
+
+      "accelerator": "hvf",                                                                           
+
+      "vm_name": "{{ user `hostname` }}"                                                              
+
+    }                                                                                                 
+
+  ]                                                                                                   
+
+}                                                                                                     
+
+
+Adam Robinson	
+6/13/18
+The TL;DR is add "qemuargs": [[ "-global", "virtio-pci.disable-modern=on" ]]
+
+
+I wrote the commit that added the HVF accelerator, so I am using it :-)  I saw that issue as well with RHEL 7.5.  I put this in the documentation:
+
+The hvf accelerator is new and experimental as of QEMU 2.12.0. You may encounter issues unrelated to Packer when using it. You may need to add [ "-global", "virtio-pci.disable-modern=on" ] to qemuargs depending on the guest operating system.
+
+
+Thanks,
+Adam Robinson
+Virtualization and Cloud Infrastructure Senior
+Information and Technology Services
+University of Michigan 
+
+- show quoted text -
+- show quoted text -
+--
+This mailing list is governed under the HashiCorp Community Guidelines - https://www.hashicorp.com/community-guidelines.html. Behavior in violation of those guidelines may result in your removal from this mailing list.
+ 
+GitHub Issues: https://github.com/mitchellh/packer/issues
+IRC: #packer-tool on Freenode
+---
+You received this message because you are subscribed to the Google Groups "Packer" group.
+To unsubscribe from this group and stop receiving emails from it, send an email to packe...@googlegroups.com.
+To view this discussion on the web visit https://groups.google.com/d/msgid/packer-tool/23057521-6f4f-440c-a768-d99440c8d3ee%40googlegroups.com.
+For more options, visit https://groups.google.com/d/optout.
+
+Corban Johnson	
+6/16/18
+Y'know I noticed your note in the docs, but must have fat-fingered it during my testing and chalked up the error to my QEMU build. That's what I get for multitasking.
+
+Adding the "qemuargs" key fixed my build, thanks very much :)
+- show quoted text -
+- show quoted text -
+- show quoted text -
+- show quoted text -
+To unsubscribe from this group and stop receiving emails from it, send an email to packer-tool...@googlegroups.com.
+
+To view this discussion on the web visit https://groups.google.com/d/msgid/packer-tool/23057521-6f4f-440c-a768-d99440c8d3ee%40googlegroups.com.
+For more options, visit https://groups.google.com/d/optout.
