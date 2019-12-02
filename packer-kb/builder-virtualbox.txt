@@ -1,3 +1,7 @@
+===============================
+VIRTUALBOX OPTIONS
+===============================
+
 From ISO (dvd) - https://www.packer.io/docs/builders/virtualbox-iso.html
 From OVF (image built like qcow2) - https://www.packer.io/docs/builders/virtualbox-ovf.html
 From an existing VM - https://www.packer.io/docs/builders/virtualbox-vm.html
@@ -12,3 +16,109 @@ virtualbox-iso - Starts from an ISO file, creates a brand new VirtualBox VM, ins
 virtualbox-ovf - This builder imports an existing OVF/OVA file, runs provisioners on top of that VM, and exports that machine to create an image. This is best if you have an existing VirtualBox VM export you want to use as the source. As an additional benefit, you can feed the artifact of this builder back into itself to iterate on a machine.
 
 virtualbox-vm - This builder uses an existing VM to run defined provisioners on top of that VM, and optionally creates a snapshot to save the changes applied from the provisioners. In addition the builder is able to export that machine to create an image. The builder is able to attach to a defined snapshot as a starting point, which could be defined statically or dynamically via a variable.
+
+
+===============================
+VAGRANT POST-PROCESSOR
+===============================
+https://groups.google.com/forum/#!topic/packer-tool/Y1XKxm9jnak
+
+-----------------------
+THE JSON
+-----------------------
+{
+  "builders": [
+    {
+      "type": "virtualbox-iso",
+      "iso_url": "{{user `iso_url`}}",
+      "iso_checksum_type": "{{user `iso_checksum_type`}}",
+      "iso_checksum": "{{user `iso_checksum`}}",
+      "headless": false,
+      "boot_wait": "10m",
+      "ssh_username": "vagrant",
+      "ssh_password": "vagrant",
+      "ssh_wait_timeout": "2h",
+      "shutdown_command": "shutdown /s /t 10 /f /d p:4:1 /c \"Packer Shutdown\"",
+      "guest_os_type": "Windows10_64",
+      "disk_size": 61440,
+      "vboxmanage": [
+        [
+          "modifyvm",
+          "{{.Name}}",
+          "--memory",
+          "2048"
+        ],
+        [
+          "modifyvm",
+          "{{.Name}}",
+          "--cpus",
+          "2"
+        ]
+      ]
+    }
+  ],
+  "post-processors":[
+    {
+      "type": "vagrant",
+      "keep_input_artifact": false,
+      "output": "windows_10_{{.Provider}}.box",
+      "vagrantfile_template": "windows10.template"
+    }
+  ],
+  "variables": {
+    "iso_url": "C:/Ebe/Vagrant/Windows_10/SW_DVD5_Win_Pro_10_1511.1_64BIT_English_MLF_X20-93914.iso",
+    "iso_checksum_type": "md5",
+    "iso_checksum": "bd09dc56c51a6ce137b8c0eb7c4369ea",
+    "autounattend": "./answer_files/10/Autounattend.xml"
+  }
+}
+
+-----------------------
+The post-processor file
+-----------------------
+My windows.template
+
+Vagrant.require_version ">= 1.6.2"
+
+Vagrant.configure("2") do |config|
+    config.vm.define "vagrant-windows-10"
+    config.vm.box = "windows_10"
+    config.vm.communicator = "winrm"
+
+    # Admin user name and password
+    config.winrm.username = "vagrant"
+    config.winrm.password = "vagrant"   config.vm.network :private_network, ip: "192.168.56.1"
+
+    config.vm.guest = :windows
+    config.windows.halt_timeout = 15
+
+    config.vm.network :forwarded_port, guest: 3389, host: 3389, id: "rdp", auto_correct: true
+    config.vm.network :forwarded_port, guest: 22, host: 2222, id: "ssh", auto_correct: true
+
+    config.vm.provider :virtualbox do |v, override|
+        #v.gui = true
+        v.customize ["modifyvm", :id, "--memory", 2048]
+        v.customize ["modifyvm", :id, "--cpus", 2]
+        v.customize ["setextradata", "global", "GUI/SuppressMessages", "all" ]
+    end
+
+    config.vm.provider :vmware_fusion do |v, override|
+        #v.gui = true
+        v.vmx["memsize"] = "2048"
+        v.vmx["numvcpus"] = "2"
+        v.vmx["ethernet0.virtualDev"] = "vmxnet3"
+        v.vmx["RemoteDisplay.vnc.enabled"] = "false"
+        v.vmx["RemoteDisplay.vnc.port"] = "5900"
+        v.vmx["scsi0.virtualDev"] = "lsisas1068"
+    end
+
+    config.vm.provider :vmware_workstation do |v, override|
+        #v.gui = true
+        v.vmx["memsize"] = "2048"
+        v.vmx["numvcpus"] = "2"
+        v.vmx["ethernet0.virtualDev"] = "vmxnet3"
+        v.vmx["RemoteDisplay.vnc.enabled"] = "false"
+        v.vmx["RemoteDisplay.vnc.port"] = "5900"
+
+        v.vmx["scsi0.virtualDev"] = "lsisas1068"
+    end end
