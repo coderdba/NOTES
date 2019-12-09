@@ -1,4 +1,72 @@
-
+https://www.freedesktop.org/software/systemd/man/systemd.timer.html
+https://wiki.archlinux.org/index.php/Systemd/Timers
 
 systemctl list-timers
 systemctl stop '*.timer'
+
+
+=======================================
+FLEXIBLE TIMER WITH SINGLE SERVICE
+=======================================
+https://www.freedesktop.org/software/systemd/man/systemd.timer.html
+
+For each timer file, a matching unit file must exist, describing the unit to activate when the timer elapses. 
+By default, a service by the same name as the timer (except for the suffix) is activated. 
+Example: a timer file foo.timer activates a matching service foo.service. 
+The unit to activate may be controlled by Unit= (see below).
+
+Unit=
+The unit to activate when this timer elapses. The argument is a unit name, whose suffix is not ".timer". 
+*****If not specified, this value defaults to a service that has the same name as the timer unit, "except for the suffix." (See above.) 
+It is recommended that the unit name that is activated and the unit name of the timer unit are named identically, 
+except for the suffix.
+
+That is,
+Syntax:
+The service file:  service_name@.service
+Timer file: service_name@suffix.timer
+Suffix is sent to the service as argument
+The ExecStart script/program can get that argument as %i to it and use it (see examples below)
+
+Example:
+The service file: localrepo_pull_yum@.service
+Timer1 file: localrepo_pull_yum@centos-7:base.timer  (suffix is centos-7:base)
+Timer2 file: localrepo_pull_yum@fedora-29:fedora.timer  (suffix is fedora-29:fedora)
+
+File contents:
+
+Service file: localrepo_pull_yum@.service
+- Notes:
+%i is the 'suffix' like centos-7, fedora-29 and such
+localrepo_yum_pull is a script that takes the %i argument and pulls stuff
+
+- File Content:
+
+[Unit]
+Description=Yum repo pull to local repo
+After=syslog.target network.target var-www-repos.mount docker.service
+[Service]
+Type = simple
+User = root
+EnvironmentFile = -/etc/localrepo/yum/%i.env
+ExecStart = /opt/localrepo/bin/localrepo_yum_pull %i
+[Install]
+...
+...
+
+Timer file: localrepo_pull_yum@centos-7:base.timer
+- Notes:
+OnCalendar - is the calendar schedule for this timer
+The file name part "localrepo_pull_yum" aiutomatically refers to the service localrepo_pull_yum@.service
+The suffix centos-7:base is sent to the service localrepo_pull_yum@.service
+
+- File Content:
+[Unit]
+Description=Yum repo pull timer to local repo
+After=syslog.target network.target var-www-repos.mount docker.service
+[Timer]
+OnCalendar = *-*-* 19:00:00
+RandomizedDelaySec=1800
+Persistent = true
+[Install]
+WantedBy = multi-user.target
