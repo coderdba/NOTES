@@ -174,7 +174,7 @@ Use Berkshelf 'berks' to upload cookbooks and their dependent cookbooks
 ---------------------------
 CREATE 'Berksfile'
 ---------------------------
-File name: Berksfile
+File name: Berksfile (or Berksfile-anyextension.anyextension)
 
 source 'https://supermarket.chef.io'
 source 'https://supermarket.company.com'
@@ -190,4 +190,24 @@ cookbook 'node_setup', '3.0.10'
 ---------------------------
 UPLOAD COOKBOOKS
 ---------------------------
-$ berks upload 
+
+- INSTALL COOKBOOKS LOCALLY
+$ berks install   (if Berksfile name is Berksfile)
+OR
+$ berks install -b ./Berksfile-anyextension.anyextension
+
+This will produce a Berksfile.lock or Berksfile-anyextension.anyextension.lock 
+- which will have full list and dependency tree of cookbooks
+
+- UPLOAD TO CHEF SERVER
+Note: This behaves peculiarly if run from the working directory - it looks for knife.rb key in the local directory structure
+E, [2019-12-13T15:01:34.893038 #93377] ERROR -- : Ridley::Errors::ClientKeyFileNotFoundOrInvalid: client key is invalid or not found at: '/Users/myusername/myworkdirectory/keys/myusername.key.chef01.pem'
+
+If you get the error, use one of these options:
+a. Copy the key file from ~/.chef folders to local directory or subdirectory (like keys as in the eror)
+b. Run the upload command from ~/.chef with -b option pointing to the full path of Berksfile file
+
+$ berks upload   
+OR
+$ berks upload -b ./Berksfile-anyextension.anyextension
+
