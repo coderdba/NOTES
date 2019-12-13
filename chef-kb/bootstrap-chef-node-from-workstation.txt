@@ -11,9 +11,9 @@ SSH keys correctly explained - and -A option - https://www.digitalocean.com/comm
 Another ssh key example - http://deis.readthedocs.org/en/rtfd-versions/installation/static/
 Not really good for bootstrapping - however it has a way to convert Chef server's user's public key into RSA public-private key pairs - http://serverfault.com/questions/653543/chef-ssh-without-password
 
-===============
-KEY NOTE - READ -----
-===============
+===========================
+NOTE ON SSH KEY FOR NODES
+===========================
 
 Key-Policy:
 Keys need not be generated specifically for each node - it could be a key generated elsewhere and copied over
@@ -26,9 +26,15 @@ Use the private key of the node in the workstation for --identity-file directive
 --> This applies whether it is root user or your own user that can do sudo to root
 --> This applies to other key based authentication also - like for Git, Jenkins etc (read their specific usage elsewhere)
 
--------------------------------
+
+===========================
 INITIAL SETUP - Worstation
--------------------------------
+===========================
+
+------------------------
+CHEF CLIENT KEYS
+------------------------
+- ORG PEM METHOD
 Go to the correct organization in the chef-server
 Download chef-starter.zip from chef server
 Unzip it in some temporary location
@@ -38,6 +44,32 @@ Copy the .chef folder including its contents to:
   If using C drive itself, then in C: drive (or C:\chef-repo or other folder)
 
 NOTE: Bootstrap command should be run from this .chef folder
+
+- YOUR OWN USERNAME METHOD
+Create your user in chef server
+Make it belong to the organizations as needed
+Download the user's pem file
+
+------------------------
+LAPTOP/WORKSTATION SETUP
+------------------------
+
+On the lapop, in ~/.chef, knife.rb file 
+- client key pem file (your own username key or org key) 
+- chef server to  chef server chef01 or other
+- organization - myorg or other organization to which to bootstrap to
+- node_name in the knife.rb file can be your own username or I think the org name
+
+-- FILE ~/.chef/knife.rb:
+
+# See https://docs.getchef.com/config_rb_knife.html for more information on knife configuration options
+
+current_dir = File.dirname(__FILE__)
+log_level                :info
+log_location             STDOUT
+node_name                "myusername"
+client_key               "keys/myusername.key.chef01.pem"
+chef_server_url          "https://chef01.target.com/organizations/myorg"
 
 =======================
 BOOTSTRAP A LINUX NODE
@@ -65,6 +97,47 @@ BOOTSTRAP WITH PASSWORD --- USING USER THAT HAS sudo su - root PRIVILEGE
 O:\.chef> knife bootstrap <ip/hostname of node> --ssh-user <my username> --ssh-password '<my password>' --sudo --use-sudo-password --node-name <node name or hostname of the node>
 
 NOTE: THIS DOES NOT ASK FOR SUDO PASSWORD AS THE USER HAS A PASSWORD GIVEN ALREADY, AND --use-sudo-password USES THE SAME PASSWORD
+
+--------------------------------------------------------------------------------------
+BOOTSTRAP WITH PASSWORD (2019 notes) --- USING USER THAT HAS sudo su - root PRIVILEGE
+---------------------------------------------------------------------------------------
+
+- BOOTSTRAP NOW
+On the laptop - 
+
+Run the knife bootstrap command with the following syntax:
+$ knife bootstrap -N <node name> <FQDN or IP> -x <your lan-ID> --sudo
+Note: -N <node name> - node name could be FQDN itself or short name or some other identifiable name
+Caution: This will overwrite the /etc/chef folder on the VM - so backup /etc/chef of the VM first
+Note: This will not set any environment immediately for the node
+
+$ knife bootstrap -N lab001.mycompany.com lab001.mycompany.com -x myusername --sudo
+Node lab001.mycompany.com exists, overwrite it? (Y/N) N
+You said no, so I'm done here.
+a483e7493237:.chef myusername$  knife bootstrap -N lab001.mycompany.com lab001.mycompany.com -x myusername --sudo
+Node lab001.mycompany.com exists, overwrite it? (Y/N) Y
+Client lab001.mycompany.com exists, overwrite it? (Y/N) Y
+Creating new client for lab001.mycompany.com
+Creating new node for lab001.mycompany.com
+Connecting to lab001.mycompany.com
+myusername@lab001.mycompany.com's password:
+lab001.mycompany.com Could not chdir to home directory /home_dir/myusername: No such file or directory
+lab001.mycompany.com knife sudo password: 
+Enter your password: 
+lab001.mycompany.com 
+lab001.mycompany.com -----> Existing Chef installation detected
+lab001.mycompany.com Starting the first Chef Client run...
+lab001.mycompany.com Starting Chef Client, version 14.12.9
+lab001.mycompany.com resolving cookbooks for run list: [] 
+lab001.mycompany.com Synchronizing Cookbooks:
+lab001.mycompany.com Installing Cookbook Gems:
+lab001.mycompany.com Compiling Cookbooks...
+lab001.mycompany.com [2019-12-12T23:40:31-06:00] WARN: Node lab001.mycompany.com has an empty run list. 
+lab001.mycompany.com Converging 0 resources
+lab001.mycompany.com 
+lab001.mycompany.com Running handlers:
+lab001.mycompany.com Running handlers complete
+lab001.mycompany.com Chef Client finished, 0/0 resources updated in 02 seconds
 
 ------------------------------------------------------------------------
 BOOTSTRAP WITH SSH KEY --- USING ROOT USER - with SSH KEY of ROOT ITSELF
