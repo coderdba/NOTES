@@ -109,7 +109,7 @@ Example:
 knife node run_list set lab0001.mycompany.com 'recipe[node_setup::recipe_nginx]'
 
 --------------------------
-UPLOAD ENVIRONMENT
+SET NODE'S ENVIRONMENT
 --------------------------
 An 'environment' is to set the following:
 - Overriding attributes for the nodes that use the environment
@@ -119,7 +119,8 @@ An 'environment' is to set the following:
 - CREATE AN ENVIRONMENT FILE
 Note: The attributes mentioned below are just arbitrary.  They are equivalent of a .kitche.yaml environment section.,
 
-File: env-1.json
+File: ./environment/env-1.json
+Note: This needs to be created in a subdirectory 'environment' in the working directory
 
 {
   "name": "env-test-1",
@@ -156,3 +157,37 @@ File: env-1.json
         }
      }
  }
+
+- UPLOAD THE ENVIRONMENT TO CHEF SERVER
+knife upload environments/env-test-1.json --chef-repo-path .
+knife environment list
+
+- SET NODE'S ENVIRONMENT
+knife node environment_set lab0001.mycompany.com env-test-1
+
+======================================
+UPLOAD COOKBOOKS TO CHEF-SERVER
+======================================
+Chef server actually stores cookbooks locally - it wont pull them dynamically during runtime.
+Use Berkshelf 'berks' to upload cookbooks and their dependent cookbooks
+
+---------------------------
+CREATE 'Berksfile'
+---------------------------
+File name: Berksfile
+
+source 'https://supermarket.chef.io'
+source 'https://supermarket.company.com'
+
+solver :ruby
+
+metadata
+
+cookbook 'apache', git: 'https://git.company.com/apache/cookbook-apache', branch: 'v7_apache_secure_setup'
+cookbook 'NessusAgent', git: 'https://git.company.com/SecurityDept/NessusAgent'
+cookbook 'node_setup', '3.0.10'
+
+---------------------------
+UPLOAD COOKBOOKS
+---------------------------
+$ berks upload 
