@@ -1,3 +1,6 @@
+docker pull quay.io/coreos/etcd:v3.3.10
+docker pull quay.io/coreos/etcd:v3.2.24
+
 docker pull gcr.io/google_containers/kube-apiserver-amd64:v1.15.5
 docker pull gcr.io/google_containers/kube-scheduler-amd64:v1.15.5 
 docker pull gcr.io/google_containers/kube-controller-manager-amd64:v1.15.5
