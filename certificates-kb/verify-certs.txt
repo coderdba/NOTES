@@ -9,3 +9,31 @@ export SSL_CERT_FILE=/root/pci/certificate/company-ca-bundle.crt
 --> after that, openssl verify server.cer
 
 https://medium.com/java-user-group-malta/importing-existing-certificates-into-a-keystore-using-openssl-905d9e0b7175
+
+
+=====================
+VERIFY CERT OF A URL
+=====================
+https://serverfault.com/questions/661978/displaying-a-remote-ssl-certificate-details-using-cli-tools
+
+# this did not work
+echo | openssl s_client -showcerts -servername gnupg.org -connect gnupg.org:443 2>/dev/null | openssl x509 -inform pem -noout -text
+
+# this worked
+curl --insecure -v https://www.google.com 2>&1 | awk 'BEGIN { cert=0 } /^\* SSL connection/ { cert=1 } /^\*/ { if (cert) print }'
+
+* SSL connection using TLS1.2 / ECDHE_RSA_AES_128_GCM_SHA256
+*    server certificate verification SKIPPED
+*    server certificate status verification SKIPPED
+*    common name: www.google.com (matched)
+*    server certificate expiration date OK
+*    server certificate activation date OK
+*    certificate public key: RSA
+*    certificate version: #3
+*    subject: C=US,ST=California,L=Mountain View,O=Google Inc,CN=www.google.com
+*    start date: Wed, 24 May 2017 17:39:15 GMT
+*    expire date: Wed, 16 Aug 2017 17:13:00 GMT
+*    issuer: C=US,O=Google Inc,CN=Google Internet Authority G2
+*    compression: NULL
+* ALPN, server accepted to use http/1.1
+* Connection #0 to host www.google.com left intact
