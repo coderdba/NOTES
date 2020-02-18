@@ -1,0 +1,96 @@
+====================================
+NESTED VIRTUALIZATION IN VIRTUALBOX
+====================================
+Nested virtualization is available on Intel from 6.1 version onwards
+- https://www.virtualbox.org/ticket/4032
+
+User Manual page
+- https://www.virtualbox.org/manual/ch09.html#nested-virt
+
+NOTE: The GUI step from the manual is still greyed out - so use vboxmanage command
+
+From the manual: https://www.virtualbox.org/manual/ch09.html#nested-virt
+    You can enable the nested virtualization feature in one of the following ways:
+
+    NOTE: This step does not work - as the checkbox is greyed out.  So, use vboxmanage command given next
+    From the VirtualBox Manager, select the Enable Nested VT-x/AMD-V check box on the Processor tab. 
+    To disable the feature, deselect the check box.
+
+    Use the --nested-hw-virt option of the VBoxManage modifyvm command to enable or disable nested virtualization. 
+    See Section 8.8, “VBoxManage modifyvm”.
+
+====================================
+ENABLE NESTED VIRTUALIZATION
+====================================
+
+Create/clone a machine
+
+Then set these:
+vboxmanage modifyvm kvm01 --nestedpaging on --> This is necessary also
+vboxmanage modifyvm kvm01 --nested-hw-virt on  --> If nestedpagin is missed, in gui system->processor - respond to prompt
+
+============================
+INSTALL KVM, QEMU
+============================
+From https://github.com/coderdba/NOTES/blob/master/packer-kb/install-on-centos-and-kvm.txt
+
+Main reference - https://www.linuxtechi.com/install-kvm-hypervisor-on-centos-7-and-rhel-7/
+
+Additional stuff:
+https://www.linuxquestions.org/questions/linux-laptop-and-netbook-25/how-do-you-kvm-on-vmware-virtualbox-4175611275/
+--> about vbox not supporting further virtualization on a vm
+
+Check if CPU supports virtualization
+NOTE: Virtualbox VM did not show vmx/svm - still, will give a try
+# grep -E '(vmx|svm)' /proc/cpuinfo
+We should get the word either vmx or svm in the output, otherwise CPU doesn’t support virtualization.
+--> you can see vmx now!!
+flags		: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc eagerfpu pni pclmulqdq monitor vmx ssse3 cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt aes xsave avx rdrand hypervisor lahf_lm abm 3dnowprefetch tpr_shadow flexpriority fsgsbase avx2 invpcid rdseed clflushopt flush_l1d
+
+
+Install packages
+# yum install qemu-kvm qemu-img virt-manager libvirt libvirt-python libvirt-client virt-install virt-viewer bridge-utils
+
+Verify modules
+# lsmod | grep kvm
+--> this should return values like the following
+    but it did not - possibly because it is a virtualbox vm
+kvm_intel             162153  0
+kvm                   525409  1 kvm_intel
+
+# modprobe kvm
+# lsmod |grep kvm
+kvm                   586948  0 
+irqbypass              13503  1 kvm
+
+[root@centos7gmmodel centos7-base]# modprobe kvm-intel
+modprobe: ERROR: could not insert 'kvm_intel': Operation not supported
+
+Start service
+Note: See the errors that it could not open /dev/kvm
+# systemctl start libvirtd
+# systemctl enable libvirtd
+# systemctl status libvirtd
+● libvirtd.service - Virtualization daemon
+   Loaded: loaded (/usr/lib/systemd/system/libvirtd.service; enabled; vendor preset: enabled)
+   Active: active (running) since Tue 2019-11-19 16:21:53 IST; 5s ago
+     Docs: man:libvirtd(8)
+           https://libvirt.org
+ Main PID: 6391 (libvirtd)
+    Tasks: 19 (limit: 32768)
+   CGroup: /system.slice/libvirtd.service
+           ├─3743 /usr/sbin/dnsmasq --conf-file=/var/lib/libvirt/dnsmasq/default.conf --leasefile-ro --dhcp-script=/usr/libexec/libvirt_leaseshelper
+           ├─3744 /usr/sbin/dnsmasq --conf-file=/var/lib/libvirt/dnsmasq/default.conf --leasefile-ro --dhcp-script=/usr/libexec/libvirt_leaseshelper
+           └─6391 /usr/sbin/libvirtd
+
+Nov 19 16:21:53 centos7gmmodel systemd[1]: Starting Virtualization daemon...
+Nov 19 16:21:53 centos7gmmodel systemd[1]: Started Virtualization daemon.
+Nov 19 16:21:54 centos7gmmodel dnsmasq[3743]: read /etc/hosts - 2 addresses
+Nov 19 16:21:54 centos7gmmodel dnsmasq[3743]: read /var/lib/libvirt/dnsmasq/default.addnhosts - 0 addresses
+Nov 19 16:21:54 centos7gmmodel dnsmasq-dhcp[3743]: read /var/lib/libvirt/dnsmasq/default.hostsfile
+Nov 19 16:21:54 centos7gmmodel libvirtd[6391]: 2019-11-19 10:51:54.651+0000: 6407: info : libvirt version: 4.5.0, package: 23.el7_7.1 (CentOS BuildSy...ntos.org)
+Nov 19 16:21:54 centos7gmmodel libvirtd[6391]: 2019-11-19 10:51:54.651+0000: 6407: info : hostname: centos7gmmodel
+Nov 19 16:21:54 centos7gmmodel libvirtd[6391]: 2019-11-19 10:51:54.651+0000: 6407: error : virHostCPUGetTscInfo:1389 : Unable to open /dev/kvm: No su...directory
+Nov 19 16:21:54 centos7gmmodel libvirtd[6391]: 2019-11-19 10:51:54.678+0000: 6407: error : virHostCPUGetTscInfo:1389 : Unable to open /dev/kvm: No su...directory
+Nov 19 16:21:54 centos7gmmodel libvirtd[6391]: 2019-11-19 10:51:54.681+0000: 6407: error : virHostCPUGetTscInfo:1389 : Unable to open /dev/kvm: No su...directory
+Hint: Some lines were ellipsized, use -l to show in full.
