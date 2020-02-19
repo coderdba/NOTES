@@ -1,0 +1,64 @@
+===================================
+KVM, QEMU, VIRT-MANAGER ON CENTOS7
+===================================
+https://www.linuxtechi.com/install-kvm-hypervisor-on-centos-7-and-rhel-7/
+Old doc - https://github.com/coderdba/NOTES/blob/master/packer-kb/install-on-centos-and-kvm.txt
+
+Additional stuff:
+https://www.linuxquestions.org/questions/linux-laptop-and-netbook-25/how-do-you-kvm-on-vmware-virtualbox-4175611275/
+--> about vbox not supporting further virtualization on a vm
+
+Check if CPU supports virtualization
+NOTE: Virtualbox VM did not show vmx/svm - still, will give a try
+# grep -E '(vmx|svm)' /proc/cpuinfo
+We should get the word either vmx or svm in the output, otherwise CPU doesn’t support virtualization.
+--> you can see vmx now!!
+flags		: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc eagerfpu pni pclmulqdq monitor vmx ssse3 cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt aes xsave avx rdrand hypervisor lahf_lm abm 3dnowprefetch tpr_shadow flexpriority fsgsbase avx2 invpcid rdseed clflushopt flush_l1d
+
+Install packages
+# yum install qemu-kvm qemu-img virt-manager libvirt libvirt-python libvirt-client virt-install virt-viewer bridge-utils
+
+Verify modules
+# lsmod | grep kvm
+Expected output:
+kvm_intel             183621  0 
+kvm                   586948  1 kvm_intel
+irqbypass              13503  1 kvm
+
+--> If desired output does not appear, then run the following and try again:
+# modprobe kvm
+# modprobe kvm-intel or kvm-amd(depends on your cpu)
+
+Start service
+
+# systemctl enable libvirtd
+# systemctl start libvirtd
+# systemctl status libvirtd
+● libvirtd.service - Virtualization daemon
+   Loaded: loaded (/usr/lib/systemd/system/libvirtd.service; enabled; vendor preset: enabled)
+   Active: active (running) since Tue 2020-02-18 21:22:44 IST; 13h ago
+     Docs: man:libvirtd(8)
+           https://libvirt.org
+ Main PID: 5660 (libvirtd)
+    Tasks: 19 (limit: 32768)
+   CGroup: /system.slice/libvirtd.service
+           ├─3904 /usr/sbin/dnsmasq --conf-file=/var/lib/libvirt/dnsmasq/default.conf --leasefile-ro --dhcp-script=/u...
+           ├─3906 /usr/sbin/dnsmasq --conf-file=/var/lib/libvirt/dnsmasq/default.conf --leasefile-ro --dhcp-script=/u...
+           └─5660 /usr/sbin/libvirtd
+
+Feb 19 10:02:16 centos7model-server dnsmasq[3904]: using nameserver 10.0.2.3#53
+Feb 19 10:02:28 centos7model-server dnsmasq[3904]: reading /etc/resolv.conf
+Feb 19 10:02:28 centos7model-server dnsmasq[3904]: using nameserver 192.168.255.104#53
+Feb 19 10:02:28 centos7model-server dnsmasq[3904]: using nameserver 192.168.255.136#53
+Feb 19 10:02:38 centos7model-server dnsmasq[3904]: reading /etc/resolv.conf
+Feb 19 10:02:38 centos7model-server dnsmasq[3904]: using nameserver 10.0.2.3#53
+Feb 19 10:02:46 centos7model-server dnsmasq[3904]: reading /etc/resolv.conf
+Feb 19 10:02:46 centos7model-server dnsmasq[3904]: using nameserver 10.92.224.227#53
+Feb 19 10:02:46 centos7model-server dnsmasq[3904]: using nameserver 10.97.40.216#53
+Feb 19 10:02:46 centos7model-server dnsmasq[3904]: using nameserver 10.64.40.216#53
+
+Install X-Windows system
+# yum install "@X Window System" xorg-x11-xauth xorg-x11-fonts-* xorg-x11-utils -y
+
+Start virt-manager - for GUI based VM creation
+# virt-manager
