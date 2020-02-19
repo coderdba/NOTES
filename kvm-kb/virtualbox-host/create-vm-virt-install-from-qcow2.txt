@@ -1,13 +1,13 @@
 https://www.cyberciti.biz/faq/create-vm-using-the-qcow2-image-file-in-kvm/
 https://cloud.centos.org/centos/7/images/ (for images)
 
-Create a folder for the VM "nodocker1"
+- Create a folder for the VM "nodocker1"
 # mkdir /disk1/kvm-vms/nodocker1
 
-Get an image and place it in a folder
+- Get an image and place it in a folder
 /host-home/Downloads/image-gm/nodocker.qcow2
 
-Create a qcow2 file for the VM
+- Create a qcow2 file for the VM
 # cd /disk1/kvm-vms/nodocker1
 # qemu-img create -f qcow2 nodocker1.qcow2 150M
 
@@ -23,11 +23,11 @@ qemu-img: nodocker1.qcow2: Could not read qcow2 header: Bad address
 # ls -l
 # virt-resize --quiet --expand /dev/sda1 nodocker1.qcow2 nodocker1.new.image
 
-Create meta-data file
+- Create meta-data file
 instance-id: nodocker1
 local-hostname: nodocker1
 
-Create user-data file
+- Create user-data file
 
 #cloud-config
 # Customize as per your need. At least change username (vivek) and ssh-ed22519 
@@ -67,6 +67,22 @@ timezone: Asia/Kolkata
 runcmd:
   - systemctl stop network && systemctl start network
   - yum -y remove cloud-init
+
+- CREATE ISO SEED FILE
+mkisofs -o nodocker1-seed.iso -V cidata -J -r  meta-data user-data
+
+- RUN VIRT-INSTALL
+# virt-install --import --name nodocker1 \
+--memory 256 --vcpus 1 --cpu host \
+--disk /disk1/kvm-vms/nodocker1/nodocker1.qcow2,format=qcow2,bus=virtio \
+--disk /disk1/kvm-vms/nodocker1/nodocker1-seed.iso,device=cdrom \
+--network bridge=nm-br10,model=virtio \
+--os-type=linux \
+--os-variant=rhel7.5 \
+--noautoconsole
+
+- LIST THE VM
+# virsh list
 
 ======================================================================
 EXAMPLES
