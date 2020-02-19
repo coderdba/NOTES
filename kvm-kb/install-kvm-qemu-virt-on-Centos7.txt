@@ -74,10 +74,16 @@ Start virt-manager - for GUI based VM creation
 SET HOSTNAME AND IP
 ==============================
 (As done in Virtualbox VM)
-hostnamectl set-hostname kvm001
-nmtui --> to edit network
+# hostnamectl set-hostname kvm001
+# nmtui --> to edit network
 --> edit enp0s8 in Virtualbox VM
 --> 192.168.99.21 as IP address
+
+# cd /etc/sysconfig/network-scripts
+# mv ifcfg-Wired_connection_2 ifcfg-enp0s8  --> This may be required if virtualbox has given odd names to files
+# systemctl restart NetworkManager
+# ifdown enp0s8
+# ifup enp0s8
 
 ==============================
 SETUP BRIDGE NETWORK
@@ -86,7 +92,47 @@ SETUP BRIDGE NETWORK
 - LIST CURRENT BRIDGES
 #  brctl show
 bridge name	bridge id		STP enabled	interfaces
-virbr0		8000.52540008e8f5	yes		virbr0-nic   --> this is the virrtualbox one - which you may or may not want to use
+virbr0		8000.52540008e8f5	yes		virbr0-nic   
+--> this is created by libvirt (I guess I had installed libvirt earlier in regular VMs also, so, centos7model also has it)
+
+# ip a
+4: virbr0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default qlen 1000
+    link/ether 52:54:00:08:e8:f5 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0
+       valid_lft forever preferred_lft forever
+
+Config files for this are here:
+# cd /var/lib/libvirt/dnsmasq
+
+# cat default.conf
+##WARNING:  THIS IS AN AUTO-GENERATED FILE. CHANGES TO IT ARE LIKELY TO BE
+##OVERWRITTEN AND LOST.  Changes to this configuration should be made using:
+##    virsh net-edit default
+## or other application using the libvirt API.
+##
+## dnsmasq conf file created by libvirt
+strict-order
+pid-file=/var/run/libvirt/network/default.pid
+except-interface=lo
+bind-dynamic
+interface=virbr0
+dhcp-range=192.168.122.2,192.168.122.254
+dhcp-no-override
+dhcp-authoritative
+dhcp-lease-max=253
+dhcp-hostsfile=/var/lib/libvirt/dnsmasq/default.hostsfile
+addn-hosts=/var/lib/libvirt/dnsmasq/default.addnhosts
+
 
 - CREATE A NEW ONE
+# cd /etc/sysconfig/network-scripts
+# cp ifcfg-enp0s8 ifcfg-br0 --> to model upon an existing network
+
+Edit ifcfg-br0:
+TYPE="Bridge"
+NAME="br30"
+DEVICE="br30"
+USERCTL="no"
+ONBOOT="yes"
+BOOTPROTO="none"
 
