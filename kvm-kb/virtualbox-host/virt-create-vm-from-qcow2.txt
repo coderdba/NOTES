@@ -1,0 +1,107 @@
+https://www.cyberciti.biz/faq/create-vm-using-the-qcow2-image-file-in-kvm/
+https://cloud.centos.org/centos/7/images/ (for images)
+
+Create a folder for the VM 
+mkdir /host-home/KVM-VMs/in-vbox  --> host-home is laptop folder mounted on the Virtualbox VM which is the KVM host (nested)
+
+Get an image and place it in a folder
+/host-home/Downloads/image-gm/nodocker.qcow2
+
+Create meta-data file
+instance-id: nodocker1
+local-hostname: nodocker1
+
+Create user-data file
+
+#cloud-config
+# Customize as per your need. At least change username (vivek) and ssh-ed22519 
+# key with your actual public key
+ 
+# Hostname management
+preserve_hostname: False
+hostname: nodocker1
+fqdn: nodocker1.gm.com
+ 
+# Setup Users with ssh keys so that I can log in into new machine
+users:
+    - default
+    - name: gm
+      groups: ['root']
+      shell: /bin/bash
+      sudo: ALL=(ALL) NOPASSWD:ALL
+      ssh-authorized-keys:
+        - ssh-rsa my-ssh-pub-key gm
+ 
+# Configure where output will go
+output:
+  all: ">> /var/log/cloud-init.log"
+ 
+# configure interaction with ssh server
+#ssh_genkeytypes: ['ed25519', 'rsa']
+ 
+# Install your public ssh key to the first user-defined user configured
+# in cloud.cfg in the template (optional since I created gm user already above)
+ssh_authorized_keys:
+  - ssh-rsa some-or-my-ssh-pub-key KVM VM Lab SSH Login key for user
+ 
+# set timezone for VM
+timezone: Asia/Kolkata
+ 
+# Remove cloud-init 
+runcmd:
+  - systemctl stop network && systemctl start network
+  - yum -y remove cloud-init
+
+======================================================================
+EXAMPLES
+======================================================================
+Example virt-install:
+# virt-install --import --name $VM \
+--memory 2048 --vcpus 2 --cpu host \
+--disk $VM.qcow2,format=qcow2,bus=virtio \
+--disk $VM-cidata.iso,device=cdrom \
+--network bridge=virbr0,model=virtio \
+--os-type=linux \
+--os-variant=rhel7.5 \
+--graphics spice \
+--noautoconsole
+
+Example user-data:
+#cloud-config
+# Customize as per your need. At least change username (vivek) and ssh-ed22519 
+# key with your actual public key
+ 
+# Hostname management
+preserve_hostname: False
+hostname: nixcraft-rhel8
+fqdn: nixcraft-rhel8.nixcraft.com
+ 
+# Setup Users with ssh keys so that I can log in into new machine
+users:
+    - default
+    - name: vivek
+      groups: ['wheel']
+      shell: /bin/bash
+      sudo: ALL=(ALL) NOPASSWD:ALL
+      ssh-authorized-keys:
+        - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIG+zTQJ5FBsD2dTPlPVvQUbMq3jt19HflOtAy1EPBmKw KVM VM Lab SSH Login key for user
+ 
+# Configure where output will go
+output:
+  all: ">> /var/log/cloud-init.log"
+ 
+# configure interaction with ssh server
+ssh_genkeytypes: ['ed25519', 'rsa']
+ 
+# Install your public ssh key to the first user-defined user configured
+# in cloud.cfg in the template (optional since I created vivek)
+ssh_authorized_keys:
+  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIG+zTQJ5FBsD2dTPlPVvQUbMq3jt19HflOtAy1EPBmKw KVM VM Lab SSH Login key for user
+ 
+# set timezone for VM
+timezone: Asia/Kolkata
+ 
+# Remove cloud-init 
+runcmd:
+  - systemctl stop network && systemctl start network
+  - yum -y remove cloud-init
