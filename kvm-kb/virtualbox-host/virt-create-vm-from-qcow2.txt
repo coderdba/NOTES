@@ -2,16 +2,25 @@ https://www.cyberciti.biz/faq/create-vm-using-the-qcow2-image-file-in-kvm/
 https://cloud.centos.org/centos/7/images/ (for images)
 
 Create a folder for the VM 
-mkdir /host-home/KVM-VMs/in-vbox  --> host-home is laptop folder mounted on the Virtualbox VM which is the KVM host (nested)
+# mkdir /host-home/KVM-VMs/in-vbox  --> host-home is laptop folder mounted on the Virtualbox VM which is the KVM host (nested)
 
 Get an image and place it in a folder
 /host-home/Downloads/image-gm/nodocker.qcow2
 
 Create a qcow2 file for the VM
-# cd $D/$VM
+# cd /host-home/KVM-VMs/in-vbox/nodocker1
+# qemu-img create -f qcow2 nodocker1.qcow2 150M
+Formatting 'nodocker1.qcow2', fmt=qcow2 size=157286400 encryption=off cluster_size=65536 lazy_refcounts=off 
+qemu-img: nodocker1.qcow2: Could not read qcow2 header: Bad address
+
+
+--> The following as per doc did not work as expected
+# cd /host-home/KVM-VMs/in-vbox/nodocker1
 # export LIBGUESTFS_BACKEND=direct
-# qemu-img create -f qcow2 -o preallocation=metadata $VM.new.image 60G
+# qemu-img create -f qcow2 -o preallocation=metadata nodocker1.new.image 150M 
+(qemu-img create -f qcow2 -o preallocation=metadata nodocker1.new.image 60G --> for larger machines)
 # ls -l
+# virt-resize --quiet --expand /dev/sda1 nodocker1.qcow2 nodocker1.new.image
 
 Create meta-data file
 instance-id: nodocker1
