@@ -103,6 +103,8 @@ virbr0		8000.52540008e8f5	yes		virbr0-nic
     link/ether 52:54:00:08:e8:f5 brd ff:ff:ff:ff:ff:ff
     inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0
        valid_lft forever preferred_lft forever
+5: virbr0-nic: <BROADCAST,MULTICAST> mtu 1500 qdisc pfifo_fast master virbr0 state DOWN group default qlen 1000
+    link/ether 52:54:00:08:e8:f5 brd ff:ff:ff:ff:ff:ff
 
 Config files for this are here:
 # cd /var/lib/libvirt/dnsmasq
@@ -127,15 +129,75 @@ dhcp-hostsfile=/var/lib/libvirt/dnsmasq/default.hostsfile
 addn-hosts=/var/lib/libvirt/dnsmasq/default.addnhosts
 
 
-- CREATE A NEW ONE
+- CREATE A NEW BRIDGE
+
+https://www.golinuxcloud.com/how-to-configure-network-bridge-nmtui-linux/
+
+# nmtui
+Edit a conn
+Add
+Bridge
+   Profile Name - br10
+   Device - nm-br10
+Slaves
+   Add
+      Ethernet
+         Profile Name - ethbr10 --> Here we are adding a new interface (we mostly can modify an existing interface itself)
+         Device - ethbr10
+IPV4 Configuration
+   Manual (give IPs from virtualbox bridge/host-only network IP range for KVMs be accessible from outside of the KVM host)
+   Address - 192.168.99.3 (192.168.99.1 is used by Vbox host)
+   Gateway - 192.168.99.2 (192.168.99.1 is used by Vbox host)
+
+# cat ifcfg-br10
+STP=yes
+BRIDGING_OPTS=priority=32768
+TYPE=Bridge
+PROXY_METHOD=none
+BROWSER_ONLY=no
+BOOTPROTO=none
+DEFROUTE=yes
+IPV4_FAILURE_FATAL=no
+IPV6INIT=yes
+IPV6_AUTOCONF=yes
+IPV6_DEFROUTE=yes
+IPV6_FAILURE_FATAL=no
+IPV6_ADDR_GEN_MODE=stable-privacy
+NAME=br10
+UUID=4fe0f0a8-c17f-4585-8fe0-20add977084d
+DEVICE=nm-br10
+ONBOOT=yes
+IPADDR=192.168.99.3
+PREFIX=24
+GATEWAY=192.168.99.2
+
+# cat ifcfg-ethbr10
+TYPE=Ethernet
+NAME=ethbr10
+UUID=ba0202e1-e8d4-4ee8-8f25-ed6e1d5eb047
+DEVICE=ethbr10
+ONBOOT=yes
+BRIDGE_UUID=4fe0f0a8-c17f-4585-8fe0-20add977084d
+BRIDGE=nm-br10
+
+
+
+-- Manual method (incomplete)
 # cd /etc/sysconfig/network-scripts
 # cp ifcfg-enp0s8 ifcfg-br0 --> to model upon an existing network
 
-Edit ifcfg-br0:
+ifcfg-br10: (example)
 TYPE="Bridge"
-NAME="br30"
-DEVICE="br30"
+NAME="br10"
+DEVICE="br10"
 USERCTL="no"
 ONBOOT="yes"
 BOOTPROTO="none"
+
+
+
+- TO DELETE A BRIDGE
+https://unix.stackexchange.com/questions/31763/bring-down-and-delete-bridge-interface-thats-up
+[root@kvm001 ~]# ip link set br10 down
+[root@kvm001 ~]# brctl delbr br10
 
