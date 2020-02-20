@@ -70,8 +70,18 @@ CREATE ISO SEED FILE
 mkisofs -o centos71-seed.iso -V cidata -J -r  meta-data user-data
 
 =================================
-CREATE VM - RUN VIRT-INSTALL
+COPY IMAGE QCOW2 ONTO root-disk
 =================================
+# cp CentOS-7-x86_64-GenericCloud.qcow2 /disk1/kvm-vms/centos71/centos71-root.qcow2
+
+=================================
+CREATE VM - RUN VIRT-INSTALL --> with custom bridge br0
+--> FAILED
+=================================
+
+NOTE: THIS DID NOT CREATE THE MACHINE PROPERLY - IF CREATED PROPERLY, WE SHOULD GET A BLACK LOGIN SCREEN FOR THIS VM
+- THAT WAS BECAUSE IT DID NOT USE BRIDGE br0 properly
+- SEE THE NEXT SECTION WITH default bridge virbr0
 
 # virt-install --import --name nodocker1 \
 --memory 256 --vcpus 1 --cpu host \
@@ -300,6 +310,58 @@ The VM has not gotten any IP (as we did not set it, and have chosen no DHCP for 
   </seclabel>
 </domain>
 
+===============================================================
+CREATE VM - RUN VIRT-INSTALL --> WITH DEFAULT BRIDGE virbr0
+===============================================================
+
+- INSTALL
+virt-install --import --name centos71 \
+--memory 256 --vcpus 1 --cpu host \
+--disk /disk1/kvm-vms/centos71/centos71-root.qcow2,format=qcow2,bus=virtio \
+--disk /disk1/kvm-vms/centos71/centos71-seed.iso,device=cdrom \
+#--network bridge=br10,model=virtio \
+--network bridge=virbr0,model=virtio \
+--os-type=linux \
+--os-variant=rhel7 \
+--noautoconsole \
+
+This will pop up a boot-screen with kernel options - similar to the machine boot we see in ready-machines.
+Then it gives a black login screen in that pop up with "login:"
+
+- VERIFY
+
+[root@kvm001 centos71]# virsh list
+ Id    Name                           State
+----------------------------------------------------
+ 5     centos71                       running
+
+
+[root@kvm001 centos71]# virsh net-dumpxml default
+(only the network portion is shown here)
+
+<network connections='1'>
+  <name>default</name>
+  <uuid>c6a48355-79e2-45c2-a79b-c11c4f53a5ae</uuid>
+  <forward mode='nat'>
+    <nat>
+      <port start='1024' end='65535'/>
+    </nat>
+  </forward>
+  <bridge name='virbr0' stp='on' delay='0'/>
+  <mac address='52:54:00:08:e8:f5'/>
+  <ip address='192.168.122.1' netmask='255.255.255.0'>
+    <dhcp>
+      <range start='192.168.122.2' end='192.168.122.254'/>
+    </dhcp>
+  </ip>
+</network>
+
+- NETWORK SEEMS TO NOT LIST THIS MACHINE
+Try this to fix: https://www.cyberciti.biz/faq/linux-kvm-libvirt-dnsmasq-dhcp-static-ip-address-configuration-for-guest-os/
+
+[root@kvm001 centos71]# virsh net-dhcp-leases default
+ Expiry Time          MAC address        Protocol  IP address                Hostname        Client ID or DUID
+-------------------------------------------------------------------------------------------------------------------
 
 
 ========================
