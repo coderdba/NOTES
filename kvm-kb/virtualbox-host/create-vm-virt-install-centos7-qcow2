@@ -363,6 +363,32 @@ Try this to fix: https://www.cyberciti.biz/faq/linux-kvm-libvirt-dnsmasq-dhcp-st
  Expiry Time          MAC address        Protocol  IP address                Hostname        Client ID or DUID
 -------------------------------------------------------------------------------------------------------------------
 
+Here is the network configuration for dnsmasq used by libvirtd:
+
+[root@kvm001 centos71]# ps -ef|grep dnsmasq
+nobody    8778     1  0 11:38 ?        00:00:00 /usr/sbin/dnsmasq --conf-file=/var/lib/libvirt/dnsmasq/default.conf --leasefile-ro --dhcp-script=/usr/libexec/libvirt_leaseshelper
+root      8779  8778  0 11:38 ?        00:00:00 /usr/sbin/dnsmasq --conf-file=/var/lib/libvirt/dnsmasq/default.conf --leasefile-ro --dhcp-script=/usr/libexec/libvirt_leaseshelper
+root     20005  5467  0 16:59 pts/0    00:00:00 grep --color=auto dnsmasq
+
+[root@kvm001 centos71]# cat /var/lib/libvirt/dnsmasq/default.conf 
+##WARNING:  THIS IS AN AUTO-GENERATED FILE. CHANGES TO IT ARE LIKELY TO BE
+##OVERWRITTEN AND LOST.  Changes to this configuration should be made using:
+##    virsh net-edit default
+## or other application using the libvirt API.
+##
+## dnsmasq conf file created by libvirt
+strict-order
+pid-file=/var/run/libvirt/network/default.pid
+except-interface=lo
+bind-dynamic
+interface=virbr0
+dhcp-range=192.168.122.2,192.168.122.254
+dhcp-no-override
+dhcp-authoritative
+dhcp-lease-max=253
+dhcp-hostsfile=/var/lib/libvirt/dnsmasq/default.hostsfile
+addn-hosts=/var/lib/libvirt/dnsmasq/default.addnhosts
+
 
 ========================
 EXAMPLES
