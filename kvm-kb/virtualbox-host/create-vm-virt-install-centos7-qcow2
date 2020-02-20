@@ -389,6 +389,66 @@ dhcp-lease-max=253
 dhcp-hostsfile=/var/lib/libvirt/dnsmasq/default.hostsfile
 addn-hosts=/var/lib/libvirt/dnsmasq/default.addnhosts
 
+- EDIT DEFAULT NETWORK CONFIG (TO CHANGE IP ADDR SERVED BY DEFAULT BRIDGE virbr0)
+# virsh net-edit default
+
+EDIT IT TO: (matching with our initial intent of using br0 with 192.168.99.x same as Virtualbox network)
+<network>
+  <name>default</name>
+  <uuid>c6a48355-79e2-45c2-a79b-c11c4f53a5ae</uuid>
+  <forward mode='nat'/>
+  <bridge name='virbr0' stp='on' delay='0'/>
+  <mac address='52:54:00:08:e8:f5'/>
+  <ip address='192.168.99.3' netmask='255.255.255.0'>
+    <dhcp>
+      <range start='192.168.99.81' end='192.168.99.99'/>
+    </dhcp>
+  </ip>
+</network>
+
+INITIAL (before edit):
+<network>
+  <name>default</name>
+  <uuid>c6a48355-79e2-45c2-a79b-c11c4f53a5ae</uuid>
+  <forward mode='nat'/>
+  <bridge name='virbr0' stp='on' delay='0'/>
+  <mac address='52:54:00:08:e8:f5'/>
+  <ip address='192.168.122.1' netmask='255.255.255.0'>
+    <dhcp>
+      <range start='192.168.122.2' end='192.168.122.254'/>
+    </dhcp>
+  </ip>
+</network>
+
+Remove the br0 bridge created earlier, using nmtui
+
+# virsh net-destroy default
+# virsh net-start default
+--> THIS MAY GIVE ERROR that default is used by another nic - like enp0s8
+--> Then, down enp0s8 and start net-start and then up enp0s8
+    [root@kvm001 centos71]# ifdown enp0s8
+    Device 'enp0s8' successfully disconnected.
+    [root@kvm001 centos71]# virsh net-start default
+    Network default started
+
+    [root@kvm001 centos71]# ifup enp0s8
+    Connection successfully activated (D-Bus active path: /org/freedesktop/NetworkManager/ActiveConnection/9)
+
+# ip a (now shows the new IP of the virbr0 interface - and also enp0s8 is fine again)
+3: enp0s8: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:f8:99:79 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.99.21/24 brd 192.168.99.255 scope global noprefixroute enp0s8
+       valid_lft forever preferred_lft forever
+    inet6 fe80::89e:dc3b:f129:8d7e/64 scope link noprefixroute 
+       valid_lft forever preferred_lft forever
+22: virbr0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default qlen 1000
+    link/ether 52:54:00:08:e8:f5 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.99.3/24 brd 192.168.99.255 scope global virbr0
+       valid_lft forever preferred_lft forever
+23: virbr0-nic: <BROADCAST,MULTICAST> mtu 1500 qdisc pfifo_fast master virbr0 state DOWN group default qlen 1000
+    link/ether 52:54:00:08:e8:f5 brd ff:ff:ff:ff:ff:ff
+
+
 
 ========================
 EXAMPLES
