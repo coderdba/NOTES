@@ -218,7 +218,26 @@ ONBOOT=yes
 BRIDGE=br10
 BRIDGE_UUID=7cafbd78-835e-42ae-95a9-69312ce0a608
 
+- VERIFY
+[root@kvm001 network-scripts]# brctl show
+bridge name	bridge id		   STP enabled	interfaces
+br10		   8000.000000000000	yes		         --> somehow interface ethbr10 is not showing up
+virbr0		8000.52540008e8f5	yes		   virbr0-nic
 
+# ip a 
+--> this shows the IP we entered for the "Address - 192.168.99.3" during adding 'slave' to the bridge in nmcli
+--> this is showing up as 'br10' (or nm-br10 as we have defined) (expected behavior) and not 'ethbr10' - this is ok
+12: br10: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default qlen 1000
+    link/ether da:5d:ba:14:fe:7c brd ff:ff:ff:ff:ff:ff
+    inet 192.168.99.3/24 brd 192.168.99.255 scope global noprefixroute br10
+
+-- PING FROM HOST (if this kvm host is a Virtualbox VM)
+$ ping 192.168.99.3 
+PING 192.168.99.3 (192.168.99.3): 56 data bytes
+64 bytes from 192.168.99.3: icmp_seq=0 ttl=64 time=0.586 ms
+
+$ ping 192.168.99.2
+PING 192.168.99.2 (192.168.99.2): 56 data bytes
 
 -- Manual method (incomplete)
 # cd /etc/sysconfig/network-scripts
