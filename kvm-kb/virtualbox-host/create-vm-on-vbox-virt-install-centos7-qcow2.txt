@@ -74,13 +74,61 @@ COPY IMAGE QCOW2 ONTO root-disk
 =================================
 # cp CentOS-7-x86_64-GenericCloud.qcow2 /disk1/kvm-vms/centos71/centos71-root.qcow2
 
+==========================================================================
+WIP - CREATE VM - WITH DEFAULT BRIDGE VIRBR0
+==========================================================================
+# cp CentOS-7-x86_64-GenericCloud.qcow2 /disk1/kvm-vms/centos71/centos71-root.qcow2
 
-==========================================================
-CREATE VM - WITH BRIDGE ASSOCIATED WITH A SECOND NIC CARD
-==========================================================
+# virt-install --import --name centos71 \
+--memory 256 --vcpus 1 --cpu host \
+--disk /disk1/kvm-vms/centos71/centos71-root.qcow2,format=qcow2,bus=virtio \
+--disk /disk1/kvm-vms/centos71/centos71-seed.iso,device=cdrom \
+--network bridge=virbr0,model=virtio \
+--os-type=linux \
+--os-variant=rhel7 \
+--noautoconsole \
+
+# virsh list --all
+ Id    Name                           State
+----------------------------------------------------
+ 1     centos71                       running
+
+[root@kvm001 centos71]# cp virt-install.sh virt-instll-default.sh^C
+[root@kvm001 centos71]# virsh net-dhcp-leases default
+ Expiry Time          MAC address        Protocol  IP address                Hostname        Client ID or DUID
+-------------------------------------------------------------------------------------------------------------------
+ 2020-02-21 16:09:35  52:54:00:d9:d0:72  ipv4      192.168.122.159/24        centos71        -
+
+# ping 192.168.122.159
+PING 192.168.122.159 (192.168.122.159) 56(84) bytes of data.
+64 bytes from 192.168.122.159: icmp_seq=1 ttl=64 time=0.902 ms
+64 bytes from 192.168.122.159: icmp_seq=2 ttl=64 time=0.705 ms
+
+# cd ~/.ssh
+[root@kvm001 .ssh]# ssh -i ./id_rsa.priv gm@192.168.122.159
+
+[gm@centos71 ~]$ id
+uid=1000(gm) gid=1000(gm) groups=1000(gm),0(root) context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023
+
+[gm@centos71 ~]$ sudo -i
+
+[root@centos71 ~]# exit
+
+[gm@centos71 ~]$ exit
+logout
+
+Connection to 192.168.122.159 closed.
+[root@kvm001 .ssh]# 
+
+# virsh destroy centos71
+# virsh undefine centos71
+
+==========================================================================
+WIP - CREATE VM - WITH BRIDGE ASSOCIATED WITH A SECOND NIC CARD
+==========================================================================
 
 NIC Cards:
-enp0s8 - 192.168.99.21 (yes 99)
+enp0s8 - 192.168.99.21 (yes 99) --> for VMs
 enp0s9 - 192.168.98.21 (yes 98)
 
 ---------------
