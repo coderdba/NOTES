@@ -75,7 +75,6 @@ COPY IMAGE QCOW2 ONTO root-disk
 # cp CentOS-7-x86_64-GenericCloud.qcow2 /disk1/kvm-vms/centos71/centos71-root.qcow2
 
 
-
 ==========================================================
 CREATE VM - WITH BRIDGE ASSOCIATED WITH A SECOND NIC CARD
 ==========================================================
@@ -229,7 +228,104 @@ BRIDGE=nm-bridge1
 [root@kvm001 ~]# brctl show
 bridge name	  bridge id		      STP enabled	interfaces
 br10		      8000.080027f89979	no		      enp0s8
-virbr0		    8000.52540008e8f5	yes		      virbr0-nic
+virbr0		    8000.52540008e8f5	yes		      virbr0-ni
+
+# virsh net-list (shows only default which is virbr0 created by virt) --> MAYBE EXPECTED BEHAVIOR
+ Name                 State      Autostart     Persistent
+----------------------------------------------------------
+ default              active     yes           yes
+
+----------------------------
+CREATE ANOTHER BRIDGE BR20
+----------------------------
+- CREATE a file br20.xml
+NOTE: This also has a dhcp range associated with it. Let us see how later it behaves
+NOTE: It also creates a virtual nic card br20-nic similar to virbr0-nic of the default virbr0 bridge of virt
+
+<network>
+  <name>br20</name>
+  <forward mode='nat'>
+    <nat>
+      <port start='1024' end='65535'/>
+    </nat>
+  </forward>
+  <bridge name='br20' stp='on' delay='0'/>
+  <ip address='192.168.99.4' netmask='255.255.255.0'>
+    <dhcp>
+      <range start='192.168.99.91' end='192.168.99.99'/>
+    </dhcp>
+  </ip>
+</network>`
+
+- Define the virsh network
+# virsh net-define br20.xml
+    Network br1 defined from br10.xml
+
+# virsh net-list --all
+ Name                 State      Autostart     Persistent
+----------------------------------------------------------
+ br20                 inactive   no            yes
+ default              active     yes           yes
+
+# virsh net-start br20
+Network br20 started
+
+# virsh net-list --all
+ Name                 State      Autostart     Persistent
+----------------------------------------------------------
+ br20                 active     no            yes
+ default              active     yes           yes
+
+# virsh net-autostart br20
+Network br20 marked as autostarted
+
+# virsh net-list --all
+ Name                 State      Autostart     Persistent
+----------------------------------------------------------
+ br20                 active     yes           yes
+ default              active     yes           yes
+
+# ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: enp0s3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:4c:41:7a brd ff:ff:ff:ff:ff:ff
+    inet 10.0.2.15/24 brd 10.0.2.255 scope global noprefixroute dynamic enp0s3
+       valid_lft 84736sec preferred_lft 84736sec
+    inet6 fe80::f514:5f6b:225c:3851/64 scope link noprefixroute 
+       valid_lft forever preferred_lft forever
+3: enp0s8: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast master br10 state UP group default qlen 1000
+    link/ether 08:00:27:f8:99:79 brd ff:ff:ff:ff:ff:ff
+4: enp0s9: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:fc:b4:3f brd ff:ff:ff:ff:ff:ff
+    inet 192.168.98.21/24 brd 192.168.98.255 scope global noprefixroute enp0s9
+       valid_lft forever preferred_lft forever
+    inet6 fe80::eb41:c910:a0c5:4042/64 scope link noprefixroute 
+       valid_lft forever preferred_lft forever
+5: br10: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 08:00:27:f8:99:79 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.99.3/32 brd 192.168.99.3 scope global noprefixroute br10
+       valid_lft forever preferred_lft forever
+    inet6 fe80::a00:27ff:fef8:9979/64 scope link 
+       valid_lft forever preferred_lft forever
+6: virbr0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default qlen 1000
+    link/ether 52:54:00:08:e8:f5 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0
+       valid_lft forever preferred_lft forever
+7: virbr0-nic: <BROADCAST,MULTICAST> mtu 1500 qdisc pfifo_fast master virbr0 state DOWN group default qlen 1000
+    link/ether 52:54:00:08:e8:f5 brd ff:ff:ff:ff:ff:ff
+8: br20: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default qlen 1000
+    link/ether 52:54:00:3d:e0:23 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.99.4/24 brd 192.168.99.255 scope global br20
+       valid_lft forever preferred_lft forever
+9: br20-nic: <BROADCAST,MULTICAST> mtu 1500 qdisc pfifo_fast master br20 state DOWN group default qlen 1000
+    link/ether 52:54:00:3d:e0:23 brd ff:ff:ff:ff:ff:ff
+
+
 
 =================================
 FAILED - CREATE VM - RUN VIRT-INSTALL --> with custom bridge br0
