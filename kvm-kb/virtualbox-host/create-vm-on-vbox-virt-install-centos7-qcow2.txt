@@ -398,7 +398,42 @@ Network br20 marked as autostarted
 9: br20-nic: <BROADCAST,MULTICAST> mtu 1500 qdisc pfifo_fast master br20 state DOWN group default qlen 1000
     link/ether 52:54:00:3d:e0:23 brd ff:ff:ff:ff:ff:ff
 
+----------------------------
+CREATE THE VM
+----------------------------
+--memory 256 --vcpus 1 --cpu host \
+--disk /disk1/kvm-vms/centos71/centos71-root.qcow2,format=qcow2,bus=virtio \
+--disk /disk1/kvm-vms/centos71/centos71-seed.iso,device=cdrom \
+--network bridge=br20,model=virtio \
+--os-type=linux \
+--os-variant=rhel7 \
+--noautoconsole \
 
+This did not give the popup window of virt.  So, do "virsh console centos71 and watch until you get login: prompt"
+
+- VERIFY
+[root@kvm001 centos71]# virsh net-dhcp-leases  br20
+ Expiry Time          MAC address        Protocol  IP address                Hostname        Client ID or DUID
+-------------------------------------------------------------------------------------------------------------------
+ 2020-02-21 16:52:01  52:54:00:88:08:4c  ipv4      192.168.99.96/24          centos71        -
+
+[root@kvm001 centos71]# cd ~/.ssh
+[root@kvm001 .ssh]# ssh -i ./id_rsa.gtgt gm@192.168.99.96
+[gm@centos71 ~]$ id
+uid=1000(gm) gid=1000(gm) groups=1000(gm),0(root) context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023
+[gm@centos71 ~]$ sudo -i
+[root@centos71 ~]# exit
+[gm@centos71 ~]$ exit
+logout
+Connection to 192.168.99.96 closed.
+[root@kvm001 .ssh]# 
+
+- PING FROM VIRTUALBOX HOST (in nested virtualization)
+NOTE: This fails. Need to figure out how to achieve KVM VMs pingable from outside
+
+$ ping 192.168.99.96
+PING 192.168.99.96 (192.168.99.96): 56 data bytes
+Request timeout for icmp_seq 0
 
 =================================
 FAILED - CREATE VM - RUN VIRT-INSTALL --> with custom bridge br0
@@ -779,8 +814,6 @@ However, from laptop the Vbox-VM IP and virbr0 ip were not pingable
 - restarted the vbox-vm and that fixed the issue
 ping 192.168.99.3 -->  bridge virbr0
 ping 192.168.99.21 -->  vbox vm enp0s8
-
-
 
 ========================
 EXAMPLES
