@@ -74,8 +74,90 @@ COPY IMAGE QCOW2 ONTO root-disk
 =================================
 # cp CentOS-7-x86_64-GenericCloud.qcow2 /disk1/kvm-vms/centos71/centos71-root.qcow2
 
+
+
+==========================================================
+CREATE VM - WITH BRIDGE ASSOCIATED WITH A SECOND NIC CARD
+==========================================================
+
+NIC Cards:
+enp0s8 - 192.168.99.21 (yes 99)
+enp0s9 - 192.168.98.21 (yes 98)
+
+---------------
+CREATE BRIDGE
+---------------
+Note: Combined bridge config stuff from both these sites
+- https://www.golinuxcloud.com/how-to-configure-network-bridge-nmtui-linux/
+- https://www.linuxtechi.com/install-kvm-hypervisor-on-centos-7-and-rhel-7/
+
+/etc/sysconfig/network-scripts/ifcfg-br10
+
+DEVICE=br10-nic
+STP=no
+TYPE=Bridge
+BOOTPROTO=none
+IPADDR=192.168.99.3
+PREFIX=32
+GATEWAY=192.168.99.1
+DNS1=192.168.99.1
+IPV6INIT=no
+NAME=br10
+ONBOOT=yes
+DELAY=0
+
+
+/etc/sysconfig/network-scripts/ifcfg-enp0s8 --> existing nic - add bridge=br10 directive to it
+
+HWADDR=08:00:27:F8:99:79
+TYPE=Ethernet
+PROXY_METHOD=none
+BROWSER_ONLY=no
+BOOTPROTO=none --> keep this as is as 'none' - 'static' is deprecated (and 'dhcp' and 'bootp' we dont use as of now???)
+DEFROUTE=yes
+IPV4_FAILURE_FATAL=no
+IPV6INIT=yes
+IPV6_AUTOCONF=yes
+IPV6_DEFROUTE=yes
+IPV6_FAILURE_FATAL=no
+IPV6_ADDR_GEN_MODE=stable-privacy
+NAME=enp0s8
+UUID=3bc247ee-4b72-30dd-9f2b-e9c76581e459
+ONBOOT=yes
+AUTOCONNECT_PRIORITY=-999
+IPADDR=192.168.99.21
+PREFIX=24
+BRIDGE=br10 
+
+Example1:
+NAME="bond1.30"
+DEVICE="bond1.30"
+USERCTL="no"
+ONBOOT="yes"
+BOOTPROTO="none"
+VLAN="yes"
+BRIDGE="br30"
+ZONE=drop
+
+Example2:
+TYPE=Ethernet
+BOOTPROTO=static
+DEVICE=eno49
+ONBOOT=yes
+BRIDGE=br0
+
+Example3:
+TYPE=Ethernet
+NAME="Ethernet connection 2"
+DEVICE=eno52
+ONBOOT=yes
+BRIDGE=nm-bridge1
+
+
+
+
 =================================
-CREATE VM - RUN VIRT-INSTALL --> with custom bridge br0
+FAILED - CREATE VM - RUN VIRT-INSTALL --> with custom bridge br0
 --> FAILED
 =================================
 
@@ -311,7 +393,8 @@ The VM has not gotten any IP (as we did not set it, and have chosen no DHCP for 
 </domain>
 
 ===============================================================
-CREATE VM - RUN VIRT-INSTALL --> WITH DEFAULT BRIDGE virbr0
+FAILED - CREATE VM - RUN VIRT-INSTALL --> WITH DEFAULT BRIDGE virbr0
+--> did not get IP properly - tried to change IP range to same as 
 ===============================================================
 
 - INSTALL
@@ -452,6 +535,8 @@ However, from laptop the Vbox-VM IP and virbr0 ip were not pingable
 - restarted the vbox-vm and that fixed the issue
 ping 192.168.99.3 -->  bridge virbr0
 ping 192.168.99.21 -->  vbox vm enp0s8
+
+
 
 ========================
 EXAMPLES
