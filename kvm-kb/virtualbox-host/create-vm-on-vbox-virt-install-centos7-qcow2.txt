@@ -876,13 +876,49 @@ ISSUES
 -------------------------------------
 virsh dhcp-net-leases shows empty
 -------------------------------------
+Reason: Maybe you did not copy the original template-qcow2 onto the VM qcow2 when you strated virt-install
+Fix: Copy the template-qcow2 onto the vm-qcow2 and then do virt-install
+
+Look for messages like these in /var/log/messages DHCPACK:
+[root@kvm001 centos71]# tail -f /var/log/messages
+Feb 24 21:30:39 kvm001 systemd: Started Virtual Machine and Container Registration Service.
+Feb 24 21:30:39 kvm001 systemd: Started Virtual Machine qemu-3-centos71.
+Feb 24 21:30:39 kvm001 systemd-machined: New machine qemu-3-centos71.
+Feb 24 21:30:39 kvm001 kvm: 1 guest now active
+Feb 24 21:30:39 kvm001 avahi-daemon[2973]: Registering new address record for fe80::fc54:ff:fe0d:9124 on vnet0.*.
+Feb 24 21:30:40 kvm001 kernel: br20: port 2(vnet0) entered learning state
+Feb 24 21:30:42 kvm001 kernel: br20: port 2(vnet0) entered forwarding state
+Feb 24 21:30:42 kvm001 kernel: br20: topology change detected, propagating
+Feb 24 21:30:42 kvm001 kernel: IPv6: ADDRCONF(NETDEV_CHANGE): br20: link becomes ready
+Feb 24 21:30:42 kvm001 NetworkManager[3090]: <info>  [1582560042.5174] device (br20): carrier: link connected
+Feb 24 21:32:53 kvm001 dnsmasq-dhcp[6133]: DHCPDISCOVER(br20) 52:54:00:0d:91:24
+Feb 24 21:32:53 kvm001 dnsmasq-dhcp[6133]: DHCPOFFER(br20) 192.168.99.97 52:54:00:0d:91:24
+Feb 24 21:32:53 kvm001 dnsmasq-dhcp[6133]: DHCPREQUEST(br20) 192.168.99.97 52:54:00:0d:91:24
+Feb 24 21:32:53 kvm001 dnsmasq-dhcp[6133]: DHCPACK(br20) 192.168.99.97 52:54:00:0d:91:24 centos71
+Feb 24 21:34:08 kvm001 journal: g_simple_action_set_enabled: assertion 'G_IS_SIMPLE_ACTION (simple)' failed
+Feb 24 21:34:28 kvm001 dnsmasq-dhcp[6133]: DHCPREQUEST(br20) 192.168.99.97 52:54:00:0d:91:24
+Feb 24 21:34:28 kvm001 dnsmasq-dhcp[6133]: DHCPACK(br20) 192.168.99.97 52:54:00:0d:91:24 centos71
+
+Other files to look:
+# cat /var/lib/libvirt/dnsmasq/br20.status
+[
+  {
+    "ip-address": "192.168.99.97",
+    "mac-address": "52:54:00:0d:91:24",
+    "hostname": "centos71",
+    "expiry-time": 1582563868
+  }
+]
+
+
+
 [root@kvm001 ~]# cd /var/lib/libvirt
 [root@kvm001 libvirt]# ls -l dns*
 total 20
 -rw-r--r--. 1 root root   0 Feb 24 21:17 br20.addnhosts
 -rw-------. 1 root root 570 Feb 24 21:17 br20.conf
 -rw-r--r--. 1 root root   0 Feb 24 21:17 br20.hostsfile
--rw-r--r--. 1 root root   5 Feb 24 21:02 br20.status
+-rw-r--r--. 1 root root 145 Feb 24 21:34 br20.status
 -rw-r--r--. 1 root root   0 Feb 24 21:02 default.addnhosts
 -rw-------. 1 root root 588 Feb 24 21:02 default.conf
 -rw-r--r--. 1 root root   0 Feb 24 21:02 default.hostsfile
