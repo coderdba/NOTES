@@ -16,6 +16,27 @@ kube_pod_container_resource_limits_memory_bytes
 curl 'http://localhost:9090/api/v1/query?query=kube_pod_container_resource_requests_cpu_cores&time=2015-07-01T20:10:51.781Z' --> for specific timestamp
 curl 'http://localhost:9090/api/v1/query?query=kube_pod_container_resource_requests_cpu_cores' --> for the latest
 
-# METRIC QUERY
-kube_pod_container_resource_requests_cpu_cores{container_name="POD",instance="vm1",job="fed1",namespace="default",pod_name="pricecheck-v001-abdsc",storeloc="B101",store_env="EAST"}
+# QUERY WITH FILTERS (URLENCODE fix)
+
+Curl this will give error:
+
+curl -k 'http://localhost:9090/api/v1/query?query=kube_pod_container_resource_requests_cpu_cores{container_name="POD",instance="vm1",job="fed1",namespace="default",pod_name="pricecheck-v001-abdsc",storeloc="B101",store_env="EAST"}'
+
+You will get error like:
+{"status":"error","errorType":"bad_data","error":"invalid parameter 'query': parse error at char 55: could not parse remaining input \"=\\\"pricecheck-v001-abdsc\\\"\"..."}a483e7493237:query-api
+
+Fix:
+URL Encode it (https://stackoverflow.com/questions/54134924/prometheus-query-and-api-call)
+Example:
+curl -G \
+--data-urlencode 'query=K_MacInfo{macAddr="B0:11:12:FD:D1:A8"} offset 5m' \
+http://localhost:9090/api/v1/query
+
+Fixed query:
+curl -G \
+--data-urlencode 'query=kube_pod_container_resource_requests_cpu_cores{container_name="POD",instance="vm1",job="fed1",namespace="default",pod_name="pricecheck-v001-abdsc",storeloc="B101",store_env="EAST"} offset 5m' \
+http://localhost:9090/api/v1/query
+
+
+
 
