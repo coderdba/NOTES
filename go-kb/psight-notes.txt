@@ -17,6 +17,9 @@ Waitgroups - to make a goroutine wait on other goroutines
 - waits for those children to complete and then continues its own execution
 
 Mutexes - to manage shared memory
+- 'mut'ual 'ex'clusion lock
+- to protect a piece of code so that only the holder of the mutex lock only can access it 
+- so that only one task access that code at any point in time
 - In the example of db and cache queries - db is persistent - and for every DB query cache is updated
   - in the querydb function, querydb and querycache - if run as goroutines, both groutines will be accessing same memory
   - that will cause conflicts
@@ -24,17 +27,28 @@ Mutexes - to manage shared memory
   
 querycache(id)
 {
-value=getValFromCache
+value=getValFromCache --> place mutex before and after this line
 return value
 }
 querydb(id)
 {
 value=getValFromDB
-setcache(id)=value
+setcache(id)=value --> place mutex before and after this line
 return value
 }
 
+- during runtime we get 'race' condition related errors (like waiting for lock)
+- To get warning on race conditions during runtime:
+go run --race .
+or go build --race
 
+- with sleep line in code, it may appear to work well, but race condition may have been circumvented
 
+RW-MUTEX
+- in the above example, mutexes can be placed as noted. 
+- however, it is not worthwhile to have a mutex for read when majority are reads and very small amount of writes 
+- and mutexes are needed only when a read happens while a write is happening
+- RW Mutex (RLock and RUnlock) - will not hold locks for just reads - they lock and unlock only when a write also is active
+- They are MORE EXPENSIVE than regular mutex
 
 
