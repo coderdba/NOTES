@@ -87,8 +87,11 @@ COPY IMAGE QCOW2 ONTO root-disk
 # cp CentOS-7-x86_64-GenericCloud.qcow2 /disk1/kvm-vms/centos71/centos71-root.qcow2
 
 ==========================================================================
-WIP - CREATE VM - WITH DEFAULT BRIDGE VIRBR0
+CREATE VM - WITH DEFAULT BRIDGE VIRBR0
 ==========================================================================
+--> THIS WORKS - WITH IP GETTING ASSIGNED
+--> TBD - IP IS NOT PINGABLE FROM OUTSIDE (like from laptop) - AS THIS IS NOT BY DEFAULT ROUTABLE - NEED TO CHECK HOW TO DO THAT
+
 # cp CentOS-7-x86_64-GenericCloud.qcow2 /disk1/kvm-vms/centos71/centos71-root.qcow2
 
 # virt-install --import --name centos71 \
@@ -134,6 +137,161 @@ Connection to 192.168.122.159 closed.
 
 # virsh destroy centos71
 # virsh undefine centos71
+
+================================================================================================
+CREATE VM - WITH BRIDGE ASSOCIATED WITH A SECOND NIC CARD - BR20 - bridge created using xml
+================================================================================================
+--> THIS WORKS - WITH IP GETTING ASSIGNED
+--> TBD - IP IS NOT PINGABLE FROM OUTSIDE (like from laptop) - AS THIS IS NOT BY DEFAULT ROUTABLE - NEED TO CHECK HOW TO DO THAT
+
+----------------------------
+CREATE BRIDGE BR20
+----------------------------
+- CREATE a file br20.xml
+NOTE: This also has a dhcp range associated with it. Let us see how later it behaves
+NOTE: It also creates a virtual nic card br20-nic similar to virbr0-nic of the default virbr0 bridge of virt
+
+<network>
+  <name>br20</name>
+  <forward mode='nat'>
+    <nat>
+      <port start='1024' end='65535'/>
+    </nat>
+  </forward>
+  <bridge name='br20' stp='on' delay='0'/>
+  <ip address='192.168.99.4' netmask='255.255.255.0'>
+    <dhcp>
+      <range start='192.168.99.91' end='192.168.99.99'/>
+    </dhcp>
+  </ip>
+</network>`
+
+- Define the virsh network
+# virsh net-define br20.xml
+    Network br1 defined from br10.xml
+
+# virsh net-list --all
+ Name                 State      Autostart     Persistent
+----------------------------------------------------------
+ br20                 inactive   no            yes
+ default              active     yes           yes
+
+# virsh net-start br20
+Network br20 started
+
+# virsh net-list --all
+ Name                 State      Autostart     Persistent
+----------------------------------------------------------
+ br20                 active     no            yes
+ default              active     yes           yes
+
+# virsh net-autostart br20
+Network br20 marked as autostarted
+
+# virsh net-list --all
+ Name                 State      Autostart     Persistent
+----------------------------------------------------------
+ br20                 active     yes           yes
+ default              active     yes           yes
+
+# ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: enp0s3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:4c:41:7a brd ff:ff:ff:ff:ff:ff
+    inet 10.0.2.15/24 brd 10.0.2.255 scope global noprefixroute dynamic enp0s3
+       valid_lft 84736sec preferred_lft 84736sec
+    inet6 fe80::f514:5f6b:225c:3851/64 scope link noprefixroute 
+       valid_lft forever preferred_lft forever
+3: enp0s8: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast master br10 state UP group default qlen 1000
+    link/ether 08:00:27:f8:99:79 brd ff:ff:ff:ff:ff:ff
+4: enp0s9: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:fc:b4:3f brd ff:ff:ff:ff:ff:ff
+    inet 192.168.98.21/24 brd 192.168.98.255 scope global noprefixroute enp0s9
+       valid_lft forever preferred_lft forever
+    inet6 fe80::eb41:c910:a0c5:4042/64 scope link noprefixroute 
+       valid_lft forever preferred_lft forever
+5: br10: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 08:00:27:f8:99:79 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.99.3/32 brd 192.168.99.3 scope global noprefixroute br10
+       valid_lft forever preferred_lft forever
+    inet6 fe80::a00:27ff:fef8:9979/64 scope link 
+       valid_lft forever preferred_lft forever
+6: virbr0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default qlen 1000
+    link/ether 52:54:00:08:e8:f5 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0
+       valid_lft forever preferred_lft forever
+7: virbr0-nic: <BROADCAST,MULTICAST> mtu 1500 qdisc pfifo_fast master virbr0 state DOWN group default qlen 1000
+    link/ether 52:54:00:08:e8:f5 brd ff:ff:ff:ff:ff:ff
+8: br20: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default qlen 1000
+    link/ether 52:54:00:3d:e0:23 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.99.4/24 brd 192.168.99.255 scope global br20
+       valid_lft forever preferred_lft forever
+9: br20-nic: <BROADCAST,MULTICAST> mtu 1500 qdisc pfifo_fast master br20 state DOWN group default qlen 1000
+    link/ether 52:54:00:3d:e0:23 brd ff:ff:ff:ff:ff:ff
+
+----------------------------
+CREATE THE VM
+----------------------------
+--memory 256 --vcpus 1 --cpu host \
+--disk /disk1/kvm-vms/centos71/centos71-root.qcow2,format=qcow2,bus=virtio \
+--disk /disk1/kvm-vms/centos71/centos71-seed.iso,device=cdrom \
+--network bridge=br20,model=virtio \
+--os-type=linux \
+--os-variant=rhel7 \
+--noautoconsole \
+
+This did not give the popup window of virt.  So, do "virsh console centos71 and watch until you get login: prompt"
+
+- VERIFY
+[root@kvm001 centos71]# virsh net-dhcp-leases  br20
+ Expiry Time          MAC address        Protocol  IP address                Hostname        Client ID or DUID
+-------------------------------------------------------------------------------------------------------------------
+ 2020-02-21 16:52:01  52:54:00:88:08:4c  ipv4      192.168.99.96/24          centos71        -
+
+[root@kvm001 centos71]# cd ~/.ssh
+[root@kvm001 .ssh]# ssh -i ./id_rsa.gtgt gm@192.168.99.96
+[gm@centos71 ~]$ id
+uid=1000(gm) gid=1000(gm) groups=1000(gm),0(root) context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023
+[gm@centos71 ~]$ sudo -i
+[root@centos71 ~]# exit
+[gm@centos71 ~]$ exit
+logout
+Connection to 192.168.99.96 closed.
+[root@kvm001 .ssh]# 
+
+- IP ADDRESSES OF THE KVM VM
+[root@centos71 ~]# ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 52:54:00:88:08:4c brd ff:ff:ff:ff:ff:ff
+    inet 192.168.99.96/24 brd 192.168.99.255 scope global dynamic eth0
+       valid_lft 2147sec preferred_lft 2147sec
+    inet6 fe80::5054:ff:fe88:84c/64 scope link 
+       valid_lft forever preferred_lft forever
+
+
+- PING EXTERNAL WORLD FROM INSIDE THE KVM VM
+[root@centos71 ~]# ping bm1.company.com
+PING bm1.company.com (110.224.182.141) 56(84) bytes of data.
+64 bytes from bm1.company.com (110.224.182.141): icmp_seq=1 ttl=61 time=283 ms
+64 bytes from bm1.company.com (110.224.182.141): icmp_seq=1 ttl=61 time=283 ms
+
+- PING FROM VIRTUALBOX HOST (in nested virtualization)
+NOTE: This fails. Need to figure out how to achieve KVM VMs pingable from outside
+
+$ ping 192.168.99.96
+PING 192.168.99.96 (192.168.99.96): 56 data bytes
+Request timeout for icmp_seq 0
 
 ===============================================================================================
 WIP - CREATE VM - WITH BRIDGE WITH A SECOND NIC CARD BR10 - CREATED WITH network-scripts FILES
@@ -310,158 +468,6 @@ virt-install --import --name centos71 \
 --noautoconsole \
 
 As this br10 does not show in "virsh net-list" I could not get the IP address if any - possibly not set up
-
-===================================================================================
-WIP - CREATE VM - WITH BRIDGE ASSOCIATED WITH A SECOND NIC CARD - BR20 - using xml
-===================================================================================
-----------------------------
-CREATE BRIDGE BR20
-----------------------------
-- CREATE a file br20.xml
-NOTE: This also has a dhcp range associated with it. Let us see how later it behaves
-NOTE: It also creates a virtual nic card br20-nic similar to virbr0-nic of the default virbr0 bridge of virt
-
-<network>
-  <name>br20</name>
-  <forward mode='nat'>
-    <nat>
-      <port start='1024' end='65535'/>
-    </nat>
-  </forward>
-  <bridge name='br20' stp='on' delay='0'/>
-  <ip address='192.168.99.4' netmask='255.255.255.0'>
-    <dhcp>
-      <range start='192.168.99.91' end='192.168.99.99'/>
-    </dhcp>
-  </ip>
-</network>`
-
-- Define the virsh network
-# virsh net-define br20.xml
-    Network br1 defined from br10.xml
-
-# virsh net-list --all
- Name                 State      Autostart     Persistent
-----------------------------------------------------------
- br20                 inactive   no            yes
- default              active     yes           yes
-
-# virsh net-start br20
-Network br20 started
-
-# virsh net-list --all
- Name                 State      Autostart     Persistent
-----------------------------------------------------------
- br20                 active     no            yes
- default              active     yes           yes
-
-# virsh net-autostart br20
-Network br20 marked as autostarted
-
-# virsh net-list --all
- Name                 State      Autostart     Persistent
-----------------------------------------------------------
- br20                 active     yes           yes
- default              active     yes           yes
-
-# ip a
-1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
-    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
-    inet 127.0.0.1/8 scope host lo
-       valid_lft forever preferred_lft forever
-    inet6 ::1/128 scope host 
-       valid_lft forever preferred_lft forever
-2: enp0s3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
-    link/ether 08:00:27:4c:41:7a brd ff:ff:ff:ff:ff:ff
-    inet 10.0.2.15/24 brd 10.0.2.255 scope global noprefixroute dynamic enp0s3
-       valid_lft 84736sec preferred_lft 84736sec
-    inet6 fe80::f514:5f6b:225c:3851/64 scope link noprefixroute 
-       valid_lft forever preferred_lft forever
-3: enp0s8: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast master br10 state UP group default qlen 1000
-    link/ether 08:00:27:f8:99:79 brd ff:ff:ff:ff:ff:ff
-4: enp0s9: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
-    link/ether 08:00:27:fc:b4:3f brd ff:ff:ff:ff:ff:ff
-    inet 192.168.98.21/24 brd 192.168.98.255 scope global noprefixroute enp0s9
-       valid_lft forever preferred_lft forever
-    inet6 fe80::eb41:c910:a0c5:4042/64 scope link noprefixroute 
-       valid_lft forever preferred_lft forever
-5: br10: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
-    link/ether 08:00:27:f8:99:79 brd ff:ff:ff:ff:ff:ff
-    inet 192.168.99.3/32 brd 192.168.99.3 scope global noprefixroute br10
-       valid_lft forever preferred_lft forever
-    inet6 fe80::a00:27ff:fef8:9979/64 scope link 
-       valid_lft forever preferred_lft forever
-6: virbr0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default qlen 1000
-    link/ether 52:54:00:08:e8:f5 brd ff:ff:ff:ff:ff:ff
-    inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0
-       valid_lft forever preferred_lft forever
-7: virbr0-nic: <BROADCAST,MULTICAST> mtu 1500 qdisc pfifo_fast master virbr0 state DOWN group default qlen 1000
-    link/ether 52:54:00:08:e8:f5 brd ff:ff:ff:ff:ff:ff
-8: br20: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default qlen 1000
-    link/ether 52:54:00:3d:e0:23 brd ff:ff:ff:ff:ff:ff
-    inet 192.168.99.4/24 brd 192.168.99.255 scope global br20
-       valid_lft forever preferred_lft forever
-9: br20-nic: <BROADCAST,MULTICAST> mtu 1500 qdisc pfifo_fast master br20 state DOWN group default qlen 1000
-    link/ether 52:54:00:3d:e0:23 brd ff:ff:ff:ff:ff:ff
-
-----------------------------
-CREATE THE VM
-----------------------------
---memory 256 --vcpus 1 --cpu host \
---disk /disk1/kvm-vms/centos71/centos71-root.qcow2,format=qcow2,bus=virtio \
---disk /disk1/kvm-vms/centos71/centos71-seed.iso,device=cdrom \
---network bridge=br20,model=virtio \
---os-type=linux \
---os-variant=rhel7 \
---noautoconsole \
-
-This did not give the popup window of virt.  So, do "virsh console centos71 and watch until you get login: prompt"
-
-- VERIFY
-[root@kvm001 centos71]# virsh net-dhcp-leases  br20
- Expiry Time          MAC address        Protocol  IP address                Hostname        Client ID or DUID
--------------------------------------------------------------------------------------------------------------------
- 2020-02-21 16:52:01  52:54:00:88:08:4c  ipv4      192.168.99.96/24          centos71        -
-
-[root@kvm001 centos71]# cd ~/.ssh
-[root@kvm001 .ssh]# ssh -i ./id_rsa.gtgt gm@192.168.99.96
-[gm@centos71 ~]$ id
-uid=1000(gm) gid=1000(gm) groups=1000(gm),0(root) context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023
-[gm@centos71 ~]$ sudo -i
-[root@centos71 ~]# exit
-[gm@centos71 ~]$ exit
-logout
-Connection to 192.168.99.96 closed.
-[root@kvm001 .ssh]# 
-
-- IP ADDRESSES OF THE KVM VM
-[root@centos71 ~]# ip a
-1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
-    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
-    inet 127.0.0.1/8 scope host lo
-       valid_lft forever preferred_lft forever
-    inet6 ::1/128 scope host 
-       valid_lft forever preferred_lft forever
-2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
-    link/ether 52:54:00:88:08:4c brd ff:ff:ff:ff:ff:ff
-    inet 192.168.99.96/24 brd 192.168.99.255 scope global dynamic eth0
-       valid_lft 2147sec preferred_lft 2147sec
-    inet6 fe80::5054:ff:fe88:84c/64 scope link 
-       valid_lft forever preferred_lft forever
-
-
-- PING EXTERNAL WORLD FROM INSIDE THE KVM VM
-[root@centos71 ~]# ping bm1.company.com
-PING bm1.company.com (110.224.182.141) 56(84) bytes of data.
-64 bytes from bm1.company.com (110.224.182.141): icmp_seq=1 ttl=61 time=283 ms
-64 bytes from bm1.company.com (110.224.182.141): icmp_seq=1 ttl=61 time=283 ms
-
-- PING FROM VIRTUALBOX HOST (in nested virtualization)
-NOTE: This fails. Need to figure out how to achieve KVM VMs pingable from outside
-
-$ ping 192.168.99.96
-PING 192.168.99.96 (192.168.99.96): 56 data bytes
-Request timeout for icmp_seq 0
 
 =================================
 FAILED - CREATE VM - RUN VIRT-INSTALL --> with custom bridge br0
