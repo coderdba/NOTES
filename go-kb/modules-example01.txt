@@ -1,0 +1,300 @@
+https://www.ardanlabs.com/blog/2020/02/modules-04-mirros-checksums-athens.html
+
+Series Index
+Why and What
+Projects, Dependencies and Gopls
+Minimal Version Selection
+Mirrors, Checksums and Athens
+
+Introduction
+One of the longer standing questions I had when first learning about modules was how the module mirror, checksum database and Athens worked. The Go team has written extensively about the module mirror and checksum database, but I hope to consolidate the most important information here. In this post, I provide the purpose of these systems, the different configuration options you have, and show these systems in action using example programs.
+
+Module Mirror
+The module mirror was launched in August 2019 and is the default system for fetching modules as of version 1.13 of Go. The module mirror is implemented as a proxy server that fronts VCS environments to help speed up the fetching of modules that you need locally to build your applications. The proxy server implements a REST based API and is designed around the needs of the Go tooling.
+
+The module mirror caches modules and their specific versions that have been requested, which allows for faster retrieval for future requests. Once the code is fetched and cached in the module mirror, it can be quickly served to clients around the world. The module mirror also allows users to continue to fetch source code that is no longer available from their original VCS locations. This can prevent issues like the one Node developers experienced in 2016.
+
+Checksum Database
+The checksum database was also launched in August 2019 and is a tamper-proof log of module hash codes that can be used to validate untrusted proxies or origins. The checksum database is implemented as a service and is used by the Go tooling to validate modules. It validates that the code for any given module of a specific version is the same regardless of who, what, where and how it’s fetched. It also solves other security issues (as documented in the link above) that have not been solved by other dependency management systems. Google owns the only checksum database in existence, however it can be cached by private module mirrors as discussed later.
+
+Module Index
+The index service is for developers who want to tail the module list for new modules being added to the Google module mirror. Websites like pkg.go.dev use the index to retrieve and publish information about modules.
+
+Your Privacy
+As documented in the privacy policy, the Go team has built these services to retain as little information about usage as possible while still ensuring that they are able to detect and fix problems. However, personally identifiable information such as IP addresses are kept for up to 30 days. If this is a problem for you or your company, you may not want to use the Go team’s services for your module fetching and validation needs.
+
+Athens
+Athens is a module mirror that you can stand up in your private environment. One reason to use a private module mirror is to allow for the caching of private modules that the public module mirrors can’t access. What’s brilliant is the Athens project provides a docker container that is published on Docker Hub so no special installation is required.
+
+Listing 1
+
+docker run -p '3000:3000' gomods/athens:latest
+Listing 1 shows how you can use Docker to run a local Athens server. We will use this later to see the Go tooling in action and monitor the Athens logs for all the Go tooling web calls. Understand, the Athens Docker image starts up with ephemeral disk storage by default, so everything gets wiped out when you shut down the running container.
+
+Athens also has the ability to proxy the checksum database. When the Go tooling is configured to use a private module mirror like Athens, the Go tooling will attempt to use that same private module mirror when it needs to look up hash codes from the checksum database. If the private module mirror you are using doesn’t support proxying the checksum database, then the checksum database will be accessed directly unless it’s specifically turned off.
+
+Listing 2
+
+http://localhost:3000/sumdb/sum.golang.org/latest
+
+go.sum database tree
+756113
+k9nFMBuXq8uk+9SQNxs/Vadri2XDkaoo96u4uMa0qE0=
+
+— sum.golang.org Az3grgIHxiDLRpsKUElIX5vJMlFS79SqfQDSgHQmON922lNdJ5zxF8SSPPcah3jhIkpG8LSKNaWXiy7IldOSDCt4Pwk=
+Listing 2 shows how Athens is a checksum database proxy. The URL listed on the first line asks a locally running Athens service to retrieve information about the latest signed tree from the checksum database. You can see why GOSUMDB is configured with a name and not a URL.
+
+Environment Variables
+There are several environment variables that control the behavior of the Go tooling as it relates to the module mirror and checksum database. These variables need to be set at a machine level for each developer or build environment.
+
+GOPROXY: A set of URLs that point to module mirrors for fetching modules. This can be set to direct if you want the Go tooling to only fetch modules directly from the VCS locations. If you set this to off, then modules will not be downloaded. Using off could be used in a build environment where vendoring or module caches are preserved.
+
+GOSUMDB: The name of the checksum database to use for validating that code for a given module/version hasn’t changed over time. This name is used to form a proper URL that tells the Go tooling where to perform these checksum database lookups. This URL can point to the checksum database owned by Google or to a local module mirror that supports caching or proxying of the checksum database. This can also be set to off if you don’t want the Go tooling to validate hash codes for a given module/version being added to the go.sum file. The checksum database is only consulted before adding any new go.sum lines to the go.sum file.
+
+GONOPROXY: A set of URL based module paths for modules that should not be fetched using the module mirror but fetched directly against the VCS locations.
+
+GONOSUMDB: A set of URL based module paths for modules that should not have their hash codes looked up against the checksum database.
+
+GOPRIVATE: A convenience variable for setting both GONOPROXY and GONOSUMDB with the same default values.
+
+Privacy Semantics
+There are several things you need to consider when thinking about privacy and the modules your projects are depending on. Especially the private modules that you don’t want anyone to know about. The following chart tries to provide the privacy options. Once again, this configuration needs to be set at a machine level for each developer or build environment.
+
+Listing 3
+
+Option            : Fetch New Modules     : Validate New Checksums
+-----------------------------------------------------------------------------------------
+Complete Privacy  : GOPROXY="direct"      : GOSUMDB="off"
+Internal Privacy  : GOPROXY="Private_URL" : GOSUMDB="sum.golang.org"
+                                            GONOSUMDB="github.com/mycompany/*,gitlab.com/*"
+No Privacy        : GOPROXY="Public_URL"  : GOSUMDB="sum.golang.org"
+Complete Privacy: Code is fetched directly from the VCS servers and no hash codes that are generated and added to the go.sum file are looked up from in the checksum database.
+
+Internal Privacy: Code is fetched via a private module mirror like Athens and no hash codes that are generated and added to the go.sum file for the specified URL paths listed under GONOSUMDB are looked up in the checksum database. Modules that don’t fall under the paths listed in GONOSUMDB will be looked up in the checksum database if necessary.
+
+No Privacy: Code is fetched via a public module mirror like Google’s or JFrog’s public servers. In this case, all the modules you are depending on need to be public modules and accessible by the public module mirror you choose. These public module mirrors will have a record of your requests and the details contained within. Access to the checksum database owned by Google will also be recorded. The information being recorded is governed by the respective privacy policies.
+
+There is never a reason to look up hash codes in the checksum database for private modules since there will never be a listing for those modules in the checksum database. Private modules shouldn’t be accessible by public module mirrors, so a hash code can’t be generated and stored. For private modules, you are counting on internal policies and practices to keep the code for a given module/version consistent. However, if code for a private module/version does change, the Go tooling can still find the discrepancy when the module/version is fetched and cached for the first time on a new machine.
+
+Any time a module/version is added to the local cache on a machine and there is already an entry in the go.sum file, the hash codes in the go.sum file are compared to what has just been fetched in cache. If the hash codes don’t match, something has changed. The best part about this workflow is no checksum database lookup is required so private modules for any given version can still be validated without the loss of privacy. Obviously, it all depends on when you first fetch the private module/version, this is the same problem for public modules/versions that are stored in the checksum database.
+
+When using Athens as the module mirror there are Athens configuration options to consider as well.
+
+Listing 4
+
+GlobalEndpoint = "https://<url_to_upstream>"
+NoSumPatterns = ["github.com/mycompany/*]
+These settings in listing 4 come from the Athens documentation and they are important. By default Athens will fetch modules directly from the different VCS servers. This maintains the highest level of privacy for your environment. However, you can point Athens to a different module mirror by setting GlobalEnpoint to the URL for that module mirror. This will give you better performance in fetching new public modules but you will lose privacy for the performance.
+
+The other setting is called NoSumPatterns and it helps to validate developer and build environments are configured properly. The same set of paths a developer is adding to GONOSUMDB should be added to NoSumPatterns. Anytime a checksum database request hits Athens for a module that matches against the path, it will return a status code that will have the Go tooling fail. This is an indication the developer’s settings are wrong. In other words, that request should never have hit Athens in the first place if the machine it came from is configured properly.
+
+Vendoring
+I believe every project should vendor their dependencies until it’s not reasonable or practical to do so. Projects like Docker and Kubernetes can’t vendor their dependencies because there are just too many dependencies to vendor. However, for most of us this is not the case. In version v1.14, there is great support for vendoring and modules. I will talk about this in a different post.
+
+I am bringing up vendoring for an important reason. I have heard people using Athens or a private module mirror as a substitute for vendoring. I think this is a mistake. One has nothing to do with the other. You could argue a module mirror vendors dependencies since the code for the modules are persisted, but the code is still far away from the project that is depending on it. Even if you believe in the resilience of your module mirror, I believe there is no substitute for your project owning all the source code it needs and not depending on anything else but the project itself to build the code.
+
+Tooling In Action
+With all this background and knowledge in place, it’s time to see the Go tooling in action. In order to see how the environment variables affect the Go tooling, I will run a few different scenarios. Before I begin, the default values can be found by running the go env command.
+
+Listing 5
+
+$ go env
+GONOPROXY=""
+GONOSUMDB=""
+GOPRIVATE=""
+GOPROXY="https://proxy.golang.org,direct"
+GOSUMDB="sum.golang.org"
+Listing 5 shows the default values which tell the Go tooling to use the Google module mirror and the Google checksum database. This is the recommended configuration if all the code you need will be accessible by these Google services. If the Google module mirror happens to respond with a 410 (gone) or 404 (not found), then the use of direct (that is part of the GOPROXY configuration) will allow the Go tooling to change course and fetch the module/version from its direct VCS location. Any other status code (like a 500) will cause the Go tooling to fail.
+
+If the Google module mirror happens to respond with a 410 or 404 for a given module/version, it’s because it’s not in its cache and probably not cacheable, as would be the case with a private module. In this scenario, there is a good chance there is no listing in the checksum database as well. Even though the Go tooling can successfully fetch the module/version directly, the lookup will fail against checksum database and the Go tooling will still fail. Something to be aware of when you are using private modules.
+
+Since I can’t show you any logs from the Google module mirror, I will run a local module mirror using Athens. This will allow you to see the Go tooling and module mirror in action. In the end, Athens implements the same semantics and workflows.
+
+Project
+To create the project, start a terminal session and create the project structure.
+
+Listing 6
+
+$ cd $HOME
+$ mkdir app
+$ mkdir app/cmd
+$ mkdir app/cmd/db
+$ touch app/cmd/db/main.go
+$ cd app
+$ go mod init app
+$ code .
+Listing 6 shows the commands to run to create the project structure on disk, to initialize the project for modules and to get VS Code running.
+
+Listing 7
+https://play.golang.org/p/h23opcp5qd0
+
+01 package main
+02
+03 import (
+04     "context"
+05     "log"
+06
+07     "github.com/Bhinneka/golib"
+08     db "gopkg.in/rethinkdb/rethinkdb-go.v5"
+09 )
+10
+11 func main() {
+12     c, err := db.NewCluster([]db.Host{{Name: "localhost", Port: 3000}}, nil)
+13     if err != nil {
+14         log.Fatalln(err)
+15     }
+16
+17     if _, err = c.Query(context.Background(), db.Query{}); err != nil {
+18         log.Fatalln(err)
+19     }
+20
+21     golib.CreateDBConnection("")
+22 }
+Listing 7 shows the code to use for main.go. With the project set up and the main function in place, I will run three different scenarios on the project to better understand the environment variables and the Go tooling.
+
+Scenario 1 - Athens Module Mirror
+In this scenario, I will be replacing the Google module mirror for a private module mirror using Athens.
+
+Listing 8
+
+GONOSUMDB=""
+GONOPROXY=""
+GOSUMDB="sum.golang.org"
+GOPROXY="http://localhost:3000,direct"
+Listing 8 shows that I am asking the Go tooling to use the Athens service running locally on port 3000 for the module mirror. If the module mirror responds with a 410 (gone) or 404 (not found), then attempt to pull the modules directly. By default, the Go tooling will now use Athens to access the checksum database if necessary.
+
+Next, start a new terminal session for running Athens.
+
+Listing 9
+
+$ docker run -p '3000:3000' -e ATHENS_LOG_LEVEL=debug -e GO_ENV=development gomods/athens:latest
+
+time="2020-01-21T21:12:35Z" level=info msg="Exporter not specified. Traces won't be exported"
+2020-01-21 21:12:35.937604 I | Starting application at port :3000
+Listing 9 shows on the first line, the command to run inside a new terminal session to get the Athens service up and running with extra debug logging. Double check first you have Docker running locally on your machine. Once Athens starts, you should see the output that follows in the listing.
+
+To see the Go tooling use the Athens service, run the following commands in the original terminal session you used to create the project.
+
+Listing 10
+
+$ export GOPROXY="http://localhost:3000,direct"
+$ rm go.*
+$ go mod init app
+$ go mod tidy
+Listing 10 shows the commands that set the GOPROXY variable to use the Athens service, remove the module files, and re-initialize the application. The final command go mod tidy will cause the Go tooling to talk to the Athens service to fetch the modules needed to build this project.
+
+Listing 11
+
+handler: GET /github.com/!bhinneka/@v/list [404]
+handler: GET /github.com/@v/list [404]
+handler: GET /github.com/!bhinneka/golib/@v/list [200]
+handler: GET /gopkg.in/@v/list [404]
+handler: GET /github.com/!bhinneka/golib/@latest [200]
+handler: GET /gopkg.in/rethinkdb/rethinkdb-go.v5/@v/list [200]
+handler: GET /github.com/bitly/@v/list [404]
+handler: GET /github.com/bmizerany/@v/list [404]
+handler: GET /github.com/bmizerany/assert/@v/list [200]
+handler: GET /github.com/bitly/go-hostpool/@v/list [200]
+handler: GET /github.com/bmizerany/assert/@latest [200]
+Listing 11 shows you the more important output from the Athens Service. If you look at the go.mod and go.sum files, you will see everything is listed to build and validate the project.
+
+Scenario 2 - Athens Module Mirror / GitHub Modules Direct
+In this scenario, I don’t want any modules that are hosted on GitHub to be fetched from the module mirror. I want those modules to be fetched directly from GitHub.
+
+Listing 12
+
+$ export GONOPROXY="github.com"
+$ export GOPROXY="http://localhost:3000,direct"
+$ rm go.*
+$ go mod init app
+$ go mod tidy
+Listing 10 shows how in this scenario the GONOPROXY variable is being set. The GONOPROXY is now telling the Go tooling to fetch any modules whose name starts with github.com directly. Don’t use the module mirror defined by the GOPROXY variable. Though I am using GitHub to show this, this configuration is perfect if you run a local VCS like GitLab. This would allow you to fetch modules directly for private modules.
+
+Listing 13
+
+handler: GET /gopkg.in/@v/list [404]
+handler: GET /gopkg.in/rethinkdb/rethinkdb-go.v5/@v/list [200]
+Listing 13 shows you the more important output from the Athens Service after running go mod tidy. This time Athens only shows requests for the two modules that are located at gopkg.in. The modules that are located at github.com are no longer requested from the Athens service.
+
+Scenario 3 - Module Mirror 404
+In this scenario, I will use my own module mirror that will return a 404 for each module request. When a module mirror returns a 410 (gone) or 404 (not found), the Go tooling will continue down the comma delimited set of other mirrors listed in the GOPROXY variable.
+
+Listing 14
+https://play.golang.org/p/uEH4_b6QrAO
+
+01 package main
+02
+03 import (
+04     "log"
+05     "net/http"
+06 )
+07
+08 func main() {
+09     h := func(w http.ResponseWriter, r *http.Request) {
+10         log.Printf("%s %s -> %s\n", r.Method, r.URL.Path, r.RemoteAddr)
+11         w.WriteHeader(http.StatusNotFound)
+12     }
+13     http.ListenAndServe(":3000", http.HandlerFunc(h))
+14 }
+Listing 14 shows the code for my module mirror. It’s able to log a trace of each request and return http.StatusNotFound which is a 404.
+
+Listing 15
+
+$ unset GONOPROXY
+$ export GOPROXY="http://localhost:3000"
+$ rm go.*
+$ go mod init app
+$ go mod tidy
+Listing 15 shows how to unset the GONOPROXY variable back to empty and how direct has been removed from GOPROXY before running go mod tidy again.
+
+Listing 16
+
+app/cmd/db imports
+	github.com/Bhinneka/golib: cannot find module providing package github.com/Bhinneka/golib
+app/cmd/db imports
+	gopkg.in/rethinkdb/rethinkdb-go.v5: cannot find module providing package gopkg.in/rethinkdb/rethinkdb-go.v5
+Listing 16 shows the output from the Go tooling when running go mod tidy. You can see the call fails since the Go tooling can’t find the module.
+
+What if I put direct back in the GOPROXY variable?
+
+Listing 17
+
+$ unset GONOPROXY
+$ export GOPROXY="http://localhost:3000,direct"
+$ rm go.*
+$ go mod init app
+$ go mod tidy
+Listing 17 shows how direct is being used again for the GOPROXY variable.
+
+Listing 18
+
+go: finding github.com/Bhinneka/golib latest
+go: finding gopkg.in/rethinkdb/rethinkdb-go.v5 v5.0.1
+go: downloading gopkg.in/rethinkdb/rethinkdb-go.v5 v5.0.1
+go: extracting gopkg.in/rethinkdb/rethinkdb-go.v5 v5.0.1
+Listing 18 shows how the Go tooling is working again and going to each VCS system directly to fetch the modules. Remember, if any other status code (outside of 200, 410, or 404) is returned, the Go tooling will fail.
+
+Other Scenarios
+I decided not to continue with other scenarios that would only cause failures from the Go tooling. If you are using private modules then you need a private module mirror and the configuration on each developer and build machine is important and needs to be consistent. The configuration of the private module mirror needs to match what is configured on the developer and build machines as well. Then use the GONOPROXY and GONOSUMDB environment variables to prevent requests for the private modules from being sent to any of the Google servers. If you are using Athens, it has specifical configuration options to find configuration discrepancies on any developer or build machine.
+
+VCS Authentication Issues
+During the review of this post, Erdem Aslan was kind enough to provide a solution to a problem people are running into. The Go tooling when fetching dependencies directly expects to use the https based protocol. This can be a problem in environments that require authentication to the VCS. Athens can help with this problem, but if you want to make sure direct calls do not fail, Erdem has provided these settings for your global git configuration file.
+
+Listing 19
+
+[url "git@github.com:"]
+insteadOf = "https://github.com"
+  pushInsteadOf = "github:"
+  pushInsteadOf = "git://github.com/"
+Conclusion
+As you set out to use modules in your own projects be sure to make a decision early on about what module mirror to use. If you have a private VCS or if privacy is a big concern, then using a private module mirror is your best option. This will provide all the security you need, better performance for fetching modules and the highest level of privacy. Athens is a good choice for running a private module mirror since it provides module caching and checksum database proxying.
+
+If you want to check that the Go tooling is respecting your configuration and the module mirror of choice is properly proxying the checksum database, the Go tooling has a command called go mod verify. This command checks that the dependencies have not been modified since they were downloaded. It will check what’s in the local module cache or coming soon in version 1.15, the command can check a vendor folder.
+
+Experiment with these configurations and find the solution that best meets your needs.
+
+Extra Links For Reading
+Go Module Mirror, Index, and Checksum Database
+Your Privacy
+Proposal: Secure the Public Go Module Ecosystem
+Module proxy protocol
