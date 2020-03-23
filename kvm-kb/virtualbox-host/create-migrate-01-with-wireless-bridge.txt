@@ -6,7 +6,7 @@ CREATE AND MIGRATE KVM VM - ON VIRTUALBOX VM - WITH BRIDGED NETWORK WITH WIRELES
 HOSTS - VIRTUALBOX VMs
 =======================
 -----------------------------------
-VM config for nested virtualization
+Nested virtualization enablement
 -----------------------------------
 System --> Acceleration -->
   Paravirtualiztion Interface - KVM
@@ -15,11 +15,169 @@ System --> Acceleration -->
 -----------------------------------
 NETWORK CARDS (Virtual)
 -----------------------------------
-Card1 - NAT (default)
-Card2 - vmnet0 - Host-Only - 192.168.98.x - 192.168.98.21 and 22 - kvm002 and kvm003
-Card3 - vmnet3 - Host-Only - 192.168.99.x - for now, set it to 'automatic' in nmtui and take default IP given by Virtualbox 
-Card5 - en0 wifi - Bridged - will get its IP from wireless router (usually internet router)
+Card1 - enp0s3  - NAT (default)
+Card2 - enp0s8  - vmnet0 - Host-Only - 192.168.98.x - 192.168.98.21 and 22 - kvm002 and kvm003
+Card3 - enp0s9  - vmnet3 - Host-Only - 192.168.99.x - for now, set 'automatic' in nmtui for default IP given by Virtualbox 
+Card5 - enp0s10 - en0 wifi - Bridged - will get its IP from wireless router (usually internet router)
 
------------------------------------
-BRIDGE
------------------------------------
+-------------------------------------------------------------
+BRIDGE - using WIFI 'bridged' network of vbox vm host
+-------------------------------------------------------------
+Use wifi card enp0s10
+
+- NETWORK SCRIPT - BEFORE ADDING BRIDGE
+[root@kvm002 ~]# cat /etc/sysconfig/network-scripts/ifcfg-enp0s10
+HWADDR=08:00:27:29:41:7D
+TYPE=Ethernet
+PROXY_METHOD=none
+BROWSER_ONLY=no
+BOOTPROTO=dhcp
+DEFROUTE=yes
+IPV4_FAILURE_FATAL=no
+IPV6INIT=yes
+IPV6_AUTOCONF=yes
+IPV6_DEFROUTE=yes
+IPV6_FAILURE_FATAL=no
+IPV6_ADDR_GEN_MODE=stable-privacy
+NAME=enp0s10
+UUID=ca29d0f5-670b-3f2d-a391-9951b285d80f
+ONBOOT=yes
+AUTOCONNECT_PRIORITY=-999
+
+- ADD BRIDGE TO NETWORK CARD
+[root@kvm002 ~]# cat /etc/sysconfig/network-scripts/ifcfg-enp0s10
+HWADDR=08:00:27:29:41:7D
+TYPE=Ethernet
+PROXY_METHOD=none
+BROWSER_ONLY=no
+BOOTPROTO=dhcp
+DEFROUTE=yes
+IPV4_FAILURE_FATAL=no
+IPV6INIT=yes
+IPV6_AUTOCONF=yes
+IPV6_DEFROUTE=yes
+IPV6_FAILURE_FATAL=no
+IPV6_ADDR_GEN_MODE=stable-privacy
+NAME=enp0s10
+UUID=ca29d0f5-670b-3f2d-a391-9951b285d80f
+ONBOOT=yes
+AUTOCONNECT_PRIORITY=-999
+BRIDGE=br0
+
+- CONFIGURE THE BRIDGE
+# cat /etc/sysconfig/network-scripts/ifcfg-br0
+TYPE=Bridge
+PROXY_METHOD=none
+BROWSER_ONLY=no
+BOOTPROTO=dhcp
+DEFROUTE=yes
+IPV4_FAILURE_FATAL=no
+NAME=br0
+DEVICE=br0
+
+- RESTART NETWORK 
+'systemctl restart network' is not the right command 
+- it seemed to bring up br0 only, but did not assign br0 the IP of enp0s10 
+- find the right command that does everything
+
+Then, do ifdown and ifup of enp0s10 and br0
+- This moves IP of enp0s10 to br0
+
+[root@kvm002 network-scripts]# systemctl restart network
+(NOTE: This command somehow does not work - there should be something else)
+Job for network.service failed because the control process exited with error code. See "systemctl status network.service" and "journalctl -xe" for details.
+
+[root@kvm002 network-scripts]# ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: enp0s3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:4c:41:7a brd ff:ff:ff:ff:ff:ff
+    inet 10.0.2.15/24 brd 10.0.2.255 scope global noprefixroute dynamic enp0s3
+       valid_lft 85637sec preferred_lft 85637sec
+    inet6 fe80::f514:5f6b:225c:3851/64 scope link noprefixroute 
+       valid_lft forever preferred_lft forever
+3: enp0s8: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:7e:21:be brd ff:ff:ff:ff:ff:ff
+    inet 192.168.98.22/24 brd 192.168.98.255 scope global noprefixroute enp0s8
+       valid_lft forever preferred_lft forever
+    inet6 fe80::c8d5:e697:272c:6544/64 scope link noprefixroute 
+       valid_lft forever preferred_lft forever
+4: enp0s9: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:6f:f5:2e brd ff:ff:ff:ff:ff:ff
+    inet 192.168.98.4/24 brd 192.168.98.255 scope global noprefixroute dynamic enp0s9
+       valid_lft 554sec preferred_lft 554sec
+    inet6 fe80::38fc:f558:30cb:866f/64 scope link noprefixroute 
+       valid_lft forever preferred_lft forever
+5: enp0s10: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:29:41:7d brd ff:ff:ff:ff:ff:ff
+    inet 192.168.0.61/24 brd 192.168.0.255 scope global noprefixroute dynamic enp0s10
+       valid_lft 85617sec preferred_lft 85617sec
+    inet6 fe80::8f2c:8df7:489f:6717/64 scope link noprefixroute 
+       valid_lft forever preferred_lft forever
+6: nm-br10: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default qlen 1000
+    link/ether d2:db:d9:e7:12:1f brd ff:ff:ff:ff:ff:ff
+    inet 192.168.99.3/24 brd 192.168.99.255 scope global noprefixroute nm-br10
+       valid_lft forever preferred_lft forever
+7: virbr0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default qlen 1000
+    link/ether 52:54:00:08:e8:f5 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0
+       valid_lft forever preferred_lft forever
+8: virbr0-nic: <BROADCAST,MULTICAST> mtu 1500 qdisc pfifo_fast master virbr0 state DOWN group default qlen 1000
+    link/ether 52:54:00:08:e8:f5 brd ff:ff:ff:ff:ff:ff
+9: br0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default qlen 1000
+    link/ether 86:fd:3e:d6:48:13 brd ff:ff:ff:ff:ff:ff
+
+[root@kvm002 network-scripts]# ifdown enp0s10
+Device 'enp0s10' successfully disconnected.
+
+[root@kvm002 network-scripts]# ifup enp0s10
+Connection successfully activated (D-Bus active path: /org/freedesktop/NetworkManager/ActiveConnection/9)
+
+[root@kvm002 network-scripts]# ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: enp0s3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:4c:41:7a brd ff:ff:ff:ff:ff:ff
+    inet 10.0.2.15/24 brd 10.0.2.255 scope global noprefixroute dynamic enp0s3
+       valid_lft 85430sec preferred_lft 85430sec
+    inet6 fe80::f514:5f6b:225c:3851/64 scope link noprefixroute 
+       valid_lft forever preferred_lft forever
+3: enp0s8: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:7e:21:be brd ff:ff:ff:ff:ff:ff
+    inet 192.168.98.22/24 brd 192.168.98.255 scope global noprefixroute enp0s8
+       valid_lft forever preferred_lft forever
+    inet6 fe80::c8d5:e697:272c:6544/64 scope link noprefixroute 
+       valid_lft forever preferred_lft forever
+4: enp0s9: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:6f:f5:2e brd ff:ff:ff:ff:ff:ff
+    inet 192.168.98.4/24 brd 192.168.98.255 scope global noprefixroute dynamic enp0s9
+       valid_lft 577sec preferred_lft 577sec
+    inet6 fe80::38fc:f558:30cb:866f/64 scope link noprefixroute 
+       valid_lft forever preferred_lft forever
+5: enp0s10: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast master br0 state UP group default qlen 1000
+    link/ether 08:00:27:29:41:7d brd ff:ff:ff:ff:ff:ff
+6: nm-br10: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default qlen 1000
+    link/ether d2:db:d9:e7:12:1f brd ff:ff:ff:ff:ff:ff
+    inet 192.168.99.3/24 brd 192.168.99.255 scope global noprefixroute nm-br10
+       valid_lft forever preferred_lft forever
+7: virbr0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default qlen 1000
+    link/ether 52:54:00:08:e8:f5 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0
+       valid_lft forever preferred_lft forever
+8: virbr0-nic: <BROADCAST,MULTICAST> mtu 1500 qdisc pfifo_fast master virbr0 state DOWN group default qlen 1000
+    link/ether 52:54:00:08:e8:f5 brd ff:ff:ff:ff:ff:ff
+9: br0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 08:00:27:29:41:7d brd ff:ff:ff:ff:ff:ff
+    inet 192.168.0.61/24 brd 192.168.0.255 scope global noprefixroute dynamic br0
+       valid_lft 86398sec preferred_lft 86398sec
+    inet6 fe80::a00:27ff:fe29:417d/64 scope link 
+       valid_lft forever preferred_lft forever
+[root@kvm002 network-scripts]# 
