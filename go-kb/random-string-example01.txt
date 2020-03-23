@@ -1,0 +1,122 @@
+https://www.calhoun.io/creating-random-strings-in-go/
+
+Creating Random Strings in Go
+In this post are we going to cover how to create a function that will allow us to generate random strings of any length in our Go code. To do this, we will write a short rand package that wraps the math/rand package and provides the following two functions:
+
+StringWithCharset() - this function will take in a character set and a length and will generate a random string using that character set.
+String() - this function will only take in a length, and will use a default characters set to generate a random string.
+What this means is we are going to create a custom package named rand that will utilize the functionality provided by the math/rand package in order to create our own functions, and mask most of the implementation details. That way the rest of our code doesn’t need to concern itself with the implementation details of generating random strings, but can instead simply call functions like rand.String(10) to get a random string with 10 characters in it.
+
+It might seem odd to wrap another package with the same package name, but in my experience (and in others’ experience) this pattern works well when you want to wrap a package based on the context of what you are building, or if you want to isolate some details that just aren’t relevant to the rest of your application.
+
+If you do happen to find yourself still using the math/rand package in other parts of your application, it might be worth considering either moving some of that code into a function in your new rand package so that it is easier to reuse and test in isolation.
+
+Side Note: I have written about generating random string in the past as part of a list of tips for using strings in Go, but I felt that the topic deserves its own post as it is a pretty common request on its own.
+
+Creating our rand package
+The first thing we are going to is create a directory to store our new package. This is going to change based on your local environment, but I suggest creating a folder named rand inside of whatever directory you are working in. Once you do that, create a file named strings.go in the newly created directory.
+
+The rand directory is going to store all of our code that is part of the rand package we are creating. For now we will only have functions related to strings, but you are welcome to add to the package over time as your project needs evolve.
+
+In the rand/strings.go file we are going to store all of our functions related to random strings. As of now that is the entirety of our package, but you might find yourself updating this package over time so it is good to start with that in mind.
+
+Open rand/strings.go if you haven’t already. In it we are going to start by writing an init() function that handles seeding the math/rand package.
+
+package rand
+
+import (
+  "math/rand"
+  "time"
+)
+
+var seededRand *rand.Rand = rand.New(
+  rand.NewSource(time.Now().UnixNano()))
+The first few lines should look familiar to anyone who has written some Go code before - we start by declaring our package, and then follow it with a few imports stating the packages we will be using in our code.
+
+After that we declare a global variable named seededRand with the type *rand.Rand. This type has almost all of the functions available in the math/rand package, but we are able to isolate it so that no other code can affect our seed. This is important, because another piece of code we import might also seed the math/rand package and cause all of our “random” functions to not really be that random.
+
+For example, if we seed with rand.Seed(time.Now().UnixNano()) and then another initializer calls rand.Seed(1) our seed will get overridden, and that definitely isn’t what we want. By using a rand.Rand instance we are able to prevent this from happening to our random number generator.
+
+We initialize this variable using the rand.New() function, which requires a rand.Source as an argument. A source is basically just an object that helps us get randomly distributed numbers using a seed that we provide.
+
+If you ever opt to not create a rand.Rand object in your code and instead use the methods provided by the math/rand package, beware that the default seed value is 1, so if you forget to seed it you will find that your “random” package is really generating the same sequence of numbers every time you run your application. This also means that if another package were to always seed the math/rand package with another number (like 42), you would also get similarly predictable results every time you restart your applicatoin.
+
+To see this in action, try running the following simple program without seeding the math/rand package.
+
+package main
+
+import (
+  "fmt"
+  "math/rand"
+)
+
+func main() {
+  fmt.Println("1:", rand.Int())
+  fmt.Println("2:", rand.Int())
+  fmt.Println("3:", rand.Int())
+}
+Was your output the same as mine below?
+
+1: 5577006791947779410
+2: 8674665223082153551
+3: 6129484611666145821
+While it may not always feel this way, nothing a computer does is random, so creating a truly random number generator is a challenging problem to tackle. Instead, what we can do is seed a random number generator with a value that will change every time we run our program. This will give us a generate that will produce pseudo-random numbers, and since our seed changes every time our program runs we don’t have to worry about it becoming predictable.
+
+If you are working on code that is more sensitive, like a cryptography package, this might not be the best fit for you, but I am going to make the assumption that if you are building a crypto package that you know enough to make this call.
+
+Getting back to our code, the next thing we are going to do is create the StringWithCharset() function. As we said before, this is going to take in an integer dictating the length of the random string we want to generate, along with a character set that we want to use.
+
+For our character set, we are simply going to use to a string variable. While you could use something like a byte slice in your code, this works well enough and I find that creating a string character set in code is simpler. Writing charset := "abcABC123" is just easy to do.
+
+Putting that all together, we can write our function with the code below. We will discuss the implementation details shortly, but for now take a look at the code.
+
+func StringWithCharset(length int, charset string) string {
+  b := make([]byte, length)
+  for i := range b {
+    b[i] = charset[seededRand.Intn(len(charset))]
+  }
+  return string(b)
+}
+In the first line we are declaring a byte slice of size length; We use this in the next few lines to build our string by iterating over every index in the byte slice and inserting a random byte from the character set into the byte slice.
+
+We are choosing our random byte by using the seededRand.Intn() method. This method returns a random number between 0 and n - 1, where n is the input for the method call, so by passing in the length of our character set as the input, it will return a random number that represents the index of the byte that we should be using in our random string.
+
+Finally, we convert our byte slice to a string and return it.
+
+Next on our TODO list is to add the String() function. This function will work much the same way that StringWithCharset() does, except it will have a default character set. Rather than rewriting all of that logic, all we really need to do is define that character set and call our existing StringWithCharset() function with the charset.
+
+Starting with our charset, we will create it as a constant with the characters a-z, A-Z, and 0-9.
+
+const charset = "abcdefghijklmnopqrstuvwxyz" +
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+Then we create the Strings() function and call StringWithCharset() in it.
+
+func String(length int) string {
+  return StringWithCharset(length, charset)
+}
+And we are done. Just in case you need it, here is what your final code should look like.
+
+package rand
+
+import (
+  "math/rand"
+  "time"
+)
+
+const charset = "abcdefghijklmnopqrstuvwxyz" +
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+var seededRand *rand.Rand = rand.New(
+  rand.NewSource(time.Now().UnixNano()))
+
+func StringWithCharset(length int, charset string) string {
+  b := make([]byte, length)
+  for i := range b {
+    b[i] = charset[seededRand.Intn(len(charset))]
+  }
+  return string(b)
+}
+
+func String(length int) string {
+  return StringWithCharset(length, charset)
+}
