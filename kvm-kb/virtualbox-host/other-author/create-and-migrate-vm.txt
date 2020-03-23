@@ -1,0 +1,166 @@
+=============
+CREATE BRIDGE
+=============
+
+# ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host
+       valid_lft forever preferred_lft forever
+2: enp0s3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:53:43:88 brd ff:ff:ff:ff:ff:ff
+3: enp0s8: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast master br0 state UP group default qlen 1000
+    link/ether 08:00:27:0b:13:02 brd ff:ff:ff:ff:ff:ff
+    
+    
+# cat ifcfg-enp0s8
+TYPE=Ethernet
+PROXY_METHOD=none
+BROWSER_ONLY=no
+BOOTPROTO=dhcp
+DEFROUTE=yes
+IPV4_FAILURE_FATAL=no
+IPV6INIT=yes
+IPV6_AUTOCONF=yes
+IPV6_DEFROUTE=yes
+IPV6_FAILURE_FATAL=no
+IPV6_ADDR_GEN_MODE=stable-privacy
+NAME=enp0s8
+UUID=e36d7136-dbe4-478b-b2f0-002abf025512
+DEVICE=enp0s8
+ONBOOT=yes
+BRIDGE=br0
+[root@7GW0CZ1-VM2 network-scripts]# cat ifcfg-br0
+TYPE=Bridge
+PROXY_METHOD=none
+BROWSER_ONLY=no
+BOOTPROTO=dhcp
+DEFROUTE=yes
+IPV4_FAILURE_FATAL=no
+NAME=br0
+DEVICE=br0
+
+# systemctl restart network
+# ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host
+       valid_lft forever preferred_lft forever
+2: enp0s3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:53:43:88 brd ff:ff:ff:ff:ff:ff
+3: enp0s8: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast master br0 state UP group default qlen 1000
+    link/ether 08:00:27:0b:13:02 brd ff:ff:ff:ff:ff:ff
+5: br0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 08:00:27:0b:13:02 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.1.192/24 brd 192.168.1.255 scope global noprefixroute dynamic br0
+       valid_lft 86397sec preferred_lft 86397sec
+    inet6 fe80::a00:27ff:fe0b:1302/64 scope link
+       valid_lft forever preferred_lft forever
+
+# brctl show
+bridge name	bridge id		STP enabled	interfaces
+br0		8000.0800270b1302	no		enp0s8
+
+# virsh list
+setlocale: No such file or directory
+ Id    Name                           State
+----------------------------------------------------
+ 1     cirros                         running
+
+# brctl show
+bridge name	bridge id		STP enabled	interfaces
+br0		8000.0800270b1302	no		enp0s8
+							vnet0
+virbr0		8000.5254000984be	yes		virbr0-nic
+
+========================= 
+INSTALL VIRT SOFTWARE
+=========================
+yum install qemu-kvm qemu-img -y 
+yum install virt-manager libvirt libvirt-python libvirt-client -y
+yum groupinstall virtualization-client virtualization-platform virtualization-tools -y
+systemctl start libvirtd
+
+=========================
+FIREWALL
+=========================
+Allow below port on VMs.
+	firewall-cmd --permanent  --add-port 49152/tcp
+	firewall-cmd --permanent  --add-port 49153/tcp
+	firewall-cmd --reload
+
+If the VMs are on openstack allow both ingress and egress for btoh this port 49152 and 49153 on openstack side. 
+(use ost dashboard)
+
+=========================
+BRIDGE ON BOTH HOSTS (HERE, VIRTUALBOX VMS in nested virtualization)
+=========================
+
+	brctl add br0
+	brctl addif br0 eth0
+	ip link set dev br0 up
+  
+But the above process seems not working on openstack instances. So created a dummy bridge.
+vi /etc/sysconfig/netwrok-scripts/ifcfg-br0
+	BOOTPROTO=static
+	DEVICE=br0
+	ONBOOT=yes
+	TYPE=Bridge
+	USERCTL=no
+	IPADDR=<IP>
+	NETMASK=255.255.255.0
+	GATEWAY=<GW>
+	
+Save and exit.
+
+#ifup br0
+Then you should the IP on ifconfig command.
+
+	• Make sure you are able to ssh to VMs from both side.
+
+
+=========================
+CREATE KVM VM
+=========================
+
+----------------------
+DOWNLOAD IMAGE
+----------------------
+wget http://download.cirros-cloud.net/0.3.4/cirros-0.3.4-x86_64-disk.img
+
+mkdir /var/lib/vms
+Chown -R qemu:qemu /var/lib/vms
+
+cp -v cirros-0.3.4-x86_64-disk.img /var/lib/vms/
+cd /var/lib/vms
+
+chown qemu:qemu cirros-0.3.4-x86_64-disk.img
+vm_name="/var/lib/vms/cirros-0.3.4-x86_64-disk.img"
+
+----------------------
+CREATE THE VM
+----------------------
+
+virt-install --import --name cirros --memory 2048 --vcpus 2 --cpu host --disk $vm_name,format=img,bus=virtio  --network bridge=br0,model=virtio --os-type=linux --noautoconsole
+
+If the above command success the VM can be see as below..
+
+# virsh list
+ Id    Name                           State
+----------------------------------------------------
+ 3     cirros                         running
+
+
+=========================
+LIVE MIGRATION
+=========================
+
+Note- In Linux 7 --copy-storage-all is depreciated.
+
+ #virsh migrate --live --unsafe --persistent cirros qemu+ssh://192.168.192.3/system
+
+Give the root password when it wil ask.
