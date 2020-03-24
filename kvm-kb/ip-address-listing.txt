@@ -1,0 +1,64 @@
+https://www.cyberciti.biz/faq/find-ip-address-of-linux-kvm-guest-virtual-machine/
+
+
+How to find ip address of Linux KVM guest virtual machine
+last updated May 2, 2018 in CategoriesCentOS, Debian / Ubuntu, Linux, Linux KVM, RedHat and Friends, Suse
+How do I find out an IP address of Linux KVM guest from Linux host itself? I wanted to ssh into KVM guest VM. 
+How can I find the IP address of a KVM Virtual Machine Guest on a CentOS Linux 7.x server?
+
+There are various ways to get the IP address of KVM guest from the host. If you are using virbr0 (default bridge) 
+use the virsh command. It is also possible to use the combination of arp command or check DHCP server log 
+if you are using a dedicated DHCPD over a bridged network such as br0 that give access to physical LAN.
+
+Steps to find the ip address of Linux KVM guest virtual machine
+Open the terminal app or login using ssh to host server
+Get the network list: virsh net-list
+Type the command: virsh net-dhcp-leases networkNameHere
+Let us see steps in details.
+
+Method 1 – Find the IP addresses of VMs in KVM with virsh
+Type the following command to list network:
+# virsh net-list
+# virsh net-info default
+# virsh net-dhcp-leases default
+
+Linux find the ip address of Linux KVM guest virtual machine
+You can type ssh command to log in to OpenBSD VM named nixcraft-openbsd with IP address 192.168.122.124:
+$ ssh vivek@192.168.122.124
+
+Method 2 – Get the IP address of Linux KVM guest using domifaddr
+Find network interfaces’ addresses for a running domain called freebsd11.1:
+$ virsh list
+$ virsh domifaddr freebsd11.1
+
+Combine both virsh and bash shell while loop as follows:
+
+virsh list --name | while read n 
+do 
+  [[ ! -z $n ]] && virsh domifaddr $n
+done
+Getting a Virtual Machines IP Address from virsh
+
+Method 3 – Use arp command to g a KVM guest’s IP address
+Use the virsh command to find out the mac address of domain:
+$ virsh list
+$ virsh dumpxml VM_NAME | grep "mac address" | awk -F\' '{ print $2}'
+$ arp -an | grep 52:54:00:ce:8a:c4
+
+How to find ip address in linux virtual machine
+
+In short use any one of the following virsh command to get the ip address
+$ virsh list
+$ virsh domifaddr rhel7
+
+Say hello to Libvirt NSS module
+When it comes to managing guests and executing commands inside them, logging into guest operating system and doing 
+the job is convenient. Users are used to ssh in this case. 
+
+Ideally,
+ssh user@ip-Address-Here
+
+But depending on virtual network configuration it might not be always possible. 
+For instance, when using libvirt NATed network it’s dnsmasq (spawned by libvirt) who assigns IP addresses to domains. 
+But by default, the dnsmasq process is then not consulted when it comes to host name translation. 
+Users work around this problem by configuring their libvirt network to assign static IP addresses and maintaining /etc/hosts file in sync. But this puts needless burden onto users. This is where NSS module comes handy.
