@@ -1,5 +1,6 @@
+==========================
 LINKED CLONE OF AN IMAGE
-
+==========================
 VM created with a "linked clone" image keeps the base image intact and adds only the incremental changes to the VM
 into to the 'linked clone' image.
 
@@ -37,7 +38,7 @@ Format specific information:
 CREATE A VM WITH LINKED CLONE
 
 ---------------------------------
-CREATED THE LINKED CLONE IMAGE
+CREATE THE LINKED CLONE IMAGE
 ---------------------------------
 Script:
 qemu-img create -f qcow2 -F qcow2 -b /kvm-images/images/cirros-0.3.4-x86_64-disk.img /kvm-images/cirros02/cirros02-cirros-0.3.4-x86_64-disk.img
@@ -71,9 +72,9 @@ Format specific information:
     compat: 1.1
     lazy refcounts: false
 
----------------------------------
-CREATED THE VM
----------------------------------
+==========================
+CREATE THE VM
+==========================
 NOTE: After VM creation the size of the linked image has increased - due to whatever was put in it during vm create
 
 # vm_disk_name=/kvm-images/cirros02/cirros02-cirros-0.3.4-x86_64-disk.img
@@ -87,3 +88,27 @@ NOTE: After VM creation the size of the linked image has increased - due to what
 
 # ls -l /kvm-images/cirros02/cirros02-cirros-0.3.4-x86_64-disk.img
 -rw-r--r--. 1 qemu qemu 1245184 Mar 24 15:37 /kvm-images/cirros02/cirros02-cirros-0.3.4-x86_64-disk.img
+
+==========================
+MIGRATE THE VM
+==========================
+Steps:
+- Set up ssh equivalence between local and remote host
+- Create the same directory structure, /kvm-images/images and /kvm-images/cirros02
+  qemu:qemu owner,
+  and 644 permission on the directories 
+- Copy the base image to remote machine to the images folder
+- Create an empty linked clone image in the remote host - as initially did in the source host
+- Essentially, image and linked-clone initial setup in the remote host should be similar to the initial setup of source host
+- Run the migrate command (due to ssh equivalence it should work without prompting for password)
+
+The script:
+ssh-add ~/.ssh/id_rsa
+
+ssh kvm003 'mkdir -p /kvm-images/images /kvm-images/cirros02; chown -R qemu:qemu /kvm-images/images /kvm-images/cirros02'
+
+scp -rp /kvm-images/images/cirros-0.3.4-x86_64-disk.img kvm003:/kvm-images/images/.
+
+ssh kvm003 '/usr/bin/qemu-img create -f qcow2 -F qcow2 -b /kvm-images/images/cirros-0.3.4-x86_64-disk.img /kvm-images/cirros02/cirros02-cirros-0.3.4-x86_64-disk.img; chown qemu:qemu /kvm-images/cirros02/cirros02-cirros-0.3.4-x86_64-disk.img; chmod 644 /kvm-images/cirros02/cirros02-cirros-0.3.4-x86_64-disk.img'
+
+virsh migrate --live --unsafe --persistent cirros02 qemu+ssh://192.168.0.62/system
