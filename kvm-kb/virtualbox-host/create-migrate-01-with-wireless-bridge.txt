@@ -199,6 +199,9 @@ DOWNLOAD IMAGE
 ----------------------
 wget http://download.cirros-cloud.net/0.3.4/cirros-0.3.4-x86_64-disk.img
 
+------------------------
+SETUP BASE IMAGE FOR VM
+------------------------
 For image folder: use /var/lib/vms or /kvm-images
   mkdir /var/lib/vms
   chown -R qemu:qemu /var/lib/vms
@@ -211,6 +214,9 @@ mkdir -p /kvm-images/cirros01
 cp cirros-0.3.4-x86_64-disk.img /kvm-images/cirros01/cirros01-cirros-0.3.4-x86_64-disk.img
 chown -R qemu:qemu /kvm-images
 
+------------------------
+CREATE VM
+------------------------
 virt-install --import --name cirros01 --memory 2048 --vcpus 2 --cpu host --disk $vm_disk_name,format=img,bus=virtio  --network bridge=br0,model=virtio --os-type=linux --noautoconsole
 
 	WARNING  No operating system detected, VM performance may suffer. 
@@ -218,3 +224,78 @@ virt-install --import --name cirros01 --memory 2048 --vcpus 2 --cpu host --disk 
 
 	Starting install...
 	Domain creation completed.
+	
+----------------------------
+LOGON TO VM - USING CONSOLE
+----------------------------
+NOTE: The default user and password are flashed when you do virsh console
+
+# virsh console cirros01
+Connected to domain cirros01
+Escape character is ^]
+
+login as 'cirros' user. default password: 'cubswin:)'. use 'sudo' for root.
+cirros login: 
+
+----------------------
+FIND VM IP ADDRESS
+----------------------
+NOTE: A virtual network has not been created for br0 
+      - however, the vm would have gotten IP from the bridge network of virtualbox which in turn is based on the wifi router
+
+# virsh net-list
+NOTE: This does not list anything related to br0. 'defaut' is of the virbr0 bridge created by libvirt
+
+ Name                 State      Autostart     Persistent
+----------------------------------------------------------
+ default              active     yes           yes
+
+# virsh net-dhcp-leases <cannot give a network name for this>
+
+So, randomly try the next IP's in the range of br0 which is 192.168.0.61 - so, try 62, 63, 64 ...
+
+[root@kvm002 cirros01]# ssh cirros@192.168.0.64
+cirros@192.168.0.64's password: 
+Permission denied, please try again.
+cirros@192.168.0.64's password: 
+$ hostname
+cirros
+
+-----------------------------
+EXPLORE INSIDE VM
+-----------------------------
+$ ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 16436 qdisc noqueue 
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast qlen 1000
+    link/ether 52:54:00:10:da:b1 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.0.64/24 brd 192.168.0.255 scope global eth0
+    inet6 fe80::5054:ff:fe10:dab1/64 scope link 
+       valid_lft forever preferred_lft forever
+
+$ cat /etc/resolv.conf
+nameserver 192.168.0.1  --> This is the wifi router
+
+$ ping 192.168.0.61 --> ping the host 
+PING 192.168.0.61 (192.168.0.61): 56 data bytes
+64 bytes from 192.168.0.61: seq=0 ttl=64 time=0.441 ms
+64 bytes from 192.168.0.61: seq=1 ttl=64 time=0.420 ms
+
+$ ping 192.168.0.1 --> ping the router
+PING 192.168.0.1 (192.168.0.1): 56 data bytes
+^C
+--- 192.168.0.1 ping statistics ---
+29 packets transmitted, 0 packets received, 100% packet loss
+
+$ df -k
+Filesystem           1K-blocks      Used Available Use% Mounted on
+/dev                    248144         0    248144   0% /dev
+/dev/vda1                23797     18454      4115  82% /
+tmpfs                   251724         0    251724   0% /dev/shm
+tmpfs                      200        20       180  10% /run
+
+$ uname -a
+Linux cirros 3.2.0-80-virtual #116-Ubuntu SMP Mon Mar 23 17:28:52 UTC 2015 x86_64 GNU/Linux
