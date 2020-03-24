@@ -199,11 +199,22 @@ DOWNLOAD IMAGE
 ----------------------
 wget http://download.cirros-cloud.net/0.3.4/cirros-0.3.4-x86_64-disk.img
 
-mkdir /var/lib/vms
-chown -R qemu:qemu /var/lib/vms
+For image folder: use /var/lib/vms or /kvm-images
+  mkdir /var/lib/vms
+  chown -R qemu:qemu /var/lib/vms
+  cp -v cirros-0.3.4-x86_64-disk.img /var/lib/vms/
+  cd /var/lib/vms
+  chown qemu:qemu cirros-0.3.4-x86_64-disk.img
+  vm_image_name="/var/lib/vms/cirros-0.3.4-x86_64-disk.img"
 
-cp -v cirros-0.3.4-x86_64-disk.img /var/lib/vms/
-cd /var/lib/vms
+mkdir -p /kvm-images/cirros01
+cp cirros-0.3.4-x86_64-disk.img /kvm-images/cirros01/cirros01-cirros-0.3.4-x86_64-disk.img
+chown -R qemu:qemu /kvm-images
 
-chown qemu:qemu cirros-0.3.4-x86_64-disk.img
-vm_name="/var/lib/vms/cirros-0.3.4-x86_64-disk.img"
+virt-install --import --name cirros01 --memory 2048 --vcpus 2 --cpu host --disk $vm_disk_name,format=img,bus=virtio  --network bridge=br0,model=virtio --os-type=linux --noautoconsole
+
+	WARNING  No operating system detected, VM performance may suffer. 
+		 Specify an OS with --os-variant for optimal results.
+
+	Starting install...
+	Domain creation completed.
