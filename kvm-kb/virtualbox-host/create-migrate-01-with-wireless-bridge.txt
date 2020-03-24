@@ -312,3 +312,43 @@ tmpfs                      200        20       180  10% /run
 
 $ uname -a
 Linux cirros 3.2.0-80-virtual #116-Ubuntu SMP Mon Mar 23 17:28:52 UTC 2015 x86_64 GNU/Linux
+
+============================
+MIGRATION
+============================
+----------------------------
+SETUP /etc/hosts BOTH HOSTS
+----------------------------
+192.168.0.61 kvm002
+192.168.0.62 kvm003
+
+-----------------------------------
+FIREWALL ON DESTINATION HOST
+-----------------------------------
+Do the same firewall setting as in the source host
+
+-----------------------------------
+PREPARE DISK ON DESTINATION HOST
+-----------------------------------
+Create /kvm-images directory and such as done in the first host above
+Create a qcow2 image with same name and approx same size as the source image
+
+[root@kvm003 cirros01]#  qemu-img create -f qcow2 /kvm-images/cirros01/cirros01-cirros-0.3.4-x86_64-disk.img 15M
+Formatting '/kvm-images/cirros01/cirros01-cirros-0.3.4-x86_64-disk.img', fmt=qcow2 size=15728640 encryption=off cluster_size=65536 lazy_refcounts=off 
+
+-----------------------------------
+MIGRATE
+-----------------------------------
+virsh migrate --live --unsafe --persistent cirros01 qemu+ssh://192.168.0.62/system
+
+Logon to the migrated VM
+First you may see these errors below - subsequent logon after sometime did not show errors.
+
+Password: [ 4081.825098] end_request: I/O error, dev vda, sector 49761
+[ 4081.828994] Aborting journal on device vda1.
+[ 4081.849104] end_request: I/O error, dev vda, sector 49351
+[ 4081.849104] Buffer I/O error on device vda1, logical block 16643
+[ 4081.849104] lost page write due to I/O error on vda1
+[ 4081.916526] JBD: I/O error detected when updating journal superblock for vda1.
+[ 4081.933189] EXT3-fs (vda1): error: ext3_journal_start_sb: Detected aborted journal
+[ 4081.971288] EXT3-fs (vda1): error: remounting filesystem read-only
