@@ -36,6 +36,9 @@ Format specific information:
 
 CREATE A VM WITH LINKED CLONE
 
+---------------------------------
+CREATED THE LINKED CLONE IMAGE
+---------------------------------
 Script:
 qemu-img create -f qcow2 -F qcow2 -b /kvm-images/images/cirros-0.3.4-x86_64-disk.img /kvm-images/cirros02/cirros02-cirros-0.3.4-x86_64-disk.img
 
@@ -68,4 +71,19 @@ Format specific information:
     compat: 1.1
     lazy refcounts: false
 
+---------------------------------
+CREATED THE VM
+---------------------------------
+NOTE: After VM creation the size of the linked image has increased - due to whatever was put in it during vm create
 
+# vm_disk_name=/kvm-images/cirros02/cirros02-cirros-0.3.4-x86_64-disk.img
+
+# virt-install --import --name cirros02 --memory 512 --vcpus 1 --cpu host --disk $vm_disk_name,format=img,bus=virtio --network bridge=br0,model=virtio --os-type=linux --noautoconsole
+
+# virsh list
+ Id    Name                           State
+----------------------------------------------------
+ 2     cirros02                       running
+
+# ls -l /kvm-images/cirros02/cirros02-cirros-0.3.4-x86_64-disk.img
+-rw-r--r--. 1 qemu qemu 1245184 Mar 24 15:37 /kvm-images/cirros02/cirros02-cirros-0.3.4-x86_64-disk.img
