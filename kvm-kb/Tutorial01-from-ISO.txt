@@ -1,0 +1,327 @@
+https://www.cyberciti.biz/faq/how-to-install-kvm-on-centos-7-rhel-7-headless-server/
+
+How to install KVM on CentOS 7 / RHEL 7 Headless Server
+last updated October 13, 2018 in CategoriesCentOS, Linux KVM, RedHat and Friends, Virtualization
+How do I install and configure KVM (Kernel-based Virtual Machine) on a CentOS 7 or RHEL (Red Hat Enterprise Linux) 7 server? How can I setup KMV on a CentOS 7 and use cloud images/cloud-init for installing guest VM?
+
+Kernel-based Virtual Machine (KVM) is virtualization software for CentOS or RHEL 7. KVM turn your server into a hypervisor. This page shows how to setup and manage a virtualized environment with KVM in CentOS 7 or RHEL 7. It also described how to install and administer Virtual Machines (VMs) on a physical server using the CLI. Make sure that Virtualization Technology (VT) is enabled in your server’s BIOS. You can also run the following command to test if CPU Support Intel VT and AMD-V Virtualization tech:
+$ lscpu | grep Virtualization
+Virtualization: VT-x
+Advertisements
+
+ 
+Follow installation steps of KVM on CentOS 7/RHEL 7 headless sever
+Step 1: Install kvm
+Type the following yum command:
+# yum install qemu-kvm libvirt libvirt-python libguestfs-tools virt-install
+
+How to install KVM on CentOS 7 RHEL 7 Headless Server
+Start the libvirtd service:
+# systemctl enable libvirtd
+# systemctl start libvirtd
+
+Step 2: Verify kvm installation
+Make sure KVM module loaded using lsmod command and grep command:
+# lsmod | grep -i kvm
+
+Step 3: Configure bridged networking
+By default dhcpd based network bridge configured by libvirtd. You can verify that with the following commands:
+# brctl show
+# virsh net-list
+
+KVM default networking
+All VMs (guest machine) only have network access to other VMs on the same server. A private network 192.168.122.0/24 created for you. Verify it:
+# virsh net-dumpxml default
+
+If you want your VMs avilable to other servers on your LAN, setup a a network bridge on the server that connected to the your LAN. Update your nic config file such as ifcfg-enp3s0 or em1:
+# vi /etc/sysconfig/network-scripts/enp3s0
+
+Add line:
+
+BRIDGE=br0
+Save and close the file in vi. Edit /etc/sysconfig/network-scripts/ifcfg-br0 and add:
+# vi /etc/sysconfig/network-scripts/ifcfg-br0
+
+Append the following:
+
+DEVICE="br0"
+# I am getting ip from DHCP server #
+BOOTPROTO="dhcp"
+IPV6INIT="yes"
+IPV6_AUTOCONF="yes"
+ONBOOT="yes"
+TYPE="Bridge"
+DELAY="0"
+Restart the networking service (warning ssh command will disconnect, it is better to reboot the box):
+# systemctl restart NetworkManager
+
+Verify it with brctl command:
+# brctl show
+
+Step 4: Create your first virtual machine
+I am going to create a CentOS 7.x VM. First, grab CentOS 7.x latest ISO image using the wget command:
+# cd /var/lib/libvirt/boot/
+# wget https://mirrors.kernel.org/centos/7.4.1708/isos/x86_64/CentOS-7-x86_64-Minimal-1708.iso
+
+Verify ISO images:
+# wget https://mirrors.kernel.org/centos/7.4.1708/isos/x86_64/sha256sum.txt
+# sha256sum -c sha256sum.txt
+
+CREATE CENTOS 7.X VM
+In this example, I’m creating CentOS 7.x VM with 2GB RAM, 2 CPU core, 1 nics and 40GB disk space, enter:
+# virt-install \
+--virt-type=kvm \
+--name centos7 \
+--ram 2048 \
+--vcpus=1 \
+--os-variant=centos7.0 \
+--cdrom=/var/lib/libvirt/boot/CentOS-7-x86_64-Minimal-1708.iso \
+--network=bridge=br0,model=virtio \
+--graphics vnc \
+--disk path=/var/lib/libvirt/images/centos7.qcow2,size=40,bus=virtio,format=qcow2
+
+To configure vnc login from another terminal over ssh and type:
+# virsh dumpxml centos7 | grep vnc
+<graphics type='vnc' port='5901' autoport='yes' listen='127.0.0.1'>
+
+Please note down the port value (i.e. 5901). You need to use an SSH client to setup tunnel and a VNC client to access the remote vnc server. Type the following SSH port forwarding command from your client/desktop/macbook pro system:
+$ ssh vivek@server1.cyberciti.biz -L 5901:127.0.0.1:5901
+
+Once you have ssh tunnel established, you can point your VNC client at your own 127.0.0.1 (localhost) address and port 5901 as follows:
+
+You should see CentOS Linux 7 guest installation screen as follows:
+
+Now just follow on screen instructions and install CentOS 7. Once installed, go ahead and click the reboot button. The remote server closed the connection to our VNC client. You can reconnect via KVM client to configure the rest of the server including SSH based session or firewall.
+
+How to create RHEL 7.x VM
+Make sure you have rhel-server-7.3-x86_64-dvd.iso stored locally. In this example, I’m creating RHEL 7.x VM with 2GB RAM, 2 CPU core, 1 nic and 40GB disk space, enter:
+# virt-install \
+--virt-type=kvm \
+--name rhel7 \
+--memory=2048,maxmemory=4096 \
+--vcpus=2 \
+--os-variant=rhel7.3 \
+--cdrom=/var/lib/libvirt/boot/rhel-server-7.3-x86_64-dvd.iso \
+--network=bridge=virbr0,model=virtio \
+--graphics vnc \
+--disk path=/var/lib/libvirt/images/rhel7.qcow2,size=40,bus=virtio,format=qcow2
+
+To configure vnc login from another terminal over ssh and type:
+$ sudo virsh dumpxml rhel7 | grep vnc
+<graphics type='vnc' port='5904' autoport='yes' listen='127.0.0.1'>
+
+Please note down the port value (i.e. 5904). You need to use an SSH client to setup tunnel and a VNC client to access the remote vnc server. Type the following SSH port forwarding command from your client/desktop:
+$ ssh vivek@server1.cyberciti.biz -L 5904:127.0.0.1:5904
+
+Once you have ssh tunnel established, you can point your VNC client at your own 127.0.0.1 (localhost) address and port 5904 to continue with RHEL 7.x installation.
+
+Step 5: Using cloud images
+The above installation method is okay for learning purpose or a single VM. Do you need to deploy lots of VMs? Try cloud images. You can modify pre built cloud images as per your needs. For example, add users, ssh keys, setup time zone, and more using Cloud-init which is the defacto multi-distribution package that handles early initialization of a cloud instance. Let us see how to create CentOS 7 vm with 1024MB ram, 20GB disk space, and 1 vCPU.
+
+GRAB CENTOS 7 CLOUD IMAGE
+# cd /var/lib/libvirt/boot
+# wget http://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud.qcow2
+
+CREATE REQUIRED DIRECTORIES
+# D=/var/lib/libvirt/images
+# VM=centos7-vm1 ## vm name ##
+# mkdir -vp $D/$VM
+mkdir: created directory '/var/lib/libvirt/images/centos7-vm1'
+
+CREATE META-DATA FILE
+# cd $D/$VM
+# vi meta-data
+
+Append the following:
+
+instance-id: centos7-vm1
+local-hostname: centos7-vm1
+CRETE USER-DATA FILE
+I am going to login into VM using ssh keys. So make sure you have ssh-keys in place:
+# ssh-keygen -t ed25519 -C "VM Login ssh key"
+
+ssh-keygen command
+See “How To Setup SSH Keys on a Linux / Unix System” for more info. Edit user-data as follows:
+# cd $D/$VM
+# vi user-data
+
+Add as follows (replace hostname, users, ssh-authorized-keys as per your setup):
+
+#cloud-config
+ 
+# Hostname management
+preserve_hostname: False
+hostname: centos7-vm1
+fqdn: centos7-vm1.nixcraft.com
+ 
+# Users
+users:
+    - default
+    - name: vivek
+      groups: ['wheel']
+      shell: /bin/bash
+      sudo: ALL=(ALL) NOPASSWD:ALL
+      ssh-authorized-keys:
+        - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIMP3MOF2ot8MOdNXCpHem0e2Wemg4nNmL2Tio4Ik1JY VM Login ssh key
+ 
+# Configure where output will go
+output:
+  all: ">> /var/log/cloud-init.log"
+ 
+# configure interaction with ssh server
+ssh_genkeytypes: ['ed25519', 'rsa']
+ 
+# Install my public ssh key to the first user-defined user configured
+# in cloud.cfg in the template (which is centos for CentOS cloud images)
+ssh_authorized_keys:
+  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIMP3MOF2ot8MOdNXCpHem0e2Wemg4nNmL2Tio4Ik1JY VM Login ssh key
+ 
+# set timezone for VM
+timezone: Asia/Kolkata
+ 
+# Remove cloud-init 
+runcmd:
+  - systemctl stop network && systemctl start network
+  - yum -y remove cloud-init
+COPY CLOUD IMAGE
+# cd $D/$VM
+# cp /var/lib/libvirt/boot/CentOS-7-x86_64-GenericCloud.qcow2 $VM.qcow2
+
+CREATE 20GB DISK IMAGE
+# cd $D/$VM
+# export LIBGUESTFS_BACKEND=direct
+# qemu-img create -f qcow2 -o preallocation=metadata $VM.new.image 20G
+# virt-resize --quiet --expand /dev/sda1 $VM.qcow2 $VM.new.image
+
+Set VM image disk size
+Overwrite it resized image:
+# cd $D/$VM
+# mv $VM.new.image $VM.qcow2
+
+CREATING A CLOUD-INIT ISO
+# mkisofs -o $VM-cidata.iso -V cidata -J -r user-data meta-data
+
+Creating a cloud-init ISO
+
+CREATING A POOL
+# virsh pool-create-as --name $VM --type dir --target $D/$VM
+Pool centos7-vm1 created
+
+INSTALLING A CENTOS 7 VM
+# cd $D/$VM
+# virt-install --import --name $VM \
+--memory 1024 --vcpus 1 --cpu host \
+--disk $VM.qcow2,format=qcow2,bus=virtio \
+--disk $VM-cidata.iso,device=cdrom \
+--network bridge=virbr0,model=virtio \
+--os-type=linux \
+--os-variant=centos7.0 \
+--graphics spice \
+--noautoconsole
+
+Delete unwanted files:
+# cd $D/$VM
+# virsh change-media $VM hda --eject --config
+# rm meta-data user-data centos7-vm1-cidata.iso
+
+FIND OUT IP ADDRESS OF KVM VM (DHCP ADDRESS)
+# virsh net-dhcp-leases default
+
+CentOS7-VM1- Created
+
+LOG IN TO YOUR VM
+Use ssh command:
+# ssh vivek@192.168.122.85
+
+Sample VM session
+
+Useful commands
+Let us see some useful commands for managing VMs.
+
+List all VMs
+# virsh list --all
+
+Get VM info
+# virsh dominfo vmName
+# virsh dominfo centos7-vm1
+
+Stop/shutdown a VM
+# virsh shutdown centos7-vm1
+
+Start VM
+# virsh start centos7-vm1
+
+Mark VM for autostart at boot time
+# virsh autostart centos7-vm1
+
+Reboot (soft & safe reboot) VM
+# virsh reboot centos7-vm1
+
+Reset (hard reset/not safe) VM
+# virsh reset centos7-vm1
+
+Delete VM
+# virsh shutdown centos7-vm1
+# virsh undefine centos7-vm1
+# virsh pool-destroy centos7-vm1
+# D=/var/lib/libvirt/images
+# VM=centos7-vm1
+# rm -ri $D/$VM
+
+To see a complete list of virsh command type
+# virsh help | less
+# virsh help | grep reboot
+
+A note about virt-builder
+One can build virtual machine images quickly on a CentOS 7 using virt-builder command.
+
+List VM images
+virt-builder --list
+virt-builder --list | grep -i fedora
+virt-builder --list | grep -i debian
+virt-builder --list | grep -i ubuntu
+virt-builder --list | grep -i freebsd
+
+Build Ubuntu 16.04 LTS vm
+# virt-builder ubuntu-16.04 \
+--size=20G --format qcow2 -o /var/lib/libvirt/images/ncbz01-disk01.qcow2 \
+--hostname ncbz01 --network --timezone Asia/Kolkata \
+--firstboot-command "dpkg-reconfigure openssh-server" \
+--edit '/etc/default/grub:
+s/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT="console=tty0 console=ttyS0,115200n8"/' \
+--run-command update-grub
+
+Sample outputs (note it will display random root password on screen):
+
+[   3.9] Downloading: http://libguestfs.org/download/builder/ubuntu-16.04.xz
+######################################################################## 100.0%
+[ 121.7] Planning how to build this image
+[ 121.7] Uncompressing
+[ 126.5] Resizing (using virt-resize) to expand the disk to 20.0G
+[ 142.1] Opening the new disk
+[ 143.8] Setting a random seed
+[ 143.8] Setting the machine ID in /etc/machine-id
+[ 143.8] Setting the hostname: ncbz01
+[ 144.3] Setting the timezone: Asia/Kolkata
+[ 144.3] Setting passwords
+virt-builder: Setting random password of root to 1KTLsuVx14k989eq
+[ 144.9] Finishing off
+                   Output file: /var/lib/libvirt/images/ncbz01-disk01.qcow2
+                   Output size: 20.0G
+                 Output format: qcow2
+            Total usable space: 18.6G
+                    Free space: 17.7G (94%)
+Now image has been built. Let us install VM:
+# virt-install --import --name ncbz01 \
+--ram 2048 \
+--vcpu 2 \
+--disk path=/var/lib/libvirt/images/ncbz01-disk01.qcow2,format=qcow2 \
+--os-variant ubuntu17.04 \
+--network=bridge=virbr0,model=virtio \
+--noautoconsole
+
+Start it:
+# virsh start ncbz01
+
+Login into it:
+# virsh console ncbz01
