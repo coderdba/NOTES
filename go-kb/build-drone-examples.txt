@@ -1,0 +1,25 @@
+================================
+BUILD AN EXECUTABLE 'virtagent'
+================================
+default-gobuild-config: &default_gobuild_config
+  image: docker.company.com/app/goimage:latest
+  pull: true
+  environment:
+    - GOPATH=/drone
+    - GO111MODULE=on
+    - GOOS=linux
+    - GOPRIVATE=git.company.com
+  commands:
+    - go build -ldflags "-X git.company.com/virtagent/agent.VERSION=`git describe --tags --always`" -o rpmroot/usr/bin/virtagent .
+    - sha256sum rpmroot/usr/bin/virtagent
+ 
+=================================
+BUILD AN EXECUTABLE 'primeagent'
+=================================
+ default-gobuild-config: &default_gobuild_config
+  image: docker.company.com/app/goimage:latest
+  pull: true
+  commands:
+    - go mod vendor
+    - GOOS=linux go build -o rpmroot/usr/bin/primeagent .
+    - sha256sum rpmroot/usr/bin/primeagent
