@@ -1,0 +1,128 @@
+https://medium.com/@adiach3nko/package-management-with-go-modules-the-pragmatic-guide-c831b4eaaf31
+
+Package Management With Go Modules: The Pragmatic Guide
+Alexander Diachenko
+Alexander Diachenko
+Follow
+Aug 4, 2019 · 8 min read
+
+Go Modules is a way of dealing with dependencies in Go. Initially an experiment, it is is supposed to enter the playing field in 1.13 as a new default for package management.
+I find it a bit unusual as a newcomer coming from other languages and so I wanted to collect some thoughts and tips to help others like me get some idea about Go package management. We’ll start with some trivia and then proceed to less obvious aspects including the use of vendor folder, using modules with Docker in development, tool dependencies etc.
+If you’ve been using Go Modules for a while already and know the Wiki like the back of your hand, this article probably won’t prove very useful to you. For some, however, it may save a few hours of trial and error.
+So hope in and enjoy the ride.
+
+Quick Start
+If your project is already in version control, you can simply run
+go mod init
+Or you can supply module path manually. It’s kinda like a name, URL and import path for your package:
+go mod init github.com/you/hello
+This command will create go.mod file which both defines projects requirements and locks dependencies to their correct versions (to give you some analogy, it’s like package.json and package-lock.json rolled into one):
+module github.com/you/hello
+ 
+go 1.12
+Run go get to add a new dependency to your project:
+Note that although you can’t specify version range with go get, what you define here anyway is a minimum version and not an exact version. As we’ll see later, there is way to gracefully bump dependencies according to semver.
+# use Git tags
+go get github.com/go-chi/chi@v4.0.1
+# or Git branch name
+go get github.com/go-chi/chi@master
+# or Git commit hash
+go get github.com/go-chi/chi@08c92af
+Now our go.mod file looks like this:
+module github.com/you/hello
+ 
+go 1.12
+ 
+require github.com/go-chi/chi v4.0.2+incompatible // indirect
++incompatible suffix is added for all packages that not opted in to Go Modules yet or violate its versioning guidelines.
+Because we didn’t yet import the package anywhere in our project, it was marked as // indirect. We can tidy this up with the following command:
+go mod tidy
+Depending on the current state of your repo, this will either prune the unused module or remove // indirect comment.
+If a particular dependency does not itself have a go.mod (for example it has not yet opted in to use modules), then it will have all of its dependencies recorded in a parent go.mod file (e.g. your go.mod) file along with // indirect comment to indicate it is not from a direct import within your module.
+On a more general note, the purpose of go mod tidy is to also add any dependencies needed for other combinations of OS, architecture, and build tags. Make sure to run this before every release.
+See that go.sum file was also created upon adding a dependency. You may assume it’s a lock file. But in fact, go.mod already provides enough information for 100% reproducible builds. The other file is just for validation purposes: it contains the expected cryptographic checksums of the content of specific module versions.
+In part because go.sum is not a lock file, it retains recorded checksums for a module version even after you stop using the module. This allows validation of the checksums if you later resume using it, which provides additional safety.
+
+Commands like go build or go test will automatically download all the missing dependencies though you can do this explicitly with go mod download to pre-fill local caches which may prove useful in CI.
+By default all our packages from all projects are downloaded into $GOPATH/pkg/mod directory. We’ll discuss this in detail later in the article.
+Updating Package Versions
+You may use go get -u or go get -u=patch to update dependencies to the latest minor or patch upgrades respectively.
+You can’t do this for major versions though. Code opting in to Go Modules must technically comply with these rules:
+Follow semver (an example VCS tag is v1.2.3).
+If the module is version v2 or higher, the major version of the module must be included as a /vN at the end of the module paths used in go.mod files and in the package import path:
+import "github.com/you/hello/v2"
+Apparently, this is done so different package versions could be imported in a single build (see diamond dependency problem).
+In short, Go expects you to be very deliberate when doing major version bumps.
+Substitute Imported Modules
+You can point a required module to your own fork or even local file path using replace directive:
+go mod edit -replace github.com/go-chi/chi=./packages/chi
+Result:
+module github.com/you/hello
+ 
+go 1.12
+ 
+require github.com/go-chi/chi v4.0.2+incompatible
+replace github.com/go-chi/chi => ./packages/chi
+You can remove the line manually or run:
+go mod edit -dropreplace github.com/go-chi/chi
+Managing Dependencies Per Project
+Historically, all Go code was stored in one giant monorepo, because that’s how Google organizes their codebase internally and that took its toll on the design of the language.
+Go Modules is somewhat of a departure from this approach. You’re no longer required to keep all your projects under $GOPATH.
+However, technically all your downloaded dependencies are still placed under $GOPATH/pkg/mod. If you use Docker containers when developing stuff locally, this may become an issue because dependencies are stored outside of project path (shared with a host filesystem via a bind-mounted volume). By default, they are simply not visible from your IDE.
+
+This is normally not a problem for other languages but something I first encountered when working on Go codebase.
+Thankfully, there are multiple (undocumented, mind you) ways to address the issue.
+Option 1: Set GOPATH inside your project directory
+This might sound counterintuitive at first, but if are running Go from a container, you can override its GOPATH to point to the project directory so that the packages are accessible from the host:
+
+Popular IDEs should include the option to set GOPATH on a project (workspace) level:
+
+The only downside to this approach is that there is no interoperability with Go runtime on the host machine. You must commit to running all Go commands from inside the container.
+Option 2: Vendor Your Dependencies
+Another way is to copy over your project dependencies to vendor folder:
+go mod vendor
+Note the vocabulary here: we are NOT enabling Go to directly download stuff into vendor folder: that’s not possible with modules. We’re just copying over already downloaded packages.
+In fact, if you vendor your dependencies like in example above, then clear $GOPATH/pkg/mod, then try to add some new dependencies to your project, you will observe the following:
+Go will rebuild the download cache for all packages at $GOPATH/pkg/mod/cache.
+All downloaded modules will be copied over to $GOPATH/pkg/mod.
+Finally, Go will copy over these modules to vendor folder while pruning examples, tests and some other miscellaneous files that you do not directly depend on.
+In fact there is a lot of stuff omitted from this newly created vendor folder:
+
+The typical Docker Compose file for development looks as follows (take note of volume bindings):
+
+Note that I do NOT commit this vendor folder to version control or expect to use it in production. This is strictly a local dev scenario you can typically find in some other languages.
+However, when reading comments from some of the Go maintainers and some proposals related to partial vendoring (WUT?), I get the impression that this is not the intended use case for this feature.
+One of the commenters from reddit helped me shed a light on this:
+Usually people vendor their dependencies for reasons like a desire to have hermetic builds without accessing the network, and having a copy of dependencies checked-in in case github goes down or a repo disappears, and being able to more easily audit changes to dependencies using standard VCS tools, etc.
+Yeah, doesn’t look like anything I might be interested in.
+Go teams suggests you can routinely opt-in to vendoring by setting GOFLAGS=-mod=vendor environment variable. I don’t recommend doing this. Using flags will simply break go get without providing any other benefits to your daily workflow:
+
+Actually, the only place where you need to opt-in for vendoring is your IDE:
+
+After some trial and error I came with the following routine for adding vendored dependencies in this approach.
+Step 1. Require
+You require dependency with go get:
+go get github.com/rs/zerolog@v1.14.3
+Step 2. Import
+You then import it somewhere in your code:
+import (
+    _ "github.com/rs/zerolog"
+)
+Step 3. Vendor
+Finally, vendor your dependencies anew:
+go mod vendor
+There is a pending proposal to allow go mod vendor to accept specific module patterns which may or may not solve some of the issues with this workflow.
+go mod vendor already automatically requires missing imports so step 1 is optional in this workflow (unless you want to specify version constraints). Without step 2 it won’t pick up the downloaded package though.
+This approach has a better interoperability with the host system, but it’s kinda convoluted when it comes to editing your dependencies.
+Personally, I think overriding GOPATH is a cleaner approach because it doesn’t compromise go get functionality. Still, I wanted to cover both strategies because vendor folder may seem natural for people coming from other languages like PHP, Ruby, Javascript etc. As you can see from shenanigans described in this article, it’s not a particularly good choice for Go.
+Tool Dependencies
+We might want to install some go-based tools that are not being imported, but are used as part of project’s development environment. A simple example of such tool is CompileDaemon that can watch your code for changes and restart your app.
+The officially recommended approach is to add a tools.go file (the name doesn’t matter) with the following contents:
+// +build tools
+package tools
+import (
+ _ "github.com/githubnemo/CompileDaemon"
+)
+// +build tools constraint prevents your normal builds from actually importing your tool
+import statements allow the go command to precisely record the version information for your tools in your module’s go.mod file
+Well, that’s it for now. 🎉 I hope you won’t be just as baffled as I was when I first started using Go Modules. You can visit Go Modules wiki for more information.
