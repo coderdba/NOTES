@@ -1,5 +1,37 @@
 https://www.cyberciti.biz/faq/find-ip-address-of-linux-kvm-guest-virtual-machine/
 
+=================================
+LIVE EXAMPLE WITH 'arp'
+=================================
+# virsh list
+ Id    Name                           State
+----------------------------------------------------
+ 2     webservver12                   running
+ 494   scheduler                      running
+ 520   vm1                            running
+
+# virsh dumpxml vm1 > x
+
+# grep "mac address" x
+      <mac address='52:54:00:0b:93:cd'/>
+      
+# arp -n
+Address                  HWtype  HWaddress           Flags Mask            Iface
+...
+...
+110.21.10.18          ether   52:54:00:7b:e6:cb   C                     bond0
+110.21.10.19          ether   52:54:00:d6:3f:15   C                     bond0
+110.21.10.14          ether   d8:d0:90:cf:4a:3e   C                     bond0
+110.21.10.16          ether   52:54:00:0b:93:cd   C                     bond0 --> THIS IS THE ONE THAT MATCHES MAC IN XML
+110.21.10.11          ether   52:54:00:cf:da:28   C                     bond0
+
+- connect to vm (assuming those ports have listeners)
+# curl -k https://110.21.10.16:8080
+# ssh 110.21.10.16
+
+=================================
+VARIOUS METHODS
+=================================
 
 How to find ip address of Linux KVM guest virtual machine
 last updated May 2, 2018 in CategoriesCentOS, Debian / Ubuntu, Linux, Linux KVM, RedHat and Friends, Suse
