@@ -1,2 +1,69 @@
 https://levelup.gitconnected.com/complete-guide-to-create-docker-container-for-your-golang-application-80f3fb59a15e
 
+Why docker?
+The primary goal of using docker is containerization. That is to have a consistent environment for your application and does not depend on the host machine where it runs.
+Imagine this scenario, you developed your app locally and then one of its functionality is depending on an OS package which then also depends on other packages. After the development process finishes, you want to deploy your app to a web server. At this point, you have to make sure again that all of the dependencies are functioning correctly with the exact same version, or your app will crash and never run. And if you want to move to another web server, you have to repeat this process all over again. This is where containers come to the rescue.
+The only thing required for the host machine, whether it is your laptop or web server, is having a container platform running — this time docker. From then on you don’t have to worry whether you use MacOS, Ubuntu, Arch, or others. You only define your app once and ready to run it anywhere.
+There are many other advantages of using container technology. This post will not cover all of them, but I encourage you to do your research if you are still unsure about it.
+Using these two technologies at the same time requires a combination of several techniques that can be implemented to ensure best practices and achieving the best results.
+In this post, I will create a Docker container web server written in Golang.
+Note: I will not be explaining the Go code in detail because that is not the main focus of this post.
+Let’s Go!
+1. Writing the code
+I will create a go web server using the gin framework.
+First, let’s create a main.go and add the following code.
+
+Above code will serve an http web server through port 3000 and only a path to /ping and return a JSON response.
+2. Create a docker image
+From the Docker documentation:
+An image includes everything needed to run an application — the code or binary, runtimes, dependencies, and any other filesystem objects required.
+Or put simply, an image is how you define your application and everything it needs to run.
+To create a Docker image, you must specify the steps in a configuration file. The default and convenient file name is Dockerfile but you can name it whatever you like. However, following the standard is always a good idea. So create a file called Dockerfile and fill it with the following content.
+
+Explanation
+FROM
+We are creating our image using the base image golang:alpine. This is basically an image just like what we want to create and is available for us on a Docker repository. This image runs the alpine Linux distribution which is small in size and has Golang already installed which is perfect for our use case. There are tons of publicly available Docker image, have a look at https://hub.docker.com/_/golang
+ENV
+We also set the environment variable GO111MODULE but what does that even means? If you are unfamiliar with this, it’s a variable used for how Go imports packages. Do some search if you want to know more about this. There are others environment variables that can be set to define how you want go would work.
+WORKDIR, COPY, RUN
+Next, we move between directories and install dependencies. The comments provided are already self-explaining.
+EXPORT, CMD
+Lastly, we export port 3000 from inside our container to the outside since the application will listen to this port to work. And we define a default command to execute when we run our image which is CMD [“/dist/main”].
+To build image run following command:
+docker build . -t go-dock
+We build our image and tagged it with name go-dock. Now we have our image ready, but it just does nothing at the moment. The next thing we want is to run our image so that it will be able to handle our request. A running image is called a container.
+To run an image, type following:
+docker run -p 3000:3000 go-dock
+The flag -p is to define the port binding. Since our app inside the container is running on port 3000 then we bind it to the host port, this time also 3000. If you want to bind to another port then you can run it with -p $HOST_PORT:3000. for example -p 5000:3000.
+And we specify which image we want to run, this time go-dock.
+Test if the server running correctly.
+curl http://localhost:3000/ping
+And we get a response.
+{“message”:”pong”}
+3. Multistage Build
+Now you have a fully working web server, then what?
+If you look carefully, the only thing we want from a Go program is the binary output after the build process. That’s what we want on our Docker image and we don’t even need the go compiler itself at runtime! One of Docker’s best practice is keeping the image size small, by having only the binary file then we make our image even smaller from the previous one. To achieve this we will use a technique called multistage build which means we will build our image with multiple steps.
+Update the Dockerfile with the following content:
+
+With this technique we separate the process of building the binary using the golang:alpine as the builder image and producing the new image based from scratch, a simple and very minimal image. We copied the main binary file from the first image which we named builder into the newly createdscratch image. For more information about the scratch image visit https://hub.docker.com/_/scratch
+4. Static file
+Sometimes you also want to serve static files from your Golang application whether it is images, CSS, PDF, etc. This time we are going to use a JSON file as a read-only storage to hold the data required for our application. With the previous Docker build process, we lost our static file when we copied our binary into the scratch image. Now we need to also copy the required files into it. Let’s implement this.
+First create new folder called /database in your working directory and then create a file named data.json and database.go.
+
+
+Add these lines to main.go
+
+Now we need to update our Dockerfile with the following line in the scratch image:
+COPY ./database/data.json /database/data.json
+This will copy the static file to the image and it will be available at application runtime. Let’s check!
+
+That’s it! Now you are ready to prepare your application running on a docker container.
+Tips
+Code, without tests, is not clean. No matter how elegant it is, no matter how readable and accessible, if it hath not tests, it be unclean.
+- Robert C. Martin, Clean Code
+Another thing that we want is testing. I hope you appreciate the advantages of testing and how it can save us from trouble. There are a couple of techniques to run a test. We can use go test command inside the image build process or run it within a CI/CD process. So if somehow the test failed then we stop the build or deploy process. From then on we can ensure that we only ship a fully tested software. That’s how great software are created.
+The code on this post is available on my GitHub https://github.com/afdolriski/golang-docker
+Finish
+If you are using microservice you could also deploy your app container into various container orchestration tools to make it even more scalable. My favorites are Kubernetes and AWS ECS. I will also write about these technologies on the next post. Follow me if you don’t want to missed it.
+If you have any questions or feedback feel free to leave it in the response section below. Thank you for reading!
+
