@@ -1,0 +1,14 @@
+import(
+"os"
+)
+
+func applySecret(certPath string, keyPath string, namespace string) (err error) {
+	cmd := fmt.Sprintf("kubectl create secret tls app-ssl-secret --key %s --cert %s -n %s -o yaml --dry-run | kubectl apply -n %s -f -", keyPath, certPath, namespace, namespace)
+	if logger.LogLevel1() {
+		log.Print(cmd)
+	}
+	if err := exec.Command("bash", "-c", cmd).Run(); err != nil {
+		return err
+	}
+	return nil
+}
