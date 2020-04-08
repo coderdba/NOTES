@@ -26,7 +26,8 @@ order by buckets;
       10 |     3
 (6 rows)
 
-- HISTOGRAM
+- HISTOGRAM ON THE WHOLE TABLE 
+This helps when the whole table contains data for ONLY one thing - like "cpu utilization of one machine"
 with hist_minmax as (
     select min(actual) as min,
            max(actual) as max
@@ -37,6 +38,37 @@ with hist_minmax as (
           int4range(cast(floor(min(actual)) as integer), cast(ceil(max(actual)) as integer), '[]') as range,
           count(*) as freq
      from pod_metrics, hist_minmax
+ group by bucket
+ order by bucket
+)
+ select bucket, range, freq,
+        repeat('■',
+               (   freq::float
+                 / max(freq) over()
+                 * 30
+               )::int
+        ) as bar
+   from histogram;
+   
+- HISTOGRAM ON SELECTIVE DATA
+This is to query a subset of data - in this case, for a specific pod, specific metric and specific time range
+
+with hist_minmax as (
+    select min(actual) as min,
+           max(actual) as max
+      from app_metrics
+     where name = 'pricecheck-v009-szjt4@checkout-prod@D1200'
+       and srctime::date >= date '2019-10-01' and srctime::date < '2019-12-01'
+       and metricname = 'cpu_utilization'
+),
+     histogram as (
+   select width_bucket(actual, min, max, 9) as bucket,
+          int4range(cast(floor(min(actual)) as integer), cast(ceil(max(actual)) as integer), '[]') as range,
+          count(*) as freq
+     from app_metrics, hist_minmax
+     where name = 'pricecheck-v009-szjt4@checkout-prod@D1200'
+      and srctime::date >= date '2019-10-01' and srctime::date < '2019-12-01'
+      and metricname = 'cpu_utilization'
  group by bucket
  order by bucket
 )
