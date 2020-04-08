@@ -1,0 +1,27 @@
+- HISTOGRAM BASIC
+
+From a table that contains pod metrics:
+  TableName: pod_metrics
+  name is name of the pod
+  actual is actual cpu used
+  gathertime is sourcing time
+  metricname is the name of the metric
+
+select width_bucket(actual, 0, 10, 9) as buckets,
+       count(*)
+  from pod_metrics
+where  name = 'pricing-v009-szjt4@checkout-prod@D2200'
+and    gathertime::date >= date '2019-10-01' and gathertime::date < '2019-12-01'
+and    metricname = 'cpu_utilization'
+group by buckets
+order by buckets;
+
+ buckets | count 
+---------+-------
+       1 |    25
+       2 |   180
+       3 |    86
+       4 |     9
+       5 |     3
+      10 |     3
+(6 rows)
