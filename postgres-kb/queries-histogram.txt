@@ -26,12 +26,32 @@ order by buckets;
       10 |     3
 (6 rows)
 
+- HISTOGRAM
+with hist_minmax as (
+    select min(actual) as min,
+           max(actual) as max
+      from pod_metrics
+),
+     histogram as (
+   select width_bucket(actual, min, max, 9) as bucket,
+          int4range(cast(floor(min(actual)) as integer), cast(ceil(max(actual)) as integer), '[]') as range,
+          count(*) as freq
+     from pod_metrics, hist_minmax
+ group by bucket
+ order by bucket
+)
+ select bucket, range, freq,
+        repeat('■',
+               (   freq::float
+                 / max(freq) over()
+                 * 30
+               )::int
+        ) as bar
+   from histogram;
+
 - HISTOGRAM EXAMPLES
 
 https://tapoueh.org/blog/2014/02/postgresql-aggregates-and-histograms/
-
-
-      
 
 Dimitri Fontaine
  Blog
