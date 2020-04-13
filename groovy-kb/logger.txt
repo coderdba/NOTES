@@ -1,0 +1,67 @@
+dependency of org.slf4j 
+groovy.util.logging.Slf4j 
+I was writing some learning-code, and used groovy.util.logging.Slf4j 
+But, it did not compile looking for org.slf4j.Logger.  
+Tried to find where org.slf4j.Logger was included in SG build.gradle or elsewhere, could not find ....
+
+Is it not from groovy ?
+
+groovy.util.logging.Slf4j
+is from groovy.  That seems to need the other one: org.slf4j.Logger
+I now added this into build.gradle:
+compile group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.7.25'
+
+org.slf4j.Logger
+This should come from jdk
+
+I dont think so. In sgdm repo, intellij shows it under some gradle library "Gradle: org.slf4j..."
+
+FIGURED OUT THIS:
+
+Slf4j needs one of these:
+1. org.slf4j.Logger
+2. org.apache.logging.log4j
+
+
+1. org.slf4j.Logger gives this error:
+And does not lot any log level to stdout (like log.info, log.error, log.debug)
+log4j:WARN No appenders could be found for logger (helloapp.logger.HelloLogger).
+log4j:WARN Please initialize the log4j system properly.
+log4j:WARN See http://logging.apache.org/log4j/1.2/faq.html#noconfig for more info.
+
+
+2. org.apache.logging.log4j
+Gives a message:
+ERROR StatusLogger No Log4j 2 configuration file found. Using default configuration (logging only errors to the console), 
+or user programmatically provided configurations. Set system property 'log4j2.debug' to show Log4j 2 internal initialization 
+logging. See https://logging.apache.org/log4j/2.x/manual/configuration.html for instructions on how to configure Log4j 2
+
+But, at least logs log.error stuff to stdout (along with the error message as above):
+$ gradlew run
+Hello world.
+ERROR StatusLogger No Log4j 2 configuration file found. Using default configuration (logging only errors to the console), 
+or user programmatically provided configurations. Set system property 'log4j2.debug' to show Log4j 2 internal initialization
+logging. See https://logging.apache.org/log4j/2.x/manual/configuration.html for instructions on how to configure Log4j 2
+Printing: hello groovy from class HelloWorld
+23:11:50.346 [main] ERROR helloapp.logger.HelloLogger - Logging: hello groovy from class HelloWorld --> This is "log.error(...)
+
+Notes and code in build.gradle
+    //Slf4j needs one of these:
+    //1. org.slf4j.Logger
+    // This gave error for log.debug and log.info --> log4j:WARN No appenders could be found for logger (helloapp.logger.HelloLogger).
+    //compile group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.7.25'
+    //compile 'org.slf4j:slf4j-api:1.7.25'
+    // Alternative: (for compile 'org.slf4j:slf4j-api:1.7.25')
+    // https://mvnrepository.com/artifact/org.slf4j/slf4j-api
+    //compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.25'
+
+    //2. org.apache.logging.log4j
+    // This gave a general error "ERROR StatusLogger No Log4j 2 configuration file found. Using default configuration (logging only errors to the console)... ..."
+    //    or user programmatically provided configurations. Set system property 'log4j2.debug' to show Log4j 2 internal initialization logging.
+    //    See https://logging.apache.org/log4j/2.x/manual/configuration.html for instructions on how to configure Log4j 2
+
+    // but, at least logged when "log.error" was used
+    compile  'org.apache.logging.log4j:log4j-api:2.11.1'
+    compile  'org.apache.logging.log4j:log4j-core:2.11.1'
+    compile  'org.apache.logging.log4j:log4j-jul:2.11.1'
+    compile  'org.apache.logging.log4j:log4j-slf4j-impl:2.11.1'
