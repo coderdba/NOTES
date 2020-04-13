@@ -180,3 +180,52 @@ $  netstat -anp |grep 1521 |grep LISTEN
 tcp        0      0 101.165.140.266:1521          0.0.0.0:*                   LISTEN      -
 tcp        0      0 110.165.140.264:1521          0.0.0.0:*                   LISTEN      -
 NOTE: Above are various IPs on the same server
+
+=================================
+CHECK FIREWALL PORTS OPEN OR NOT
+=================================
+https://linuxconfig.org/redhat-8-check-open-ports
+
+Software Requirements and Conventions Used
+Software Requirements and Linux Command Line Conventions
+Category	Requirements, Conventions or Software Version Used
+System	RHEL 8 / CentOS 8
+Software	N/A
+Other	Privileged access to your Linux system as root or via the sudo command.
+Conventions	# - requires given linux commands to be executed with root privileges either directly as a root user or by use of sudo command
+$ - requires given linux commands to be executed as a regular non-privileged user
+How to check open ports on RHEL 8 / CentOS 8 Linux step by step instructions
+SUBSCRIBE TO NEWSLETTER
+Subscribe to Linux Career NEWSLETTER and receive latest Linux news, jobs, career advice and tutorials.
+
+ 
+When checking for open firewall ports on RHEL 8 / CentOS 8 Linux it is important to know that firewall ports can be opened in two main different ways. Firstly, the firewall port can be opened as part of a pre-configured service. For example:
+# firewall-cmd --zone=public --permanent --add-service=http
+Secondly, the ports can be open directly as custom user predefined ports. Example:
+# firewall-cmd --permanent --add-port 8080/tcp
+Check service ports opened:
+# firewall-cmd --list-services
+cockpit dhcpv6-client http https ssh
+The above services have their relevant ports open.
+Check for ports opened:
+# firewall-cmd --list-ports
+20/tcp 8080/tcp
+The above ports, namely 20 and 8080 are open for incoming traffic.
+Check for all open ports and services:
+# firewall-cmd --list-all
+Lastly you can get a precise overview of all open ports by the nmap command for any remote Linux host. For example the below nmap command will probe 1000 most commonly used ports:
+$ nmap rhel8
+Host is up (0.78s latency).
+Not shown: 994 filtered ports
+PORT     STATE  SERVICE
+20/tcp   closed ftp-data
+22/tcp   open   ssh
+80/tcp   open   http
+443/tcp  closed https
+8080/tcp closed http-proxy
+9090/tcp closed zeus-admin
+Please note that closed means that the firewall port is open, however, the underlining service on the actual RHEL 8 / CentOS 8 server is not running. It is also possible to check for a specific port. For example:
+$ nmap -p 80 rhel8
+
+PORT   STATE SERVICE
+80/tcp open  http
