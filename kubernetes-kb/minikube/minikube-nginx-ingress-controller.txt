@@ -1,0 +1,172 @@
+https://kubernetes.io/docs/tasks/access-application-cluster/ingress-minikube/
+
+Set up Ingress on Minikube with the NGINX Ingress Controller
+An Ingress is an API object that defines rules which allow external access to services in a cluster. An Ingress controller fulfills the rules set in the Ingress.
+
+This page shows you how to set up a simple Ingress which routes requests to Service web or web2 depending on the HTTP URI.
+
+Before you begin
+Create a Minikube cluster
+Enable the Ingress controller
+Deploy a hello, world app
+Create an Ingress resource
+Create Second Deployment
+Edit Ingress
+Test Your Ingress
+What's next
+Before you begin
+You need to have a Kubernetes cluster, and the kubectl command-line tool must be configured to communicate with your cluster. If you do not already have a cluster, you can create one by using Minikube, or you can use one of these Kubernetes playgrounds:
+
+Katacoda
+Play with Kubernetes
+To check the version, enter kubectl version.
+
+Create a Minikube cluster
+Click Launch Terminal
+
+Launch Terminal
+(Optional) If you installed Minikube locally, run the following command:
+
+minikube start
+Enable the Ingress controller
+To enable the NGINX Ingress controller, run the following command:
+
+minikube addons enable ingress
+Verify that the NGINX Ingress controller is running
+
+kubectl get pods -n kube-system
+Note: This can take up to a minute.
+Output:
+
+NAME                                        READY     STATUS    RESTARTS   AGE
+default-http-backend-59868b7dd6-xb8tq       1/1       Running   0          1m
+kube-addon-manager-minikube                 1/1       Running   0          3m
+kube-dns-6dcb57bcc8-n4xd4                   3/3       Running   0          2m
+kubernetes-dashboard-5498ccf677-b8p5h       1/1       Running   0          2m
+nginx-ingress-controller-5984b97644-rnkrg   1/1       Running   0          1m
+storage-provisioner                         1/1       Running   0          2m
+Deploy a hello, world app
+Create a Deployment using the following command:
+
+kubectl run web --image=gcr.io/google-samples/hello-app:1.0 --port=8080
+Output:
+
+deployment.apps/web created
+Expose the Deployment:
+
+kubectl expose deployment web --target-port=8080 --type=NodePort
+Output:
+
+service/web exposed
+Verify the Service is created and is available on a node port:
+
+kubectl get service web
+Output:
+
+NAME      TYPE       CLUSTER-IP       EXTERNAL-IP   PORT(S)          AGE
+web       NodePort   10.104.133.249   <none>        8080:31637/TCP   12m
+Visit the service via NodePort:
+
+minikube service web --url
+Output:
+
+http://172.17.0.15:31637
+Note: Katacoda environment only: at the top of the terminal panel, click the plus sign, and then click Select port to view on Host 1. Enter the NodePort, in this case 31637, and then click Display Port.
+Output:
+
+Hello, world!
+Version: 1.0.0
+Hostname: web-55b8c6998d-8k564
+You can now access the sample app via the Minikube IP address and NodePort. The next step lets you access the app using the Ingress resource.
+
+Create an Ingress resource
+The following file is an Ingress resource that sends traffic to your Service via hello-world.info.
+
+Create example-ingress.yaml from the following file:
+
+apiVersion: networking.k8s.io/v1beta1 # for versions before 1.14 use extensions/v1beta1
+kind: Ingress
+metadata:
+  name: example-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+spec:
+  rules:
+  - host: hello-world.info
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: web
+          servicePort: 8080
+Create the Ingress resource by running the following command:
+
+kubectl apply -f example-ingress.yaml
+Output:
+
+ingress.networking.k8s.io/example-ingress created
+Verify the IP address is set:
+
+kubectl get ingress
+Note: This can take a couple of minutes.
+NAME              HOSTS              ADDRESS       PORTS     AGE
+example-ingress   hello-world.info   172.17.0.15   80        38s
+Add the following line to the bottom of the /etc/hosts file.
+
+Note: If you are running Minikube locally, use minikube ip to get the external IP. The IP address displayed within the ingress list will be the internal IP.
+172.17.0.15 hello-world.info
+This sends requests from hello-world.info to Minikube.
+
+Verify that the Ingress controller is directing traffic:
+
+curl hello-world.info
+Output:
+
+Hello, world!
+Version: 1.0.0
+Hostname: web-55b8c6998d-8k564
+Note: If you are running Minikube locally, you can visit hello-world.info from your browser.
+Create Second Deployment
+Create a v2 Deployment using the following command:
+
+kubectl run web2 --image=gcr.io/google-samples/hello-app:2.0 --port=8080
+Output:
+
+deployment.apps/web2 created
+Expose the Deployment:
+
+kubectl expose deployment web2 --target-port=8080 --type=NodePort
+Output:
+
+service/web2 exposed
+Edit Ingress
+Edit the existing example-ingress.yaml and add the following lines:
+
+      - path: /v2/*
+        backend:
+          serviceName: web2
+          servicePort: 8080
+Apply the changes:
+
+kubectl apply -f example-ingress.yaml
+Output:
+
+ingress.extensions/example-ingress configured
+Test Your Ingress
+Access the 1st version of the Hello World app.
+
+curl hello-world.info
+Output:
+
+Hello, world!
+Version: 1.0.0
+Hostname: web-55b8c6998d-8k564
+Access the 2nd version of the Hello World app.
+
+curl hello-world.info/v2
+Output:
+
+Hello, world!
+Version: 2.0.0
+Hostname: web2-75cd47646f-t8cjk
+Note: If you are running Minikube locally, you can visit hello-world.info and hello-world.info/v2 from your browser.
