@@ -1,0 +1,173 @@
+Install - https://dev.mysql.com/doc/mysql-osx-excerpt/8.0/en/osx-installation.html
+Launch - https://dev.mysql.com/doc/mysql-osx-excerpt/8.0/en/osx-installation-launchd.html
+- (see the launcher in 'Mac --> System Preferences')
+Preferences - https://dev.mysql.com/doc/mysql-osx-excerpt/8.0/en/osx-installation-prefpane.html
+
+====================================
+DOWNLOAD
+====================================
+https://dev.mysql.com/downloads/mysql/
+macOS 10.15 (x86, 64-bit), DMG Archive - 376MB (used this)
+macOS 10.15 (x86, 64-bit), Compressed TAR Archive - 159MB (downloaded, did not use)
+
+====================================
+INSTALL
+====================================
+Installs into - /usr/local
+lrwxr-xr-x    1 root    wheel     30 Apr 16 09:47 mysql -> mysql-8.0.19-macos10.15-x86_64
+drwxr-xr-x   13 root    wheel    416 Apr 16 09:47 mysql-8.0.19-macos10.15-x86_64
+
+Executables are in - /usr/local/mysql/bin
+
+====================================
+MySQL Installation Layout on macOS
+====================================
+https://dev.mysql.com/doc/mysql-osx-excerpt/8.0/en/osx-installation-pkg.html
+
+Directory	Contents of Directory
+bin	mysqld server, client and utility programs
+data	Log files, databases, where /usr/local/mysql/data/mysqld.local.err is the default error log
+docs	Helper documents, like the Release Notes and build information
+include	Include (header) files
+lib	Libraries
+man	Unix manual pages
+mysql-test	MySQL test suite ('MySQL Test' is disabled by default during the installation process when using the installer package (DMG))
+share	Miscellaneous support files, including error messages, sample configuration files, SQL for database installation
+support-files	Scripts and sample configuration files
+/tmp/mysql.sock	Location of the MySQL Unix socket
+
+===============
+LOGON 
+===============
+https://dev.mysql.com/doc/refman/8.0/en/connecting-disconnecting.html
+
+$ mysql -u root -p
+Password:
+
+mysql>
+mysql> quit
+Bye
+
+===============
+DATABASES
+===============
+https://dev.mysql.com/doc/refman/8.0/en/database-use.html
+
+mysql> show databases;
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| mysql              |
+| performance_schema |
+| sys                |
++--------------------+
+4 rows in set (0.00 sec)
+
+------------------------
+CREATE DATABASE
+------------------------
+https://dev.mysql.com/doc/refman/8.0/en/creating-database.html
+
+mysql> create database ratpack;
+Query OK, 1 row affected (0.00 sec)
+
+mysql> show databases;
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| mysql              |
+| performance_schema |
+| ratpack            |
+| sys                |
++--------------------+
+5 rows in set (0.00 sec)
+
+------------------------
+'USE' A DATABASE
+------------------------
+To make 'ratpack' the current database, use this statement:
+mysql> use ratpack;
+Database changed
+
+To logon directly to a given DB:
+$ mysql -h host -u user -p menagerie
+
+===============
+TABLE - CREATE
+===============
+https://dev.mysql.com/doc/refman/8.0/en/creating-tables.html
+
+mysql> show tables;
+Empty set (0.00 sec)
+
+mysql>  create table apps (name VARCHAR(20) primary key, description VARCHAR(40));
+Query OK, 0 rows affected (0.01 sec)
+
+mysql> show tables;
++-------------------+
+| Tables_in_ratpack |
++-------------------+
+| apps              |
++-------------------+
+1 row in set (0.00 sec)
+
+mysql> DESCRIBE apps;
++-------------+-------------+------+-----+---------+-------+
+| Field       | Type        | Null | Key | Default | Extra |
++-------------+-------------+------+-----+---------+-------+
+| name        | varchar(20) | NO   | PRI | NULL    |       |
+| description | varchar(40) | YES  |     | NULL    |       |
++-------------+-------------+------+-----+---------+-------+
+2 rows in set (0.01 sec)
+
+mysql> CREATE TABLE pet (name VARCHAR(20), owner VARCHAR(20),
+       species VARCHAR(20), sex CHAR(1), birth DATE, death DATE);
+   
+mysql> describe pet;
++---------+-------------+------+-----+---------+-------+
+| Field   | Type        | Null | Key | Default | Extra |
++---------+-------------+------+-----+---------+-------+
+| name    | varchar(20) | YES  |     | NULL    |       |
+| owner   | varchar(20) | YES  |     | NULL    |       |
+| species | varchar(20) | YES  |     | NULL    |       |
+| sex     | char(1)     | YES  |     | NULL    |       |
+| birth   | date        | YES  |     | NULL    |       |
+| death   | date        | YES  |     | NULL    |       |
++---------+-------------+------+-----+---------+-------+
+6 rows in set (0.00 sec)
+
+===============
+TABLE - LOAD (TBD - see error below)
+===============
+https://dev.mysql.com/doc/refman/8.0/en/loading-tables.html
+
+Create a file ~/temp/pet.txt
+NOTE: \N means null
+
+Whistler        Gwen    bird    \N      1997-12-09      \N
+
+mysql>  LOAD DATA LOCAL INFILE '~/temp/pet.txt' INTO TABLE pet;
+ERROR 3948 (42000): Loading local data is disabled; this must be enabled on both the client and server sides
+
+
+===============
+TABLE - INSERT 
+===============
+
+mysql> insert into pet values ('raja','rani','dog','m',null,null);
+Query OK, 1 row affected (0.00 sec)
+
+mysql> select *  from pet;
++------+-------+---------+------+-------+-------+
+| name | owner | species | sex  | birth | death |
++------+-------+---------+------+-------+-------+
+| raja | rani  | dog     | m    | NULL  | NULL  |
++------+-------+---------+------+-------+-------+
+1 row in set (0.00 sec)
+
+
+===============
+CREATE A USER
+===============
