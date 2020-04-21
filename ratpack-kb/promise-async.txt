@@ -1,0 +1,78 @@
+---------------------------------------------------------------------------
+https://ratpack.io/manual/current/api/index.html?ratpack/exec/Promise.html
+---------------------------------------------------------------------------
+async
+static <T> Promise<T> async(Upstream<T> upstream)
+Creates a promise for value that will be produced asynchronously.
+The Upstream.connect(Downstream) method of the given upstream will be invoked every time the value is requested. 
+This method should propagate the value (or error) to the given downstream object when it is available.
+
+import ratpack.exec.Promise;
+import ratpack.test.exec.ExecHarness;
+
+import static org.junit.Assert.assertEquals;
+
+public class Example {
+  public static void main(String[] args) throws Exception {
+    String value = ExecHarness.yieldSingle(e ->
+      Promise.<String>async(down ->
+        new Thread(() -> {
+          down.success("foo");
+        }).start()
+      )
+    ).getValueOrThrow();
+
+    assertEquals(value, "foo");
+  }
+}
+
+---------------------------------------------------------------------------
+https://danhyun.github.io/mastering-async-ratpack/#ratpack_thread_model
+---------------------------------------------------------------------------
+
+
+- EXAMPLE Promise#flatMap with async
+
+Promise.value(3)
+  .flatMap { int i ->
+    Promise.async { Downstream d -> 
+      Thread.start {
+        println 'starting thread'
+        Thread.sleep(100)
+        d.success('A' * i)
+      }
+    }
+  }.then { String s ->
+    println 'from flatMap async Thread'
+    assert s == 'AAA'
+  }
+  
+- EXAMPLE Promise.async
+
+Thread externalThirdPartyAsyncLibraryWithCallback(Closure callback) {
+  Thread.start {
+    println 'Thread started'
+    (1..5).each { i ->
+      println(i)
+      sleep(1000)
+    }
+
+    callback('async computation complete')
+    println 'Thread finished'
+  }
+}
+
+given:
+Promise p = Promise.async { Downstream downstream ->
+  println 'async start'
+  externalThirdPartyAsyncLibraryWithCallback(
+    downstream.&success
+  )
+  println 'async end'
+}
+
+when:
+ExecResult result = yield { p }
+
+then:
+result.value == 'async computation complete'
