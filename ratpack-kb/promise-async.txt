@@ -30,8 +30,37 @@ public class Example {
 https://danhyun.github.io/mastering-async-ratpack/#ratpack_thread_model
 ---------------------------------------------------------------------------
 
+- EXAMPLE Promise.async
 
-- EXAMPLE Promise#flatMap with async
+Thread externalThirdPartyAsyncLibraryWithCallback(Closure callback) {
+  Thread.start {
+    println 'Thread started'
+    (1..5).each { i ->
+      println(i)
+      sleep(1000)
+    }
+
+    callback('async computation complete')
+    println 'Thread finished'
+  }
+}
+
+given:
+Promise p = Promise.async { Downstream downstream ->
+  println 'async start'
+  externalThirdPartyAsyncLibraryWithCallback(
+    downstream.&success
+  )
+  println 'async end'
+}
+
+when:
+ExecResult result = yield { p }
+
+then:
+result.value == 'async computation complete'
+
+- EXAMPLE Promise#flatMap with async --> THREAD
 
 Promise.value(3)
   .flatMap { int i ->
@@ -77,7 +106,7 @@ ExecResult result = yield { p }
 then:
 result.value == 'async computation complete'
 
-EXAMPLE - Forking execution
+- EXAMPLE - Forking execution - FORK
 Promise#fork
 
 given:
