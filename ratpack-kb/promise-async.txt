@@ -76,3 +76,30 @@ ExecResult result = yield { p }
 
 then:
 result.value == 'async computation complete'
+
+EXAMPLE - Forking execution
+Promise#fork
+
+given:
+List list = []
+Closure addToList = { 
+  println it
+  list << it
+  it
+}
+
+expect:
+run {
+  Blocking.get {
+    addToList('foo') 
+  }.right(
+    Promise.async { Downstream d ->
+      d.success(addToList('bar')) 
+    }.fork() 
+  ).map { Pair<String, String> pair ->
+    pair.left + pair.right
+  }.then { String msg ->
+    assert list == ['bar', 'foo']  
+    assert msg == 'foobar'
+  }
+}
