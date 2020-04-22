@@ -1,0 +1,313 @@
+http://labs.adaptavist.com/code/2017/03/27/practical-ratpack-promises/
+
+Practical Ratpack Promises
+27 March 2017
+Written by Jon Bevan
+
+There are a lot of excellent resources describing how Ratpack works and explaining its execution model in practice, and with examples too. There's also the official documentation.
+
+However, articles like this one only scratch the surface of Promises and are also 2 years old at the time of writing, so I wanted to write about Promises in Ratpack from a practical perspective, having used them now for several months.
+
+What's a Promise?
+A Promise is an object that will eventually yield or provide a value - often for an asynchronous computation e.g. some kind of network request. Promises are implemented with a fluent interface that allow you to build a chain of actions that will occur when the value of the Promise is yielded. Promises are implemented in Javascript, in Java as Futures and in other programming languages like C++, Python, Scala and R.
+
+It's important to note that Promises don't guarantee that a value will ever be yielded, and additionally, they may fail to provide a value. In Ratpack, a failed/errored Promise is caused by an Exception.
+
+So, how do I use a Ratpack Promise?
+Well, a simple if unrealistic example is as follows:
+
+Promise.value("Hello World").then { String message ->
+    println message
+}
+The Promise.value static method call creates a Promise that has a value that is immediately available, which makes this example slighly unrealistic, although it can be a useful method for testing and caching.
+
+The .then method call on the Promise is what triggers the Promise to be evaluated.
+
+If .then is not called then the code inside the Promise that calculates the value is not called.
+
+.then also returns void, so you can't chain any additional method calls.
+
+What about a real-world example then?
+As I hinted at above, most of the real-world examples are to do with asynchronous calculations which often include some kind of I/O like a network request.
+
+In the work I've been doing recently we use the AWS Java library a lot, so I'll use that in the examples here. The AWS library doesn't know about Ratpack's Promises, but it does perform network requests so we wrap the library calls like this:
+
+Blocking.get {
+    dynamoDbClient.createTable(createTableRequest)
+}
+You can read more about Blocking.get in the documentation, but it returns a Promise for the value returned by the nested API call. In this case it returns us a Promise for the CreateTableResult object that Amazon's DynamoDB client returns.
+
+So, a real world example of using Promises inside of a Ratpack request handler could be:
+
+void handle(Context context) {
+    def createTableRequest = buildTableRequest(context)
+    Blocking.get {
+        dynamoDbClient.createTable(createTableRequest)
+    } then { CreateTableResult result ->
+        context.response.send("The table ARN is: ${result.tableDescription.tableArn}")
+    }
+}
+For brevity I'm going to mostly omit the void handle(Context context)... stuff from the following examples.
+
+What happens if there's a bug, or the Internet breaks?
+Promises get broken. The thing that returns or calculates the value we've been promised may break, sometimes because we provide invalid data, sometimes because we haven't authenticated ourselves successfully, sometimes because we write buggy code, sometimes because the network infrastructure we're running on lets us down and sometimes because the external service we interact with has some internal problem of its own.
+
+Ratpack provides a couple ways of dealing with Promises that fail.
+
+onError
+We can handle all Exceptions using .onError:
+
+Blocking.get {
+    dynamoDbClient.createTable(createTableRequest)
+} onError { Throwable t ->
+    log.error("Table creation request failed", t)
+    context.response.send("Sorry the table creation failed")
+} then { CreateTableResult result ->
+    context.response.send("The table ARN is: ${result.tableDescription.tableArn}")
+}
+Or we can handle only specific Exceptions too:
+
+Blocking.get {
+    dynamoDbClient.createTable(createTableRequest)
+} onError(ResourceInUseException, { ResourceInUseException e ->
+    log.error("Table creation request failed", e)
+    context.response.send("That table already exists!")
+}) then { CreateTableResult result ->
+    context.response.send("The table ARN is: ${result.tableDescription.tableArn}")
+}
+It's important to note that once .onError has been called, nothing else in the promise chain is called. It's a terminal operation.
+
+It's also important to note that the location of your error handling methods within the promise chain is significant. Exceptions will only be handled by the onError (or mapError etc) methods if the error has occurred earlier in the promise chain. Here's an example:
+
+// Let's assume that buildTableRequest returns Promise<CreateTableRequest> for this example
+buildTableRequest(context) onError { Exception e ->
+    // This onError closure will only handle errors from promise returned by the buildTableRequest method
+    log.error("The request was invalid", e)
+    context.clientError(HttpStatus.SC_BAD_REQUEST)
+} flatMap { CreateTableRequest createTableRequest ->
+    // I'll explain flatMap below
+    Blocking.get {
+        dynamoDbClient.createTable(createTableRequest)
+    }
+} onError(ResourceInUseException, { ResourceInUseException e ->
+    // This onError closure will only handle ResourceInUseException from between the
+    // previous onError handler and this point here 
+    log.error("Table creation request failed", e)
+    context.response.send("That table already exists!")
+}) then { CreateTableResult result ->
+    context.response.send("The table ARN is: ${result.tableDescription.tableArn}")
+}
+mapError
+Sometimes, certain errors are OK and we can recover from them. In this scenario we can use .mapError to convert our exception into some valid object that the rest of our code can consume.
+
+Like .onError we can map all exceptions or we can map specific exceptions.
+
+Blocking.get {
+    dynamoDbClient.createTable(createTableRequest)
+} mapError(ResourceInUseException, { ResourceInUseException e ->
+    log.warn("Table creation request failed", e)
+    new CreateTableResult()
+        .withTableDescription(
+            new TableDescription()
+                .withTableArn("some-default-value")
+                .withTableStatus(TableStatus.ACTIVE))
+}) then { CreateTableResult result ->
+    context.response.send("The table ARN is: ${result.tableDescription.tableArn}")
+}
+flatMapError
+If our error mapping code interacts with a service that returns a promise, then we need to use the .flatMapError method, otherwise we'll end up with a promise within a promise.
+
+Blocking.get {
+    dynamoDbClient.createTable(createTableRequest)
+} flatMapError(ResourceInUseException, { ResourceInUseException e ->
+    log.info("Table creation request failed", e)
+    // Let's assume this method call returns Promise<CreateTableResult>
+    getOriginalCreateTableResultFromExternalCache(context)
+}) then { CreateTableResult result ->
+    context.response.send("The table ARN is: ${result.tableDescription.tableArn}")
+}
+If we didn't use .flatMapError in the example above, then we'd end up with something like this:
+
+/**
+ * DONT DO THIS 
+ */
+Blocking.get {
+    dynamoDbClient.createTable(createTableRequest)
+} mapError(ResourceInUseException, { ResourceInUseException e ->
+    log.info("Table creation request failed", e)
+    // Let's assume this method call returns Promise<CreateTableResult>
+    getOriginalCreateTableResultFromExternalCache(context)
+}) then { Promise<CreateTableResult> promise ->
+    promise.then { CreateTableResult result ->
+        context.response.send("The table ARN is: ${result.tableDescription.tableArn}")
+    }
+}
+What if I need to change the promised value?
+Very often, the value returned by the services and APIs you use don't return the data you want in the format you want it to be in. In order to change one promised value to another you can use the following methods:
+
+map
+For straight forward object manipulation, .map is your friend:
+
+Blocking.get {
+    dynamoDbClient.createTable(createTableRequest)
+} map { CreateTableResult result ->
+    result.tableDescription.tableArn
+} then { String tableArn ->
+    context.response.send("The table ARN is: ${tableArn}")
+}
+flatMap
+If our value conversion depends on some other promised value, we can use .flatMap like in the error handling example above:
+
+Blocking.get {
+    dynamoDbClient.createTable(createTableRequest)
+} flatMap { CreateTableResult result ->
+    // Let's assume this method call returns Promise<TableDescription>
+    externalCache.put(context, result)
+} then { TableDescription description ->
+    context.response.send("The table ARN is: ${description.tableArn}")
+}
+And of course we can chain these too:
+
+// import static ratpack.jackson.Jackson.fromJson
+
+context.parse(fromJson(Map)) map { Map tableDetails ->
+    // This method call synchronously returns a CreateTableRequest 
+    buildCreateTableRequest(tableDetails)
+} flatMap { CreateTableRequest tableRequest ->
+    Blocking.get {
+        dynamoDbClient.createTable(createTableRequest)
+    }
+} then { CreateTableResult result ->
+    context.response.send("The table ARN is ${result.tableDescription.tableArn}")
+}
+mapIf / flatMapIf
+There are also some conditional mapping operations you can use on a promise: .mapIf and .flatMapIf
+
+I haven't used these personally, but they are part of Ratpack's Promise API.
+
+What if I just want to intercept the promised value?
+We use these often for logging, or for fire-and-forget operations.
+
+next
+The .next and .nextOp calls can be used to do some work using the current value of the Promise at that point in the Promise chain, without changing the value of the Promise.
+
+If the Promise has failed, this call does not get invoked, so in the code below, we'll only log request timings for successful requests.
+
+def start = System.currentTimeMillis()
+Blocking.get {
+    dynamoDbClient.createTable(createTableRequest)
+} next { CreateTableResult result ->
+    // This code will not be invoked if the dynamoDbClient.createTable call threw an exception
+    def taken = System.currentTimeMillis() - start
+    log.info("Table creation request for {} took {}ms", result.tableDescription.tableArn, taken)
+} onError { Throwable t ->
+    log.error("Table creation request failed", t)
+    context.response.send("Sorry the table creation failed")
+} then { CreateTableResult result ->
+    context.response.send("The table ARN is: ${result.tableDescription.tableArn}")
+}
+wiretap
+The .wiretap call, in contrast to .next, does get called regardless of the state of the Promise. Instead of being passed the value of the Promise at that point in the chain, it gets a Result wrapper which can be inspected to see the state of the Promise.
+
+def start = System.currentTimeMillis()
+Blocking.get {
+    dynamoDbClient.createTable(createTableRequest)
+} wiretap { Result<CreateTableResult> result ->
+    def taken = System.currentTimeMillis() - start
+    if (result.isError()) {
+        log.warn("Table creation request failed after {}ms", taken)
+    } else {
+        log.info("Table creation request for {} took {}ms", result.tableDescription.tableArn, taken)
+    }
+} onError { Throwable t ->
+    log.error("Table creation request failed", t)
+    context.response.send("Sorry the table creation failed")
+} then { CreateTableResult result ->
+    context.response.send("The table ARN is: ${result.tableDescription.tableArn}")
+}
+We use .wiretap along with ParallelBatch.yieldAll() to determine which of our parallel promises failed.
+
+I want to combine the promised value with another value
+left / right
+These two methods allow us to convert our promised value into a Pair of values. The .left method allows us to specify what will be on the 'left' of the Pair (the original Promised value will be on the right), and the .right method allows us to specify what will be on the 'right' of the Pair (the original Promised value will be on the left).
+
+Blocking.get {
+    dynamoDbClient.createTable(createTableRequest)
+} left { CreateTableResult result ->
+    result.tableDescription
+} then { Pair<TableDescription, CreateTableResult> pair ->
+    def tableDesc = pair.left
+    context.response.send("The table ARN is: ${tableDesc.tableArn}")
+}
+or we could combine this with the .map call from earlier:
+
+Blocking.get {
+    dynamoDbClient.createTable(createTableRequest)
+} map { CreateTableResult result ->
+    result.tableDescription
+} right { TableDescription desc ->
+    desc.tableArn
+} then { Pair<TableDescription, String> pair ->
+    def tableDesc = pair.left
+    def tableArn = pair.right
+    context.response.send("The ARN for ${tableDesc.tableName} is: ${tableArn}")
+}
+flatLeft / flatRight
+The .flatLeft and .flatRight methods operate in the same way as the .left and .right calls, but are used when you want to call some method that returns a Promise, and add the value of that Promise into the Pair.
+
+Blocking.get {
+    dynamoDbClient.createTable(createTableRequest)
+} flatRight { CreateTableResult result ->
+    def attributes = [created: new AttributeValue(System.currentTimeMillis() as String)]
+    def createdItemRequest = new PutItemRequest(result.tableDescription.tableName, attributes)
+
+    // This Blocking.get call will return Promise<PutItemResult>
+    Blocking.get {
+        dynamoDbClient.putItem(createdItemRequest)
+    }
+} then { Pair<CreateTableResult, PutItemResult> pair ->
+    def tableDescription = pair.left.tableDescription
+    def putItemResult = pair.right
+    log.info("Consumed capacity: {}", putItemResult.consumedCapacity.capacityUnits)
+    context.response.send("The ARN for ${tableDescription.tableName} is: ${tableDescription.tableArn}")
+}
+I want to bail out of my promise chain early
+As well as the .then and .onError terminating parts of the Promise chain, you can also specify that the chain should stop processing using a .route method call which takes a predicate and an action.
+
+If the predicate for a .route call returns true, ONLY the action specified in the .route will be executed
+
+route
+In this example, we short-circuit the promise chain if the request contains some indicator that this is just a test:
+
+// import static ratpack.jackson.Jackson.fromJson
+
+context.parse(fromJson(Map)) route ({ Map requestBody ->
+    requestBody.containsKey('test')
+}, { Map requestBody ->
+    // If the predicate (1st param given to route) returns true, we execute this code
+    // but not the rest of the Promise chain
+    context.response.send("This request was just a test")
+}) map { Map tableDetails ->
+    // This will not run if the requestBody contains a 'test' map key 
+    buildCreateTableRequest(tableDetails)
+} flatMap { CreateTableRequest tableRequest ->
+    // This will not run if the requestBody contains a 'test' map key
+    Blocking.get {
+        dynamoDbClient.createTable(createTableRequest)
+    }
+} then { CreateTableResult result ->
+    // This will not run if the requestBody contains a 'test' map key
+    context.response.send("The table ARN is ${result.tableDescription.tableArn}")
+}
+onNull
+I've never used this but it looked interesting, so I thought I'd mention it here. If the Promised value is null, then this action will be taken:
+
+Blocking.get {
+    externalCache.get(context.request.queryParams['id'])
+} onNull {
+    context.clientError(HttpStatus.SC_NOT_FOUND)
+} then { String cachedValue ->
+    // This won't be executed if a promise of null was returned from the cache
+    context.response.send(cachedValue)
+}
+Hopefully some examples, along with documentation links, help understand how the Promises work in Ratpack and how powerful the Promise chain can be!
