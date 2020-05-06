@@ -1,0 +1,6 @@
+===========
+GETTING TSV
+===========
+while read rs cont; do echo $rs $cont; done < <(kubectl get rs -o json | jq -r '.items[].spec.template | .metadata.labels["replication-controller"] as $rs | .spec.containers[] | select(.livenessProbe != null) | [$rs,.name] | @tsv')
+
+while read rs cont; do kubectl patch rs $rs -p '{"spec":{"template":{"spec":{"containers":[{"name":"'$cont'","livenessProbe":{"failureThreshold":1002}}]}}}}' $rs $cont; done < <(kubectl get rs -o json | jq -r '.items[].spec.template | .metadata.labels["replication-controller"] as $rs | .spec.containers[] | select(.livenessProbe != null) | [$rs,.name] | @tsv')
