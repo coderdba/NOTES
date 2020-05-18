@@ -1,0 +1,26 @@
+=============================
+SERVICE ENDPOINT UPDATES
+=============================
+https://engineering.dollarshaveclub.com/kubernetes-fixing-delayed-service-endpoint-updates-fd4d0a31852c
+
+Sometimes endpoints of a service do not get updated quickly - so apps that call that service may get stale IPs to connect to.
+
+From the website:  https://engineering.dollarshaveclub.com/kubernetes-fixing-delayed-service-endpoint-updates-fd4d0a31852c
+    My first attempt at resolving this issue was adding more endpoint 
+    controller workers by tweaking the --concurrent-endpoints-syncs flag of kube-controller-manager. 
+    This had little effect. After more code reading and research, 
+    I discover the --kube-api-qps flag and its sister--kube-api-burst. 
+    These flags sets the rate limit for all kubernetes api requests by any 
+    controller within the kube-controller-manager (including the endpoints controller). 
+    The default is 20 but that is clearly not enough for the workload our cluster runs. 
+    After some trial and error, I determined a more suitable value that made the above log entry disappear. 
+    In our case, 300 and 325 were the magic numbers. 
+    With that change,Endpoints started to update immediately as pods were added and removed.
+
+    Just a fair warning, the larger those flags are, the more load that is placed on the api server and etcd. 
+    In our case, the increase in load was worth solving this problem once and for all.
+    
+
+Also see, for --kube-api-qps flag and its sister--kube-api-burst:
+https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/
+https://kubernetes.io/docs/tasks/administer-cluster/kubelet-config-file/
