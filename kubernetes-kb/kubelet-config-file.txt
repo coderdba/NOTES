@@ -44,5 +44,48 @@ data:
     {...}
 
 
+Set the Node to use the new configuration
+Edit the Node’s reference to point to the new ConfigMap with the following command:
 
+kubectl edit node ${NODE_NAME}
+In your text editor, add the following YAML under spec:
 
+configSource:
+    configMap:
+        name: CONFIG_MAP_NAME # replace CONFIG_MAP_NAME with the name of the ConfigMap
+        namespace: kube-system
+        kubeletConfigKey: kubelet
+
+Observe that the Node begins using the new configuration
+kubectl get nodes ${NODE_NAME} -o json | jq '.status.config'
+The following is an example response:
+
+{
+  "active": {
+    "configMap": {
+      "kubeletConfigKey": "kubelet",
+      "name": "my-node-config-9mbkccg2cc",
+      "namespace": "kube-system",
+      "resourceVersion": "1326",
+      "uid": "705ab4f5-6393-11e8-b7cc-42010a800002"
+    }
+  },
+  "assigned": {
+    "configMap": {
+      "kubeletConfigKey": "kubelet",
+      "name": "my-node-config-9mbkccg2cc",
+      "namespace": "kube-system",
+      "resourceVersion": "1326",
+      "uid": "705ab4f5-6393-11e8-b7cc-42010a800002"
+    }
+  },
+  "lastKnownGood": {
+    "configMap": {
+      "kubeletConfigKey": "kubelet",
+      "name": "my-node-config-9mbkccg2cc",
+      "namespace": "kube-system",
+      "resourceVersion": "1326",
+      "uid": "705ab4f5-6393-11e8-b7cc-42010a800002"
+    }
+  }
+}
