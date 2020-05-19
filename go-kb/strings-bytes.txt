@@ -1,0 +1,191 @@
+Further reading
+https://yourbasic.org/golang/string-functions-reference-cheat-sheet/
+
+================================
+Byte to String, String to Byte
+================================
+- https://yourbasic.org/golang/convert-string-to-byte-slice/
+
+Convert between byte array/slice and string
+yourbasic.org/golang
+Golang gopher
+Basics
+Convert string to bytes
+Convert bytes to string
+Performance
+Basics
+When you convert between a string and a byte slice (array), you get a brand new slice that contains the same bytes as the string, and vice versa.
+
+The conversion doesn’t change the data;
+the only difference is that strings are immutable, while byte slices can be modified.
+If you need to manipulate the characters (runes) of a string, you may want to convert the string to a rune slice instead. See Convert between rune array/slice and string.
+
+Convert string to bytes
+When you convert a string to a byte slice, you get a new slice that contains the same bytes as the string.
+
+b := []byte("ABC€")
+fmt.Println(b) // [65 66 67 226 130 172]
+Note that the character € is encoded in UTF-8 using 3 bytes. See the Go rune article for more on UTF-8 encoding of Unicode code points.
+
+Convert bytes to string
+When you convert a slice of bytes to a string, you get a new string that contains the same bytes as the slice.
+
+s := string([]byte{65, 66, 67, 226, 130, 172})
+fmt.Println(s) // ABC€
+Performance
+These conversions create a new slice or string, and therefore have time complexity proportional to the number of bytes that are processed.
+
+More efficient alternative
+In some cases, you might be able to use a string builder, which can concatenate strings without redundant copying:
+
+================================
+String Builder
+================================
+- https://yourbasic.org/golang/build-append-concatenate-strings-efficiently/
+
+Clean and simple string building
+For simple cases where performance is a non-issue, fmt.Sprintf is your friend. It’s clean, simple and fairly efficient.
+
+s := fmt.Sprintf("Size: %d MB.", 85) // s == "Size: 85 MB."
+The fmt cheat sheet lists the most common formatting verbs and flags.
+
+High-performance string concatenationGo 1.10
+A strings.Builder is used to efficiently append strings using write methods.
+
+It offers a subset of the bytes.Buffer methods that allows it to safely avoid extra copying when converting a builder to a string.
+You can use the fmt package for formatting since the builder implements the io.Writer interface.
+The Grow method can be used to preallocate memory when the maximum size of the string is known.
+var b strings.Builder
+b.Grow(32)
+for i, p := range []int{2, 3, 5, 7, 11, 13} {
+    fmt.Fprintf(&b, "%d:%d, ", i+1, p)
+}
+s := b.String()   // no copying
+s = s[:b.Len()-2] // no copying (removes trailing ", ")
+fmt.Println(s)
+1:2, 2:3, 3:5, 4:7, 5:11, 6:13
+Before Go 1.10
+Use fmt.Fprintf to print into a bytes.Buffer.
+
+var buf bytes.Buffer
+for i, p := range []int{2, 3, 5, 7, 11, 13} {
+    fmt.Fprintf(&buf, "%d:%d, ", i+1, p)
+}
+buf.Truncate(buf.Len() - 2) // Remove trailing ", "
+s := buf.String()           // Copy into a new string
+fmt.Println(s)
+1:2, 2:3, 3:5, 4:7, 5:11, 6:13
+This solution is pretty efficient but may generate some excess garbage. For higher performance, you can try to use the append functions in package strconv.
+
+buf := []byte("Size: ")
+buf = strconv.AppendInt(buf, 85, 10)
+buf = append(buf, " MB."...)
+s := string(buf)
+If the expected maximum length of the string is known, you may want to preallocate the slice.
+
+buf := make([]byte, 0, 16)
+buf = append(buf, "Size: "...)
+buf = strconv.AppendInt(buf, 85, 10)
+buf = append(buf, " MB."...)
+s := string(buf)
+
+=================
+Further reading
+=================
+https://yourbasic.org/golang/string-functions-reference-cheat-sheet/
+
+String literals (escape characters)
+Expression	Result	Note
+""		Default zero value for type string
+"Japan 日本"	Japan 日本	Go code is Unicode text encoded in UTF‑8
+"\xe6\x97\xa5"	日	\xNN specifies a byte
+"\u65E5"	日	\uNNNN specifies a Unicode value
+"\\"	\	Backslash
+"\""	"	Double quote
+"\n"		Newline
+"\t"		Tab
+`\xe6`	\xe6	Raw string literal*
+html.EscapeString("<>")	&lt;&gt;	HTML escape for <, >, &, ' and "
+url.PathEscape("A B")	A%20B	URL percent-encoding net/url
+* In `` string literals, text is interpreted literally and backslashes have no special meaning. See Escapes and multiline strings for more on raw strings, escape characters and string encodings.
+
+Concatenate
+Expression	Result	Note
+"Ja" + "pan"	Japan	Concatenation
+Performance tips
+See 3 tips for efficient string concatenation for how to best use a string builder to concatenate strings without redundant copying.
+
+Equal and compare (ignore case)
+Expression	Result	Note
+"Japan" == "Japan"	true	Equality
+strings.EqualFold("Japan", "JAPAN")	true	Unicode case folding
+"Japan" < "japan"	true	Lexicographic order
+Length in bytes or runes
+Expression	Result	Note
+len("日")	3	Length in bytes
+utf8.RuneCountInString("日")	1	in runes unicode/utf8
+utf8.ValidString("日")	true	UTF-8? unicode/utf8
+Index, substring, iterate
+Expression	Result	Note
+"Japan"[2]	'p'	Byte at position 2
+"Japan"[1:3]	ap	Byte indexing
+"Japan"[:2]	Ja	
+"Japan"[2:]	pan	
+A Go range loop iterates over UTF-8 encoded characters (runes):
+
+for i, ch := range "Japan 日本" {
+    fmt.Printf("%d:%q ", i, ch)
+}
+// Output: 0:'J' 1:'a' 2:'p' 3:'a' 4:'n' 5:' ' 6:'日' 9:'本'
+Iterating over bytes produces nonsense characters for non-ASCII text:
+
+s := "Japan 日本"
+for i := 0; i < len(s); i++ {
+    fmt.Printf("%q ", s[i])
+}
+// Output: 'J' 'a' 'p' 'a' 'n' ' ' 'æ' '\u0097' '¥' 'æ' '\u009c' '¬'
+Search (contains, prefix/suffix, index)
+Expression	Result	Note
+strings.Contains("Japan", "abc")	false	Is abc in Japan?
+strings.ContainsAny("Japan", "abc")	true	Is a, b or c in Japan?
+strings.Count("Banana", "ana")	1	Non-overlapping instances of ana
+strings.HasPrefix("Japan", "Ja")	true	Does Japan start with Ja?
+strings.HasSuffix("Japan", "pan")	true	Does Japan end with pan?
+strings.Index("Japan", "abc")	-1	Index of first abc
+strings.IndexAny("Japan", "abc")	1	a, b or c
+strings.LastIndex("Japan", "abc")	-1	Index of last abc
+strings.LastIndexAny("Japan", "abc")	3	a, b or c
+Replace (uppercase/lowercase, trim)
+Expression	Result	Note
+strings.Replace("foo", "o", ".", 2)	f..	Replace first two “o” with “.” Use -1 to replace all
+f := func(r rune) rune {
+    return r + 1
+}
+strings.Map(f, "ab")	bc	Apply function to each character
+strings.ToUpper("Japan")	JAPAN	Uppercase
+strings.ToLower("Japan")	japan	Lowercase
+strings.Title("ja pan")	Ja Pan	Initial letters to uppercase
+strings.TrimSpace(" foo\n")	foo	Strip leading and trailing white space
+strings.Trim("foo", "fo")		Strip leading and trailing f:s and o:s
+strings.TrimLeft("foo", "f")	oo	only leading
+strings.TrimRight("foo", "o")	f	only trailing
+strings.TrimPrefix("foo", "fo")	o	
+strings.TrimSuffix("foo", "o")	fo	
+Split by space or comma
+Expression	Result	Note
+strings.Fields(" a\t b\n")	["a" "b"]	Remove white space
+strings.Split("a,b", ",")	["a" "b"]	Remove separator
+strings.SplitAfter("a,b", ",")	["a," "b"]	Keep separator
+Join strings with separator
+Expression	Result	Note
+strings.Join([]string{"a", "b"}, ":")	a:b	Add separator
+strings.Repeat("da", 2)	dada	2 copies of “da”
+Format and convert
+Expression	Result	Note
+strconv.Itoa(-42)	"-42"	Int to string
+strconv.FormatInt(255, 16)	"ff"	Base 16
+Sprintf
+The fmt.Sprintf function is often your best friend when formatting data:
+
+s := fmt.Sprintf("%.4f", math.Pi) // s == "3.1416"
+
