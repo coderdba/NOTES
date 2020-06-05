@@ -115,3 +115,55 @@ docker build .
 - CREATED NAMED IMAGE "myservice:v1"
 docker build -t myservice:v1 .
 
+- REMOVE INTERMEDIATE IMAGE
+--> using LABEL in Dockerfile
+
+-- Create a Dockerfile as below, with LABEL
+Then, build and prune intermediate images:
+docker build --no-cache=true -t microgo1:v1 .
+docker image prune --filter label=stage=microgo1-builder
+
+#-----------------------
+# Build the executable
+#-----------------------
+# not sure if alpine-go-build:latest or 1.12 to use - 1.13 is not there
+
+FROM golang:1.13 as builder
+#FROM docker.company.com/tap/alpine-go-build:1.12 as builder
+LABEL stage=microgo1-builder
+
+ENV GO111MODULE=on
+ADD . /go/src/github.com/coderdba-coding-org/microgo1
+
+WORKDIR  /go/src/github.com/coderdba-coding-org/microgo1
+ENV CGO_ENABLED=0 
+
+# Run this if you want to download explicitly
+#RUN go get -d -v github.com/gorilla/mux@v1.7.4
+# Run this if the repo does not yet have vendor
+#RUN go mod vendor
+# uncomment if you need vendor folder to be used
+ENV CGO_ENABLED=0 GOFLAGS=-mod=vendor
+
+RUN GOOS=linux GOARCH=amd64 go build -o /usr/local/bin/microgo1
+RUN ls -l /usr/local/bin/microgo1
+
+#-------------------------
+# Create the Docker image
+#-------------------------
+FROM alpine:latest
+#
+RUN mkdir /app
+#COPY --from=builder /usr/local/bin/microgo1 /app/microgo1
+#
+#COPY --from=builder /usr/local/bin/microgo1 /usr/local/bin/microgo1
+#RUN ls -l /usr/local/bin/microgo1
+#ENTRYPOINT ["/usr/local/bin/microgo1"]
+
+COPY --from=builder /usr/local/bin/microgo1 /tmp/microgo1
+RUN ls -l /tmp/microgo1
+ENTRYPOINT ["/tmp/microgo1"]
+
+#COPY --from=builder /usr/local/bin/microgo1 /app/microgo1
+
+
