@@ -22,3 +22,132 @@ minikube start --driver=virtualbox
 
 To make virtualbox the default driver:
 minikube config set driver virtualbox
+
+
+===========================================
+ERROR - MINIKUBE CANNOT CONNECT TO VM
+===========================================
+https://github.com/kubernetes/minikube/issues/4540
+
+Error:
+❌  minikube is unable to connect to the VM: dial tcp 192.168.99.134:22: i/o timeout
+
+
+Fix from https://github.com/kubernetes/minikube/issues/4540: (yet to work)
+Hi, I experienced the same problem on macOS Mojave 10.14.5 and fixed it using suggestions from other issue threads. Reinstalling both VirtualBox and minikube did not fix anything - the source of my problem was being connected to Cisco AnyConnect VPN. Here are the steps I used:
+
+$ minikube stop
+$ minikube delete
+$ brew cask uninstall minikube
+$ rm -rf ~/.minikube ~/.kube
+Go to https://www.virtualbox.org/wiki/Downloads, use VirtualBox_Uninstall.tool script provided in OS X host .dm file
+Disconnect from VPN
+Restart laptop, make sure that you are not reconnected to VPN
+Install VirtualBox using VirtualBox.pkg from the same .dmg file as the previous step.
+$ brew cask install minikube
+$ minikube start --alsologtostderr -v=9
+Connect to VPN (if you wish)
+
+- ERRORS
+a483e7493237:~ dbgsm0$ minikube config set driver virtualbox
+❗  These changes will take effect upon a minikube delete and then a minikube start
+a483e7493237:~ dbgsm0$ minikube delete
+🙄  "minikube" profile does not exist, trying anyways.
+💀  Removed all traces of the "minikube" cluster.
+a483e7493237:~ dbgsm0$ minikube start
+😄  minikube v1.11.0 on Darwin 10.14.5
+✨  Using the virtualbox driver based on user configuration
+💿  Downloading VM boot image ...
+    > minikube-v1.11.0.iso.sha256: 65 B / 65 B [-------------] 100.00% ? p/s 0s
+    > minikube-v1.11.0.iso: 174.99 MiB / 174.99 MiB  100.00% 1.82 MiB p/s 1m36s
+👍  Starting control plane node minikube in cluster minikube
+💾  Downloading Kubernetes v1.18.3 preload ...
+    > preloaded-images-k8s-v3-v1.18.3-docker-overlay2-amd64.tar.lz4: 526.01 MiB
+🔥  Creating virtualbox VM (CPUs=2, Memory=6000MB, Disk=20000MB) ...
+❌  minikube is unable to connect to the VM: dial tcp 192.168.99.134:22: i/o timeout
+
+	This is likely due to one of two reasons:
+
+	- VPN or firewall interference
+	- virtualbox network configuration issue
+
+	Suggested workarounds:
+
+	- Disable your local VPN or firewall software
+	- Configure your local VPN or firewall to allow access to 192.168.99.134
+	- Restart or reinstall virtualbox
+	- Use an alternative --vm-driver
+	- Use --force to override this connectivity check
+	
+
+💣  error provisioning host: Failed to validate network: dial tcp 192.168.99.134:22: i/o timeout
+
+😿  minikube is exiting due to an error. If the above message is not useful, open an issue:
+👉  https://github.com/kubernetes/minikube/issues/new/choose
+a483e7493237:~ dbgsm0$ minikube ssh
+                         _             _            
+            _         _ ( )           ( )           
+  ___ ___  (_)  ___  (_)| |/')  _   _ | |_      __  
+/' _ ` _ `\| |/' _ `\| || , <  ( ) ( )| '_`\  /'__`\
+| ( ) ( ) || || ( ) || || |\`\ | (_) || |_) )(  ___/
+(_) (_) (_)(_)(_) (_)(_)(_) (_)`\___/'(_,__/'`\____)
+
+$ kubectl get pods
+-bash: kubectl: command not found
+$ eit
+-bash: eit: command not found
+$ exit
+logout
+ssh: Process exited with status 127
+a483e7493237:~ dbgsm0$ kubectx minikube
+error: no context exists with the name: "minikube".
+a483e7493237:~ dbgsm0$ ping 192.168.99.134
+PING 192.168.99.134 (192.168.99.134): 56 data bytes
+Request timeout for icmp_seq 0
+Request timeout for icmp_seq 1
+^C
+--- 192.168.99.134 ping statistics ---
+3 packets transmitted, 0 packets received, 100.0% packet loss
+a483e7493237:~ dbgsm0$ minikube ssh
+                         _             _            
+            _         _ ( )           ( )           
+  ___ ___  (_)  ___  (_)| |/')  _   _ | |_      __  
+/' _ ` _ `\| |/' _ `\| || , <  ( ) ( )| '_`\  /'__`\
+| ( ) ( ) || || ( ) || || |\`\ | (_) || |_) )(  ___/
+(_) (_) (_)(_)(_) (_)(_)(_) (_)`\___/'(_,__/'`\____)
+
+$ ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:2e:70:3a brd ff:ff:ff:ff:ff:ff
+    inet 10.0.2.15/24 brd 10.0.2.255 scope global dynamic eth0
+       valid_lft 84852sec preferred_lft 84852sec
+3: eth1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:3e:74:69 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.99.134/24 brd 192.168.99.255 scope global dynamic eth1
+       valid_lft 549sec preferred_lft 549sec
+4: sit0@NONE: <NOARP> mtu 1480 qdisc noop state DOWN group default qlen 1000
+    link/sit 0.0.0.0 brd 0.0.0.0
+5: docker0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default 
+    link/ether 02:42:07:4a:9e:7e brd ff:ff:ff:ff:ff:ff
+    inet 172.17.0.1/16 brd 172.17.255.255 scope global docker0
+       valid_lft forever preferred_lft forever
+$ exit
+logout
+a483e7493237:~ dbgsm0$ 
+a483e7493237:~ dbgsm0$ minikube start --force
+😄  minikube v1.11.0 on Darwin 10.14.5
+✨  Using the virtualbox driver based on existing profile
+👍  Starting control plane node minikube in cluster minikube
+🏃  Updating the running virtualbox "minikube" VM ...
+🐳  Preparing Kubernetes v1.18.3 on Docker 19.03.8 ...
+🔎  Verifying Kubernetes components...
+❗  Enabling 'default-storageclass' returned an error: running callbacks: [Error making standard the default storage class: Error listing StorageClasses: Get "https://192.168.99.134:8443/apis/storage.k8s.io/v1/storageclasses": dial tcp 192.168.99.134:8443: i/o timeout]
+🌟  Enabled addons: default-storageclass, storage-provisioner
+
+Hope this helps. If anyone has suggestions for starting minikube while connected to a VPN like Cisco AnyConnect, please let me know! Thanks
+
+This was helpful but just to save the pain. I did not need to uninstall VirtualBox and restart
