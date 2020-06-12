@@ -23,6 +23,65 @@ minikube start --driver=virtualbox
 To make virtualbox the default driver:
 minikube config set driver virtualbox
 
+- INITIALLY GOT ERROR THAT MINIKUBE VM CANNOT BE REACHED
+But, restarted mac and it worked alright
+
+- KUBECTL VERSION
+Kubectl on my laptop is version 1.9 -> it worked, though minikube start gave a warning.
+
+To have minikube use a compatible kubectl --> "minikube kubectl -- get pods"
+--> this downloaded something and installed it somewhere --> looked like it installed kubectl 1.18 somewhere
+$ minikube kubectl version
+Client Version: version.Info{Major:"1", Minor:"18", GitVersion:"v1.18.3", GitCommit:"2e7996e3e2712684bc73f0dec0200d64eec7fe40", GitTreeState:"clean", BuildDate:"2020-05-20T12:52:00Z", GoVersion:"go1.13.9", Compiler:"gc", Platform:"darwin/amd64"}
+Server Version: version.Info{Major:"1", Minor:"18", GitVersion:"v1.18.3", GitCommit:"2e7996e3e2712684bc73f0dec0200d64eec7fe40", GitTreeState:"clean", BuildDate:"2020-05-20T12:43:34Z", GoVersion:"go1.13.9", Compiler:"gc", Platform:"linux/amd64"}
+
+- SCREEN OUTPUT
+$ minikube start
+😄  minikube v1.11.0 on Darwin 10.14.5
+✨  Using the virtualbox driver based on existing profile
+👍  Starting control plane node minikube in cluster minikube
+🔄  Restarting existing virtualbox VM for "minikube" ...
+🐳  Preparing Kubernetes v1.18.3 on Docker 19.03.8 ...
+🔎  Verifying Kubernetes components...
+🌟  Enabled addons: default-storageclass, storage-provisioner
+🏄  Done! kubectl is now configured to use "minikube"
+
+❗  /usr/local/bin/kubectl is version 1.9.3, which may be incompatible with Kubernetes 1.18.3.
+💡  You can also use 'minikube kubectl -- get pods' to invoke a matching version
+
+$ kubectx minikube
+Switched to context "minikube".
+
+$ kubectl get pods --all-namespaces -o wide
+NAMESPACE     NAME                               READY     STATUS    RESTARTS   AGE       IP               NODE
+kube-system   coredns-66bff467f8-kpxct           1/1       Running   0          54s       172.17.0.3       minikube
+kube-system   coredns-66bff467f8-kxxcl           1/1       Running   0          54s       172.17.0.2       minikube
+kube-system   etcd-minikube                      1/1       Running   0          54s       192.168.99.135   minikube
+kube-system   kube-apiserver-minikube            1/1       Running   0          54s       192.168.99.135   minikube
+kube-system   kube-controller-manager-minikube   1/1       Running   0          54s       192.168.99.135   minikube
+kube-system   kube-proxy-tfp6b                   1/1       Running   0          54s       192.168.99.135   minikube
+kube-system   kube-scheduler-minikube            1/1       Running   0          54s       192.168.99.135   minikube
+kube-system   storage-provisioner                1/1       Running   0          1m        192.168.99.135   minikube
+
+$ minikube kubectl -- get pods
+    > kubectl.sha256: 65 B / 65 B [--------------------------] 100.00% ? p/s 0s
+    > kubectl: 47.84 MiB / 47.84 MiB [------------] 100.00% 719.28 KiB p/s 1m9s
+No resources found in default namespace.
+
+$ minikube kubectl -- get pods 
+No resources found in default namespace.
+
+$ minikube kubectl -- get pods --all-namespaces
+NAMESPACE     NAME                               READY   STATUS    RESTARTS   AGE
+kube-system   coredns-66bff467f8-kpxct           1/1     Running   0          2m49s
+kube-system   coredns-66bff467f8-kxxcl           1/1     Running   0          2m49s
+kube-system   etcd-minikube                      1/1     Running   0          2m49s
+kube-system   kube-apiserver-minikube            1/1     Running   0          2m49s
+kube-system   kube-controller-manager-minikube   1/1     Running   0          2m49s
+kube-system   kube-proxy-tfp6b                   1/1     Running   0          2m49s
+kube-system   kube-scheduler-minikube            1/1     Running   0          2m49s
+kube-system   storage-provisioner                1/1     Running   0          2m55s
+
 
 ===========================================
 ERROR - MINIKUBE CANNOT CONNECT TO VM
