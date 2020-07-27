@@ -5,8 +5,176 @@ Remove etcd member (with etcdctl or api on another node)
 Remove /var/lib/etcd/* (which is the data directory of etcd)
 Start etcd service with additional parameter --initial-cluster-state existing
 
+========================
+LIST ETCD MEMBERS
+========================
+
+-----------------
+USING ETCDCTL
+-----------------
+
+On a VM:
+
+- LOGON TO ETCD CONTAINER
+# docker exec -ti etcd /bin/sh
+
+- LIST MEMBERS
+/ # etcdctl member list
+3155d2fb633d686a: name=etcd-101_199_140_119 peerURLs=http://101.199.140.119:2380 clientURLs=http://101.199.140.119:2379 isLeader=false
+31acc000db8fea90: name=etcd-101_199_140_117 peerURLs=http://101.199.140.117:2380 clientURLs=http://101.199.140.117:2379 isLeader=true
+f042dd7292edb971: name=etcd-101_199_140_118 peerURLs=http://101.199.140.118:2380 clientURLs=http://101.199.140.118:2379 isLeader=false
+
+-----------------
+USING API
+-----------------
+
+- LIST MEMBERS
+
+-- From laptop or arbitrary utility server
+$ curl http://store123node2.company.com:2379/v2/members
+{"members":[{"id":"33ab62b6ec04bb30","name":"etcd-101_199_140_119","peerURLs":["http://101.199.140.119:2380"],"clientURLs":["http://101.199.140.119:2379"]},{"id":"6e42f77b2375b237","name":"etcd-101_199_140_118","peerURLs":["http://101.199.140.118:2380"],"clientURLs":["http://101.199.140.118:2379"]},{"id":"b6c6775843992786","name":"etcd-101_199_140_117","peerURLs":["http://101.199.140.117:2380"],"clientURLs":["http://101.199.140.117:2379"]}]}
+
+-- From a VM you can access API on another node as well
+[root@store123node1 ~]# curl http://store123node2.company.com:2379/v2/members
+{"members":[{"id":"33ab62b6ec04bb30","name":"etcd-101_199_140_119","peerURLs":["http://101.199.140.119:2380"],"clientURLs":["http://101.199.140.119:2379"]},{"id":"6e42f77b2375b237","name":"etcd-101_199_140_118","peerURLs":["http://101.199.140.118:2380"],"clientURLs":["http://101.199.140.118:2379"]},{"id":"b6c6775843992786","name":"etcd-101_199_140_117","peerURLs":["http://101.199.140.117:2380"],"clientURLs":["http://101.199.140.117:2379"]}]}
+
+-- You can do localhost as well
+[root@store123node1 ~]# curl http://localhost:2379/v2/members
+{"members":[{"id":"33ab62b6ec04bb30","name":"etcd-101_199_140_119","peerURLs":["http://101.199.140.119:2380"],"clientURLs":["http://101.199.140.119:2379"]},{"id":"6e42f77b2375b237","name":"etcd-101_199_140_118","peerURLs":["http://101.199.140.118:2380"],"clientURLs":["http://101.199.140.118:2379"]},{"id":"b6c6775843992786","name":"etcd-101_199_140_117","peerURLs":["http://101.199.140.117:2380"],"clientURLs":["http://101.199.140.117:2379"]}]}
+
+========================
+REMOVING ETCD MEMBER
+========================
+
+-----------------
+USING ETCDCTL
+-----------------
+
+On a VM:
+
+- LOGON TO ETCD CONTAINER
+# docker exec -ti etcd /bin/sh
+
+- LIST MEMBERS
+/ # etcdctl member list
+3155d2fb633d686a: name=etcd-101_199_140_119 peerURLs=http://101.199.140.119:2380 clientURLs=http://101.199.140.119:2379 isLeader=false
+31acc000db8fea90: name=etcd-101_199_140_117 peerURLs=http://101.199.140.117:2380 clientURLs=http://101.199.140.117:2379 isLeader=true
+f042dd7292edb971: name=etcd-101_199_140_118 peerURLs=http://101.199.140.118:2380 clientURLs=http://101.199.140.118:2379 isLeader=false
+
+- REMOVE A MEMBER
+/ # etcdctl member remove 31acc000db8fea90
+Removed member 31acc000db8fea90 from cluster
+
+- VERIFY BY LISTING MEMBERS
+/ # etcdctl member list
+3155d2fb633d686a: name=etcd-101_199_140_119 peerURLs=http://101.199.140.119:2380 clientURLs=http://101.199.140.119:2379 isLeader=true
+f042dd7292edb971: name=etcd-101_199_140_118 peerURLs=http://101.199.140.118:2380 clientURLs=http://101.199.140.118:2379 isLeader=false
+
+-----------------
+USING API
+-----------------
+From one node, you can run commands on the other node.
+
+- LIST MEMBERS
+
+$ curl http://store123node2.company.com:2379/v2/members
+{"members":[{"id":"33ab62b6ec04bb30","name":"etcd-101_199_140_119","peerURLs":["http://101.199.140.119:2380"],"clientURLs":["http://101.199.140.119:2379"]},{"id":"6e42f77b2375b237","name":"etcd-101_199_140_118","peerURLs":["http://101.199.140.118:2380"],"clientURLs":["http://101.199.140.118:2379"]},{"id":"b6c6775843992786","name":"etcd-101_199_140_117","peerURLs":["http://101.199.140.117:2380"],"clientURLs":["http://101.199.140.117:2379"]}]}
+
+- REMOVE A MEMBER
+Note: Use API on another node to remove one node - so that response comes back alright
+
+curl http://store123node2.company.com:2379/v2/members/b6c6775843992786 -XDELETE
+
+- VERIFY
+$ curl http://store123node2.company.com:2379/v2/members
+{"members":[{"id":"33ab62b6ec04bb30","name":"etcd-101_199_140_119","peerURLs":["http://101.199.140.119:2380"],"clientURLs":["http://101.199.140.119:2379"]},{"id":"6e42f77b2375b237","name":"etcd-101_199_140_118","peerURLs":["http://101.199.140.118:2380"],"clientURLs":["http://101.199.140.118:2379"]}]}
+
+Logon to etcd container in a surviving node and run etcdctl:
+/ # etcdctl member list
+33ab62b6ec04bb30: name=etcd-101_199_140_119 peerURLs=http://101.199.140.119:2380 clientURLs=http://101.199.140.119:2379 isLeader=true
+6e42f77b2375b237: name=etcd-101_199_140_118 peerURLs=http://101.199.140.118:2380 clientURLs=http://101.199.140.118:2379 isLeader=false
+
+Verify: on the VM whose etcd was removed
+# docker ps -a |grep etcd
+--> should return null
+
+============================
+ADD A MEMBER
+============================
+To add back the member when we first remove a member, wipe out etcd data in that member VM and re-add it to the cluster
+
+-----------------------------
+USING API
+-----------------------------
+
+- ADD MEMBER
+Note that client URLs are not provided now.  They will be done when we restart etcd on that added node
+
+$ curl http://store123node2.company.com:2379/v2/members -XPOST -H "Content-Type: application/json" -d '{"name":"etcd-101_199_140_117","peerURLs":["http://101.199.140.117:2380"]}'
+--> screen output:
+{"id":"9b917308f461f7ea","name":"","peerURLs":["http://101.199.140.117:2380"],"clientURLs":[]}
+
+- VERIFY
+$ curl http://store123node2.company.com:2379/v2/members
+{"members":[{"id":"33ab62b6ec04bb30","name":"etcd-101_199_140_119","peerURLs":["http://101.199.140.119:2380"],"clientURLs":["http://101.199.140.119:2379"]},{"id":"6e42f77b2375b237","name":"etcd-101_199_140_118","peerURLs":["http://101.199.140.118:2380"],"clientURLs":["http://101.199.140.118:2379"]},{"id":"9b917308f461f7ea","name":"","peerURLs":["http://101.199.140.117:2380"],"clientURLs":[]}]}
+
+Logon to etcd container in a surviving node and run etcdctl:
+/ # etcdctl member list
+33ab62b6ec04bb30: name=etcd-101_199_140_119 peerURLs=http://101.199.140.119:2380 clientURLs=http://101.199.140.119:2379 isLeader=true
+6e42f77b2375b237: name=etcd-101_199_140_118 peerURLs=http://101.199.140.118:2380 clientURLs=http://101.199.140.118:2379 isLeader=false
+9b917308f461f7ea[unstarted]: peerURLs=http://101.199.140.117:2380
+
+----------------------------
+USING ETCDCTL
+----------------------------
+
+- ADD MEMBER
+/ # etcdctl member add etcd-101_199_140_117 http://101.199.140.117:2380
+Added member named etcd-101_199_140_117 with ID b287975e8b2b508c to cluster
+
+ETCD_NAME="etcd-101_199_140_117"
+ETCD_INITIAL_CLUSTER="etcd-101_199_140_119=http://101.199.140.119:2380,etcd-101_199_140_117=http://101.199.140.117:2380,etcd-101_199_140_118=http://101.199.140.118:2380"
+ETCD_INITIAL_CLUSTER_STATE="existing"
+
+- VERIFY
+/ # etcdctl member list
+3155d2fb633d686a: name=etcd-101_199_140_119 peerURLs=http://101.199.140.119:2380 clientURLs=http://101.199.140.119:2379 isLeader=true
+b287975e8b2b508c[unstarted]: peerURLs=http://101.199.140.117:2380
+f042dd7292edb971: name=etcd-101_199_140_118 peerURLs=http://101.199.140.118:2380 clientURLs=http://101.199.140.118:2379 isLeader=false
+
+==================================
+RESTART ETCD ON ADDED MEMBER
+==================================
+Logon to the VM of added member
+
+- STOP ETCD SERVICE
+# systemctl stop etcd
+
+- REMOVE ETCD DATA ON ADDED MEMBER'S VM
+# rm -rf /var/lib/etcd/*
+
+- MODIFY ETCD STARTUP SCRIPT 
+Add the line "--initial-cluster-state existing" to /opt/k8s/start-etcd.sh
+
+- START ETCD
+# systemctl start etcd
+
+- VERIFY
+/ # etcdctl member list
+33ab62b6ec04bb30: name=etcd-101_199_140_119 peerURLs=http://101.199.140.119:2380 clientURLs=http://101.199.140.119:2379 isLeader=true
+6e42f77b2375b237: name=etcd-101_199_140_118 peerURLs=http://101.199.140.118:2380 clientURLs=http://101.199.140.118:2379 isLeader=false
+9b917308f461f7ea: name=etcd-101_199_140_117 peerURLs=http://101.199.140.117:2380 clientURLs=http://101.199.140.117:2379 isLeader=false
+
+- MODIFY ETCD STARTUP SCRIPT BACK TO ORIGINAL
+Remove the line "--initial-cluster-state existing" from /opt/k8s/start-etcd.sh
+
+
+===============================
+REFERENCE SCRIPTS
+===============================
+
 ----------------------
-MODIFIED startEtcd.sh - with "--initial-cluster-state existing"
+MODIFIED start-etcd.sh - with "--initial-cluster-state existing"
 ----------------------
 #!/bin/bash
 
@@ -43,3 +211,101 @@ K8_VER=1.9.3
 K8_IP=101.10.140.111 (112, 113 as needed)
 RUNTIME=VMWARE
 
+--------------------
+etcd-rebuild.sh
+--------------------
+if [ $# -lt 2 ]
+then
+
+echo
+echo usage: $0 site-like-s1234 vmNumber-1-2-or-3
+echo
+
+exit 1
+
+fi
+
+dc=$1
+vmnumber=$2
+
+if [ $vmnumber -eq 1 ] || [ $vmnumber -eq 2 ]
+then
+     apivmnumber=`expr $vmnumber + 1`
+else
+     apivmnumber=1
+fi
+
+vmname=${dc}mws000${vmnumber}.company.com
+apivmname=${dc}mws000${apivmnumber}.company.com
+
+echo
+echo VM to Build is $vmname
+echo VM to access ETCD API is $apivmname
+echo
+
+# find IP and create member name string
+vmip=`nslookup $vmname | grep Address |grep -v \# | cut -d: -f2 | sed 's/ //g'`
+echo INFO - IP for VM $vmname is $vmip
+
+# create etcd member name string
+#etcdmembername="etcd_${vmip}" | sed 's/\./_/g'
+etcdmembername=`echo "etcd-${vmip}" | sed 's/\./_/g'`
+echo $etcdmembername
+
+echo INFO - ETCD Members before member removal
+curl http://${apivmname}:2379/v2/members 
+
+echo INFO - The specific member to remove
+membertoremove=`curl http://${apivmname}:2379/v2/members |jq -r '.[] | .[] | select (.name=="'${etcdmembername}'") | .id'`
+echo INFO - Member to remove is $membertoremove
+
+# remove member
+echo 
+echo INFO - Removing member $etcdmembername with id $membertoremove on $vmname
+curl http://${apivmname}:2379/v2/members/${membertoremove} -XDELETE
+
+echo
+echo INFO - Members after member removal
+curl http://${apivmname}:2379/v2/members 
+
+# add back the member
+echo 
+echo INFO - Adding the member $etcdmembername on $vmname with IP $vmip
+curl http://${apivmname}:2379/v2/members -XPOST -H "Content-Type: application/json" -d '{"name":"'$etcdmembername'","peerURLs":["'http://${vmip}:2380'"]}'
+
+echo
+echo INFO - Members after member add 
+curl http://${apivmname}:2379/v2/members 
+
+# restart etcd
+echo
+echo INFO - Restarting ETCD on $vmname
+# V1 code as per modified start-etcd.sh
+#ssh -o ServerAliveInterval=30 unidcadmin@${vmname}@bifrost-proxy.dist.company.com -p 2222 -A "sudo systemctl stop etcd;sudo rm -rf /var/lib/etcd/*;sudo systemctl start etcd"
+
+# This sed construct is not working
+#ssh -o ServerAliveInterval=30 unidcadmin@${vmname}@bifrost-proxy.dist.company.com -p 2222 -A "sudo systemctl stop etcd;sudo rm -rf /var/lib/etcd/*;sudo cp -p /opt/k8s/start-etcd.sh /tmp/start-etcd.sh.orig;sudo sed '$s/$/ --initial-cluster-state existing/' /tmp/start-etcd.sh.orig > /tmp/start-etcd.sh; "
+
+ssh $vmname "sudo /bin/rm /tmp/start-etcd.sh.orig.dcsed /tmp/start-etcd.sh.modified; \
+sudo cp -p /opt/k8s/start-etcd.sh /tmp/start-etcd.sh.orig.dcsed; \
+sudo sed 's/ etcd / etcd  --initial-cluster-state existing /' /tmp/start-etcd.sh.orig.dcsed > /tmp/start-etcd.sh.modified; sudo chown root:root /tmp/start-etcd.sh.modified; \
+sudo /bin/cp /tmp/start-etcd.sh.modified /opt/k8s/start-etcd.sh; sudo /bin/chmod +x /opt/k8s/start-etcd.sh; \
+echo ;\
+echo ;\
+echo MODIFIED start-etcd.sh; \
+sudo cat /opt/k8s/start-etcd.sh; \
+echo ;\
+sudo /bin/rm -rf /var/lib/etcd/*; sudo systemctl start etcd; sleep 60; \
+sudo /bin/cp /tmp/start-etcd.sh.orig.dcsed /opt/k8s/start-etcd.sh; sudo /bin/chmod +x /opt/k8s/start-etcd.sh; \
+echo ;\
+echo ;\
+echo REINSTATED start-etcd.sh; \
+sudo cat /opt/k8s/start-etcd.sh; \
+echo ;\
+"
+
+sleep 5
+
+echo
+echo INFO - Members after etcd restart on $vmname
+curl http://${apivmname}:2379/v2/members 
