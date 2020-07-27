@@ -1,0 +1,45 @@
+https://stackoverflow.com/questions/56515078/adding-removed-etcd-member-in-kubernetes-master
+
+Stop etcd service
+Remove etcd member (with etcdctl or api on another node)
+Remove /var/lib/etcd/* (which is the data directory of etcd)
+Start etcd service with additional parameter --initial-cluster-state existing
+
+----------------------
+MODIFIED startEtcd.sh - with "--initial-cluster-state existing"
+----------------------
+#!/bin/bash
+
+source /etc/environment
+
+MY_IP=$K8_IP
+MY_NAME=etcd-$(echo $MY_IP | sed -e s/\\./_/g)
+IP_PREFIX=$(echo $K8_IP | awk -F '.' '{print $1 "." $2 "." $3}')
+ETCD_IP1=101.10.140.111
+ETCD_NAME1=etcd-$(echo $ETCD_IP1 | sed -e s/\\./_/g)
+ETCD_IP1=101.10.140.112
+ETCD_NAME2=etcd-$(echo $ETCD_IP2 | sed -e s/\\./_/g)
+ETCD_IP1=101.10.140.113
+ETCD_NAME3=etcd-$(echo $ETCD_IP3 | sed -e s/\\./_/g)
+
+/usr/bin/docker run --rm \
+          --name=etcd \
+          --net=host \
+          -v /var/lib/etcd:/data \
+          docker.company.com/etcd:v3.3.18 etcd  --initial-cluster-state existing \
+          --name=${MY_NAME} \
+          --initial-advertise-peer-urls http://${MY_IP}:2380 \
+          --listen-peer-urls=http://${MY_IP}:2380 \
+          --listen-client-urls=http://${MY_IP}:2379,http://127.0.0.1:2379 \
+          --advertise-client-urls=http://${MY_IP}:2379 \
+          --initial-cluster ${ETCD_NAME1}=http://${ETCD_IP1}:2380,${ETCD_NAME2}=http://${ETCD_IP2}:2380,${ETCD_NAME3}=http://${ETCD_IP3}:2380 \
+          --data-dir=/data
+
+----------------------------
+/etc/environment
+----------------------------
+K8_NODE_NAME=store1234node1 (node2,node3 as needed)
+K8_VER=1.9.3
+K8_IP=101.10.140.111 (112, 113 as needed)
+RUNTIME=VMWARE
+
