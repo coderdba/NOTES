@@ -9,7 +9,9 @@ https://blog.josephmisiti.com/parsing-json-responses-in-golang
 https://blog.kowalczyk.info/article/f/accessing-github-api-from-go.html - with github's own methods
 
 Without Struct:
-https://medium.com/@irshadhasmat/golang-simple-json-parsing-using-empty-interface-and-without-struct-in-go-language-e56d0e69968 - jsons to byte array without struct
+https://medium.com/@irshadhasmat/golang-simple-json-parsing-using-empty-interface-and-without-struct-in-go-language-e56d0e69968 
+- jsons to byte array without struct
+- Json to Map
 
 https://stackoverflow.com/questions/39945968/most-efficient-way-to-convert-io-readcloser-to-byte-array -- http response to byte array without struct
 https://stackoverflow.com/questions/41815909/is-there-a-way-to-extract-json-from-an-http-response-without-having-to-build-str - http response to byte array without struct
@@ -31,4 +33,47 @@ Json can be unmarshalled into maps and slices of maps
 Each map element will be a string key and an empty-struct value
 Empty struct is used as value so that it can hold any type of data
 If the Json has embedded json, then that embedded json can be unmarshalled into one more map
-Example: https://stackoverflow.com/questions/39945968/most-efficient-way-to-convert-io-readcloser-to-byte-array
+Example: https://medium.com/@irshadhasmat/golang-simple-json-parsing-using-empty-interface-and-without-struct-in-go-language-e56d0e69968
+
+---------------
+JSON TO STRUCT
+---------------
+Json can be unmarshalled to struct with json.NewDecoder and ioutil.ReadAll
+
+-------------------------------------
+JSON TO STRUCT WITH json.NewDecoder
+-------------------------------------
+decoder := json.NewDecoder(res.Body)
+    var data Tracks // Tracks is a struct that represents the json data
+    err = decoder.Decode(&data)
+
+Example: https://stackoverflow.com/questions/17156371/how-to-get-json-response-from-http-get
+(thoug the example with decoder seems to have error)
+
+-------------------------------------
+JSON TO STRUCT WITH ioutil.ReadAll
+-------------------------------------
+Example: https://stackoverflow.com/questions/17156371/how-to-get-json-response-from-http-get
+(same site as the one for Decoder)
+
+func get_content() {
+    // json data
+    url := "http://ws.audioscrobbler.com/2.0/?method=geo.gettoptracks&api_key=c1572082105bd40d247836b5c1819623&format=json&country=Netherlands"
+
+    res, err := http.Get(url)
+
+    if err != nil {
+        panic(err.Error())
+    }
+
+    body, err := ioutil.ReadAll(res.Body)
+
+    if err != nil {
+        panic(err.Error())
+    }
+
+    var data tracks
+    json.Unmarshal(body, &data)
+    fmt.Printf("Results: %v\n", data)
+    os.Exit(0)
+}
