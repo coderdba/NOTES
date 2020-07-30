@@ -3,9 +3,9 @@ Sql - the db connection
 String - the sql in one form - gives a type of result set
 GString - the sql in another form - gives a different type of result set
 
-=====================
-GSTRING AND RESULTSET
-=====================
+=======================================
+GSTRING AND RESULTSET - SIMPLE CASE
+=======================================
 
 // the SQL
 GString sql = "select table_schema, table_name from information_schema.tables where table_schema = ${tableSchema}"
@@ -32,4 +32,139 @@ This will give:
     }
 ]
 
+=======================================
+GSTRING AND RESULTSET - ROW-BY-ROW
+=======================================
+
+-----------
+CONCEPT 1
+-----------
+This gives class java.util.ArrayList: 
+    def resultList = dbConnection.rows(sql)
+    
+Then, to print row by row from the arraylist:
+    Here, each item will be of class groovy.sql.GroovyRowResult
+    
+        resultList.each { groovyRowResult ->
+            // result item class  is : class groovy.sql.GroovyRowResult
+            println ("result item class  is : " + groovyRowResult.getClass())
+            println ("PrintTableListGString: Printing resultset item one by one")
+            println groovyRowResult.table_schema + " " + groovyRowResult.table_name
+            //println groovyRowResult.table_name
+        }
+
+-----------
+CONCEPT 2
+-----------
+This gives arraylist: def resultList = dbConnection.rows(sql)
+But, if the statement on the RHS is sent as a chain of events, 
+then, its class changes from java.util.ArrayList 
+to a parent-child set of com.mysql.cj.jdbc.result.ResultSetMetaData (parent) and groovy.sql.GroovyRowResult (child)
+
+     dbConnection.rows(sql) { rowList ->
+        // HERE - THE rowList CLASS WILL BE com.mysql.cj.jdbc.result.ResultSetMetaData
+        ...
+        ...
+     }.each {eachRow ->
+        // HERE - eachRow WILL BE OF CLASS groovy.sql.GroovyRowResult
+        ...
+        ...
+     }
+
+        dbConnection.rows(sql) { rowList ->
+
+            // this section processes the wrapping metadata that kind of wraps the downstream resultset
+            // result class here is:  com.mysql.cj.jdbc.result.ResultSetMetaData
+            println ("result class now is : " + rowList.getClass())
+
+            println ("PrintTableListGString: Printing table-column Metadata toString")
+            println rowList.toString()
+
+            println ("PrintTableListGString: Printing table-column Metadata jsonified")
+            println new JsonBuilder(rowList).toPrettyString()
+
+        }.each { groovyRowResult ->
+
+            // result item class  is : class groovy.sql.GroovyRowResult
+            println ("result item class  is : " + groovyRowResult.getClass())
+            // this section processes the downstreamed resultset
+            println ("PrintTableListGString: Printing data")
+            println groovyRowResult.table_schema + " " + groovyRowResult.table_name
+            //println groovyRowResult.table_name
+        }
+
+---------------------------------
+EXAMPLE - BOTH CONCEPTS
+---------------------------------
+
+   void PrintTableListGString(String tableSchema) {
+        // using rows(GString gstring)
+        GString sql = "select table_schema, table_name from information_schema.tables where table_schema = ${tableSchema}"
+
+        //---------------------------
+        // CONCEPT 1
+        //---------------------------
+        // reference tag: 1
+        // this way of doing - first a 'def' prints data in Json when Jsonified - unlike the code in "refernce tag: 2"
+        def resultList = dbConnection.rows(sql)
+
+        println ("PrintTableListGString: Printing Data in Json - not prettystring")
+        println resultList
+
+        println ("PrintTableListGString: Printing Data in Json prettystring")
+        println new JsonBuilder(resultList).toPrettyString()
+
+        //println ("PrintTableListGString: got a rowList of size " + resultList.size())
+        println ("PrintTableListGString: got a rowList of size ${resultList.size()} ")
+
+        // result class is : class java.util.ArrayList
+        println ("result class is : " + resultList.getClass())
+
+        resultList.each { groovyRowResult ->
+            // result item class  is : class groovy.sql.GroovyRowResult
+            println ("result item class  is : " + groovyRowResult.getClass())
+            println ("PrintTableListGString: Printing resultset item one by one")
+            println groovyRowResult.table_schema + " " + groovyRowResult.table_name
+            //println groovyRowResult.table_name
+        }
+
+        // result class is again : class java.util.ArrayList
+        println ("result class is again : " + dbConnection.rows(sql).getClass())
+
+
+        //---------------------------
+        // CONCEPT 2
+        //---------------------------
+
+        // when referenced like this, the class of resultset coming from dbConnection.rows(sql) is different
+        // result class is yet again : class com.mysql.cj.jdbc.result.ResultSetMetaData
+        dbConnection.rows(sql) { rs ->
+            println ("result class is yet again : " + rs.getClass())
+        }
+
+        // reference tag: 2
+        // this way of doing - this is some way of getting table-column metadata and then data
+        // not sure why rowList here shows only metadata in Json
+        dbConnection.rows(sql) { rowList ->
+
+            // this section processes the wrapping metadata that kind of wraps the downstream resultset
+            // result class here is:  com.mysql.cj.jdbc.result.ResultSetMetaData
+            println ("result class now is : " + rowList.getClass())
+
+            println ("PrintTableListGString: Printing table-column Metadata toString")
+            println rowList.toString()
+
+            println ("PrintTableListGString: Printing table-column Metadata jsonified")
+            println new JsonBuilder(rowList).toPrettyString()
+
+        }.each { groovyRowResult ->
+
+            // result item class  is : class groovy.sql.GroovyRowResult
+            println ("result item class  is : " + groovyRowResult.getClass())
+            // this section processes the downstreamed resultset
+            println ("PrintTableListGString: Printing data")
+            println groovyRowResult.table_schema + " " + groovyRowResult.table_name
+            //println groovyRowResult.table_name
+        }
+    }
 
