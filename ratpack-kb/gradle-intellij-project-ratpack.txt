@@ -76,6 +76,7 @@ Based on: https://ratpack.io/manual/current/quick-start.html
 --> This site does not have "apply plugin: groovy" though
 --> Also, replace io.ratpack.ratpack-java with io.ratpack.ratpack-groovy
 
+---- MINIMAL
 buildscript {
     repositories {
         jcenter()
@@ -123,6 +124,87 @@ dependencies {
   testCompile 'org.spockframework:spock-core:1.0-groovy-2.4' 2
   testCompile 'cglib:cglib:2.2.2' 3
   testCompile 'org.objenesis:objenesis:2.1' 4
+}
+
+---- WITH RATPACK, TEST, MYSQL
+// BUILDSCRIPT BLOCK SHOULD BE BEFORE ANY PLUGINS BLOCK
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath "io.ratpack:ratpack-gradle:1.7.6"
+    }
+}
+
+apply plugin: "io.ratpack.ratpack-groovy"
+apply plugin: "idea"
+
+// Added per original build.gradle
+apply plugin: "groovy"
+apply plugin: "java"
+// <-- Added per original build.gradle
+
+// From original build.gradle
+//plugins {
+//    id 'groovy'
+//    id 'java'
+//}
+group 'ratpack-mysql1'
+version '1.0-SNAPSHOT'
+sourceCompatibility = 1.8
+// <-- From original build.gradle
+
+repositories {
+    jcenter()
+    // --> From original build.gradle
+    mavenCentral()
+    // <-- From original build.gradle
+}
+
+dependencies {
+
+    // For mysql JDBC
+    //compile 'mysql:mysql-connector-java:5.1.34'
+    //compile 'mysql:mysql-connector-java:8.0.19'
+    //compile ratpack.dependency("guice")
+
+    // FOR LOGGING
+    // This is mentioned in the https://ratpack.io/manual/current/quick-start.html
+    // But, if we use one of the others below we dont need
+    //runtime "org.slf4j:slf4j-simple:1.7.25"
+
+    //Slf4j needs one of these:
+    //1. org.slf4j.Logger
+    // This gave error for log.debug and log.info --> log4j:WARN No appenders could be found for logger (helloapp.logger.HelloLogger).
+    //compile group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.7.25'
+    //compile 'org.slf4j:slf4j-api:1.7.25'
+    // Alternative: (for compile 'org.slf4j:slf4j-api:1.7.25')
+    // https://mvnrepository.com/artifact/org.slf4j/slf4j-api
+    //compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.25'
+
+    //2. org.apache.logging.log4j
+    // This gave a general error "ERROR StatusLogger No Log4j 2 configuration file found. Using default configuration (logging only errors to the console)... ..."
+    //    or user programmatically provided configurations. Set system property 'log4j2.debug' to show Log4j 2 internal initialization logging.
+    //    See https://logging.apache.org/log4j/2.x/manual/configuration.html for instructions on how to configure Log4j 2
+
+    // but, at least logged when "log.error" was used
+    compile  'org.apache.logging.log4j:log4j-api:2.11.1'
+    compile  'org.apache.logging.log4j:log4j-core:2.11.1'
+    compile  'org.apache.logging.log4j:log4j-jul:2.11.1'
+    compile  'org.apache.logging.log4j:log4j-slf4j-impl:2.11.1'
+
+    // This is from Learning Ratpack book by Dan Woods
+    //testCompile ratpack.dependency('test')
+    //testCompile 'org.spockframework:spock-core:1.0-groovy-2.4'
+    //testCompile 'cglib:cglib:2.2.2'
+    //testCompile 'org.objenesis:objenesis:2.1'
+
+    // This is from more recent learnings
+    testCompile ratpack.dependency("groovy-test")
+    testCompile "org.spockframework:spock-core:1.3-groovy-2.5"
+    testCompile "cglib:cglib-nodep:3.2.5"
+    testCompile "org.objenesis:objenesis:2.5.1"
 }
 
 ==============================
