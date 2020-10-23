@@ -211,5 +211,68 @@ Scripts:
 - Yum Installs: https://github.com/coderdba/NOTES/blob/master/kubernetes-kb/kub-machines/1.15.5/kube-installs.sh
 - Docker Pulls: https://github.com/coderdba/NOTES/blob/master/kubernetes-kb/kub-machines/1.15.5/image-pulls.sh
 
+- ADD KUBERNETES YUM REPO
+cat <<EOF > /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+enabled=1
+gpgcheck=0
+repo_gpgcheck=0
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg 
+	https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+EOF
+
+- INSTALL SOFTWARE
+echo INFO - installing kubelet
+yum install -y kubelet-1.15.5-0
+
+echo INFO - installing kubectl
+yum install -y kubectl-1.15.5-0
+
+echo INFO - installing kubeadm
+yum install -y kubeadm-1.15.5-0
+
+echo INFO - installing kubernetes-cni
+yum install kubernetes-cni-0.7.5-0
+
+echo
+echo
+echo verifying
+echo
+rpm -qa |grep kube
+which kubelet
+which kubectl
+which kubeadm
+
+- PULL DOCKER IMAGES
+docker pull quay.io/coreos/etcd:v3.3.10
+docker pull quay.io/coreos/etcd:v3.2.24
+
+docker pull gcr.io/google_containers/kube-apiserver-amd64:v1.15.5
+docker pull gcr.io/google_containers/kube-scheduler-amd64:v1.15.5 
+docker pull gcr.io/google_containers/kube-controller-manager-amd64:v1.15.5
+docker pull gcr.io/google_containers/kube-proxy-amd64:v1.15.5
+docker pull k8s.gcr.io/pause-amd64:3.1 
+
+docker pull k8s.gcr.io/k8s-dns-kube-dns:1.14.13
+docker pull k8s.gcr.io/k8s-dns-dnsmasq-nanny:1.14.13
+docker pull k8s.gcr.io/k8s-dns-sidecar:1.14.13
+
+# being used with kubernetes 1.12.8
+docker pull quay.io/coreos/flannel:v0.9.0-amd64 
+
+# latest as in kube-flannel.yml 
+docker pull quay.io/coreos/flannel:v0.11.0-amd64 
+
+# some other images for testing and utility
+docker pull busybox
+docker pull nginx
+
+echo
+echo
+echo VERIFY
+echo
+docker images
 
 
