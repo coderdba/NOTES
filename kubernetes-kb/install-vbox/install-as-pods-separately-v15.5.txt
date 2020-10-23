@@ -153,6 +153,11 @@ CONFIGURE MACHINE
 # hostnamectl set-hostname k8s155
 
 - IP ADDRESS (to be used by Kubernetes)
+NOTE: If editing existing wired connection (of enp0s8) using nmtui becomes messy, 
+	Remove the file /etc/sysconfig/network-scripts/ifcfg-Wired_connection_1 (or move it out of its folder)
+	Stop the vm, change mac address of the second adapter in Virtualbox console
+	Start the vm, and then edit the connection newly - it would have gotten a dhcp automatic address - make it 'manual' and change the IP
+	
 Use 'nmtui' command
 Edit enp0s8 or "Wired Connection 1" (or other) that point to enp0s8
 
@@ -162,11 +167,32 @@ Add the IP to /etc/hosts
 # cat /etc/hosts
 127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
 192.168.40.100 k8s155
+192.168.40.101 k1
+192.168.40.102 k2
+192.168.40.103 k3
 ::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
 
 Restart the machine and ensure hostname and IPs show up.
 # hostname
 # ifconfig enp0s8
+
+-----------------------------------
+FIREWALL - FOR MASTER NODES
+-----------------------------------
+firewall-cmd --permanent --add-port=6443/tcp
+firewall-cmd --permanent --add-port=2379-2380/tcp
+firewall-cmd --permanent --add-port=10250/tcp
+firewall-cmd --permanent --add-port=10251/tcp
+firewall-cmd --permanent --add-port=10252/tcp
+firewall-cmd --permanent --add-port=10255/tcp
+firewall-cmd --reload
+
+-----------------------------------
+FIREWALL - FOR WORKER NODES
+-----------------------------------
+firewall-cmd --permanent --add-port=10251/tcp
+firewall-cmd --permanent --add-port=10255/tcp
+firewall-cmd --reload
 
 ------------------------
 UPDATE CA CERTIFICATES
