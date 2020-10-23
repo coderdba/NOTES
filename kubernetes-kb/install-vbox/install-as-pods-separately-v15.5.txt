@@ -1,0 +1,109 @@
+====================================
+KUBERNETES ON 3 NODES WITH PODS
+====================================
+
+==========
+REFERENCES
+==========
+https://github.com/coderdba-coding-org/code1/tree/master/kubernetes/kube-vbox-ans-singlenode-15.5
+https://github.com/coderdba/NOTES/blob/master/kubernetes-kb/install-vbox/WIP-install-as-pods-separately.txt
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-- REAL MAIN ONES
+https://blog.inkubate.io/deploy-kubernetes-1-9-from-scratch-on-vmware-vsphere/  (3-node with certs -BUT WITH BINARIES)
+--> Use this for concepts and CERTS 
+
+https://medium.com/containerum/4-ways-to-bootstrap-a-kubernetes-cluster-de0d5150a1e4 (simple docker-image based cluster)
+--> Includes setting up using images in 'Option 2 - self hosted'
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/container.md
+  (old doc https://coreos.com/etcd/docs/latest/v2/docker_guide.html)
+https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/security.md
+  
+--> ETCD with docker images
+(ETCD Config - https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/)
+(for ETCD certificates - https://blog.inkubate.io/deploy-kubernetes-1-9-from-scratch-on-vmware-vsphere/)
+
+Also, another ETCD docker document:
+https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/clustering.md
+https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/clustering.md#static
+
+https://github.com/kelseyhightower/kubernetes-the-hard-way
+--> Very good with binary installs (AS IN COMPANIES)
+
+https://blog.inkubate.io/deploy-kubernetes-1-9-from-scratch-on-vmware-vsphere/
+--> Very good with binary installs (AS IN COMPANIES - NOW I AM ADAPTING THIS FOR POD BASED INSTALLS - 3 NODE)
+--> on VMs (using binary installs - not docker images), separated services - like in companies
+--> multiple master nodes
+
+=======================
+WHAT ALL TO INSTALL
+=======================
+
+kubelet
+kubedam
+kubectl
+
+ETCD
+MASTER
+WORKER
+FLANNEL/CALICO
+
+======================
+CIDRS
+=======================
+
+------------------------------------------------------------
+CIDR FOR PODS - IS DEFINED IN CONTROLLER-MANAGER MANIFEST
+------------------------------------------------------------
+https://kubernetes.io/docs/reference/command-line-tools-reference/kube-controller-manager/
+
+NOTE: This is the "--pod-network-cidr=172.16.0.0/16" in kubeadm init method
+(also see https://kubernetes.io/docs/reference/setup-tools/kubeadm/kubeadm-init/)
+
+--cluster-cidr string
+CIDR Range for Pods in cluster. Requires --allocate-node-cidrs to be true
+
+------------------------------------------------------------
+CIDR FOR SERVICS - IS DEFINED IN APISERVER MANIFEST
+------------------------------------------------------------
+https://kubernetes.io/docs/reference/command-line-tools-reference/kube-apiserver/
+
+NOTE: This is the "--service-cidr string" in kubeadm init method
+(also see https://kubernetes.io/docs/reference/setup-tools/kubeadm/kubeadm-init/)
+
+--service-cluster-ip-range ipNet     Default: 10.0.0.0/24
+A CIDR notation IP range from which to assign service cluster IPs. This must not overlap with any IP ranges assigned to nodes for pods.
+
+------------------------------------------------------------
+CAUTION (from some past learning)
+------------------------------------------------------------
+What is this ?????
+ redo this whole thing - redo this - changing CIDR to something different from VM IPs
+ (SEE CALICO NOTES FILE)
+ 
+=================
+INITIAL VM SETUP
+=================
+OS: Centos 7.6
+# cat centos-release
+CentOS Linux release 7.6.1810 (Core) 
+
+Memory: 3GB (or 2GB may work too)
+Disk: 50GB
+
+-----------
+MACHINES
+-----------
+K0 - HA Proxy for master (optional)
+K1, K2, K3 - etcd, master, worker - all in one
+
+----------------------
+IP ADDRESSES
+----------------------
+K0 - 192.168.40.100 (optional machine)
+K1 - 192.168.40.101
+K2 - 192.168.40.102
+K3 - 192.168.40.103
