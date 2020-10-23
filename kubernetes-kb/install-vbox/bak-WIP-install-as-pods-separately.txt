@@ -1,0 +1,1015 @@
+==================================================================
+INSTALL AS PODS - SEPARATELY INSTALL EACH POD - NOT WITH INIT
+==================================================================
+
+REFERENCE: WIP-2019-no-kubeadm-init.txt
+
+=======================
+DOCS TO USE
+=======================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-- REAL MAIN ONES
+https://medium.com/containerum/4-ways-to-bootstrap-a-kubernetes-cluster-de0d5150a1e4 (simple docker-image based cluster)
+--> Includes setting up using images in 'Option 2 - self hosted'
+https://blog.inkubate.io/deploy-kubernetes-1-9-from-scratch-on-vmware-vsphere/  (3-node with certs -BUT WITH BINARIES)
+--> Use this for concepts and CERTS 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/container.md
+  (old doc https://coreos.com/etcd/docs/latest/v2/docker_guide.html)
+https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/security.md
+  
+--> ETCD with docker images
+(ETCD Config - https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/)
+(for ETCD certificates - https://blog.inkubate.io/deploy-kubernetes-1-9-from-scratch-on-vmware-vsphere/)
+
+Also, another ETCD docker document:
+https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/clustering.md
+https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/clustering.md#static
+
+https://github.com/kelseyhightower/kubernetes-the-hard-way
+--> Very good with binary installs (AS IN COMPANIES)
+
+https://blog.inkubate.io/deploy-kubernetes-1-9-from-scratch-on-vmware-vsphere/
+--> Very good with binary installs (AS IN COMPANIES - NOW I AM ADAPTING THIS FOR POD BASED INSTALLS - 3 NODE)
+--> on VMs (using binary installs - not docker images), separated services - like in companies
+--> multiple master nodes
+
+=======================
+WHAT ALL TO INSTALL
+=======================
+
+kubelet
+kubedam
+kubectl
+
+ETCD
+MASTER
+WORKER
+FLANNEL/CALICO
+
+=======================
+CIDRS
+=======================
+
+------------------------------------------------------------
+CIDR FOR PODS - IS DEFINED IN CONTROLLER-MANAGER MANIFEST
+------------------------------------------------------------
+https://kubernetes.io/docs/reference/command-line-tools-reference/kube-controller-manager/
+
+NOTE: This is the "--pod-network-cidr=172.16.0.0/16" in kubeadm init method
+(also see https://kubernetes.io/docs/reference/setup-tools/kubeadm/kubeadm-init/)
+
+--cluster-cidr string
+CIDR Range for Pods in cluster. Requires --allocate-node-cidrs to be true
+
+------------------------------------------------------------
+CIDR FOR SERVICS - IS DEFINED IN APISERVER MANIFEST
+------------------------------------------------------------
+https://kubernetes.io/docs/reference/command-line-tools-reference/kube-apiserver/
+
+NOTE: This is the "--service-cidr string" in kubeadm init method
+(also see https://kubernetes.io/docs/reference/setup-tools/kubeadm/kubeadm-init/)
+
+--service-cluster-ip-range ipNet     Default: 10.0.0.0/24
+A CIDR notation IP range from which to assign service cluster IPs. This must not overlap with any IP ranges assigned to nodes for pods.
+
+------------------------------------------------------------
+CAUTION (from some past learning)
+------------------------------------------------------------
+What is this ?????
+ redo this whole thing - redo this - changing CIDR to something different from VM IPs
+ (SEE CALICO NOTES FILE)
+
+=================
+INITIAL VM SETUP
+=================
+
+-----------
+MACHINES
+-----------
+K0 - HA Proxy for master
+K1, K2, K3 - etcd, master, worker - all in one
+
+----------------------
+IP ADDRESSES
+----------------------
+K0 - 192.168.40.100
+K1 - 192.168.40.101
+K2 - 192.168.40.102
+K3 - 192.168.40.103
+
+What is this note??
+For Kubernetes: (set IPs matching this or vice-versa)
+NOTE: Changing cidr to 192.168.0.0 (instead of 192.168.11.0 as directed in main web article)
+--apiserver-advertise-address=192.168.11.200 --pod-network-cidr=192.168.0.0/16
+
+---------------------------------
+HOSTNAME AND IP SETUP
+---------------------------------
+
+# hostnamectl set-hostname kubemaster0
+Set IP for = enp0s8 182.168.10.101 netmask 255.255.255.0
+
+Add main IP to /etc/hosts
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+...
+...
+...
+...
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+
+Restart the machine and ensure hostname and IPs show up.
+# hostname
+# ifconfig enp0s8
+
+---------------------------------
+DISABLE SELINUX
+---------------------------------
+# setenforce 0
+
+Edit the file /etc/sysconfig/selinux and set enforcing as disabled
+
+---------------------------------
+DISABLE SWAP
+---------------------------------
+# swapoff -a
+
+Edit /etc/fstab and comment out line of swap
+#/dev/mapper/ol-swap     swap                    swap    defaults        0 0
+
+---------------------------------
+ENABLE br_netfilter
+---------------------------------
+# modprobe br_netfilter
+# echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables
+
+Also, put it in /etc/sysctl.conf as follows:
+net.bridge.bridge-nf-call-iptables = 1
+
+And, make it persistent:
+# sysctl -p
+
+---------------------------------------
+INSTALL DOCKER-CE (community edition)
+---------------------------------------
+- FIRST INSTALL CONTAINER-SELINUX > v2.9
+http://mirror.centos.org/centos/7/extras/x86_64/Packages/container-selinux-2.68-1.el7.noarch.rpm
+
+--> Download this, and then do: (dont do rpm -ivh container-selinux-2.74-1.el7.noarch.rpm)
+# yum install container-selinux-2.74-1.el7.noarch.rpm
+
+- INSTALL DOCKER
+Check, and install if needed - dependencies with the following command:
+# yum install -y yum-utils device-mapper-persistent-data lvm2
+
+Next, add the Docker-ce repository with the command:
+# yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+
+Install Docker-ce with the command:
+# yum install -y docker-ce
+
+- ENABLE DOCKER SERVICE
+# systemctl enable docker
+
+- START DOCKER
+# service docker start
+
+- CHECK CGROUP
+# docker info | grep -i cgroup
+Cgroup Driver: cgroupfs
+
+----------------------------------------
+INSTALL CFSSL - TO GENERATE CERTIFICATES
+----------------------------------------
+https://blog.inkubate.io/deploy-kubernetes-1-9-from-scratch-on-vmware-vsphere/
+
+Installation of cfssl
+1- Download the binaries.
+
+$ wget https://pkg.cfssl.org/R1.2/cfssl_linux-amd64
+$ wget https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64
+2- Add the execution permission to the binaries.
+
+$ chmod +x cfssl*
+3- Move the binaries to /usr/local/bin.
+
+$ sudo mv cfssl_linux-amd64 /usr/local/bin/cfssl
+$ sudo mv cfssljson_linux-amd64 /usr/local/bin/cfssljson
+4- Verify the installation.
+
+$ cfssl version
+
+-----------------------------------
+FIREWALL - FOR MASTER NODES
+-----------------------------------
+firewall-cmd --permanent --add-port=6443/tcp
+firewall-cmd --permanent --add-port=2379-2380/tcp
+firewall-cmd --permanent --add-port=10250/tcp
+firewall-cmd --permanent --add-port=10251/tcp
+firewall-cmd --permanent --add-port=10252/tcp
+firewall-cmd --permanent --add-port=10255/tcp
+firewall-cmd --reload
+
+-----------------------------------
+FIREWALL - FOR WORKER NODES
+-----------------------------------
+firewall-cmd --permanent --add-port=10251/tcp
+firewall-cmd --permanent --add-port=10255/tcp
+firewall-cmd --reload
+
+==========================================
+INSTALL KUBEADM, KUBELET, KUBECTL
+==========================================
+https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/
+
+https://www.linuxtechi.com/install-kubernetes-1-7-centos7-rhel7/
+https://www.howtoforge.com/tutorial/centos-kubernetes-docker-cluster/
+cat <<EOF > /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg
+https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+EOF
+
+NOTE: Ensure you install the correct versions for the versions of apiserver and such that you install
+# yum install -y kubelet kubeadm kubectl --disableexcludes=kubernetes
+
+==========================================
+PULL DOCKER IMAGES NEEDED FOR KUBERNETES
+==========================================
+
+- ETCD
+# docker pull quay.io/coreos/etcd:latest
+or
+# docker pull quay.io/coreos/etcd:v3.3
+
+- MASTER (with additional components for workers also)
+--- FOR SPECIFIC VERSIONS
+https://kubernetes.io/docs/setup/release/notes/
+gcr.io/google_containers/kube-proxy-amd64(and such)
+
+docker pull gcr.io/google_containers/kube-apiserver-amd64:v1.15.0
+docker pull gcr.io/google_containers/kube-scheduler-amd64:v1.15.0 
+docker pull gcr.io/google_containers/kube-controller-manager-amd64:v1.15.0 
+docker pull gcr.io/google_containers/kube-proxy-amd64:v1.15.0 
+docker pull gcr.io/google-containers/kube-addon-manager-amd64:v9.0.1  (gcr.io/google_containers/kube-proxy-amd64)
+docker pull gcr.io/google_containers/metrics-server-amd64:v0.3.3 
+docker pull gcr.io/google-containers/rescheduler:v0.4.0 (is there a later one)
+docker pull quay.io/calico/node:v3.8.0 (or 3.8 ?) (https://hub.docker.com/r/calico/node/tags)
+docker pull quay.io/calico/cni:v3.5.0 (or 3.5?) (https://hub.docker.com/r/calico/cni/tags)
+docker pull k8s.gcr.io/pause-amd64:3.1 (https://console.cloud.google.com/gcr/images/google-containers/GLOBAL/pause-amd64?gcrImageListsize=30)
+docker pull coredns/coredns
+
+# Add this to make a common image for master and woker
+docker pull quay.io/jcmoraisjr/haproxy-ingress:v0.7.2
+
+
+--- FOR SPECIFIC VERSIONS (older)
+docker pull gcr.io/google_containers/kube-apiserver-amd64:v1.12.4 
+docker pull gcr.io/google_containers/kube-scheduler-amd64:v1.12.4 
+docker pull gcr.io/google_containers/kube-controller-manager-amd64:v1.12.4 
+docker pull gcr.io/google_containers/kube-proxy-amd64:v1.12.4 
+docker pull gcr.io/google-containers/kube-addon-manager-amd64:v8.6 
+docker pull gcr.io/google_containers/metrics-server-amd64:v0.2.1 
+docker pull gcr.io/google-containers/rescheduler:v0.3.1  
+docker pull quay.io/calico/node:v3.0.1 
+docker pull quay.io/calico/cni:v2.0.0 
+docker pull k8s.gcr.io/pause-amd64:3.1 
+# Add this to make a common image for master and woker
+docker pull quay.io/jcmoraisjr/haproxy-ingress:v0.5 
+
+--- FOR LATEST
+docker pull gcr.io/google_containers/kube-apiserver-amd64
+docker pull gcr.io/google_containers/kube-scheduler-amd64
+docker pull gcr.io/google_containers/kube-controller-manager-amd64
+docker pull gcr.io/google_containers/kube-proxy-amd64
+docker pull gcr.io/google-containers/kube-addon-manager-amd64
+docker pull gcr.io/google_containers/metrics-server-amd64
+docker pull gcr.io/google-containers/rescheduler
+docker pull quay.io/calico/node
+docker pull quay.io/calico/cni
+docker pull k8s.gcr.io/pause-amd64
+# Add this to make a common image for master and woker
+docker pull quay.io/jcmoraisjr/haproxy-ingress
+docker pull coredns/coredns
+
+- WORKER ONLY
+--- FOR SPECIFIC VERSIONS
+docker pull gcr.io/google_containers/kube-proxy-amd64:v1.12.4 
+docker pull k8s.gcr.io/pause-amd64:3.1 
+docker pull gcr.io/google_containers/node-problem-detector:v0.4.1 
+docker pull quay.io/jcmoraisjr/haproxy-ingress:v0.5 
+docker pull quay.io/calico/node:v3.0.1 
+docker pull quay.io/calico/cni:v2.0.0 
+
+--- FOR LATEST
+docker pull gcr.io/google_containers/kube-proxy-amd64
+docker pull k8s.gcr.io/pause-amd64
+docker pull gcr.io/google_containers/node-problem-detector
+docker pull quay.io/jcmoraisjr/haproxy-ingress
+docker pull quay.io/calico/node
+docker pull quay.io/calico/cni
+
+=======
+ETCD
+=======
+https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/container.md
+  (old doc https://coreos.com/etcd/docs/latest/v2/docker_guide.html)
+------------------
+HIGH LEVEL STEPS
+------------------
+Pull image as mentioned earlier.
+Create an etcd service with IP settings.
+Start the service so that it starts etcd image as container with correct settings.
+
+------------------------------------------------------
+STEPS - MANUAL STEPS - A BIT MESSY TO VIEW
+(see etcd service section for more clear code)
+------------------------------------------------------
+REGISTRY=quay.io/coreos/etcd
+# available from v3.2.5
+#REGISTRY=gcr.io/etcd-development/etcd
+
+# For each machine
+#ETCD_VERSION=latest
+ETCD_VERSION=v3.3
+# Note: TOKEN can be any string
+TOKEN=my-etcd-token
+CLUSTER_STATE=new
+NAME_1=k1
+NAME_2=k2
+NAME_3=k3
+HOST_1=192.168.40.101
+HOST_2=192.168.40.102
+HOST_3=192.168.40.103
+CLUSTER=${NAME_1}=http://${HOST_1}:2380,${NAME_2}=http://${HOST_2}:2380,${NAME_3}=http://${HOST_3}:2380
+DATA_DIR=/var/lib/etcd
+
+# For node 1
+THIS_NAME=${NAME_1}
+THIS_IP=${HOST_1}
+#docker run \
+docker run --rm\
+  --net=host
+  -p 2379:2379 \
+  -p 2380:2380 \
+  --volume=${DATA_DIR}:/etcd-data \
+  --name etcd ${REGISTRY}:${ETCD_VERSION} \
+  /usr/local/bin/etcd \
+  --data-dir=/etcd-data --name ${THIS_NAME} \
+  --initial-advertise-peer-urls http://${THIS_IP}:2380 --listen-peer-urls http://0.0.0.0:2380 \
+  --advertise-client-urls http://${THIS_IP}:2379 --listen-client-urls http://0.0.0.0:2379 \
+  --initial-cluster ${CLUSTER} \
+  --initial-cluster-state ${CLUSTER_STATE} --initial-cluster-token ${TOKEN}
+
+# For node 2
+THIS_NAME=${NAME_2}
+THIS_IP=${HOST_2}
+#docker run \
+docker run --rm\
+  --net=host
+  -p 2379:2379 \
+  -p 2380:2380 \
+  --volume=${DATA_DIR}:/etcd-data \
+  --name etcd ${REGISTRY}:${ETCD_VERSION} \
+  /usr/local/bin/etcd \
+  --data-dir=/etcd-data --name ${THIS_NAME} \
+  --initial-advertise-peer-urls http://${THIS_IP}:2380 --listen-peer-urls http://0.0.0.0:2380 \
+  --advertise-client-urls http://${THIS_IP}:2379 --listen-client-urls http://0.0.0.0:2379 \
+  --initial-cluster ${CLUSTER} \
+  --initial-cluster-state ${CLUSTER_STATE} --initial-cluster-token ${TOKEN}
+
+# For node 3
+THIS_NAME=${NAME_3}
+THIS_IP=${HOST_3}
+#docker run \
+docker run --rm\
+  --net=host
+  -p 2379:2379 \
+  -p 2380:2380 \
+  --volume=${DATA_DIR}:/etcd-data \
+  --name etcd ${REGISTRY}:${ETCD_VERSION} \
+  /usr/local/bin/etcd \
+  --data-dir=/etcd-data --name ${THIS_NAME} \
+  --initial-advertise-peer-urls http://${THIS_IP}:2380 --listen-peer-urls http://0.0.0.0:2380 \
+  --advertise-client-urls http://${THIS_IP}:2379 --listen-client-urls http://0.0.0.0:2379 \
+  --initial-cluster ${CLUSTER} \
+  --initial-cluster-state ${CLUSTER_STATE} --initial-cluster-token ${TOKEN}
+  
+- VERIFY
+docker exec etcd /bin/sh -c "export ETCDCTL_API=3 && /usr/local/bin/etcdctl member list"
+  [root@k1 kube]# docker exec etcd /bin/sh -c "export ETCDCTL_API=3 && /usr/local/bin/etcdctl member list"
+  1e7c8c4eb9920d9d, started, k1, http://192.168.40.101:2380, http://192.168.40.101:2379
+  a336890e0c77f3f6, started, k3, http://192.168.40.103:2380, http://192.168.40.103:2379
+  f0103422c3d66497, started, k2, http://192.168.40.102:2380, http://192.168.40.102:2379
+
+docker exec etcd /bin/sh -c "export ETCDCTL_API=3 && /usr/local/bin/etcdctl put foo bar"
+  [root@k1 etcd]# docker exec etcd /bin/sh -c "export ETCDCTL_API=3 && /usr/local/bin/etcdctl put foo bar"
+  OK
+  [root@k1 etcd]# docker exec etcd /bin/sh -c "export ETCDCTL_API=3 && /usr/local/bin/etcdctl get foo"
+  foo
+  bar
+
+--------------
+ETCD SERVICE
+--------------
+To start etcd container when host machine starts - create a systemd service.
+
+----
+File: /etc/environment
+----
+# ETCD RELATED ENVIRONMENT
+REGISTRY=quay.io/coreos/etcd
+# available from v3.2.5
+#REGISTRY=gcr.io/etcd-development/etcd
+
+# For each machine
+#ETCD_VERSION=latest
+ETCD_VERSION=v3.3
+# Note: TOKEN can be any string
+TOKEN=my-etcd-token
+CLUSTER_STATE=new
+CLUSTER="k1=http://192.168.40.101:2380,k2=http://192.168.40.102:2380,k3=http://192.168.40.103:2380"
+DATA_DIR=/var/lib/etcd
+THIS_NAME=k1
+THIS_IP=192.168.40.101
+
+
+----
+File: /etc/systemd/system/etcd.service:
+----
+[Unit]
+Description=etcd
+Documentation=https://github.com/coreos
+Wants=docker.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+IOSchedulingClass=2
+IOSchedulingPriority=0
+EnvironmentFile=/etc/environment
+
+# START ETCD
+ExecStart=/usr/bin/docker run --rm\
+  --net=host \
+  -p 2379:2379 \
+  -p 2380:2380 \
+  --volume=${DATA_DIR}:/etcd-data \
+  --name etcd ${REGISTRY}:${ETCD_VERSION} \
+  /usr/local/bin/etcd \
+  --data-dir=/etcd-data --name ${THIS_NAME} \
+  --initial-advertise-peer-urls http://${THIS_IP}:2380 --listen-peer-urls http://0.0.0.0:2380 \
+  --advertise-client-urls http://${THIS_IP}:2379 --listen-client-urls http://0.0.0.0:2379 \
+  --initial-cluster ${CLUSTER} \
+  --initial-cluster-state ${CLUSTER_STATE} --initial-cluster-token ${TOKEN}
+
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+
+
+- NOW, START ETCD SERVICE
+-- Reload the daemon configuration.
+systemctl daemon-reload
+
+-- Enable etcd to start at boot time.
+systemctl enable etcd
+
+-- Start etcd.
+systemctl start etcd
+
+-- Verify
+# ps -ef| grep etcd
+--> THE DOCKER COMMAND, INVOKED BY THE SERVICE
+root       687     1  0 Jul09 ?        00:00:03 /usr/bin/docker run --rm --net=host -p 2379:2379 -p 2380:2380 --volume=/var/lib/etcd:/etcd-data --name etcd quay.io/coreos/etcd:v3.3 /usr/local/bin/etcd --data-dir=/etcd-data --name k1 --initial-advertise-peer-urls http://192.168.40.101:2380 --listen-peer-urls http://0.0.0.0:2380 --advertise-client-urls http://192.168.40.101:2379 --listen-client-urls http://0.0.0.0:2379 --initial-cluster k1=http://192.168.40.101:2380,k2=http://192.168.40.102:2380,k3=http://192.168.40.103:2380 --initial-cluster-state new --initial-cluster-token my-etcd-token
+
+--> THE ETCD EXECUTABLE INSIDE CONTAINER
+root      1933  1918  1 Jul09 ?        00:26:19 /usr/local/bin/etcd --data-dir=/etcd-data --name k1 --initial-advertise-peer-urls http://192.168.40.101:2380 --listen-peer-urls http://0.0.0.0:2380 --advertise-client-urls http://192.168.40.101:2379 --listen-client-urls http://0.0.0.0:2379 --initial-cluster k1=http://192.168.40.101:2380,k2=http://192.168.40.102:2380,k3=http://192.168.40.103:2380 --initial-cluster-state new --initial-cluster-token my-etcd-token
+
+------------------------------------------------------------
+--  REFERENCE DOCKER COMMAND BELOW (with certs and keys)
+------------------------------------------------------------
+Reference docker command to start the container with settings:
+NOTE: The IP address 101.192.217.105 and other such of the hosts - not of the container.
+
+/usr/bin/docker run --rm --net=host --name etcd -v /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:/etc/ssl/certs/ca-certificates.crt -v /data/etcd:/data -v /var/lib/etcdbak:/var/lib/etcdbak -v /opt/k8s/openssl:/opt/k8s/openssl --env ETCDCTL_CERT=/opt/k8s/openssl/server.crt --env ETCDCTL_KEY=/opt/k8s/openssl/server.key --env ETCDCTL_CACERT=/opt/k8s/openssl/ca.crt -e ETCD_INITIAL_CLUSTER=101.192.217.104=https://101.192.217.104:2380,101.192.217.105=https://101.192.217.105:2380 -e ETCD_INITIAL_CLUSTER_STATE=existing -e ETCDCTL_API=3 -e ETCD_SNAPSHOT_COUNT={ETCD_SNAPSHOT_COUNT} gcr.io/google_containers/etcd-amd64:3.1.11 etcd -name 101.192.217.105 -initial-advertise-peer-urls HTTPS://101.192.217.105:2380 -listen-peer-urls HTTPS://0.0.0.0:2380 -listen-client-urls HTTPS://101.192.217.105:2379,HTTPS://127.0.0.1:2379 -advertise-client-urls HTTPS://101.192.217.105:2379 -cert-file /opt/k8s/openssl/server.crt -key-file /opt/k8s/openssl/server.key -client-cert-auth -trusted-ca-file /opt/k8s/openssl/ca.crt -peer-cert-file /opt/k8s/openssl/server.crt -peer-key-file /opt/k8s/openssl/server.key -peer-client-cert-auth -peer-trusted-ca-file /opt/k8s/openssl/ca.crt -data-dir=/data
+
+==================================
+DO LATER - SECURING ETCD - WIP
+c
+Generate key and certificate
+# openssl req  -nodes -new -x509  -keyout server.key -out server.cert
+
+ETCD startup secure (reference command):
+/usr/bin/docker run --rm --net=host --name etcd 
+-v /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:/etc/ssl/certs/ca-certificates.crt 
+-v /data/etcd:/data -v /var/lib/etcdbak:/var/lib/etcdbak -v /opt/k8s/openssl:/opt/k8s/openssl 
+--env ETCDCTL_CERT=/opt/k8s/openssl/server.crt --env ETCDCTL_KEY=/opt/k8s/openssl/server.key 
+--env ETCDCTL_CACERT=/opt/k8s/openssl/ca.crt -e ETCD_INITIAL_CLUSTER=101.192.217.104=https://101.192.217.104:2380,101.192.217.105=https://101.192.217.105:2380 
+-e ETCD_INITIAL_CLUSTER_STATE=existing -e ETCDCTL_API=3 -e ETCD_SNAPSHOT_COUNT={ETCD_SNAPSHOT_COUNT} 
+gcr.io/google_containers/etcd-amd64:3.1.11 etcd -name 101.192.217.105 -initial-advertise-peer-urls 
+#
+# HTTPS instead of HTTP
+HTTPS://101.192.217.105:2380 -listen-peer-urls HTTPS://0.0.0.0:2380 -listen-client-urls 
+HTTPS://101.192.217.105:2379,HTTPS://127.0.0.1:2379 -advertise-client-urls HTTPS://101.192.217.105:2379 
+#
+# here the certs-keys are
+-cert-file /opt/k8s/openssl/server.crt 
+-key-file /opt/k8s/openssl/server.key 
+-client-cert-auth 
+-trusted-ca-file /opt/k8s/openssl/ca.crt
+#
+# cert-keys for peers
+-peer-cert-file /opt/k8s/openssl/server.crt -peer-key-file /opt/k8s/openssl/server.key 
+-peer-client-cert-auth -peer-trusted-ca-file /opt/k8s/openssl/ca.crt -data-dir=/data
+
+==================================
+INSTALL KUBERNETES COMPONENTS
+==================================
+Basic - https://medium.com/containerum/4-ways-to-bootstrap-a-kubernetes-cluster-de0d5150a1e4
+More settings - https://blog.inkubate.io/deploy-kubernetes-1-9-from-scratch-on-vmware-vsphere/
+
+kubelet service file /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf:
+[Service]
+Environment="KUBELET_SYSTEM_PODS_ARGS=--pod-manifest-path=/etc/kubernetes/manifests  --pod-infra-container-image=k8s.gcr.io/pause-amd64:3.1"
+ExecStart=
+ExecStart=/usr/bin/kubelet $KUBELET_SYSTEM_PODS_ARGS
+
+# ORIGINAL CODE
+#[Service]
+#Environment="KUBELET_KUBECONFIG_ARGS=--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf"
+#Environment="KUBELET_CONFIG_ARGS=--config=/var/lib/kubelet/config.yaml"
+## This is a file that "kubeadm init" and "kubeadm join" generates at runtime, populating the KUBELET_KUBEADM_ARGS variable dynamically
+#EnvironmentFile=-/var/lib/kubelet/kubeadm-flags.env
+## This is a file that the user can use for overrides of the kubelet args as a last resort. Preferably, the user should use
+## the .NodeRegistration.KubeletExtraArgs object in the configuration files instead. KUBELET_EXTRA_ARGS should be sourced from this file.
+#EnvironmentFile=-/etc/sysconfig/kubelet
+#ExecStart=
+#ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS
+
+# REFERENCE
+Environment="KUBELET_SYSTEM_PODS_ARGS=--pod-manifest-path=/etc/kubernetes/manifests --allow-privileged=true --pod-infra-container-image=app/unimatrix-platform/pause-amd64:3.1 --feature-gates=PodPriority=true --serialize-image-pulls=false --image-pull-progress-deadline=30m0s --max-pods=150 --kube-reserved=cpu=2,memory=1Gi --system-reserved=cpu=1,memory=2Gi --eviction-hard=memory.available<512Mi"
+
+
+/etc/kubernetes/manifests/kube-apiserver.yaml:
+NOTE: Change the advertise-address for each node
+
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    scheduler.alpha.kubernetes.io/critical-pod: ""
+  labels:
+    component: kube-apiserver
+    tier: control-plane
+  name: kube-apiserver
+  namespace: kube-system
+spec:
+  hostNetwork: true
+  containers:
+  - command:
+    - kube-apiserver
+    - --advertise-address=192.168.40.101
+    - --insecure-bind-address=127.0.0.1
+    - --bind-address=0.0.0.0
+    - --etcd-servers=https://192.168.40.101:2379,https://192.168.40.102:2379,https://192.168.40.101:2379 
+    - --cluster-cidr=10.20.0.0/16
+    - --service-cluster-ip-range=10.96.0.0/12
+    - --admission-control=NamespaceLifecycle,LimitRanger,SecurityContextDeny,ServiceAccount,ResourceQuota
+    image: gcr.io/google_containers/kube-apiserver-amd64:v1.15.0
+    name: kube-apiserver
+
+/etc/kubernetes/manifests/kube-controller-manager.yaml:
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    scheduler.alpha.kubernetes.io/critical-pod: ""
+  labels:
+    component: kube-controller-manager
+    tier: control-plane
+  name: kube-controller-manager
+  namespace: kube-system
+spec:
+  containers:
+  - command:
+    - kube-controller-manager
+    - --cluster-name=kubernetes
+    - --master=http://127.0.0.1:8080
+    - --leader-elect=true
+    - --cluster-cidr=10.20.0.0/16
+    - --service-cluster-ip-range=10.96.0.0/12
+    image: gcr.io/google_containers/kube-controller-manager-amd64:v1.15.0
+    name: kube-controller-manager
+  hostNetwork: true
+
+/etc/kubernetes/manifests/kube-scheduler.yaml:
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    scheduler.alpha.kubernetes.io/critical-pod: ""
+  labels:
+    component: kube-scheduler
+    tier: control-plane
+  name: kube-scheduler
+  namespace: kube-system
+spec:
+  containers:
+  - command:
+    - kube-scheduler
+    - --master=http://127.0.0.1:8080
+    - --leader-elect=true
+    image: gcr.io/google_containers/kube-scheduler-amd64:v1.15.0
+    name: kube-scheduler
+  hostNetwork: true
+
+/etc/kubernetes/kubelet-config.yaml:
+apiVersion: v1
+clusters:
+- cluster:
+    server: http://127.0.0.1:8080
+  name: kubernetes
+contexts:
+- context:
+    cluster: kubernetes
+    user: kubelet
+  name: kubelet@kubernetes
+current-context: kubelet@kubernetes
+kind: Config
+preferences: {}
+users:
+- name: kubelet@kubernetes
+  
+-------
+ERROR while starting kubelet
+-------
+https://github.com/kubernetes/kubernetes/issues/43856
+
+https://github.com/kubernetes/kubernetes/issues/43704
+(from https://stackoverflow.com/questions/44133503/kubelet-error-failed-to-start-containermanager-failed-to-initialise-top-level-q)
+  (This did not solve)
+  by adding these two parameters to kubelet:
+
+    --cgroups-per-qos=false
+    --enforce-node-allocatable=""
+
+
+All pods except apiserver came up.
+
+Jul 27 12:44:20 k1 systemd[1]: kubelet.service: main process exited, code=exited, status=255/n/a
+Jul 27 12:44:20 k1 systemd[1]: Unit kubelet.service entered failed state.
+Jul 27 12:44:20 k1 systemd[1]: kubelet.service failed.
+Jul 27 12:44:30 k1 systemd[1]: kubelet.service holdoff time over, scheduling restart.
+Jul 27 12:44:30 k1 systemd[1]: Started kubelet: The Kubernetes Node Agent.
+Jul 27 12:44:30 k1 systemd[1]: Starting kubelet: The Kubernetes Node Agent...
+Jul 27 12:44:30 k1 kubelet[22514]: Flag --pod-manifest-path has been deprecated, This parameter should be set via the config file specified by the Kubelet's --config flag. See https://kubernetes.io/docs/tasks/administer-cluster/kubelet-config-file/ for more information.
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.732449   22514 server.go:425] Version: v1.15.0
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.732587   22514 plugins.go:103] No cloud provider specified.
+Jul 27 12:44:30 k1 kubelet[22514]: W0727 12:44:30.732600   22514 server.go:564] standalone mode, no API client
+Jul 27 12:44:30 k1 kubelet[22514]: W0727 12:44:30.812272   22514 server.go:482] No api server defined - no events will be sent to API server.
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.812291   22514 server.go:661] --cgroups-per-qos enabled, but --cgroup-root was not specified.  defaulting to /
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.812550   22514 container_manager_linux.go:261] container manager verified user specified cgroup-root exists: []
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.812562   22514 container_manager_linux.go:266] Creating Container Manager object based on Node Config: {RuntimeCgroupsName: SystemCgroupsName: KubeletCgroupsName: ContainerRuntime:docker CgroupsPerQOS:true CgroupRoot:/ CgroupDriver:cgroupfs KubeletRootDir:/var/lib/kubelet ProtectKernelDefaults:false NodeAllocatableConfig:{KubeReservedCgroupName: SystemReservedCgroupName: EnforceNodeAllocatable:map[pods:{}] KubeReserved:map[] SystemReserved:map[] HardEvictionThresholds:[{Signal:memory.available Operator:LessThan Value:{Quantity:100Mi Percentage:0} GracePeriod:0s MinReclaim:<nil>} {Signal:nodefs.available Operator:LessThan Value:{Quantity:<nil> Percentage:0.1} GracePeriod:0s MinReclaim:<nil>} {Signal:nodefs.inodesFree Operator:LessThan Value:{Quantity:<nil> Percentage:0.05} GracePeriod:0s MinReclaim:<nil>} {Signal:imagefs.available Operator:LessThan Value:{Quantity:<nil> Percentage:0.15} GracePeriod:0s MinReclaim:<nil>}]} QOSReserved:map[] ExperimentalCPUManagerPolicy:none ExperimentalCPUManagerReconcilePeriod:10s ExperimentalPodPidsLimit:-1 EnforceCPULimits:true CPUCFSQuotaPeriod:100ms}
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.812638   22514 container_manager_linux.go:286] Creating device plugin manager: true
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.812657   22514 state_mem.go:36] [cpumanager] initializing new in-memory state store
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.812849   22514 state_mem.go:84] [cpumanager] updated default cpuset: ""
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.812862   22514 state_mem.go:92] [cpumanager] updated cpuset assignments: "map[]"
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.812944   22514 kubelet.go:281] Adding pod path: /etc/kubernetes/manifests
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.859446   22514 client.go:75] Connecting to docker on unix:///var/run/docker.sock
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.859469   22514 client.go:104] Start docker client with request timeout=2m0s
+Jul 27 12:44:30 k1 kubelet[22514]: W0727 12:44:30.862049   22514 docker_service.go:561] Hairpin mode set to "promiscuous-bridge" but kubenet is not enabled, falling back to "hairpin-veth"
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.862068   22514 docker_service.go:238] Hairpin mode set to "hairpin-veth"
+Jul 27 12:44:30 k1 kubelet[22514]: W0727 12:44:30.862148   22514 cni.go:213] Unable to update cni config: No networks found in /etc/cni/net.d
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.869974   22514 docker_service.go:253] Docker cri networking managed by kubernetes.io/no-op
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.905068   22514 docker_service.go:258] Docker Info: &{ID:4OJF:7RMI:ZVR3:BAYU:RCIF:PR53:6HRM:MJOI:BJWU:LJGV:7LIZ:ZINC Containers:6 ContainersRunning:6 ContainersPaused:0 ContainersStopped:0 Images:14 Driver:overlay2 DriverStatus:[[Backing Filesystem xfs] [Supports d_type true] [Native Overlay Diff false]] SystemStatus:[] Plugins:{Volume:[local] Network:[bridge host macvlan null overlay] Authorization:[] Log:[awslogs fluentd gcplogs gelf journald json-file local logentries splunk syslog]} MemoryLimit:true SwapLimit:true KernelMemory:true KernelMemoryTCP:false CPUCfsPeriod:true CPUCfsQuota:true CPUShares:true CPUSet:true PidsLimit:false IPv4Forwarding:true BridgeNfIptables:true BridgeNfIP6tables:true Debug:false NFd:56 OomKillDisable:true NGoroutines:72 SystemTime:2019-07-27T12:44:30.870918504+05:30 LoggingDriver:json-file CgroupDriver:cgroupfs NEventsListener:0 KernelVersion:4.1.12-112.16.4.el7uek.x86_64 OperatingSystem:Oracle Linux Server 7.5 OSType:linux Architecture:x86_64 IndexServerAddress:https://index.docker.io/v1/ RegistryConfig:0xc000421960 NCPU:1 MemTotal:2095595520 GenericResources:[] DockerRootDir:/var/lib/docker HTTPProxy: HTTPSProxy: NoProxy: Name:k1 Labels:[] ExperimentalBuild:false ServerVersion:18.09.5 ClusterStore: ClusterAdvertise: Runtimes:map[runc:{Path:runc Args:[]}] DefaultRuntime:runc Swarm:{NodeID: NodeAddr: LocalNodeState:inactive ControlAvailable:false Error: RemoteManagers:[] Nodes:0 Managers:0 Cluster:<nil> Warnings:[]} LiveRestoreEnabled:false Isolation: InitBinary:docker-init ContainerdCommit:{ID:bb71b10fd8f58240ca47fbb579b9d1028eea7c84 Expected:bb71b10fd8f58240ca47fbb579b9d1028eea7c84} RuncCommit:{ID:2b18fe1d885ee5083ef9f0838fee39b62d653e30 Expected:2b18fe1d885ee5083ef9f0838fee39b62d653e30} InitCommit:{ID:fec3683 Expected:fec3683} SecurityOptions:[name=seccomp,profile=default] ProductLicense:Community Engine Warnings:[]}
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.905134   22514 docker_service.go:271] Setting cgroupDriver to cgroupfs
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.942072   22514 remote_runtime.go:59] parsed scheme: ""
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.942088   22514 remote_runtime.go:59] scheme "" not registered, fallback to default scheme
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.942113   22514 remote_image.go:50] parsed scheme: ""
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.942118   22514 remote_image.go:50] scheme "" not registered, fallback to default scheme
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.944218   22514 asm_amd64.s:1337] ccResolverWrapper: sending new addresses to cc: [{/var/run/dockershim.sock 0  <nil>}]
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.944239   22514 clientconn.go:796] ClientConn switching balancer to "pick_first"
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.944278   22514 balancer_conn_wrappers.go:131] pickfirstBalancer: HandleSubConnStateChange: 0xc000542490, CONNECTING
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.944391   22514 balancer_conn_wrappers.go:131] pickfirstBalancer: HandleSubConnStateChange: 0xc000542490, READY
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.944405   22514 asm_amd64.s:1337] ccResolverWrapper: sending new addresses to cc: [{/var/run/dockershim.sock 0  <nil>}]
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.944411   22514 clientconn.go:796] ClientConn switching balancer to "pick_first"
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.944426   22514 balancer_conn_wrappers.go:131] pickfirstBalancer: HandleSubConnStateChange: 0xc000542940, CONNECTING
+Jul 27 12:44:30 k1 kubelet[22514]: I0727 12:44:30.944477   22514 balancer_conn_wrappers.go:131] pickfirstBalancer: HandleSubConnStateChange: 0xc000542940, READY
+Jul 27 12:44:51 k1 kubelet[22514]: E0727 12:44:51.260009   22514 aws_credentials.go:77] while getting AWS credentials NoCredentialProviders: no valid providers in chain. Deprecated.
+Jul 27 12:44:51 k1 kubelet[22514]: For verbose messaging see aws.Config.CredentialsChainVerboseErrors
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.262337   22514 kuberuntime_manager.go:205] Container runtime docker initialized, version: 18.09.5, apiVersion: 1.39.0
+Jul 27 12:44:51 k1 kubelet[22514]: W0727 12:44:51.262415   22514 volume_host.go:78] kubeClient is nil. Skip initialization of CSIDriverLister
+Jul 27 12:44:51 k1 kubelet[22514]: W0727 12:44:51.262558   22514 csi_plugin.go:215] kubernetes.io/csi: kubeclient not set, assuming standalone kubelet
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.264259   22514 server.go:1083] Started kubelet
+Jul 27 12:44:51 k1 kubelet[22514]: E0727 12:44:51.264375   22514 kubelet.go:1293] Image garbage collection failed once. Stats initialization may not have completed yet: failed to get imageFs info: unable to find data in memory cache
+Jul 27 12:44:51 k1 kubelet[22514]: W0727 12:44:51.264404   22514 kubelet.go:1395] No api server defined - no node status update will be sent.
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.265019   22514 fs_resource_analyzer.go:64] Starting FS ResourceAnalyzer
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.265038   22514 status_manager.go:148] Kubernetes client is nil, not starting status manager.
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.265045   22514 kubelet.go:1805] Starting kubelet main sync loop.
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.265059   22514 kubelet.go:1822] skipping pod synchronization - [container runtime status check may not have completed yet, PLEG is not healthy: pleg has yet to be successful]
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.265126   22514 server.go:144] Starting to listen on 0.0.0.0:10250
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.265826   22514 server.go:350] Adding debug handlers to kubelet server.
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.274008   22514 volume_manager.go:243] Starting Kubelet Volume Manager
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.278039   22514 desired_state_of_world_populator.go:130] Desired state populator starts to run
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.318270   22514 clientconn.go:440] parsed scheme: "unix"
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.318284   22514 clientconn.go:440] scheme "unix" not registered, fallback to default scheme
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.318308   22514 asm_amd64.s:1337] ccResolverWrapper: sending new addresses to cc: [{unix:///run/containerd/containerd.sock 0  <nil>}]
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.318317   22514 clientconn.go:796] ClientConn switching balancer to "pick_first"
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.318343   22514 balancer_conn_wrappers.go:131] pickfirstBalancer: HandleSubConnStateChange: 0xc0002b84f0, CONNECTING
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.318419   22514 balancer_conn_wrappers.go:131] pickfirstBalancer: HandleSubConnStateChange: 0xc0002b84f0, READY
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.369041   22514 kubelet.go:1822] skipping pod synchronization - container runtime status check may not have completed yet
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.451455   22514 kubelet_node_status.go:286] Setting node annotation to enable volume controller attach/detach
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.453781   22514 cpu_manager.go:155] [cpumanager] starting with none policy
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.453791   22514 cpu_manager.go:156] [cpumanager] reconciling every 10s
+Jul 27 12:44:51 k1 kubelet[22514]: I0727 12:44:51.453803   22514 policy_none.go:42] [cpumanager] none policy: Start
+Jul 27 12:44:51 k1 kubelet[22514]: F0727 12:44:51.454428   22514 kubelet.go:1370] Failed to start ContainerManager failed to initialize top level QOS containers: failed to update top level Burstable QOS cgroup : failed to set supported cgroup subsystems for cgroup [kubepods burstable]: Failed to find subsystem mount for required subsystem: pids
+Jul 27 12:44:51 k1 systemd[1]: kubelet.service: main process exited, code=exited, status=255/n/a
+Jul 27 12:44:51 k1 systemd[1]: Unit kubelet.service entered failed state.
+Jul 27 12:44:51 k1 systemd[1]: kubelet.service failed.
+^C
+[root@k1 kubelet.service.d]# 
+[root@k1 kubelet.service.d]# 
+[root@k1 kubelet.service.d]# systemctl stop kubelet
+system[root@k1 kubelet.service.d]# systemctl disable kubelet
+Removed symlink /etc/systemd/system/multi-user.target.wants/kubelet.service.
+
+
+
+---------------
+REFERENCES
+---------------
+/opt/kubernetes/manifests:
+  kube-apiserver.json or yaml
+  kube-controller-manager.json or yaml
+  kube-scheduler.json or yaml
+  
+/opt/kubernetes/addons:
+  flannel.yml
+  kube-dns.yml
+  kube-proxy.yml
+  nginx-ingress-controller.yml
+  
+/opt/kubernetes/addons/limits/kube-system.yaml
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: limits
+  namespace: kube-system
+spec:
+  limits:
+  - default:
+      cpu: 1000m
+      memory: 2Gi
+    defaultRequest:
+      cpu: 500m
+      memory: 1Gi
+    type: Container
+
+/opt/kubernetes/addons/limits/default.yaml
+kind: LimitRange
+metadata:
+  name: limits
+  namespace: default
+spec:
+  limits:
+  - default:
+      cpu: 1000m
+      memory: 2Gi
+    defaultRequest:
+      cpu: 500m
+      memory: 1Gi
+    type: Container
+
+==================================
+APPENDIX
+==================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Reference etcd.service file:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        [Unit]
+        Description=etcd
+        Wants=consul.service docker.service
+
+        [Service]
+        Type=simple
+        User=root
+        Group=root
+        IOSchedulingClass=2
+        IOSchedulingPriority=0
+        EnvironmentFile=/etc/environment
+        ExecStartPre=/usr/bin/systemctl --quiet is-active docker
+        ExecStartPre=/usr/bin/systemctl --quiet is-active consul
+        ExecStartPre=/opt/k8s/generate-server-tls.sh
+        ExecStartPre=/opt/k8s/etcd_prestart.sh
+        ExecStartPre=/usr/local/bin/consul-template -once \
+          -template "/opt/company-ctmpl/k8s-etcd/service-k8s-etcd.json.ctmpl:/etc/consul.d/service-k8s-etcd.json"
+        ExecStart=/opt/k8s/startEtcd.sh
+        ExecStartPost=/usr/bin/systemctl reload consul
+        ExecStartPost=/opt/k8s/etcd_io.sh
+        ExecStop=/bin/kill -WINCH ${MAINPID}
+        Restart=on-failure
+        KillSignal=SIGINT
+        StandardOutput=syslog
+        StandardError=syslog
+        NotifyAccess=all
+        RestartSec=10
+
+        [Install]
+        WantedBy=multi-user.target
+
+--> Execstart calls this function eventualy: (also see HTTP-PROTO section below)
+         /usr/bin/docker run --rm \
+            --net=host \
+            --name etcd \
+            -v /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:/etc/ssl/certs/ca-certificates.crt \
+            -v /data/etcd:/data \
+            -v /var/lib/etcdbak:/var/lib/etcdbak \
+            -v /opt/k8s/openssl:/opt/k8s/openssl \
+            ${ETCD_TLS_ENV_VAR} \
+            -e ETCD_INITIAL_CLUSTER="$1" \
+            -e ETCD_INITIAL_CLUSTER_STATE="$2" \
+            -e ETCDCTL_API=3 \
+            -e ETCD_SNAPSHOT_COUNT={ETCD_SNAPSHOT_COUNT} \
+            ${K8S_ETCD_CONTAINER}:${ETCD_VERSION} etcd \
+            -name ${LOCAL_IPV4} \
+            -initial-advertise-peer-urls ${ETCD_HTTP_PROTO}://${LOCAL_IPV4}:${ETCD_PEER_PORT:-2380} \
+            -listen-peer-urls ${ETCD_HTTP_PROTO}://0.0.0.0:${ETCD_PEER_PORT:-2380} \
+            -listen-client-urls ${ETCD_HTTP_PROTO}://${GUEST_IPV4:-$LOCAL_IPV4}:${ETCD_PORT:-2379},${ETCD_HTTP_PROTO}://127.0.0.1:${ETCD_PORT:-2379} \
+            -advertise-client-urls ${ETCD_HTTP_PROTO}://${LOCAL_IPV4}:${ETCD_PORT:-2379} \
+            ${ETCD_PEER_PARAM} \
+            -data-dir=/data
+
+Basic reference:
+Model: redis service (much basic one) - To start redis1 container - /etc/systemd/system/redis1.service
+    [Unit]
+    Description=Redis container
+    After=docker.service
+
+    [Service]
+    Restart=always
+    ExecStart=/usr/bin/docker start -a redis1
+    ExecStop=/usr/bin/docker stop -t 2 redis1
+
+    [Install]
+    WantedBy=local.target
+
+------------
+HTTP-PROTO
+------------
+Also see: https://coreos.com/etcd/docs/latest/op-guide/security.html
+
+To use https instead of http, cert, key and cacert are required:
+
+  ETCD_TLS_ENV_VAR="--env ETCDCTL_CERT=/opt/k8s/openssl/server.crt \
+                --env ETCDCTL_KEY=/opt/k8s/openssl/server.key \
+                --env ETCDCTL_CACERT=/opt/k8s/openssl/ca.crt"
+  ETCD_PEER_PARAM="-cert-file /opt/k8s/openssl/server.crt \
+                   -key-file /opt/k8s/openssl/server.key \
+                   -client-cert-auth  \
+                   -trusted-ca-file /opt/k8s/openssl/ca.crt \
+                   -peer-cert-file /opt/k8s/openssl/server.crt \
+                   -peer-key-file /opt/k8s/openssl/server.key \
+                   -peer-client-cert-auth  \
+                   -peer-trusted-ca-file   /opt/k8s/openssl/ca.crt"
+  ETCD_HTTP_PROTO="HTTPS"
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+REFERENCE 1 - PROD READY METHOD1
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------------------------------------------------
+ETCD SERVICE ENVIRONMENT FILE:  /opt/k8s/env/etcd.service.env
+-----------------------------------------------------------------
+
+# ENVIRONMENT VARIABLES FOR ETCD.SERVICE
+
+#---------------------------------------------------------
+#Reference
+#/usr/bin/docker run --rm --net=host --name etcd -v /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:/etc/ssl/certs/ca-certificates.crt -v /data/etcd:/data -v /var/lib/etcdbak:/var/lib/etcdbak -v /opt/k8s/openssl:/opt/k8s/openssl --env ETCDCTL_CERT=/opt/k8s/openssl/server.crt --env ETCDCTL_KEY=/opt/k8s/openssl/server.key --env ETCDCTL_CACERT=/opt/k8s/openssl/ca.crt -e ETCD_INITIAL_CLUSTER=101.192.217.104=https://101.192.217.104:2380,101.192.217.105=https://10.92.217.105:2380 -e ETCD_INITIAL_CLUSTER_STATE=existing -e ETCDCTL_API=3 -e ETCD_SNAPSHOT_COUNT={ETCD_SNAPSHOT_COUNT} gcr.io/google_containers/etcd-amd64:3.1.11 etcd -name 101.192.217.105 -initial-advertise-peer-urls HTTPS://10.92.217.105:2380 -listen-peer-urls HTTPS://0.0.0.0:2380 -listen-client-urls HTTPS://101.192.217.105:2379,HTTPS://127.0.0.1:2379 -advertise-client-urls HTTPS://101.192.217.105:2379 -cert-file /opt/k8s/openssl/server.crt -key-file /opt/k8s/openssl/server.key -client-cert-auth -trusted-ca-file /opt/k8s/openssl/ca.crt -peer-cert-file /opt/k8s/openssl/server.crt -peer-key-file /opt/k8s/openssl/server.key -peer-client-cert-auth -peer-trusted-ca-file /opt/k8s/openssl/ca.crt -data-dir=/data
+#---------------------------------------------------------
+
+ETCD_IMAGE=quay.io/coreos/etcd
+ETCD_NODE_NAME=192.168.1.101
+ETCD_CLUSTER_NAME=etcd
+DATA_DIR=/data
+ETCD_INITIAL_CLUSTER="192.168.1.101=http://192.168.1.101:2380"
+#ETCD_INITIAL_CLUSTER="etcd1=http://192.168.2.101:2380,etcd2=http://192.168.2.102:2380"
+ETCD_INITIAL_CLUSTER_STATE=new
+ETCD_INITIAL_ADVERTISE_PEER_URLS="http://192.168.1.101:2380"
+ETCD_LISTEN_PEER_URLS="http://0.0.0.0:2380"
+ETCD_LISTEN_CLIENT_URLS="http://192.168.1.101:2379,http://127.0.0.1:2379"
+ETCD_ADVERTISE_CLIENT_URLS="http://192.168.1.101:2379"
+
+VOL_DATA=/data/etcd:/data
+VOL_BKP=/var/lib/etcdbak:/var/lib/etcdbak
+
+
+# Key/Cert - will do later TBD
+## Client Env Vars
+#Environment=ETCD_CA_FILE=/path/to/CA.pem
+#Environment=ETCD_CERT_FILE=/path/to/server.crt
+#Environment=ETCD_KEY_FILE=/path/to/server.key
+## Peer Env Vars
+#Environment=ETCD_PEER_CA_FILE=/path/to/CA.pem
+#Environment=ETCD_PEER_CERT_FILE=/path/to/peers.crt
+#Environment=ETCD_PEER_KEY_FILE=/path/to/peers.key
+
+--------------------------------------------------------
+ETCD SERVICE FILE:  /etc/systemd/system/etcd.service
+--------------------------------------------------------
+NOTE: Use "WantedBy=multi-user.target" --> WantedBy=local.target kept jumping to execstop upon vm restart
+
+(This file contents worked)
+
+[Unit]
+Description=Start etcd service
+DefaultDependencies=no
+After=docker.service
+
+[Service]
+#Type=simple
+#RemainAfterExit=true
+EnvironmentFile=/opt/k8s/env/etcd.service.env
+ExecStart=/opt/k8s/etcd/etcd_service_start.sh
+ExecStop=/bin/kill -WINCH ${MAINPID}
+
+#Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+#This did not work - WantedBy=local.target - it kept starting and immediately stopping upon machine start
+
+--------
+- Other options
+[Unit]
+Description=ETCD container
+DefaultDependencies=no
+After=docker.service
+
+[Service]
+EnvironmentFile=/opt/k8s/env/etcd.service.env
+ExecStart=/opt/k8s/etcd/etcd_service_start.sh
+#Restart=always
+
+#ExecStop=/usr/bin/docker stop -t 2 etcd
+#ExecStop=/opt/k8s/etcd/etcd_service_stop.sh
+ExecStop=/bin/kill -WINCH ${MAINPID}
+
+[Install]
+WantedBy=multi-user.target
+
+--------------------------------------------------------
+ETCD STARTUP FILE:  /opt/k8s/etcd/etcd_service_start.sh
+--------------------------------------------------------
+#!/bin/bash
+
+exec >> /tmp/etcd_service_start.log 2>> /tmp/start_etcd_service_start.log
+
+echo
+echo INFO - Starting at `date`
+
+# Sourcing of env file not required as that is done in etcd.service file
+#. /opt/k8s/env/etcd.service.env
+
+ExecStart="/usr/bin/docker run --rm --net=host --name etcd 
+ -v ${VOL_DATA} -v ${VOL_BKP} \
+ -e ETCD_INITIAL_CLUSTER=${ETCD_INITIAL_CLUSTER} \
+ -e ETCD_INITIAL_CLUSTER_STATE=${ETCD_INITIAL_CLUSTER_STATE} \
+ ${ETCD_IMAGE} etcd -name ${ETCD_NODE_NAME} \
+ -data-dir /data \
+ -initial-advertise-peer-urls=${ETCD_INITIAL_ADVERTISE_PEER_URLS} \
+ -listen-peer-urls=${ETCD_LISTEN_PEER_URLS} \
+ -listen-client-urls=${ETCD_LISTEN_CLIENT_URLS} \
+ -advertise-client-urls=${ETCD_ADVERTISE_CLIENT_URLS} \
+ -auto-tls \
+ -peer-auto-tls"
+
+$ExecStart
+
+echo ==================================
+
+--------------------------------------------------------
+ETCD STOP FILE:  /opt/k8s/etcd/etcd_service_stop.sh
+--------------------------------------------------------
+#!/bin/bash
+
+exec >> /tmp/etcd_service_stop.log 2>> /tmp/start_etcd_service_stop.log
+
+echo
+echo INFO - Starting at `date`
+
+ExecStop="/usr/bin/docker stop -t 2 etcd"
+
+$ExecStop
+
+echo ==================================
