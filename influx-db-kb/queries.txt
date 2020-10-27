@@ -1,4 +1,22 @@
-Hot Spots using subquery:
-
+---------------------------------------------
+Hot Spots using subquery
+---------------------------------------------
 SELECT last("mean") FROM (SELECT mean("mem") FROM "workload.percent" WHERE ("project_name" = 'guest_systems' AND "cluster" = 'dc1cluster1') AND $timeFilter GROUP BY time($__interval), "cluster", "instance_name" fill(null)) where mean > 65
  GROUP BY  "cluster", "instance_name" fill(null)
+ 
+ 
+---------------------------------------------
+Filter one based on the value of the other
+---------------------------------------------
+Let us say these are the values the two variables can assume: (for dropdowns)
+var1 = ELASTIC-DC1 or ELASTIC-DC2 
+var2 = dc1cluster, dc2cluster
+
+PROBLEM: var1 and var2 may be chosen to be for different data centers. So, panels for DB and Openstack will show info for wrong db and ost clusters
+
+SOLUTION:
+So, in elastic panel:  SELECT X FROM ELASTIC-METRIC-TABLE where ELASTIC-CLUSTER=$var1
+In Openstack panel: SELECT Y FROM OPENSTACK-METRIC-TABLE where (($var1 = 'ELASTIC-DC1' AND ost_cluster = 'dc1cluster') OR ($var1 = 'ELASTIC-DC2' AND ost_cluster = 'dc2cluster')) AND << your remaining stuff >>
+
+Note:  ost_cluster is the column in OPENSTACK-METRIC-TABLE
+And, note that this eliminates the need vor var2
