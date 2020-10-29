@@ -1,0 +1,44 @@
+https://www.virtkick.com/docs/how-to-change-to-a-stock-kernel-in-centos-7.html (main article here)
+
+Additional info - For centos: https://gist.github.com/jarek-przygodzki/7dd636d18c606fdc4c89b6d4f989730d
+yum --enablerepo=base-debuginfo install -y kernel-debuginfo-$(uname -r)
+yum install --enablerepo=base-debuginfo kernel-devel-$(uname -r) kernel-debuginfo-$(uname -r) kernel-debuginfo-common-$(uname -m)-$(uname -r)
+
+How to Change to a Stock Kernel in CentOS 7
+Written by Joe Pettit on May 2016
+
+One of the requirements for running Virtkick on your hypervisor is a stock CentOS 7 kernel (el7.x86_64). If you use an OVH dedicated server, their custom kernel is acceptable too (xxxx-grs-ipv6-64). This article will discuss how this can be accomplished on your hypervisor.
+
+1. Check if you have the right kernel
+First run uname -r to verify whether you're running a correct version of kernel or not. If the output ends with el7.x86_64 or xxxx-grs-ipv6-64, you're good - Virtkick fully supports your kernel.
+
+1. Download the new kernel
+You can do this simply by running the following command:
+
+yum install kernel
+2. Verify the kernel exists
+Next, make sure the kernel is now in the /boot directory. For example, you should see something similar to this:
+
+-rwxr-xr-x  1 root root 5.0M Feb 16 12:13 vmlinuz-3.10.0-327.10.1.el7.x86_64
+-rw-------  1 root root  11M Feb 17 21:10 initramfs-3.10.0-327.10.1.el7.x86_64.img
+Your output will have more than this, but the important part is verifying you have a vmlinuz-* and initramfs-* matching the kernel version you downloaded. If you have those files you can proceed on to the next step.
+
+3. Update Grub
+For the purposes of this article we will be modifying a grub2 configuration.
+
+Your grub configuration is likely located in /boot/grub2 from there find grub.cfg. Open it with your favorite text editor and look for the boot entry you are currently using. This will look something like the output below:
+
+menuentry 'Centos 7' {
+  . . .
+  linux /boot/vmlinuz-foo root=/dev/sda1 . . .
+  initrd /boot/initramfs-foo.img
+}
+You will need to edit the lines shown above. The linux parameter may have additional options following root=, don't worry if you have more.
+
+Edit the linux line to point to /boot/vmlinuz-*, replace the -* with the file you found in step two. Do the same for initrd, be sure to include the .img extension at the end.
+
+4. Reboot and verify
+After your grub.cfg is updated you can reboot your server. Once the server is running again you can execute uname -r to verify the running kernel is the version you expect. The output should end with el7.x86_64 or xxxx-grs-ipv6-64.
+
+5. Connect your Hypervisor
+You are now all set to connect your hypervisor to your Virtkick panel! Have any trouble? Let us know - we are happy to help.
