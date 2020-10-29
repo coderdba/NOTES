@@ -1,6 +1,12 @@
 ============================================
 ELASTIC CLUSTER ON VIRTUALBOX
 ============================================
+Elastic cluster:
+https://medium.com/faun/how-to-deploy-and-configure-a-multi-node-elastic-search-cluster-c13990881ba0
+https://logz.io/blog/elasticsearch-cluster-tutorial/ 
+
+JDK install:
+https://phoenixnap.com/kb/install-java-on-centos
 
 =======================
 Install OpenJDK on VM
@@ -39,4 +45,51 @@ There is 1 program that provides 'java'.
   Selection    Command
 -----------------------------------------------
 *+ 1           java-1.8.0-openjdk.x86_64 (/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.262.b10-0.el7_8.x86_64/jre/bin/java)
+
+==========================
+SETUP THE VM FOR ELASTIC
+==========================
+Create the elastic user:
+useradd elastic
+
+Open the limits.conf file as root:
+vim /etc/security/limits.conf
+
+Add the following line near the bottom:
+elastic - nofile 65536
+
+Open the sysctl.conf file as root:
+vim /etc/sysctl.conf
+
+Add the following line at the bottom:
+vm.max_map_count=262144
+
+Load the new sysctl values:
+sysctl -p
+
+Become the elastic user:
+su - elastic
+
+==========================
+INSTALL ELASTIC
+==========================
+Become the elastic user:
+su - elastic
+
+Download elastic:
+$ curl -O https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.9.3-linux-x86_64.tar.gz
+
+Unzip elastic:
+$ tar -xzvf elasticsearch-7.9.3-linux-x86_64.tar.gz
+$ ln -s elasticsearch-7.9.3 elasaticsearch
+
+Note:
+This unzipped folder has a jdk folder of its own
+$ cd elasticsearch/jdk/bin
+$ ./java -version
+openjdk 15 2020-09-15
+OpenJDK Runtime Environment (build 15+36-1562)
+OpenJDK 64-Bit Server VM (build 15+36-1562, mixed mode, sharing)
+
+
 
