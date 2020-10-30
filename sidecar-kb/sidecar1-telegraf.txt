@@ -1,0 +1,64 @@
+======================
+TELEFRAF SIDECAR
+======================
+
+============================================
+BUSYBOX TO CREATE A SIMPLE CONTAINER
+============================================
+https://hub.docker.com/_/busybox
+docker pull busybox
+docker run -it --rm busybox
+
+======================
+TELEGRAF & INFLUXDB
+======================
+https://hub.docker.com/_/telegraf
+docker pull telegraf
+docker pull influxdb
+
+Using this image
+Exposed Ports
+8125 StatsD
+8092 UDP
+8094 TCP
+Using the default configuration
+The default configuration requires a running InfluxDB instance as an output plugin. Ensure that InfluxDB is running on port 8086 before starting the Telegraf container.
+
+Minimal example to start an InfluxDB container:
+
+$ docker run -d --name influxdb -p 8086:8086 influxdb
+Starting Telegraf using the default config, which connects to InfluxDB at http://localhost:8086/:
+
+$ docker run --net=container:influxdb telegraf
+Using a custom config file
+First, generate a sample configuration and save it as telegraf.conf on the host:
+
+$ docker run --rm telegraf telegraf config > telegraf.conf
+Once you've customized telegraf.conf, you can run the Telegraf container with it mounted in the expected location:
+
+$ docker run -v $PWD/telegraf.conf:/etc/telegraf/telegraf.conf:ro telegraf
+Modify $PWD to the directory where you want to store the configuration file.
+
+Read more about the Telegraf configuration here.
+
+Using the container with input plugins
+These examples assume you are using a custom configuration file that takes advantage of Docker's built-in service discovery capability. In order to do so, we'll first create a new network:
+
+$ docker network create influxdb
+Next, we'll start our InfluxDB container named influxdb:
+
+$ docker run -d --name=influxdb \
+      --net=influxdb \
+      influxdb
+The telegraf.conf configuration can now resolve the influxdb container by name:
+
+[[outputs.influxdb]]
+    urls = ["http://influxdb:8086"]
+Finally, we start our Telegraf container and verify functionality:
+
+$ docker run -d --name=telegraf \
+      --net=influxdb \
+      -v $PWD/telegraf.conf:/etc/telegraf/telegraf.conf:ro \
+      telegraf
+$ docker logs -f telegraf
+
