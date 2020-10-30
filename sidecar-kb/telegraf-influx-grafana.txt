@@ -19,7 +19,8 @@ DOCKER
 ====================================
 Install Docker
 Install docker-compose
-Pull influx and grafana images
+Pull influx docker image
+Pull grafana docker image
 
 ====================================
 CREATE DOCKER NETWORK AND VOLUME
@@ -27,6 +28,50 @@ CREATE DOCKER NETWORK AND VOLUME
 $ docker network create monitoring
 $ docker volume create grafana-volume
 $ docker volume create influxdb-volume
+
+# docker network list
+NETWORK ID          NAME                DRIVER              SCOPE
+2ddecc58b12b        bridge              bridge              local
+e254c3c4b6d4        host                host                local
+7cee0d3b9be6        monitoring          bridge              local
+c7fdaafa0cd8        none                null                local
+
+====================================
+CREATE docker-compose.yml
+====================================
+version: "2"
+
+services:
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    restart: always
+    ports:
+      - 3000:3000
+    networks:
+      - monitoring
+    volumes:
+      - grafana-volume:/var/lib/grafana
+      
+  influxdb:
+    image: influxdb
+    container_name: influxdb
+    restart: always
+    ports:
+      - 8086:8086
+    networks:
+      - monitoring
+    volumes:
+      - influxdb-volume:/var/lib/influxdb
+      
+networks:
+  monitoring:
+  
+volumes:
+  grafana-volume:
+    external: true
+  influxdb-volume:
+    external: true
 
 
 
