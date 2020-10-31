@@ -286,8 +286,25 @@ Go to grafana in browser: http://192.168.40.91:3000/
 Create a new panel
 Create a query by using the template with FROM, SELECT, GROUP BY etc
 
+--------------------------------------------------------------------
+CAUTION - TELEGRAF MAY HAVE INCORRECT INFO ABOUT HOST
+--------------------------------------------------------------------
+https://stackoverflow.com/questions/47072586/docker-access-host-proc
+
+The 'host' or the VM on which docker is running is not shown with VM's hostname - instead it is shown as the hostname of the Telegraf container
+However, the metrics may be (or are) gathered for the host/VM itself.
+      
+Content of /host/proc/sys/kernel/hostname - that should yield the hostname of the vm I am working on. 
+But I get the hostname of the container, while /host/proc/uptime gets me the correct uptime of the vm.
+
+Also, /host/proc/mounts seems to show only container mounts and so are /proc/mounts (both on the container)
+$ cat /host/proc/mounts |grep docker.sock
+tmpfs /run/docker.sock tmpfs ro,seclabel,mode=755 0 0 
+$ cat /proc/mounts |grep docker.sock
+tmpfs /run/docker.sock tmpfs ro,seclabel,mode=755 0 0
+
 ----------------
-Example queries
+Example queries - Docker container graphs
 ----------------
 Docker container CPU usage percent for 'influxdb' container:
 SELECT mean("usage_percent") FROM "docker_container_cpu" WHERE ("container_name" = 'influxdb') AND $timeFilter GROUP BY time($__interval) fill(null)
@@ -295,6 +312,12 @@ SELECT mean("usage_percent") FROM "docker_container_cpu" WHERE ("container_name"
 Docker container CPU usage percent for all containers with GROUP BY container_name:
 SELECT mean("usage_percent") FROM "docker_container_cpu" WHERE $timeFilter GROUP BY time($__interval), "container_name" fill(null)
 
-The host CPU metrics are also captured:
+-----------------
+Example queries - host monitoring graphs
+-----------------
+NOTE: Not sure if these are of the host or of the container
+SELECT mean("usage_system") FROM "cpu" WHERE $timeFilter GROUP BY time($__interval), "host" fill(null)
+SELECT mean("total") FROM "mem" WHERE $timeFilter GROUP BY time($__interval), "host" fill(null)
+
 
 
