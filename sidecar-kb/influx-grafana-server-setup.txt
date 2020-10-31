@@ -304,6 +304,16 @@ tmpfs /run/docker.sock tmpfs ro,seclabel,mode=755 0 0
 $ cat /proc/mounts |grep docker.sock
 tmpfs /run/docker.sock tmpfs ro,seclabel,mode=755 0 0
 
+--> IS THIS THE SOLUTION (from the above stackoverflow site)
+
+I know its a few months later no but I came across the same problem today.
+
+In my case I was using psutil in Python to read disk stats of the hosts from inside a docker container.
+
+The solution was to mount the whole host files system as read only into the docker container with -v /:/rootfs:ro and specify the path to proc as psutil.PROCFS_PATH = '/rootfs/proc'.
+
+Now the psutil.disk_partitions() lists all partitions from the host files system. As the hostname is also contained within the proc hierarchy, I guess this also works for other host system information as long the the retrieving command points to /rootsfs/proc.
+
 ----------------
 Example queries - Docker container graphs
 ----------------
