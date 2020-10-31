@@ -176,3 +176,52 @@ InfluxDB Details: (these are in the docker run --rm command ran earlier)
   
 Click 'save & test'
 --> if you receive 'influx db bad gateway' - then disable firewall on the VM
+
+=====================
+TELEGRAF
+=====================
+Create Telegraf container - and make it monitor all containers using docker plugin
+
+https://thenewstack.io/how-to-setup-influxdb-telegraf-and-grafana-on-docker-part-1/
+https://thenewstack.io/how-to-setup-influxdb-telegraf-and-grafana-on-docker-part-2/ --> this has Telegraf
+
+NOTE: The article asks to run telegraf container in its own unix user 'telegraf' on the VM - however, I am running it as root itself for simplicity
+
+------------------------------
+CREATE TELEGRAF CONFIG FILE
+------------------------------
+# mkdir /etc/telegraf
+# docker run --rm telegraf telegraf config | sudo tee /etc/telegraf/telegraf.conf &lt > /dev/null
+
+Influx to send data to - telegraf.conf
+--> Add the line urls = ["http://192.168.40.91:8086"] (keep other lines of urls commented)
+--> Add the line database = "telegraf"
+--> Add username and password for the Influx db 'telegraf'
+      username = "telegraf"
+      password = "secretpassword"
+
+
+
+[[outputs.influxdb]]
+  ## The full HTTP or UDP URL for your InfluxDB instance.
+  ##
+  ## Multiple URLs can be specified for a single cluster, only ONE of the
+  ## urls will be written to each interval.
+  # urls = ["unix:///var/run/influxdb.sock"]
+  # urls = ["udp://127.0.0.1:8089"]
+  # urls = ["http://127.0.0.1:8086"]
+  urls = ["http://192.168.40.91:8086"]
+  
+  ## The target database for metrics; will be created as needed.
+  ## For UDP url endpoint database needs to be configured on server side.
+  # database = "telegraf"
+  database = "telegraf"
+  
+  ## HTTP Basic Auth
+  # username = "telegraf"
+  # password = "metricsmetricsmetricsmetrics"
+  username = "telegraf"
+  password = "secretpassword"
+
+
+
