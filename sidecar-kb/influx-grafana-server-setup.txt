@@ -15,6 +15,11 @@ MACHINE TO HOST INFLUX AND GRAFANA
 NAME: ig1 (for influx-grafana-1)
 IP: 192.168.40.91 (9 for 'I')
 
+Disable firewall
+- Otherwise, when configuring Influx DB in Grafana from host/laptop, it will error out with 'bad gateway'
+# systemctl stop firewalld
+# systemctl disable firewalld
+
 ====================================
 DOCKER
 ====================================
@@ -122,3 +127,46 @@ docker run --rm \
 docker-compose up -d
 
 
+------------
+VERIFY
+------------
+# docker ps -a
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS                    NAMES
+cf8945003f2a        grafana/grafana     "/run.sh"                12 minutes ago      Up 12 minutes       0.0.0.0:3000->3000/tcp   grafana
+ed6c4ebdbcbe        influxdb            "/entrypoint.sh infl…"   12 minutes ago      Up 12 minutes       0.0.0.0:8086->8086/tcp   influxdb
+
+# netstat -anp |grep 8086
+tcp6       0      0 :::8086                 :::*                    LISTEN      11947/docker-proxy  
+# netstat -anp |grep 3000
+tcp6       0      0 :::3000                 :::*                    LISTEN      11977/docker-proxy 
+
+=====================
+CONFIGURE GRAFANA
+=====================
+
+----------------------
+CONNECT TO GRAFANA
+----------------------
+From laptop, open grafana on VM - in browser of laptop.
+
+http://192.168.40.91:3000
+
+Username: admin
+Password: admin
+Change the password or leave it as is for now.
+
+---------------------------
+CONFIGURE INFLUX DATASOURCE
+---------------------------
+
+Add datasource
+Choose InfluxDB
+Name: InfluxDB (or any name)
+URL: http://192.168.40.91:8086
+InfluxDB Details: (these are in the docker run --rm command ran earlier)
+  Database: telegraf
+  User: telegraf
+  Password: secretpassword 
+  
+Click 'save & test'
+--> if you receive 'influx db bad gateway' - then disable firewall on the VM
