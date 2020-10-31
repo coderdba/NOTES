@@ -230,3 +230,48 @@ LINES ADDED:
    endpoint = "unix:///var/run/docker.sock"
 
 
+--------------------------------------
+MODIFY PERMISSION ON docker.sock FILE
+--------------------------------------
+On the host VM, make /var/run/docker.sock readable by all
+
+Otherwise, docker logs of telegraf container will show errors like:
+2020-10-31T13:06:10Z E! [inputs.docker] Error in plugin: Got permission denied while trying to connect to the Docker daemon socket at unix:///var/run/docker.sock: Get "http://%2Fvar%2Frun%2Fdocker.sock/v1.21/containers/json?filters=%7B%22status%22%3A%5B%22running%22%5D%7D&limit=0": dial unix /var/run/docker.sock: connect: permission denied
+
+chmod 666 /var/run/docker.sock
+
+
+--------------------------------------
+START TELEGRAF
+--------------------------------------
+# Orig from https://thenewstack.io/how-to-setup-influxdb-telegraf-and-grafana-on-docker-part-2/
+#docker run -d --user 998:998 --name=telegraf \
+      #--net=container: \
+      #-e HOST_PROC=/host/proc \
+      #-v /proc:/host/proc:ro \
+      #-v /etc/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro \
+      #telegraf
+
+
+docker run -d --user 998:998 --name=telegraf \
+      --net=monitoring \
+      -e HOST_PROC=/host/proc \
+      -v /proc:/host/proc:ro \
+      -v /var/run/docker.sock:/var/run/docker.sock:ro \
+      -v /etc/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro \
+      telegraf
+
+-------------
+VERIFY
+-------------
+# docker logs telegraf
+
+2020-10-31T13:06:35Z I! Starting Telegraf 1.16.1
+2020-10-31T13:06:35Z I! Using config file: /etc/telegraf/telegraf.conf
+2020-10-31T13:06:35Z I! Loaded inputs: cpu disk diskio docker kernel mem processes swap system
+2020-10-31T13:06:35Z I! Loaded aggregators: 
+2020-10-31T13:06:35Z I! Loaded processors: 
+2020-10-31T13:06:35Z I! Loaded outputs: influxdb
+2020-10-31T13:06:35Z I! Tags enabled: host=e7141463615d
+2020-10-31T13:06:35Z I! [agent] Config: Interval:10s, Quiet:false, Hostname:"e7141463615d", Flush Interval:10s
+
