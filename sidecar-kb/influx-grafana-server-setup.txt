@@ -1,8 +1,9 @@
 ========================================
-TELEGRAF, INFLUX, GRAFANA SETUP
+INFLUX, GRAFANA SETUP
 ========================================
 Based on: 
 https://towardsdatascience.com/get-system-metrics-for-5-min-with-docker-telegraf-influxdb-and-grafana-97cfd957f0ac
+Also see: https://devconnected.com/how-to-install-influxdb-telegraf-and-grafana-on-docker/
 
 Also: 
 https://hub.docker.com/_/telegraf
@@ -100,7 +101,24 @@ volumes:
   influxdb-volume:
     external: true
 
+====================================================
+RUN INFLUXDB IMAGE TO CREATE INFLUX CONFIG FILE
+====================================================
 
+# Create _data directories - otherwise docker run will error looking for _data
+mkdir -p /var/lib/docker/volumes/influxdb-volume/_data
+mkdir -p /var/lib/docker/volumes/grafana-volume/_data
 
+# Run this container with –rm key, this will only create configs and remove the container after.
+docker run --rm \
+  -e INFLUXDB_DB=telegraf -e INFLUXDB_ADMIN_ENABLED=true \
+  -e INFLUXDB_ADMIN_USER=admin \
+  -e INFLUXDB_ADMIN_PASSWORD=supersecretpassword \
+  -e INFLUXDB_USER=telegraf -e INFLUXDB_USER_PASSWORD=secretpassword \
+  -v influxdb-volume:/var/lib/influxdb \
+  influxdb /init-influxdb.sh
+
+# Start the containers in background (-d)
+docker-compose up -d
 
 
