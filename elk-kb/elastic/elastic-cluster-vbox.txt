@@ -5,6 +5,8 @@ NOTE: Use the updated config settings from this:
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/modules-discovery-settings.html
 - or, latest - https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-discovery-settings.html
 
+https://www.elastic.co/guide/en/elasticsearch/reference/master/modules-discovery-bootstrap-cluster.html
+
 Elastic cluster:
 2 node (WITH LATEST CONFIG SETTINGS): https://www.bmc.com/blogs/elasticsearch-v7-cluster/
 6 node: https://medium.com/faun/how-to-deploy-and-configure-a-multi-node-elastic-search-cluster-c13990881ba0
@@ -139,3 +141,58 @@ http.port: 9200 --> all nodes
 discovery.seed_hosts: ["es1", "es1", "es3"]
 - Provides a list of the addresses of the master-eligible nodes in the cluster.
 - Previously discovery.zen.ping.unicast.hosts
+
+cluster.initial_master_nodes: ["es1"] --> in each node
+NOTE: After initialization, we may have to remove this line
+
+====================
+START ELASTIC
+====================
+https://medium.com/faun/how-to-deploy-and-configure-a-multi-node-elastic-search-cluster-c13990881ba0
+
+Start Elasticsearch as a daemon on each node.
+Log in to each node and become the elastic user:
+sudo su - elastic
+
+Switch to the elasticsearch directory:
+cd /home/elastic/elasticsearch
+
+Start Elasticsearch as a daemon:
+./bin/elasticsearch -d -p pid
+
+Check the startup process:
+less /home/elastic/elasticsearch/logs/Production_cluster.log
+
+Check the node configuration:
+curl localhost:9200/_cat/nodes?v
+
+--------------
+LOGS
+--------------
+[elastic@es1 logs]$ tail -f esc1.log
+[2020-11-04T10:09:50,525][INFO ][o.e.p.PluginsService     ] [es1] loaded module [x-pack-rollup]
+[2020-11-04T10:09:50,525][INFO ][o.e.p.PluginsService     ] [es1] loaded module [x-pack-security]
+[2020-11-04T10:09:50,525][INFO ][o.e.p.PluginsService     ] [es1] loaded module [x-pack-sql]
+[2020-11-04T10:09:50,525][INFO ][o.e.p.PluginsService     ] [es1] loaded module [x-pack-stack]
+[2020-11-04T10:09:50,526][INFO ][o.e.p.PluginsService     ] [es1] loaded module [x-pack-voting-only-node]
+[2020-11-04T10:09:50,526][INFO ][o.e.p.PluginsService     ] [es1] loaded module [x-pack-watcher]
+[2020-11-04T10:09:50,526][INFO ][o.e.p.PluginsService     ] [es1] no plugins loaded
+[2020-11-04T10:09:50,562][INFO ][o.e.e.NodeEnvironment    ] [es1] using [1] data paths, mounts [[/ (rootfs)]], net usable_space [38.4gb], net total_space [45gb], types [rootfs]
+[2020-11-04T10:09:50,562][INFO ][o.e.e.NodeEnvironment    ] [es1] heap size [1gb], compressed ordinary object pointers [true]
+[2020-11-04T10:09:50,655][INFO ][o.e.n.Node               ] [es1] node name [es1], node ID [lyHIdsMMRTKC_iBwnW7E0w], cluster name [esc1]
+[2020-11-04T10:09:57,318][INFO ][o.e.x.m.p.l.CppLogMessageHandler] [es1] [controller/5950] [Main.cc@114] controller (64 bit): Version 7.9.3 (Build 6c27059cb8397a) Copyright (c) 2020 Elasticsearch BV
+[2020-11-04T10:09:58,243][INFO ][o.e.x.s.a.s.FileRolesStore] [es1] parsed [0] roles from file [/home/elastic/elasticsearch/config/roles.yml]
+[2020-11-04T10:10:00,633][INFO ][o.e.t.NettyAllocator     ] [es1] creating NettyAllocator with the following configs: [name=unpooled, factors={es.unsafe.use_unpooled_allocator=false, g1gc_enabled=true, g1gc_region_size=1mb, heap_size=1gb}]
+[2020-11-04T10:10:00,728][INFO ][o.e.d.DiscoveryModule    ] [es1] using discovery type [zen] and seed hosts providers [settings]
+[2020-11-04T10:10:01,600][WARN ][o.e.g.DanglingIndicesState] [es1] gateway.auto_import_dangling_indices is disabled, dangling indices will not be automatically detected or imported and must be managed manually
+[2020-11-04T10:10:02,411][INFO ][o.e.n.Node               ] [es1] initialized
+[2020-11-04T10:10:02,411][INFO ][o.e.n.Node               ] [es1] starting ...
+[2020-11-04T10:10:02,589][INFO ][o.e.t.TransportService   ] [es1] publish_address {192.168.40.51:9300}, bound_addresses {192.168.40.51:9300}
+[2020-11-04T10:10:02,884][INFO ][o.e.b.BootstrapChecks    ] [es1] bound or publishing to a non-loopback address, enforcing bootstrap checks
+[2020-11-04T10:10:02,887][ERROR][o.e.b.Bootstrap          ] [es1] node validation exception
+[1] bootstrap checks failed
+[1]: max file descriptors [4096] for elasticsearch process is too low, increase to at least [65535]
+[2020-11-04T10:10:02,889][INFO ][o.e.n.Node               ] [es1] stopping ...
+[2020-11-04T10:10:02,897][INFO ][o.e.n.Node               ] [es1] stopped
+[2020-11-04T10:10:02,898][INFO ][o.e.n.Node               ] [es1] closing ...
+[2020-11-04T10:10:02,945][INFO ][o.e.n.Node               ] [es1] closed
