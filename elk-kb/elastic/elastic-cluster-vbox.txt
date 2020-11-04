@@ -61,6 +61,23 @@ There is 1 program that provides 'java'.
 *+ 1           java-1.8.0-openjdk.x86_64 (/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.262.b10-0.el7_8.x86_64/jre/bin/java)
 
 ==========================
+VM CONFIGURATION
+==========================
+Memory: 3GB
+CPU: 1
+Hostname/IP:
+es1 192.168.40.51
+es2 192.168.40.52
+es3 192.168.40.53
+
+==========================
+FIREWALL - DISABLE
+==========================
+Set firewall off (or open port 9200 and 9300)
+systemctl stop firewalld
+systemctl disable firewalld
+
+==========================
 SETUP THE VM FOR ELASTIC
 ==========================
 Create the elastic user:
@@ -161,11 +178,18 @@ Start Elasticsearch as a daemon:
 ./bin/elasticsearch -d -p pid
 
 Check the startup process:
-less /home/elastic/elasticsearch/logs/Production_cluster.log
+less /home/elastic/elasticsearch/logs/esc1.log --> esc1 is the cluster name given in config file
 
 Check the node configuration:
-curl localhost:9200/_cat/nodes?v
+curl 192.168.40.51:9200/_cat/nodes?v
+ip            heap.percent ram.percent cpu load_1m load_5m load_15m node.role master name
+192.168.40.53           35          97   0    0.24    0.35     0.27 dm        -      es3
+192.168.40.52           37          97   0    0.07    0.22     0.20 dm        -      es2
+192.168.40.51           39          97   1    0.09    0.24     0.22 dm        *      es1
 
+========================================
+TROUBLESHOOTING
+========================================
 ----------------
 LOGS - attempt1
 ----------------
@@ -208,3 +232,8 @@ ERROR: Elasticsearch did not exit normally - check the logs at /home/elastic/ela
 [2020-11-04T10:10:02,897][INFO ][o.e.n.Node               ] [es1] stopped
 [2020-11-04T10:10:02,898][INFO ][o.e.n.Node               ] [es1] closing ...
 [2020-11-04T10:10:02,945][INFO ][o.e.n.Node               ] [es1] closed
+
+-------------------------------
+NODES NOT SHOWING UP IN BROWSER
+-------------------------------
+Stop firewall or open necessary ports
