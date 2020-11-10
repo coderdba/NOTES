@@ -381,8 +381,46 @@ INPUT SOCKET LISTENER - unix socket - TBD
 ===================================================
 https://www.influxdata.com/blog/telegraf-socket-listener-input-plugin/
 
+
 ===================================================
 INPUT SOCKET LISTENER - TCP - TBD
 ===================================================
 https://github.com/influxdata/telegraf/issues/5448 (tls cert info)
 https://stackoverflow.com/questions/49410320/telegraf-using-a-listener-to-process-post-with-json-data (with json format input)
+
+This is to send custom metrics into Telegraf which then will output to output plugins
+
+- Add this to telegraf.conf:
+
+[[inputs.socket_listener]]
+   # TCP did not work yet
+   service_address = "tcp://:8094"
+   data_format = "influx"
+
+- Restart telegraf with port mapping for 8094/udp
+NOTE: Need to expose the container port, AND, map the port with udp specifically mentioned
+Otherwise, you will get error like this:
+  # echo "m1,tag1=tag_value value=1" | nc -u -4  localhost 8094
+  Ncat: Connection refused.
+
+chmod 666 /var/run/docker.sock
+docker run -d --user 998:998 --name=telegraf \
+      --net=monitoring \
+      --memory=1024m \
+      --cpus=2 \
+      --expose=8094/tcp \
+      -p 8094:8094/tcp \
+      -e HOST_PROC=/host/proc \
+      -v /proc:/host/proc:ro \
+      -v /var/run/docker.sock:/var/run/docker.sock:ro \
+      -v /etc/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro \
+      telegraf
+
+
+- TEST
+# echo "m1,tag1=tag_value value=2" | nc localhost 8094
+
+- VERIFY
+In grafana you can see the new table m1 with column tag1 which has a value of 2
+
+SELECT mean("value") FROM "m1" WHERE ("tag1" = 'tag_value') AND $timeFilter GROUP BY time($__interval) fill(null)
