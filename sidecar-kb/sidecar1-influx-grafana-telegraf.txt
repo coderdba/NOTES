@@ -19,6 +19,9 @@ Also:
 https://hub.docker.com/_/telegraf
 https://hub.docker.com/_/influxdb
 
+Input socket listener:
+https://www.influxdata.com/blog/telegraf-socket-listener-input-plugin/
+
 ====================================
 MACHINE TO HOST INFLUX AND GRAFANA
 ====================================
@@ -330,5 +333,34 @@ NOTE: Not sure if these are of the host or of the container
 SELECT mean("usage_system") FROM "cpu" WHERE $timeFilter GROUP BY time($__interval), "host" fill(null)
 SELECT mean("total") FROM "mem" WHERE $timeFilter GROUP BY time($__interval), "host" fill(null)
 
+================================
+INPUT SOCKET LISTENER
+================================
+https://www.influxdata.com/blog/telegraf-socket-listener-input-plugin/
 
+This is to send custom metrics into Telegraf which then will output to output plugins
+
+- Add this to telegraf.conf:
+
+[[inputs.socket_listener]]
+   service_address = "tcp://:8094"
+   data_format = "influx"
+
+- Restart telegraf with port mappint gor 8094:
+
+chmod 666 /var/run/docker.sock
+docker run -d --user 998:998 --name=telegraf \
+      --net=monitoring \
+      --memory=1024m \
+      --cpus=2 \
+      -p 8094:8094 \
+      -e HOST_PROC=/host/proc \
+      -v /proc:/host/proc:ro \
+      -v /var/run/docker.sock:/var/run/docker.sock:ro \
+      -v /etc/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro \
+      telegraf
+
+- TEST
+# echo "m1,tag1=tag_value value=1" | nc -u -4  localhost 8094
+Ncat: Connection refused.
 
