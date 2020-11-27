@@ -340,6 +340,60 @@ GENERATE CERTIFICATES
 (maybe, do this in model itself and keep ready)
 https://blog.inkubate.io/deploy-kubernetes-1-9-from-scratch-on-vmware-vsphere/
 
+--------------------------------
+Create a certificate authority
+--------------------------------
+1- Create the certificate authority configuration file (CA)
+
+$ vi ca-config.json
+{
+  "signing": {
+    "default": {
+      "expiry": "87600h"
+    },
+    "profiles": {
+      "kubernetes": {
+        "usages": ["signing", "key encipherment", "server auth", "client auth"],
+        "expiry": "87600h"
+      }
+    }
+  }
+}
+
+2- Create the certificate authority signing request configuration file (CSR)
+NOTE: Make all attributes ABC for convenience for lab
+
+$ vi ca-csr.json
+{
+  "CN": "Kubernetes",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "ABC",
+      "L": "ABC",
+      "O": "Kubernetes",
+      "OU": "Kubernetes",
+      "ST": "ABC"
+    }
+  ]
+}
+
+3- Generate the certificate authority certificate and private key.
+
+$ cfssl gencert -initca ca-csr.json | cfssljson -bare ca
+
+4- Verify that the ca-key.pem and the ca.pem were generated. (also ca.csr)
+
+$ ls -la ca*pem ca*csr
+-rwxrwx---. 1 root vboxsf 1371 Nov 27 17:02 ca.pem
+-rwxrwx---. 1 root vboxsf 1675 Nov 27 17:02 ca-key.pem
+-rwxrwx---. 1 root vboxsf 1005 Nov 27 17:02 ca.csr
+
+
+--------
 TBD TBD TBD
 
 
