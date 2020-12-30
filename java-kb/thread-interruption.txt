@@ -22,3 +22,12 @@ It’s a simple concept: to stop a thread, we deliver it an interrupt signal, re
 To send the interrupt signal, we can use Thread.interrupt() method. 
 It is up to the thread/task to check the signal, clean up if necessary and stop itself. It is totally possible (although a bad design) that the task may not bother to check the interrupt signal at all or ignore it. 
 There’s very little an external caller can do in this situation. (I cover non-standard cancellation at the end of this post.)
+
+
+Blocking Methods that Support Interruption
+Most blocking methods support interruptions. They usually respond by throwing InterruptException or ClosedByInterruptionException when they detect interruptions.
+
+Let us consider an example. the code below calls Thread.sleep(). When it detects interruption, Thread.sleep() throws InterruptedException and the caller exits the loop. All blocking methods which support InterruptedException also clear the interrupted status. You must either act on interruption when you catch this exception or set the interrupted status to give the code higher up the stack a chance to act on interruption.
+
+Blocking Methods that do not Support Interruption
+Some blocking methods such as the built-in java.net.Socket don’t support interruptions. So how can you interrupt a ServerSocket.accept() method? We can do this by calling Socket.close() from another thread, forcing the Socket.accept() to throw an exception and exit out of the blocking call. Here’s an example:
