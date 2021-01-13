@@ -112,9 +112,9 @@ Pluggable database: oraclexe1/XEPDB1
 Multitenant container database: oraclexe1
 Enterprise Manager: https://localhost:5500/em
 
-=========================
-CONNECT TO DATABASE
-=========================
+===========================================
+CONNECT TO DATABASE - DIRECTLY FROM THE VM
+===========================================
 Let us connect from unix user 'oracle' which was created by the installer.
 
 # su - oracle
@@ -186,3 +186,56 @@ SYS_CONTEXT('USERENV','CON_NAME')
 -------------------------------------------
 XEPDB1
 
+===============================
+CREATE ADDITIONAL UNIX USER
+===============================
+For ongoing administration operations from the OS, you’ll need to add your user to a couple of groups. 
+In my case, my user is “ora1” :
+# useradd ora1
+# usermod -a -G dba ora1
+# usermod -a -G oinstall ora1
+
+# su - ora1
+
+Add the following into .bashrc of the user:
+export ORACLE_SID=XE
+export ORACLE_BASE=/opt/oracle
+export ORACLE_HOME=/opt/oracle/product/18c/dbhomeXE
+export PATH=$PATH:/home/oracle/bin:/opt/oracle/product/18c/dbhomeXE/bin
+
+Source the updated .bashrc
+# . /home/ora1/.bashrc
+
+$ lsnrctl status
+
+LSNRCTL for Linux: Version 18.0.0.0.0 - Production on 13-JAN-2021 10:17:53
+
+Copyright (c) 1991, 2018, Oracle.  All rights reserved.
+
+Connecting to (DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=oraclexe1)(PORT=1521)))
+STATUS of the LISTENER
+------------------------
+Alias                     LISTENER
+Version                   TNSLSNR for Linux: Version 18.0.0.0.0 - Production
+Start Date                12-JAN-2021 23:41:37
+Uptime                    0 days 10 hr. 36 min. 15 sec
+Trace Level               off
+Security                  ON: Local OS Authentication
+SNMP                      OFF
+Default Service           XE
+Listener Parameter File   /opt/oracle/product/18c/dbhomeXE/network/admin/listener.ora
+Listener Log File         /opt/oracle/diag/tnslsnr/oraclexe1/listener/alert/log.xml
+Listening Endpoints Summary...
+  (DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(HOST=oraclexe1)(PORT=1521)))
+  (DESCRIPTION=(ADDRESS=(PROTOCOL=ipc)(KEY=EXTPROC1521)))
+  (DESCRIPTION=(ADDRESS=(PROTOCOL=tcps)(HOST=127.0.0.1)(PORT=5500))(Security=(my_wallet_directory=/opt/oracle/admin/XE/xdb_wallet))(Presentation=HTTP)(Session=RAW))
+Services Summary...
+Service "XE" has 1 instance(s).
+  Instance "XE", status READY, has 1 handler(s) for this service...
+Service "XEXDB" has 1 instance(s).
+  Instance "XE", status READY, has 1 handler(s) for this service...
+Service "b8b9111ead0c344ae055f5145f5c3851" has 1 instance(s).
+  Instance "XE", status READY, has 1 handler(s) for this service...
+Service "xepdb1" has 1 instance(s).
+  Instance "XE", status READY, has 1 handler(s) for this service...
+The command completed successfully
