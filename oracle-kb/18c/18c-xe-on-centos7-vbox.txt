@@ -148,3 +148,41 @@ SQL> exit
 Disconnected from Oracle Database 18c Express Edition Release 18.0.0.0.0 - Production
 Version 18.4.0.0.0
 
+SQL> select instance_name, version, status from v$instance;
+
+INSTANCE_NAME	 VERSION	   STATUS
+---------------- ----------------- ------------
+XE		 18.0.0.0.0	   OPEN
+
+SQL> select con_id, name from v$containers;
+
+    CON_ID   NAME
+------------------------------------------------------------------------------------------
+	 1   CDB$ROOT
+	 2   PDB$SEED
+	 3   XEPDB1
+
+SQL> select con_id, name, open_mode from v$pdbs;
+
+    CON_ID NAME 													    OPEN_MODE
+---------- -------------------------------------------------------------------------------------------------------------------------------- ----------
+	 2 PDB$SEED													  READ ONLY
+	 3 XEPDB1													    READ WRITE
+
+SQL> alter session set container = XEPDB1;
+
+Session altered.
+
+SQL> select con_id, name, open_mode from v$pdbs;   
+
+    CON_ID NAME 											OPEN_MODE
+---------- ------------------------------------------
+         3 XEPDB1										READ WRITE
+
+The following SQL will show CDB or PDB depending upon where you are
+SQL> select sys_context('userenv', 'con_name') from dual;
+
+SYS_CONTEXT('USERENV','CON_NAME')
+-------------------------------------------
+XEPDB1
+
