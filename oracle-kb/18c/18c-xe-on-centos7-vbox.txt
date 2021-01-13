@@ -265,3 +265,82 @@ To set start/stop as Linux service:
 # systemctl daemon-reload
 # systemctl enable oracle-xe-18c
 
+===================================
+DATABASE OBJECTS UPON INSTALLATION
+===================================
+- TABLESPACES OF CURRENT CONTAINER
+SQL> select tablespace_name from dba_tablespaces;
+
+TABLESPACE_NAME
+------------------------------
+SYSTEM
+SYSAUX
+UNDOTBS1
+TEMP
+USERS
+
+- TABLESPACES OF ALL CONTAINERS
+SQL> select con_id, tablespace_name from cdb_tablespaces;
+
+    CON_ID TABLESPACE_NAME
+---------- ------------------------------
+	 1 SYSTEM
+	 1 SYSAUX
+	 1 UNDOTBS1
+	 1 TEMP
+	 1 USERS
+	 3 SYSTEM
+	 3 SYSAUX
+	 3 UNDOTBS1
+	 3 TEMP
+	 3 USERS
+
+==============================
+CREATE DEMO SCHEMA HR
+==============================
+
+$ sqlplus system
+
+SQL> alter session set container = XEPDB1;
+SQL> select sys_context('userenv', 'con_name') from dual;
+ 
+SYS_CONTEXT('USERENV','CON_NAME')
+----------------------------------------
+XEPDB1
+
+[ora1@oraclexe1 ~]$ sps
+
+SQL*Plus: Release 18.0.0.0.0 - Production on Wed Jan 13 10:33:00 2021
+Version 18.4.0.0.0
+
+Copyright (c) 1982, 2018, Oracle.  All rights reserved.
+
+Last Successful login time: Wed Jan 13 2021 10:27:28 +05:30
+
+Connected to:
+Oracle Database 18c Express Edition Release 18.0.0.0.0 - Production
+Version 18.4.0.0.0
+
+SQL> alter session set container = XEPDB1;
+
+Session altered.
+
+SQL> select sys_context('userenv', 'con_name') from dual;
+
+SYS_CONTEXT('USERENV','CON_NAME')
+--------------------------------------------------------------------------------
+XEPDB1
+
+SQL> @$ORACLE_HOME/demo/schema/human_resources/hr_main.sql
+
+specify password for HR as parameter 1:
+Enter value for 1: <some password>
+
+specify default tablespeace for HR as parameter 2:
+Enter value for 2: USERS
+
+specify temporary tablespace for HR as parameter 3:
+Enter value for 3: TEMP
+
+specify log path as parameter 4:
+Enter value for 4: $HOME/demo-schema.log  
