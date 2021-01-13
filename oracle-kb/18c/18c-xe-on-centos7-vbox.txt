@@ -344,3 +344,81 @@ Enter value for 3: TEMP
 
 specify log path as parameter 4:
 Enter value for 4: $HOME/demo-schema.log  
+
+-------------------
+CHECK THE USER
+-------------------
+select account_status, default_tablespace, temporary_tablespace, common
+from dba_users
+where username = 'HR';
+
+ACCOUNT_STATUS                   DEFAULT_TABLESPACE             TEMPORARY_TABLESPACE           COM
+-------------------------------- ------------------------------ ------------------------------ ---
+OPEN                             USERS                          TEMP                           NO
+
+select con_id, account_status, default_tablespace, temporary_tablespace, common
+from cdb_users
+where username = 'HR'
+
+    CON_ID ACCOUNT_STATUS                   DEFAULT_TABLESPACE             TEMPORARY_TABLESPACE           COM
+---------- -------------------------------- ------------------------------ ------------------------------ ---
+         3 OPEN                             USERS                          TEMP                           NO
+
+----------------------	
+CONNECT AS THE USER
+----------------------
+"oraclexe1" is the hostname of the machine.
+Replace mysupersecretpassword with the correct password.
+
+Note: The article used port 1522 - actually Oracle seemed to have used port 1521
+$ sqlplus hr/mysupersecretpassword@oraclexe1:1521/xepdb1
+
+SQL> select table_name from user_tables order by 1;
+
+TABLE_NAME
+--------------------------------------------------------------------------------
+COUNTRIES
+DEPARTMENTS
+EMPLOYEES
+JOBS
+JOB_HISTORY
+LOCATIONS
+REGIONS
+
+-------------------------------------
+OPEN FIREWALL FOR REMOTE CONNECTIONS
+-------------------------------------
+- FOR LISTENER
+# firewall-cmd --permanent --add-port=1521/tcp
+success
+
+- FOR ENTERPRISE MANAGER
+# firewall-cmd --permanent --add-port=5500/tcp
+success
+
+-------------------------------------
+TNSNAMES.ORA
+-------------------------------------
+$ORACLE_HOME/network/admin/tnsnames.ora file :
+
+XE18 =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = frea.virtualbox)(PORT = 1521))
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = XE)
+    )
+  )
+   
+xepdb1  =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = frea.virtualbox)(PORT = 1521))
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = xepdb1)
+    )
+  )  
+  
+$ sqlplus system@XE18
+$ sqlplus system@xepdb1
+
