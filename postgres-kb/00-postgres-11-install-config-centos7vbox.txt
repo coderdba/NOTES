@@ -251,12 +251,18 @@ ENABLE REMOTE ACCESS TO POSTGRES
 ---------------------------------
 https://computingforgeeks.com/how-to-install-postgresql-11-on-centos-7/
 
+- Open firewall to allow remote connections
+# firewall-cmd --permanent --add-port=5432/tcp
+success
+
+# systemctl restart firewalld
+
 - SET POSTGRES TO LISTEN ON HOST IP's
 Edit /var/lib/pgsql/11/data/postgresql.conf
 And set Listen address to your server IP address or “*” for all interfaces.
 listen_addresses = '192.168.18.9'
 
-- Also set PostgreSQL to accept remote connections
+- Set PostgreSQL to accept remote connections
 
 Edit /var/lib/pgsql/11/data/pg_hba.conf
 
@@ -309,6 +315,12 @@ $ psql
 postgres=# grant all privileges on database testdb to testuser;
 GRANT
 
-- Login as a testuser  user try to create a table on the Database.
-
+- Login as a testuser user 
+-- Login from the machine itself
 $ psql -U testuser -h localhost -d testdb
+$ psql -U testuser -h 127.0.0.1 -d testdb
+$ psql -U testuser -h 192.168.40.161 -d testdb
+
+-- Login from laptop into postgres on VBox
+$ psql -U testuser -h 192.168.40.161 -d testdb
+
