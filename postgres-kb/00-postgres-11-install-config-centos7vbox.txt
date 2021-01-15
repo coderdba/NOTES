@@ -177,3 +177,69 @@ yum install ./postgresql11-11.10-1PGDG.rhel7.x86_64.rpm
 yum install ./postgresql11-server-11.10-1PGDG.rhel7.x86_64.rpm
 yum install ./postgresql11-contrib-11.10-1PGDG.rhel7.x86_64.rpm
 
+--------------------
+VERIFY
+--------------------
+[root@pg11 pg11]# which postgresql-11-setup
+/usr/bin/postgresql-11-setup
+
+[root@pg11 pg11]# ls -l /usr/bin/postgresql-11-setup
+lrwxrwxrwx. 1 root root 37 Jan 15 19:29 /usr/bin/postgresql-11-setup -> /usr/pgsql-11/bin/postgresql-11-setup
+
+# ls -l /usr/bin/pg*
+[root@pg11 bin]# ls -l pg*
+lrwxrwxrwx. 1 root root     37 Jan 15 19:29 pg_basebackup -> /etc/alternatives/pgsql-pg_basebackup
+lrwxrwxrwx. 1 root root     31 Jan 15 19:29 pg_dump -> /etc/alternatives/pgsql-pg_dump
+lrwxrwxrwx. 1 root root     34 Jan 15 19:29 pg_dumpall -> /etc/alternatives/pgsql-pg_dumpall
+lrwxrwxrwx. 1 root root     34 Jan 15 19:29 pg_restore -> /etc/alternatives/pgsql-pg_restore
+
+----------------------
+Post-installation
+----------------------
+https://www.postgresql.org/download/linux/redhat/
+
+Due to policies for Red Hat family distributions, the PostgreSQL installation will not be enabled for automatic start or have the database initialized automatically. To make your database installation complete, you need to perform the following steps, based on your distribution:
+
+For RHEL / CentOS / SL / OL 6
+  service postgresql initdb
+  chkconfig postgresql on
+  
+NOTE: The string '11' is missing in the documentation
+NOTE: The doc says "--initdb" but we should use just "initdb"
+
+For RHEL / CentOS / SL / OL 7, 8 Or Fedora 31 And Later Derived Distributions:
+# postgresql-11-setup initdb
+Initializing database ... OK
+
+# systemctl enable postgresql-11.service
+Created symlink from /etc/systemd/system/multi-user.target.wants/postgresql-11.service to /usr/lib/systemd/system/postgresql-11.service.
+
+# systemctl start postgresql-11.service
+
+# systemctl status postgresql-11.service
+● postgresql-11.service - PostgreSQL 11 database server
+   Loaded: loaded (/usr/lib/systemd/system/postgresql-11.service; enabled; vendor preset: disabled)
+   Active: active (running) since Fri 2021-01-15 19:40:12 IST; 43s ago
+     Docs: https://www.postgresql.org/docs/11/static/
+  Process: 10392 ExecStartPre=/usr/pgsql-11/bin/postgresql-11-check-db-dir ${PGDATA} (code=exited, status=0/SUCCESS)
+ Main PID: 10398 (postmaster)
+    Tasks: 8
+   CGroup: /system.slice/postgresql-11.service
+           ├─10398 /usr/pgsql-11/bin/postmaster -D /var/lib/pgsql/11/data/
+           ├─10400 postgres: logger   
+           ├─10402 postgres: checkpointer   
+           ├─10403 postgres: background writer   
+           ├─10404 postgres: walwriter   
+           ├─10405 postgres: autovacuum launcher   
+           ├─10406 postgres: stats collector   
+           └─10407 postgres: logical replication launcher   
+
+Jan 15 19:40:12 pg11 systemd[1]: Starting PostgreSQL 11 database server...
+Jan 15 19:40:12 pg11 postmaster[10398]: 2021-01-15 19:40:12.282 IST [10398] LOG:  listening on IPv6 address "::1... 5432
+Jan 15 19:40:12 pg11 postmaster[10398]: 2021-01-15 19:40:12.282 IST [10398] LOG:  listening on IPv4 address "127... 5432
+Jan 15 19:40:12 pg11 postmaster[10398]: 2021-01-15 19:40:12.285 IST [10398] LOG:  listening on Unix socket "/var...5432"
+Jan 15 19:40:12 pg11 postmaster[10398]: 2021-01-15 19:40:12.287 IST [10398] LOG:  listening on Unix socket "/tmp...5432"
+Jan 15 19:40:12 pg11 postmaster[10398]: 2021-01-15 19:40:12.296 IST [10398] LOG:  redirecting log output to logg...ocess
+Jan 15 19:40:12 pg11 postmaster[10398]: 2021-01-15 19:40:12.296 IST [10398] HINT:  Future log output will appear...log".
+Jan 15 19:40:12 pg11 systemd[1]: Started PostgreSQL 11 database server.
+Hint: Some lines were ellipsized, use -l to show in full.
