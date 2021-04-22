@@ -8,6 +8,12 @@ Install bcc etc
 - https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_monitoring_and_updating_the_kernel/analyzing-system-performance-with-bpf-compiler_collection_managing-monitoring-and-updating-the-kernel 
 - https://github.com/iovisor/bcc/blob/master/INSTALL.md
 
+- https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_monitoring_and_updating_the_kernel/analyzing-system-performance-with-bpf-compiler_collection_managing-monitoring-and-updating-the-kernel --> install bcc etc
+- https://github.com/iovisor/bcc/blob/master/INSTALL.md --> install bcc
+- https://www.programmersought.com/article/3812934691/ --> install bcc on centos7 (not yum install)
+- https://www.programmersought.com/article/38137568278/ --> install bcc on centos78 (yum install)
+- https://centos.pkgs.org/7/centos-x86_64/bcc-tools-0.10.0-1.el7.x86_64.rpm.html --> install official centos doc
+
 ===================
 INSTALL
 ===================
@@ -21,3 +27,79 @@ INSTALL
 python-bcc-0.10.0-1.el7.x86_64
 bcc-tools-0.10.0-1.el7.x86_64
 bcc-0.10.0-1.el7.x86_64
+
+------------------------------------------------
+USE EITHER yum install bcc or bcc-tools
+------------------------------------------------
+
+# yum install bcc
+Dependencies Resolved
+
+========================================================================================================================
+ Package                           Arch                   Version                         Repository               Size
+========================================================================================================================
+Installing:
+ bcc                               x86_64                 0.10.0-1.el7                    base                    567 k
+Installing for dependencies:
+ bcc-tools                         x86_64                 0.10.0-1.el7                    base                    394 k
+ python-bcc                        x86_64                 0.10.0-1.el7                    base                     74 k
+ python-netaddr                    noarch                 0.7.5-9.el7                     base                    983 k
+Updating for dependencies:
+ llvm-private                      x86_64                 7.0.1-1.el7                     base                     23 M
+ mesa-dri-drivers                  x86_64                 18.3.4-12.el7_9                 updates                 7.2 M
+ mesa-libxatracker                 x86_64                 18.3.4-12.el7_9                 updates                 1.3 M
+
+Transaction Summary
+========================================================================================================================
+Install  1 Package  (+3 Dependent packages)
+Upgrade             ( 3 Dependent packages)
+
+Total size: 33 M
+Total download size: 10 M
+Is this ok [y/d/N]: n
+
+# yum install bcc-tools
+Dependencies Resolved
+
+========================================================================================================================
+ Package                           Arch                   Version                         Repository               Size
+========================================================================================================================
+Installing:
+ bcc-tools                         x86_64                 0.10.0-1.el7                    base                    394 k
+Installing for dependencies:
+ bcc                               x86_64                 0.10.0-1.el7                    base                    567 k
+ python-bcc                        x86_64                 0.10.0-1.el7                    base                     74 k
+ python-netaddr                    noarch                 0.7.5-9.el7                     base                    983 k
+Updating for dependencies:
+ llvm-private                      x86_64                 7.0.1-1.el7                     base                     23 M
+ mesa-dri-drivers                  x86_64                 18.3.4-12.el7_9                 updates                 7.2 M
+ mesa-libxatracker                 x86_64                 18.3.4-12.el7_9                 updates                 1.3 M
+
+Transaction Summary
+========================================================================================================================
+Install  1 Package  (+3 Dependent packages)
+Upgrade             ( 3 Dependent packages)
+
+Total size: 33 M
+Total download size: 10 M
+Is this ok [y/d/N]: 
+
+=====================
+USE
+=====================
+-  THIS ERRORED OUT IN ONE PROD MACHINE
+# /usr/share/bcc/tools/tcpaccept
+modprobe: FATAL: Module kheaders not found.
+chdir(/lib/modules/3.10.0-1160.21.1.el7.x86_64/build): No such file or directory
+Traceback (most recent call last):
+  File "/usr/share/bcc/tools/tcpaccept", line 228, in <module>
+    b = BPF(text=bpf_text)
+  File "/usr/lib/python2.7/site-packages/bcc/__init__.py", line 325, in __init__
+  
+--> Is it because build is a link to the same base folder?
+# cd /lib/modules/3.10.0-1160.21.1.el7.x86_64
+# ls -l
+total 3300
+lrwxrwxrwx.  1 root root     44 Mar 24 02:04 build -> /usr/src/kernels/3.10.0-1160.21.1.el7.x86_64
+    raise Exception("Failed to compile BPF text")
+Exception: Failed to compile BPF text
