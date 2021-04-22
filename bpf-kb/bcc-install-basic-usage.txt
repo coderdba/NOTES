@@ -19,6 +19,8 @@ INSTALL
 ===================
 - https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_monitoring_and_updating_the_kernel/analyzing-system-performance-with-bpf-compiler_collection_managing-monitoring-and-updating-the-kernel 
 
+VM to use: bpf1
+
 # yum install bcc-tools
 
 # ll /usr/share/bcc/tools/
@@ -103,3 +105,27 @@ total 3300
 lrwxrwxrwx.  1 root root     44 Mar 24 02:04 build -> /usr/src/kernels/3.10.0-1160.21.1.el7.x86_64
     raise Exception("Failed to compile BPF text")
 Exception: Failed to compile BPF text
+
+========================================================
+INSTALL SQLPLUS ON BPF1 VM TO CONNECT TO ORACLE
+========================================================
+- INSTALL SQLPLUS
+# rpm -ivh  oracle-instantclient19.10-basic-19.10.0.0.0-1.x86_64.rpm
+# rpm -ivh oracle-instantclient19.10-sqlplus-19.10.0.0.0-1.x86_64.rpm
+
+- CONNECT TO ORACLE ON VM oraclexe1
+# sqlplus hr/hr123@oraclexe1:1521/xepdb1
+
+- SHOW INCOMING CONNECTION USING bcc - on oraclexe1 VM
+NOTE: Run this before running sqlplus on bpf1 VM
+
+On oraclexe1 machine run:
+[root@oraclexe1 ~]# /usr/share/bcc/tools/tcpaccept
+PID     COMM         IP RADDR            RPORT LADDR            LPORT
+4056    tnslsnr      6  ::ffff:192.168.40.221 37382 ::ffff:192.168.40.151 1521
+
+-SHOW OUTGOING CONNECTION USING bcc - on bpf1 VM
+NOTE: Run this before running sqlplus on bpf1 VM
+[root@bpf1 ~] # /usr/share/bcc/tools/tcpconnect
+PID    COMM         IP SADDR            DADDR            DPORT
+28683  sqlplus      4  192.168.40.221   192.168.40.151   1521
