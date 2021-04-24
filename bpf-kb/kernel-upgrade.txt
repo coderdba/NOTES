@@ -65,6 +65,11 @@ Install a mainline version
 ------------------------------------------------------------------------------------------------
 Also, install tools devel etc: (needed for Virtualbox guest-additions) 
 ------------------------------------------------------------------------------------------------
+https://centos.pkgs.org/7/elrepo-kernel-x86_64/kernel-lt-tools-libs-devel-5.4.114-1.el7.elrepo.x86_64.rpm.html
+https://www.tecmint.com/install-kernel-headers-in-centos-7/#:~:text=First%20confirm%20that%20the%20matching,your%20system%20using%20following%20commands.
+https://unix.stackexchange.com/questions/215694/empty-kernel-directory-but-kernel-headers-are-installed/215697
+https://www.virtualtothecore.com/use-updated-kernel-centos-7/ --> remove and install 
+
 - https://centos.pkgs.org/7/elrepo-kernel-x86_64/kernel-lt-tools-libs-devel-5.4.114-1.el7.elrepo.x86_64.rpm.html
 # yum --enablerepo=elrepo-kernel install kernel-lt-tools-libs-devel
 # yum --enablerepo=elrepo-kernel install kernel-ml-tools-libs-devel
@@ -188,10 +193,64 @@ Reinstall Virtualbox guest-additions
 ----------------------------------------------------------------
 - https://www.tecmint.com/install-virtualbox-guest-additions-in-centos-rhel-fedora/
 - it errored out saying kernel headers not found
+
 # yum install make gcc kernel-headers kernel-devel perl dkms bzip2
 --> all were already installed (but seems like headers and devel were still 3.10)
 
-https://www.tecmint.com/install-kernel-headers-in-centos-7/#:~:text=First%20confirm%20that%20the%20matching,your%20system%20using%20following%20commands.
-https://unix.stackexchange.com/questions/215694/empty-kernel-directory-but-kernel-headers-are-installed/215697
-https://www.virtualtothecore.com/use-updated-kernel-centos-7/ --> remove and install 
+# mount -r /dev/cdrom /media
+# cd /media/
 
+# ./VBoxLinuxAdditions.run
+Verifying archive integrity... All good.
+Uncompressing VirtualBox 6.1.2 Guest Additions for Linux........
+VirtualBox Guest Additions installer
+Removing installed version 6.1.2 of VirtualBox Guest Additions...
+Copying additional installer modules ...
+Installing additional modules ...
+VirtualBox Guest Additions: Starting.
+VirtualBox Guest Additions: Building the VirtualBox Guest Additions kernel 
+modules.  This may take a while.
+VirtualBox Guest Additions: To build modules for other installed kernels, run
+VirtualBox Guest Additions:   /sbin/rcvboxadd quicksetup <version>
+VirtualBox Guest Additions: or
+VirtualBox Guest Additions:   /sbin/rcvboxadd quicksetup all
+VirtualBox Guest Additions: Kernel headers not found for target kernel 
+5.4.114-1.el7.elrepo.x86_64. Please install them and execute
+  /sbin/rcvboxadd setup
+modprobe vboxguest failed
+The log file /var/log/vboxadd-setup.log may contain further information.
+
+
+# yum remove kernel-headers (DONT yet also add kernel-tools kernel-tools-libs)
+# yum install kernel-headers
+--> this conflicted with the other "lt" stuff
+
+# yum remove kernel-lt-headers kernel-lt-tools kernel-lt-tools-libs
+# yum install kernel-headers kernel-tools kernel-tools-libs
+
+# yum --enablerepo=elrepo-kernel install kernel-lt-tools-libs-devel
+# yum --enablerepo=elrepo-kernel install kernel-lt-headers
+
+Now, /lib/modules/3.10.0-327.36.2.el7.x86_64/build/include --> the new folder for kernels - not /usr/src/kernels
+# export KERN_DIR=/lib/modules/5.4.114-1.el7.elrepo.x86_64
+# ./VBoxLinuxAdditions.run
+Verifying archive integrity... All good.
+Uncompressing VirtualBox 6.1.2 Guest Additions for Linux........
+VirtualBox Guest Additions installer
+Removing installed version 6.1.2 of VirtualBox Guest Additions...
+Copying additional installer modules ...
+Installing additional modules ...
+VirtualBox Guest Additions: Starting.
+VirtualBox Guest Additions: Building the VirtualBox Guest Additions kernel 
+modules.  This may take a while.
+VirtualBox Guest Additions: To build modules for other installed kernels, run
+VirtualBox Guest Additions:   /sbin/rcvboxadd quicksetup <version>
+VirtualBox Guest Additions: or
+VirtualBox Guest Additions:   /sbin/rcvboxadd quicksetup all
+VirtualBox Guest Additions: Kernel headers not found for target kernel 
+5.4.114-1.el7.elrepo.x86_64. Please install them and execute
+  /sbin/rcvboxadd setup
+modprobe vboxguest failed
+The log file /var/log/vboxadd-setup.log may contain further information.
+[root@centos7generaluse1 media]# rpm -qa |grep kernel | grep header
+kernel-lt-headers-5.4.114-1.el7.elrepo.x86_64
