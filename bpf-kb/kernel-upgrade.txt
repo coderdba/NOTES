@@ -3,11 +3,15 @@ KERNEL UPGRADE - CENTOS 7 VM
 ===============================
 https://phoenixnap.com/kb/how-to-upgrade-kernel-centos
 
-Check current kernel version:
+--------------------------------
+Check current kernel version
+--------------------------------
 # uname -msr
 Linux 3.10.0-957.el7.x86_64 x86_64
 
-Update repositories:
+--------------------------------
+Update repositories
+--------------------------------
 # yum -y update
 
 Import gpg key of elrepo:
@@ -18,7 +22,9 @@ The GPG key provides a digital signature to verify that the software is authenti
 Install the ELRepo repository:
 # rpm -Uvh https://www.elrepo.org/elrepo-release-7.0-3.el7.elrepo.noarch.rpm
 
-List Available Kernels:
+--------------------------------
+List Available Kernels
+--------------------------------
 # yum list available --disablerepo='*' --enablerepo=elrepo-kernel
 Loaded plugins: fastestmirror, langpacks
 Loading mirror speeds from cached hostfile
@@ -44,15 +50,21 @@ kernel-ml-tools-libs-devel.x86_64                           5.11.16-1.el7.elrepo
 perf.x86_64                                                 5.11.16-1.el7.elrepo                           elrepo-kernel
 python-perf.x86_64                                          5.11.16-1.el7.elrepo                           elrepo-kernel
 
-Install a LT (long term support) version:
+----------------------------------------------------------------
+Install a LT (long term support) version
+----------------------------------------------------------------
 # yum --enablerepo=elrepo-kernel install kernel-lt
 
-Install a mainline version:
+----------------------------------------------------------------
+Install a mainline version
+----------------------------------------------------------------
 # yum --enablerepo=elrepo-kernel install kernel-ml
 
 (note: install both versions - no harm - you can configure Grub to use whichever default or choose during reboot)
 
+------------------------------------------------------------------------------------------------
 Also, install tools devel etc: (needed for Virtualbox guest-additions) 
+------------------------------------------------------------------------------------------------
 - https://centos.pkgs.org/7/elrepo-kernel-x86_64/kernel-lt-tools-libs-devel-5.4.114-1.el7.elrepo.x86_64.rpm.html
 # yum --enablerepo=elrepo-kernel install kernel-lt-tools-libs-devel
 # yum --enablerepo=elrepo-kernel install kernel-ml-tools-libs-devel
@@ -161,13 +173,19 @@ kernel-lt-tools-5.4.114-1.el7.elrepo.x86_64
 kernel-devel-3.10.0-1160.24.1.el7.x86_64
 kernel-ml-5.11.16-1.el7.elrepo.x86_64
 
+Check also in:
+/lib/modules/<kernel version>/build/include
+--------------------------------
 Reboot the machine
+--------------------------------
 # reboot
-- In the grub menu upon reboot, choose the kernel you want to use - I chose the LTS 5.4 version
+- In the grub menu upon reboot, choose the kernel you want to use - I chose the LTS 5.4.114 version
 
 ISSUE: Now, Virtualbox guest-additions is not working!
 
-Reinstall Virtualbox guest-additions:
+----------------------------------------------------------------
+Reinstall Virtualbox guest-additions
+----------------------------------------------------------------
 - https://www.tecmint.com/install-virtualbox-guest-additions-in-centos-rhel-fedora/
 - it errored out saying kernel headers not found
 # yum install make gcc kernel-headers kernel-devel perl dkms bzip2
@@ -176,5 +194,4 @@ Reinstall Virtualbox guest-additions:
 https://www.tecmint.com/install-kernel-headers-in-centos-7/#:~:text=First%20confirm%20that%20the%20matching,your%20system%20using%20following%20commands.
 https://unix.stackexchange.com/questions/215694/empty-kernel-directory-but-kernel-headers-are-installed/215697
 https://www.virtualtothecore.com/use-updated-kernel-centos-7/ --> remove and install 
-
 
