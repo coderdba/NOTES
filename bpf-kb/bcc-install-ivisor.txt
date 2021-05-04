@@ -109,6 +109,31 @@ Complete!
 ----------------------------
 Install and compile LLVM
 ----------------------------
+- FROM SOURCE
+You could compile LLVM from source code
+
+curl  -LO  http://releases.llvm.org/7.0.1/llvm-7.0.1.src.tar.xz
+curl  -LO  http://releases.llvm.org/7.0.1/cfe-7.0.1.src.tar.xz
+tar -xf cfe-7.0.1.src.tar.xz
+tar -xf llvm-7.0.1.src.tar.xz
+
+mkdir clang-build
+mkdir llvm-build
+
+cd llvm-build
+cmake3 -G "Unix Makefiles" -DLLVM_TARGETS_TO_BUILD="BPF;X86" \
+  -DCMAKE_BUILD_TYPE=Release ../llvm-7.0.1.src
+make
+sudo make install
+
+cd ../clang-build
+cmake3 -G "Unix Makefiles" -DLLVM_TARGETS_TO_BUILD="BPF;X86" \
+  -DCMAKE_BUILD_TYPE=Release ../cfe-7.0.1.src
+make
+sudo make install
+cd ..
+
+- FROM YUM
 # yum install -y centos-release-scl
 # yum-config-manager --enable rhel-server-rhscl-7-rpms
 # yum install -y devtoolset-7 llvm-toolset-7 llvm-toolset-7-llvm-devel llvm-toolset-7-llvm-static llvm-toolset-7-clang-devel
@@ -143,6 +168,9 @@ Complete!
 ------------------------
 Install and compile BCC
 ------------------------
+
+NOTE: This failed when installed llvm from yum
+
 git clone https://github.com/iovisor/bcc.git
 mkdir bcc/build; cd bcc/build
 cmake3 ..
