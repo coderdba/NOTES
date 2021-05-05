@@ -1,9 +1,12 @@
-=========================================
-IVISOR BCC INSTALL FROM SOURCE ON CENTOS7
-=========================================
+==================================================================================
+IVISOR BCC INSTALL FROM SOURCE ON CENTOS7 - USING GIT STEPS OF IVISOR
+==================================================================================
 
-Reference: https://github.com/iovisor/bcc/blob/master/INSTALL.md#centos---source
-https://elinux.org/images/d/dc/Kernel-Analysis-Using-eBPF-Daniel-Thompson-Linaro.pdf
+Installation: https://github.com/iovisor/bcc/blob/master/INSTALL.md#centos---source
+Installation/Usage: https://elinux.org/images/d/dc/Kernel-Analysis-Using-eBPF-Daniel-Thompson-Linaro.pdf
+
+Issues: 
+- https://github.com/iovisor/bcc/issues/2891
 
 --------------------
 Kernel Configuration
@@ -109,7 +112,9 @@ Complete!
 ----------------------------
 Install and compile LLVM
 ----------------------------
-- FROM SOURCE
+NOTE: Do this 'from source' only - as in Ivisor Git.  DONT DO WITH YUM
+
+- FROM SOURCE --> USE THESE STEPS - DONT INSTALL FROM YUM (YUM STEPS IN NEXT SUBSECTION)
 You could compile LLVM from source code
 
 curl  -LO  http://releases.llvm.org/7.0.1/llvm-7.0.1.src.tar.xz
@@ -133,7 +138,7 @@ make
 sudo make install
 cd ..
 
-- FROM YUM
+- FROM YUM (DONT USE THIS STEPS - THEY LACK SOMETHING AND BCC BUILD FAILS AFTERWARDS)
 # yum install -y centos-release-scl
 # yum-config-manager --enable rhel-server-rhscl-7-rpms
 # yum install -y devtoolset-7 llvm-toolset-7 llvm-toolset-7-llvm-devel llvm-toolset-7-llvm-static llvm-toolset-7-clang-devel
@@ -173,6 +178,70 @@ NOTE: This failed when installed llvm from yum
 
 git clone https://github.com/iovisor/bcc.git
 mkdir bcc/build; cd bcc/build
-cmake3 ..
-make
+cmake3 .. (this gives some warnings - see listing below)
+make 
 sudo make install
+
+- CMAKE3 OUTPUT WITH WARNINGS
+Summary:
+1. Recommended test program 'netperf' not found
+2. Recommended test program 'iperf' or 'iperf3' not found
+Try debug with this: https://github.com/iovisor/bcc/issues/2891
+
+Listing:
+[root@bpf2 build]# cmake3 ..
+perl: warning: Setting locale failed.
+perl: warning: Please check that your locale settings:
+	LANGUAGE = (unset),
+	LC_ALL = (unset),
+	LC_CTYPE = "UTF-8",
+	LANG = "en_US.UTF-8"
+    are supported and installed on your system.
+perl: warning: Falling back to the standard locale ("C").
+perl: warning: Setting locale failed.
+perl: warning: Please check that your locale settings:
+	LANGUAGE = (unset),
+	LC_ALL = (unset),
+	LC_CTYPE = "UTF-8",
+	LANG = "en_US.UTF-8"
+    are supported and installed on your system.
+perl: warning: Falling back to the standard locale ("C").
+perl: warning: Setting locale failed.
+perl: warning: Please check that your locale settings:
+	LANGUAGE = (unset),
+	LC_ALL = (unset),
+	LC_CTYPE = "UTF-8",
+	LANG = "en_US.UTF-8"
+    are supported and installed on your system.
+perl: warning: Falling back to the standard locale ("C").
+perl: warning: Setting locale failed.
+perl: warning: Please check that your locale settings:
+	LANGUAGE = (unset),
+	LC_ALL = (unset),
+	LC_CTYPE = "UTF-8",
+	LANG = "en_US.UTF-8"
+    are supported and installed on your system.
+perl: warning: Falling back to the standard locale ("C").
+-- Latest recognized Git tag is v0.19.0
+-- Git HEAD is cda7acdbddb19a5a258f881711845e41463dabbf
+-- Revision is 0.19.0-cda7acdb
+-- Found LLVM: /usr/local/include 7.0.1
+CMake Warning at tests/python/CMakeLists.txt:10 (message):
+  Recommended test program 'netperf' not found
+
+CMake Warning at tests/python/CMakeLists.txt:16 (message):
+  Recommended test program 'iperf' or 'iperf3' not found
+
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /root/bcc-installation/bcc/build
+
+------------------------
+VERIFY
+------------------------
+# cd /usr/share/bcc/tools
+# ls -l dbslower (list this as this does not get installed in yum install of bcc-tools)
+
+Add /usr/share/bcc/tools to PATH in /root/.bash_profile and other users' profiles
+# which dbslower 
+/usr/share/bcc/tools/dbslower
