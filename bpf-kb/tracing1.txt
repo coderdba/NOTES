@@ -2,6 +2,9 @@
 TRACING STUFF
 ==========================================
 
+Network Tracing: https://learning.oreilly.com/library/view/bpf-performance-tools/9780136588870/ch10.xhtml#sec10_3
+Connection latency: https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/configuring_and_managing_networking/network-tracing-using-the-bpf-compiler-collection_configuring-and-managing-networking
+
 ===============
 PREPARATION
 ===============
@@ -63,6 +66,27 @@ PID    COMM         LADDR                 RADDR                  RX_KB  TX_KB
 2977   sqlplus      192.168.40.22:43008   192.168.40.151:1521        0      0
 
 
+- CONNECTION LATENCY
+https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/configuring_and_managing_networking/network-tracing-using-the-bpf-compiler-collection_configuring-and-managing-networking
 
+Run tcpconnlat in one terminal and in the other do sqlplus to the database.
+Note that it gives the RTT only for the connection establishment and not for every sql command you run.
 
+[root@bpf2 tmp]# which tcpconnlat
+/usr/share/bcc/tools/tcpconnlat
+
+[root@bpf2 tmp]# tcpconnlat
+PID    COMM         IP SADDR            DADDR            DPORT LAT(ms)
+3123   sqlplus      4  192.168.40.22    192.168.40.151   1521  0.53
+3132   sqlplus      4  192.168.40.22    192.168.40.151   1521  0.85
+
+- TRACE SESSIONS
+https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/configuring_and_managing_networking/network-tracing-using-the-bpf-compiler-collection_configuring-and-managing-networking
+
+This gives complete session info - for the whole duration of the connection. (in this case, sqlplus)
+- MS is the milliseconds of total connection duration
+
+[root@bpf2 tmp]# /usr/share/bcc/tools/tcplife 
+PID   COMM       LADDR           LPORT RADDR           RPORT TX_KB RX_KB MS
+3171  sqlplus    192.168.40.22   43014 192.168.40.151  1521      3    13 20215.87
 
