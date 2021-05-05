@@ -1,0 +1,45 @@
+==========================================
+TRACING STUFF
+==========================================
+
+===============
+PREPARATION
+===============
+
+---------------
+ORACLE CLIENT
+---------------
+
+- ADD ORACLE USER (not really necessary)
+[root@bpf2 ~]# groupadd -g 54322 dba
+[root@bpf2 ~]# groupadd -g 54321 oinstall
+[root@bpf2 ~]# useradd -u 54321 -g oinstall -G dba oracle
+
+- INSTALL SQLPLUS
+# rpm -ivh  oracle-instantclient19.10-basic-19.10.0.0.0-1.x86_64.rpm
+# rpm -ivh oracle-instantclient19.10-sqlplus-19.10.0.0.0-1.x86_64.rpm
+
+[root@bpf2 tmp]# cd /usr/bin
+[root@bpf2 bin]# ls -l sqlplus
+lrwxrwxrwx 1 root root 42 May  5 14:47 sqlplus -> /usr/lib/oracle/19.10/client64/bin/sqlplus
+
+=======================
+TRACE ORACLE SQLPLUS
+=======================
+
+- CONNECT TO ORACLE ON VM oraclexe1
+# sqlplus hr/hr123@oraclexe1:1521/xepdb1
+
+- SHOW INCOMING CONNECTION USING bcc - on oraclexe1 VM
+NOTE: Run this before running sqlplus on bpf1 VM
+
+On oraclexe1 machine run:
+[root@oraclexe1 ~]# /usr/share/bcc/tools/tcpaccept
+PID     COMM         IP RADDR            RPORT LADDR            LPORT
+3941    tnslsnr      6  ::ffff:192.168.40.22 42996 ::ffff:192.168.40.151 1521
+
+-SHOW OUTGOING CONNECTION USING bcc - on bpf VM
+NOTE: Run this before running sqlplus on bpf VM
+[root@bpf2 ~] # /usr/share/bcc/tools/tcpconnect
+PID    COMM         IP SADDR            DADDR            DPORT 
+2575   sqlplus      4  192.168.40.22    192.168.40.151   1521 
