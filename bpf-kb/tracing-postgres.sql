@@ -4,6 +4,7 @@ TRACING POSTGRES
 
 Install Postgres client: https://www.symmcom.com/docs/how-tos/databases/how-to-install-postgresql-11-x-on-centos-7
 Install Postgres server: https://www.postgresql.org/download/linux/redhat/
+Connect to postgres: https://www.enterprisedb.com/postgres-tutorials/connecting-postgresql-using-psql-and-pgadmin
 
 =====================================
 SETUP BPF2 MACHINE AS POSTGRES CLIENT
@@ -26,3 +27,22 @@ sudo yum install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-
     sudo systemctl start postgresql-11
     
 - CONNECT TO THE POSTGRES DB ON PG VM
+Reference: https://www.enterprisedb.com/postgres-tutorials/connecting-postgresql-using-psql-and-pgadmin
+bash-4.2$ psql -h <hostname or ip address> -p <port number of remote machine> -d <database name which you want to connect> -U <username of the database server>
+
+# psql -U postgres -h 192.168.40.161   (defaults to port 5432)
+Password for user postgres: P13
+postgres=#
+postgres=# \l
+                                  List of databases
+   Name    |  Owner   | Encoding |   Collate   |    Ctype    |   Access privileges   
+-----------+----------+----------+-------------+-------------+-----------------------
+ postgres  | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | 
+ template0 | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =c/postgres          +
+           |          |          |             |             | postgres=CTc/postgres
+ template1 | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =c/postgres          +
+           |          |          |             |             | postgres=CTc/postgres
+ testdb    | testuser | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =Tc/testuser         +
+           |          |          |             |             | testuser=CTc/testuser
+(4 rows)
+
