@@ -46,3 +46,19 @@ postgres=# \l
            |          |          |             |             | testuser=CTc/testuser
 (4 rows)
 
+- IN ANOTHER TERMINAL
+[root@bpf2 ~]# ps -ef |grep psql
+root      3610  3203  0 14:53 pts/0    00:00:00 psql -U postgres -h 192.168.40.161
+
+[root@bpf2 ~]# dbslower postgres -p 3610
+Traceback (most recent call last):
+  File "/usr/share/bcc/tools/dbslower", line 199, in <module>
+    usdt.enable_probe("query__start", "query_start")
+  File "/usr/lib/python2.7/site-packages/bcc/usdt.py", line 167, in enable_probe
+    """ % probe)
+    
+bcc.usdt.USDTException: Failed to enable USDT probe 'query__start': --> https://github.com/iovisor/bcc/issues/1241 --> You need to build Postgres with --enable-dtrace.
+the specified pid might not contain the given language's runtime,
+or the runtime was not built with the required USDT probes. Look
+for a configure flag similar to --with-dtrace or --enable-dtrace.
+To check which probes are present in the process, use the tplist tool.
