@@ -122,8 +122,88 @@ AMAZON S3 BASIC CONCEPTS
 -- newly inserted object will not be available to read until propagated to replicas
 -- updated/deleted may still show up until propagated
 
+- Partitioning
+-- The following places all files into same partition that starts with 'c' - which is the first letter of the key 
+-- mybucket/chapter1/page1.pdf
+-- mybucket/chapter1/page2.pdf
+-- mybucket/chapter2/page1.pdf
+...
 
+-- The following places files into separate partitions that start with '1', '2' etc - which is the first letter of the key 
+-- mybucket/1chapter/page1.pdf
+-- mybucket/1chapter/page2.pdf
+-- mybucket/2chapter/page1.pdf
+...
 
+-- The following places all files into same partition that starts with '1' - which is the first letter of the key 
+-- mybucket/1234/page1.pdf
+-- mybucket/1235/page2.pdf
+-- mybucket/1236/page1.pdf
+...
 
+-- The following places files into separate partitions that start with '4', '3' etc - which is the first letter of the key --> REVERSE KEY
+-- mybucket/4321/page1.pdf
+-- mybucket/5321/page2.pdf
+-- mybucket/6321/page1.pdf
+...
+...
 
+-- The following places files into separate partitions that start with 's', 'e' etc - which is the first letter of the key --> WHICH IS PREFIXED WITH A HASH
+-- mybucket/sdfs1234/page1.pdf
+-- mybucket/erws1235/page2.pdf
+-- mybucket/lkdf1236/page1.pdf
+...
 
+- Encryption
+-- server side encryption SSE
+--- objects are encrypted with one-time randomly generated content encryption key (CEK) per S3 object. 
+--- The CEK is protected by some encryption materials which are stored alongside the object.
+--- Encryption client http://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/services/s3/AmazonS3EncryptionClient.html
+--- AES 256
+--- SSE with Amazon S3 Key Management (SSE-SE) 
+      Each object is encrypted with a key
+      That key is encrypted with a master key
+      Master key is managed by S3 key management
+      Master key is rotated every month
+--- SSE with customer-provided keys (SSE-C)
+      Customer provides encryption key
+      Customer uses that same key for retrieval
+      Amazon does not store the key - it is just used when customer supplies it for read or write
+--- SSE with AWS Key Management Service KMS (SSE-KMS) 
+      Customer provides the key
+      Customer manages the key in AWS KMS (key management service)
+      Separate permissions to manage the master key
+      Audit trail
+      Additional security controls to meet PCI-DSS, HIPAA/HITECH, and FedRAMP
+
+- Access Control
+-- Policy generator: AWS Policy Generator (https://awspolicygen.s3.amazonaws.com/policygen.html).
+-- user to bucket, object
+-- user groups
+-- ACL
+-- MFA
+-- amazon resource name (ARN)--> arn:partition:service:region:account-id:resource (or resourcetype:resource)
+-- arn:aws:s3:::mybucket
+-- arn:aws:s3:::mybucket/doc1.doc
+-- arn:aws:s3:::mybucket/docs/doc1.doc
+-- arn:aws:s3:::mybucket/docs/*
+-- Example policy:
+{
+"Version": "2021-02-02",
+"Statement":[
+  {
+    "Sid":"AddPerm", --> optional
+    "Principal":"*", --> to allow anonymous access
+    "Effect":"Allow",
+    "Action":[
+    "s3:PutObject",
+    "s3:GetObject"
+    ],
+    "Resource":"arn:aws:s3:::mybucket/docs/*",
+    "Condition": {
+      "IpAddress": {"aws:SourceIp": "55:60:70:0/24"},
+      "NotIpAddress": {"aws:SourceIp": "55:60:80.0/16"}
+    }
+  }
+]
+}
