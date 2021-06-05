@@ -1,0 +1,108 @@
+===========================================================================
+KVM, QEMU, VIRT-MANAGER ON CENTOS7 on Virtualbox - nested virtualization
+===========================================================================
+Reference docs:
+KVM - https://www.linuxtechi.com/install-kvm-hypervisor-on-centos-7-and-rhel-7/
+Bridge - https://www.golinuxcloud.com/how-to-configure-network-bridge-nmtui-linux/
+
+Old doc - https://github.com/coderdba/NOTES/blob/master/packer-kb/install-on-centos-and-kvm.txt
+
+For Virtualbox nested virtualization 
+- https://github.com/coderdba/NOTES/blob/master/virtualbox-kb/nested-virtualization-kvm-vbox.txt
+
+Additional stuff:
+https://www.linuxquestions.org/questions/linux-laptop-and-netbook-25/how-do-you-kvm-on-vmware-virtualbox-4175611275/
+--> about vbox not supporting further virtualization on a vm
+
+==========================
+KEYWORDS
+==========================
+Libvirt - this is the library that runs KVM VMs
+Network Bridge
+
+==========================
+VIRTUALBOX SETUP
+==========================
+Enable 'nested virtualization' - so that you can create packer VMs and VMs running in VM.
+
+For the VM, in 'system' --> 'processor' --> check the box 'Enable Nested VT-x/AMD-v'
+
+==========================
+HOST SETUP
+==========================
+--------------------
+NETWORK CARDS
+--------------------
+3 network cards - vmnet0, vmnet3, vmnet4
+192.168.99.1/24 --> Wired Connection 2 - vmnet0 - 192.168.99.101
+192.168.98.1/24 --> Wired Connection 3 - vmnet3 - 192.168.98.101
+192.168.40.1/24 --> Wired Connection 4 - vmnet4 - 192.168.40.101
+
+# hostnamectl set-hostname kvm202101
+
+# nmtui --> and edit the network cards with static IPs
+# ifdown enp0s8
+# ifup enp0s8
+# ifdown enp0s9
+# ifup enp0s9
+# ifdown enp0s10
+# ifup enp0s10
+
+# ip a |grep enp
+2: enp0s3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    inet 10.0.2.15/24 brd 10.0.2.255 scope global noprefixroute dynamic enp0s3
+3: enp0s8: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    inet 192.168.99.101/24 brd 192.168.99.255 scope global noprefixroute enp0s8
+4: enp0s9: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    inet 192.168.98.101/24 brd 192.168.98.255 scope global noprefixroute enp0s9
+5: enp0s10: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    inet 192.168.40.101/24 brd 192.168.40.255 scope global noprefixroute enp0s10
+    
+==========================
+INSTALL
+==========================
+Check if CPU supports virtualization
+
+# grep -E '(vmx|svm)' /proc/cpuinfo
+We should get the word either vmx or svm in the output, otherwise CPU doesn’t support virtualization.
+
+--> you can see vmx now!!
+
+flags		: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc eagerfpu pni pclmulqdq monitor vmx ssse3 cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt aes xsave avx rdrand hypervisor lahf_lm abm 3dnowprefetch tpr_shadow flexpriority fsgsbase avx2 invpcid rdseed clflushopt flush_l1d
+
+Install packages
+# yum install -y qemu-kvm qemu-img virt-manager libvirt libvirt-python libvirt-client virt-install virt-viewer bridge-utils  libguestfs-tools
+
+Verify modules
+# lsmod | grep kvm
+Expected output:
+kvm_intel             183621  0 
+kvm                   586948  1 kvm_intel
+irqbypass              13503  1 kvm
+
+--> If desired output does not appear, then run the following and try again:
+# modprobe kvm
+# modprobe kvm-intel or kvm-amd(depends on your cpu)
+
+Start service
+# systemctl enable libvirtd
+# systemctl start libvirtd
+# systemctl status libvirtd
+
+● libvirtd.service - Virtualization daemon
+   Loaded: loaded (/usr/lib/systemd/system/libvirtd.service; enabled; vendor preset: enabled)
+   Active: active (running) since Sat 2021-06-05 07:09:45 IST; 2min 36s ago
+     Docs: man:libvirtd(8)
+           https://libvirt.org
+ Main PID: 8533 (libvirtd)
+    Tasks: 19 (limit: 32768)
+   CGroup: /system.slice/libvirtd.service
+           ├─3939 /usr/sbin/dnsmasq --conf-file=/var/lib/libvirt/dnsmasq/default.conf --leasefile-ro --dhcp-script=/u...
+           ├─3940 /usr/sbin/dnsmasq --conf-file=/var/lib/libvirt/dnsmasq/default.conf --leasefile-ro --dhcp-script=/u...
+           └─8533 /usr/sbin/libvirtd
+
+Jun 05 07:09:45 kvm202101 systemd[1]: Starting Virtualization daemon...
+Jun 05 07:09:45 kvm202101 systemd[1]: Started Virtualization daemon.
+Jun 05 07:09:46 kvm202101 dnsmasq[3939]: read /etc/hosts - 3 addresses
+Jun 05 07:09:46 kvm202101 dnsmasq[3939]: read /var/lib/libvirt/dnsmasq/default.addnhosts - 0 addresses
+Jun 05 07:09:46 kvm202101 dnsmasq-dhcp[3939]: read /var/lib/libvirt/dnsmasq/default.hostsfile
