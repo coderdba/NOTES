@@ -95,17 +95,7 @@ CREATE VM - WITH DEFAULT BRIDGE VIRBR0
 --> TBD - IP IS NOT PINGABLE FROM OUTSIDE (like from laptop) - AS THIS IS NOT BY DEFAULT ROUTABLE - NEED TO CHECK HOW TO DO THAT
 
 # cp CentOS-7-x86_64-GenericCloud.qcow2 /disk1/kvm-vms/centos71/centos71-root.qcow2 --> copying into a folder in the VBOX VM itself
-- OR - 
-# cp CentOS-7-x86_64-GenericCloud.qcow2 /hosthome/kvm-vms-on-vbox-vm/centos71/centos71-root.qcow2 --> copying into a shared folder with host/laptop
-
-# virt-install --import --name centos71 \
---memory 256 --vcpus 1 --cpu host \
---disk /hosthome/kvm-vms-on-vbox-vm/centos71/centos71-root.qcow2,format=qcow2,bus=virtio \
---disk /root/work/libvirt-kvm/centos71-seed.iso,device=cdrom \
---network bridge=virbr0,model=virtio \
---os-type=linux \
---os-variant=rhel7 \
---noautoconsole \
+# cp centos71-seed.iso /disk1/kvm-vms/centos71/. --> should be in the same folder/subfolder as the qcow2
 
 -- REFERENCE CODE
 # virt-install --import --name centos71 \
@@ -116,4 +106,27 @@ CREATE VM - WITH DEFAULT BRIDGE VIRBR0
 --os-type=linux \
 --os-variant=rhel7 \
 --noautoconsole \
+
+------
+VERIFY
+------
+
+# virsh list --all
+ Id    Name                           State
+----------------------------------------------------
+ 2     centos71                       running
+ 
+# virsh net-dhcp-leases default
+ Expiry Time          MAC address        Protocol  IP address                Hostname        Client ID or DUID
+-------------------------------------------------------------------------------------------------------------------
+ 2021-06-05 11:32:42  52:54:00:b3:bb:17  ipv4      192.168.122.211/24        centos71        -
+
+# ping 192.168.122.211
+PING 192.168.122.211 (192.168.122.211) 56(84) bytes of data.
+64 bytes from 192.168.122.211: icmp_seq=1 ttl=64 time=0.291 ms
+64 bytes from 192.168.122.211: icmp_seq=2 ttl=64 time=0.419 ms
+
+# ssh -i ./id_rsa.gdby gm@192.168.122.211
+[gm@centos71 ~]$ id
+uid=1000(gm) gid=1000(gm) groups=1000(gm),0(root) context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023
 
