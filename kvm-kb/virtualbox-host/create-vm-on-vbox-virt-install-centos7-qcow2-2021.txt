@@ -12,6 +12,11 @@ For bridge networking - use this:
 This bridge using nmtui seemed to not work - or maybe we should somehow inject eth config files into the VM:
 - https://www.golinuxcloud.com/how-to-configure-network-bridge-nmtui-linux/
 
+
+NOTE: Two types of bridged networks are used in two examples below
+- Default bridge virbr0 that comes in when virsh is installed
+- Custom bridge br10 created manually
+
 =============
 QUICK HELP
 =============
@@ -129,4 +134,28 @@ PING 192.168.122.211 (192.168.122.211) 56(84) bytes of data.
 # ssh -i ./id_rsa.gdby gm@192.168.122.211
 [gm@centos71 ~]$ id
 uid=1000(gm) gid=1000(gm) groups=1000(gm),0(root) context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023
+
+------------------
+REMOVE THE VM
+------------------
+# virsh destroy centos71
+# virsh undefine centos71
+
+=========================================================================================
+CREATE VM - WITH CUSTOM BRIDGE nm-br10 (you could create it as just br10 also)
+=========================================================================================
+
+- Recopy the files - so that any previously created machines will be overwritten
+# cp CentOS-7-x86_64-GenericCloud.qcow2 /disk1/kvm-vms/centos71/centos71-root.qcow2 --> copying into a folder in the VBOX VM itself
+# cp centos71-seed.iso /disk1/kvm-vms/centos71/. --> should be in the same folder/subfolder as the qcow2
+
+-- REFERENCE CODE
+# virt-install --import --name centos71 \
+--memory 256 --vcpus 1 --cpu host \
+--disk /disk1/kvm-vms/centos71/centos71-root.qcow2,format=qcow2,bus=virtio \
+--disk /disk1/kvm-vms/centos71/centos71-seed.iso,device=cdrom \
+--network bridge=nm-br10,model=virtio \
+--os-type=linux \
+--os-variant=rhel7 \
+--noautoconsole \
 
