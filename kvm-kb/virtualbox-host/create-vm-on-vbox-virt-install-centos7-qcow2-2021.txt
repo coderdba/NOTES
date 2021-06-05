@@ -77,3 +77,43 @@ timezone: Asia/Kolkata
 runcmd:
   - systemctl stop network && systemctl start network
   - yum -y remove cloud-init
+  
+=================================
+CREATE ISO SEED FILE
+=================================
+mkisofs -o centos71-seed.iso -V cidata -J -r  meta-data user-data
+
+=================================
+COPY IMAGE QCOW2 ONTO root-disk
+=================================
+# cp CentOS-7-x86_64-GenericCloud.qcow2 /disk1/kvm-vms/centos71/centos71-root.qcow2
+
+==========================================================================
+CREATE VM - WITH DEFAULT BRIDGE VIRBR0
+==========================================================================
+--> THIS WORKS - WITH IP GETTING ASSIGNED
+--> TBD - IP IS NOT PINGABLE FROM OUTSIDE (like from laptop) - AS THIS IS NOT BY DEFAULT ROUTABLE - NEED TO CHECK HOW TO DO THAT
+
+# cp CentOS-7-x86_64-GenericCloud.qcow2 /disk1/kvm-vms/centos71/centos71-root.qcow2 --> copying into a folder in the VBOX VM itself
+- OR - 
+# cp CentOS-7-x86_64-GenericCloud.qcow2 /hosthome/kvm-vms-on-vbox-vm/centos71/centos71-root.qcow2 --> copying into a shared folder with host/laptop
+
+# virt-install --import --name centos71 \
+--memory 256 --vcpus 1 --cpu host \
+--disk /hosthome/kvm-vms-on-vbox-vm/centos71/centos71-root.qcow2,format=qcow2,bus=virtio \
+--disk /root/work/libvirt-kvm/centos71-seed.iso,device=cdrom \
+--network bridge=virbr0,model=virtio \
+--os-type=linux \
+--os-variant=rhel7 \
+--noautoconsole \
+
+-- REFERENCE CODE
+# virt-install --import --name centos71 \
+--memory 256 --vcpus 1 --cpu host \
+--disk /disk1/kvm-vms/centos71/centos71-root.qcow2,format=qcow2,bus=virtio \
+--disk /disk1/kvm-vms/centos71/centos71-seed.iso,device=cdrom \
+--network bridge=virbr0,model=virtio \
+--os-type=linux \
+--os-variant=rhel7 \
+--noautoconsole \
+
