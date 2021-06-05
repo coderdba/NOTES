@@ -103,3 +103,36 @@ virbr0		8000.52540008e8f5	yes		virbr0-nic
 4: enp0s9 state UP : <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 master br0 state forwarding priority 32 cost 100 
 7: virbr0-nic state DOWN : <BROADCAST,MULTICAST> mtu 1500 master virbr0 state disabled priority 32 cost 100 
 
+# brctl showmacs br0 
+port no	mac addr		is local?	ageing timer
+  1	08:00:27:fd:2b:a9	yes		   0.00
+  1	08:00:27:fd:2b:a9	yes		   0.00
+  1	0a:00:27:00:00:03	no		  60.59
+
+WHEN A VM IS CREATED USING VIRSH-INSTALL WITH br0:
+
+# ip a
+--> now shows vnet0 in addition to br0
+8: br0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 08:00:27:fd:2b:a9 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.98.2/24 brd 192.168.98.255 scope global noprefixroute br0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::57ac:c718:6ec4:ee66/64 scope link noprefixroute 
+       valid_lft forever preferred_lft forever
+10: vnet0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast master br0 state UNKNOWN group default qlen 1000
+    link/ether fe:54:00:c1:20:d4 brd ff:ff:ff:ff:ff:ff
+    
+# brctl show
+bridge name	bridge id		STP enabled	interfaces
+br0		8000.080027fd2ba9	yes		enp0s9
+							vnet0
+virbr0		8000.52540008e8f5	yes		virbr0-nic
+
+# virsh net-dhcp-leases br0 --> PROBLEM
+error: failed to get network 'br0'
+error: Network not found: no network with matching name 'br0'
+
+
+    inet6 fe80::fc54:ff:fec1:20d4/64 scope link 
+       valid_lft forever preferred_lft forever
+
