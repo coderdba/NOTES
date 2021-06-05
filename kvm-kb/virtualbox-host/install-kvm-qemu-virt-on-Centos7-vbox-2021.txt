@@ -23,9 +23,18 @@ Network Bridge
 ==========================
 VIRTUALBOX SETUP
 ==========================
-Enable 'nested virtualization' - so that you can create packer VMs and VMs running in VM.
 
-For the VM, in 'system' --> 'processor' --> check the box 'Enable Nested VT-x/AMD-v'
+-----------------------------------
+Nested virtualization enablement
+-----------------------------------
+Enable 'nested virtualization' - so that you can create packer VMs and VMs running in VM.
+For the VM, 
+
+System --> Processor --> check the box 'Enable Nested VT-x/AMD-v
+
+System --> Acceleration -->
+  Paravirtualiztion Interface - KVM
+  Enable Netsted Paging (this may have to be done using VBoxManage command)
 
 ==========================
 HOST SETUP
@@ -114,3 +123,172 @@ Install X-Windows system
 Start virt-manager - for GUI based VM creation
 # virt-manager
 --> This will pop up a GUI with various new VM creation options - from ISO, kickstart, image etc
+
+==============================
+SETUP BRIDGE NETWORK
+==============================
+
+- LIST CURRENT BRIDGES
+#  brctl show
+bridge name	bridge id		STP enabled	interfaces
+virbr0		8000.52540008e8f5	yes		virbr0-nic   
+
+[root@kvm202101 ~]# brctl show
+bridge name	bridge id		STP enabled	interfaces
+virbr0		8000.52540008e8f5	yes		virbr0-nic
+
+--> this is created by libvirt (I guess I had installed libvirt earlier in regular VMs also, so, centos7model also has it)
+
+# ip  a
+6: virbr0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default qlen 1000
+    link/ether 52:54:00:08:e8:f5 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0
+       valid_lft forever preferred_lft forever
+7: virbr0-nic: <BROADCAST,MULTICAST> mtu 1500 qdisc pfifo_fast master virbr0 state DOWN group default qlen 1000
+    link/ether 52:54:00:08:e8:f5 brd ff:ff:ff:ff:ff:ff
+
+Config files for this are here:
+# cd /var/lib/libvirt/dnsmasq
+
+# cat def*f
+##WARNING:  THIS IS AN AUTO-GENERATED FILE. CHANGES TO IT ARE LIKELY TO BE
+##OVERWRITTEN AND LOST.  Changes to this configuration should be made using:
+##    virsh net-edit default
+## or other application using the libvirt API.
+##
+## dnsmasq conf file created by libvirt
+strict-order
+pid-file=/var/run/libvirt/network/default.pid
+except-interface=lo
+bind-dynamic
+interface=virbr0
+dhcp-range=192.168.122.2,192.168.122.254
+dhcp-no-override
+dhcp-authoritative
+dhcp-lease-max=253
+dhcp-hostsfile=/var/lib/libvirt/dnsmasq/default.hostsfile
+addn-hosts=/var/lib/libvirt/dnsmasq/default.addnhosts
+
+- CREATE A NEW BRIDGE
+High level - create a bridge, add a slave nic or modify an existing nic to use that bridge
+Use IPs in the same range as of bridged/host-only network of Virtualbox host 
+--> if the new KVM-nested-VMs must be able to talk to outside of the Virtualbox VM
+
+https://www.golinuxcloud.com/how-to-configure-network-bridge-nmtui-linux/
+https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/deployment_guide/s2-networkscripts-interfaces_network-bridge (bond and bridge both)
+
+# nmtui
+Edit a conn
+Add
+Bridge
+   Profile Name - br10
+   Device - nm-br10 --> OR, just br10 (this will show in "brctl show")
+Slaves
+   Add
+      Ethernet
+         Profile Name - ethbr10 --> Here we are adding a new interface (we mostly can modify an existing interface itself)
+         Device - ethbr10
+IPV4 Configuration
+   Manual (give IPs from virtualbox bridge/host-only network IP range for KVMs be accessible from outside of the KVM host)
+   Address - 192.168.99.3 (192.168.99.1 is used by Vbox host)
+   Gateway - 192.168.99.2 (192.168.99.1 is used by Vbox host)
+
+# cd /etc/sysconfig/network-scripts
+
+# cat ifcfg-br10
+STP=yes
+BRIDGING_OPTS=priority=32768
+TYPE=Bridge
+PROXY_METHOD=none
+BROWSER_ONLY=no
+BOOTPROTO=none
+IPADDR=192.168.99.3
+PREFIX=24
+GATEWAY=192.168.99.2
+DEFROUTE=yes
+IPV4_FAILURE_FATAL=no
+IPV6INIT=yes
+IPV6_AUTOCONF=yes
+IPV6_DEFROUTE=yes
+IPV6_FAILURE_FATAL=no
+IPV6_ADDR_GEN_MODE=stable-privacy
+NAME=br10
+UUID=467c3e71-8f7c-4847-bba4-327a6fbcafb0
+DEVICE=nm-br10
+ONBOOT=yes
+
+OR, if DEVICE was given as just 'br10':
+STP=yes
+BRIDGING_OPTS=priority=32768
+TYPE=Bridge
+PROXY_METHOD=none
+BROWSER_ONLY=no
+BOOTPROTO=none
+IPADDR=192.168.99.3
+PREFIX=24
+GATEWAY=192.168.99.2
+DEFROUTE=yes
+IPV4_FAILURE_FATAL=no
+IPV6INIT=yes
+IPV6_AUTOCONF=yes
+IPV6_DEFROUTE=yes
+IPV6_FAILURE_FATAL=no
+IPV6_ADDR_GEN_MODE=stable-privacy
+NAME=br10
+UUID=7cafbd78-835e-42ae-95a9-69312ce0a608
+DEVICE=br10
+ONBOOT=yes
+
+# cat ifcfg-ethbr10
+TYPE=Ethernet
+NAME=ethbr10
+UUID=5c32b021-ef34-4bcc-9544-c48d3f29b457
+DEVICE=ethbr10
+ONBOOT=yes
+BRIDGE=nm-br10
+BRIDGE_UUID=467c3e71-8f7c-4847-bba4-327a6fbcafb0
+
+- OR, if 'device' for bridge is given as just br10
+TYPE=Ethernet
+NAME=ethbr10
+UUID=44e28bc6-96e8-4cfa-8407-38e360df16b9
+DEVICE=ethbr10
+ONBOOT=yes
+BRIDGE=br10
+BRIDGE_UUID=7cafbd78-835e-42ae-95a9-69312ce0a608
+
+- VERIFY
+# brctl show
+bridge name	bridge id		STP enabled	interfaces
+nm-br10		8000.000000000000	yes		
+virbr0		8000.52540008e8f5	yes		virbr0-nic
+
+# ip a 
+--> NOTE THAT THE NEW BRIDGE nm-br10 SHOWS UP NOW
+6: virbr0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default qlen 1000
+    link/ether 52:54:00:08:e8:f5 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0
+       valid_lft forever preferred_lft forever
+7: virbr0-nic: <BROADCAST,MULTICAST> mtu 1500 qdisc pfifo_fast master virbr0 state DOWN group default qlen 1000
+    link/ether 52:54:00:08:e8:f5 brd ff:ff:ff:ff:ff:ff
+8: nm-br10: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default qlen 1000
+    link/ether 42:4b:6f:04:19:dc brd ff:ff:ff:ff:ff:ff
+    inet 192.168.99.3/24 brd 192.168.99.255 scope global noprefixroute nm-br10
+       valid_lft forever preferred_lft forever
+       
+-- Manual method (incomplete)
+# cd /etc/sysconfig/network-scripts
+# cp ifcfg-enp0s8 ifcfg-br0 --> to model upon an existing network
+
+ifcfg-br10: (example)
+TYPE="Bridge"
+NAME="br10"
+DEVICE="br10"
+USERCTL="no"
+ONBOOT="yes"
+BOOTPROTO="none"
+
+- TO DELETE A BRIDGE
+https://unix.stackexchange.com/questions/31763/bring-down-and-delete-bridge-interface-thats-up
+[root@kvm001 ~]# ip link set br10 down
+[root@kvm001 ~]# brctl delbr br10
