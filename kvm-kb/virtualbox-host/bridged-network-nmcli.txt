@@ -1,0 +1,48 @@
+# ip add
+
+# nmcli conn show --active
+NAME                UUID                                  TYPE      DEVICE  
+enp0s3              627fa3d8-9580-4fc7-af16-f404668601ce  ethernet  enp0s3  
+virbr0              7e729bce-74f9-4d57-b5dc-9471d78dd400  bridge    virbr0  
+Wired connection 2  f1b76220-21b3-3973-bb63-e7fc1ccb1a95  ethernet  enp0s8  
+Wired connection 3  306a9e2f-dddb-345b-a0ab-ff22231cff3b  ethernet  enp0s9  
+Wired connection 4  19d9f563-f19a-3718-a594-e7bb12a3a503  ethernet  enp0s10 
+
+# nmcli conn add type bridge con-name br0 ifname br0
+Connection 'br0' (89443605-5bc4-48f8-a432-604c76a67232) successfully added.
+
+# nmcli conn show --active
+NAME                UUID                                  TYPE      DEVICE  
+enp0s3              627fa3d8-9580-4fc7-af16-f404668601ce  ethernet  enp0s3  
+virbr0              7e729bce-74f9-4d57-b5dc-9471d78dd400  bridge    virbr0  
+Wired connection 2  f1b76220-21b3-3973-bb63-e7fc1ccb1a95  ethernet  enp0s8  
+Wired connection 3  306a9e2f-dddb-345b-a0ab-ff22231cff3b  ethernet  enp0s9  
+Wired connection 4  19d9f563-f19a-3718-a594-e7bb12a3a503  ethernet  enp0s10 
+br0                 89443605-5bc4-48f8-a432-604c76a67232  bridge    br0  
+
+In the following, in document it was (in document 192.168.1.1 --> changing it to document 192.168.98.2 as the Virtualbox interface has 192.168.98.1
+# nmcli conn modify br0 ipv4.addresses '192.168.98.2/24' 
+# nmcli conn modify br0 ipv4.gateway '192.168.98.2'
+# nmcli conn modify br0 ipv4.dns '192.168.98.2'
+# nmcli conn modify br0 ipv4.method manual
+# nmcli conn add type ethernet slave-type bridge con-name bridge-br0 ifname enp0s9 master br0
+Connection 'bridge-br0' (a7ba3dc1-98b6-4eb0-becc-3d4c32732925) successfully added.
+
+# nmcli conn up br0
+Connection successfully activated (master waiting for slaves) (D-Bus active path: /org/freedesktop/NetworkManager/ActiveConnection/8)
+
+OR
+# nmcli conn up 2f03943b-6fb5-44b1-b714-a755660bf6eb
+
+# nmcli conn down Wired\ connection\ 3
+Connection 'Wired connection 3' successfully deactivated (D-Bus active path: /org/freedesktop/NetworkManager/ActiveConnection/3)
+
+# nmcli conn show --active
+NAME                UUID                                  TYPE      DEVICE  
+br0                 89443605-5bc4-48f8-a432-604c76a67232  bridge    br0     
+bridge-br0          a7ba3dc1-98b6-4eb0-becc-3d4c32732925  ethernet  enp0s9 --> Now enp0s9 serves the bridge than "Wired Connection 3"
+enp0s3              627fa3d8-9580-4fc7-af16-f404668601ce  ethernet  enp0s3  
+virbr0              7e729bce-74f9-4d57-b5dc-9471d78dd400  bridge    virbr0  
+Wired connection 2  f1b76220-21b3-3973-bb63-e7fc1ccb1a95  ethernet  enp0s8  
+Wired connection 4  19d9f563-f19a-3718-a594-e7bb12a3a503  ethernet  enp0s10 
+
