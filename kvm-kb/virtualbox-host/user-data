@@ -1,0 +1,50 @@
+#cloud-config
+# Customize as per your need. At least change username (gm) and ssh-rsa 
+# key with your actual public key
+
+# password hashes are for password called 'secret' 
+# - created using command:
+# - # openssl passwd -1 -salt SaltSalt secret
+#
+# Directive hashed_password is needed for pre-existing users like 'root'
+ 
+# Hostname management
+preserve_hostname: False
+hostname: centos71
+fqdn: centos71.gm.com
+
+# Setup Users with ssh keys so that I can log in into new machine
+users:
+    - default
+    - name: gm
+      password: $1$SaltSalt$YhgRYajLPrYevs14poKBQ0
+      lock_passwd: false
+      chpasswd: {expire: False}
+      groups: ['root']
+      shell: /bin/bash
+      sudo: ALL=(ALL) NOPASSWD:ALL
+      ssh-authorized-keys:
+        - ssh-rsa RhFhyZgfzFGhyYVz5zmN2UxhD8bYuePvwUPjnT3B45.....A-LONG-ONE xyz@yahoo.com gm
+    - name: root
+      lock_passwd: false
+      hashed_passwd: $1$SaltSalt$YhgRYajLPrYevs14poKBQ0
+
+# Configure where output will go
+output:
+  all: ">> /var/log/cloud-init.log"
+
+# configure interaction with ssh server
+#ssh_genkeytypes: ['ed25519', 'rsa']
+ 
+# Install your public ssh key to the first user-defined user configured
+# in cloud.cfg in the template (optional since I created gm user already above)
+#ssh_authorized_keys:
+#  - ssh-rsa some-or-my-ssh-pub-key KVM VM Lab SSH Login key for user
+
+# set timezone for VM
+timezone: Asia/Kolkata
+
+# Remove cloud-init 
+runcmd:
+  - systemctl stop network && systemctl start network
+  - yum -y remove cloud-init
