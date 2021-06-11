@@ -138,6 +138,12 @@ Using enp0s9 which is one of the virtual network card of the Vbox VM 'host'.
 12: br0: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
     link/ether 08:00:27:fd:2b:a9 brd ff:ff:ff:ff:ff:ff
 
+-- Verify with brctl show
+# brctl show
+bridge name	bridge id		STP enabled	interfaces
+br0		8000.080027fd2ba9	no		enp0s9
+virbr0		8000.52540008e8f5	yes		virbr0-nic
+
 - Assign IP Address to br0
 -- Check before
 # ip addr show br0
@@ -210,5 +216,76 @@ net.bridge.bridge-nf-call-arptables = 0
 
 # vi /etc/modules-load.d/br_netfilter.conf
 br_netfilter
+
+- Creating a new virtual network
+-- Remove any existing virtual network of the same name
+# virsh net-list
+ Name                 State      Autostart     Persistent
+----------------------------------------------------------
+ br0                  active     yes           yes
+ default              active     yes           yes
+ 
+# virsh net-destroy br0
+Network br0 destroyed
+
+# virsh net-undefine  br0
+Network br0 has been undefined
+
+# virsh net-list
+ Name                 State      Autostart     Persistent
+----------------------------------------------------------
+ default              active     yes           yes
+
+-- Create config file
+# vi /etc/libvirt/qemu/networks/br0.xml
+<network>
+    <name>br0</name>
+    <forward mode="bridge" />
+    <bridge name="br0" />
+</network>
+
+-- Create the virtual network
+# virsh net-define /etc/libvirt/qemu/networks/br0.xml
+Network br0 defined from /etc/libvirt/qemu/networks/br0.xml
+
+# virsh net-start br0
+Network br0 started
+
+# virsh net-autostart br0
+Network br0 marked as autostarted
+
+# virsh net-list
+ Name                 State      Autostart     Persistent
+----------------------------------------------------------
+ br0                  active     yes           yes
+ default              active     yes           yes
+
+# cat /etc/libvirt/qemu/networks/br0.xml
+--> You can see that this file now has a UUID and some comments
+
+<!--
+WARNING: THIS IS AN AUTO-GENERATED FILE. CHANGES TO IT ARE LIKELY TO BE
+OVERWRITTEN AND LOST. Changes to this xml configuration should be made using:
+  virsh net-edit br0
+or other application using the libvirt API.
+-->
+
+<network>
+  <name>br0</name>
+  <uuid>dc5745f2-8114-4f75-ba74-7e683f8d5b68</uuid>
+  <forward mode='bridge'/>
+  <bridge name='br0'/>
+</network>
+
+===================================
+CREATE A KVM VM
+===================================
+$ sudo virt-install \
+  --vcpus=1 \
+  --memory=1024 \
+  --cdrom=debian-10.8.0-amd64-DVD-1.iso \
+  --disk size=7 \
+  --os-variant=debian10 \
+  --network network=bridged-network
 
 
