@@ -171,3 +171,44 @@ PING 192.168.98.2 (192.168.98.2) 56(84) bytes of data.
     link/ether 08:00:27:fd:2b:a9 brd ff:ff:ff:ff:ff:ff
     inet 192.168.98.171/24 scope global br0
        valid_lft forever preferred_lft forever
+
+- Make changes persistent
+# cd /etc/sysconfig/network-scripts
+# vi ifcfg-br0
+DEVICE=br0
+TYPE=Bridge
+BOOTPROTO=none
+IPADDR=192.168.98.171
+GATEWAY=192.168.98.1
+NETMASK=255.255.255.0
+ONBOOT=yes
+DELAY=0
+NM_CONTROLLED=0
+
+# vi ifcfg-enp0s9
+TYPE=ethernet
+BOOTPROTO=none
+NAME=enp0s9
+DEVICE=enp0s9
+ONBOOT=yes
+BRIDGE=br0
+DELAY=0
+NM_CONTROLLED=0
+
+-- Enable network service
+# systemctl enable network
+# chkconfig network on
+# systemctl restart network --> this 'failed' - not sure what all failed
+
+- Disabling netfilter for the bridge
+# vi /etc/sysctl.d/99-netfilter-bridge.conf
+net.bridge.bridge-nf-call-ip6tables = 0
+net.bridge.bridge-nf-call-iptables = 0
+net.bridge.bridge-nf-call-arptables = 0
+
+# modprobe br_netfilter
+
+# vi /etc/modules-load.d/br_netfilter.conf
+br_netfilter
+
+
