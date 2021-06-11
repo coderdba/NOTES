@@ -84,4 +84,59 @@ virbr0		8000.52540008e8f5	yes		virbr0-nic
 6: br0: <BROADCAST,MULTICAST> mtu 1500 qdisc noqueue state DOWN group default qlen 1000
     link/ether 08:00:27:fd:2b:a9 brd ff:ff:ff:ff:ff:ff
 
+===========================
+CREATE BRIDGED NETWORK
+===========================
+https://linuxconfig.org/how-to-use-bridged-networking-with-libvirt-and-kvm#h3-1-creating-a-new-bridge
+
+- CREATE BRIDGE
+# ip link add br0 type bridge
+
+- VERIFY
+# ip a
+12: br0: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether 9e:e3:9a:64:f2:42 brd ff:ff:ff:ff:ff:ff
+    
+# ip link show type bridge
+7: virbr0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN mode DEFAULT group default qlen 1000
+    link/ether 52:54:00:08:e8:f5 brd ff:ff:ff:ff:ff:ff
+12: br0: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN mode DEFAULT group default qlen 1000
+    link/ether 9e:e3:9a:64:f2:42 brd ff:ff:ff:ff:ff:ff
+    
+# brctl show
+bridge name	bridge id		STP enabled	interfaces
+br0		8000.000000000000	no		
+virbr0		8000.52540008e8f5	yes		virbr0-nic
+
+- Adding a physical ethernet interface to the bridge
+Here, to the bridge, we associate a physical network card.
+Using enp0s9 which is one of the virtual network card of the Vbox VM 'host'.
+
+-- Bring up the card
+# ip link set enp0s9 up
+
+# ip a
+4: enp0s9: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:fd:2b:a9 brd ff:ff:ff:ff:ff:ff
+    inet6 fe80::a00:27ff:fefd:2ba9/64 scope link 
+
+-- Add the interface to the bridge
+# ip link set enp0s9 master br0
+
+--  Verify the interface was added to the bridge, instead:
+# ip link show master br0
+--> Now you can see 'br0' associated with enp0s9 - which was not showing up earlier
+4: enp0s9: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast master br0 state UP mode DEFAULT group default qlen 1000
+    link/ether 08:00:27:fd:2b:a9 brd ff:ff:ff:ff:ff:ff
+
+-- Verify with 'ip a'
+# ip a
+--> Now you can see 'br0' associated with enp0s9 - which was not showing up earlier
+4: enp0s9: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast master br0 state UP group default qlen 1000
+    link/ether 08:00:27:fd:2b:a9 brd ff:ff:ff:ff:ff:ff
+    inet6 fe80::a00:27ff:fefd:2ba9/64 scope link 
+       valid_lft forever preferred_lft forever
+12: br0: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether 08:00:27:fd:2b:a9 brd ff:ff:ff:ff:ff:ff
+
 
