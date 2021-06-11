@@ -280,6 +280,16 @@ or other application using the libvirt API.
 ===================================
 CREATE A KVM VM
 ===================================
+virt-install --import --name centos71 \
+--memory 256 --vcpus 1 --cpu host \
+--disk /disk1/kvm-vms/centos71/centos71-root.qcow2,format=qcow2,bus=virtio \
+--disk /disk1/kvm-vms/centos71/centos71-seed.iso,device=cdrom \
+--network bridge=br0,model=virtio \
+--os-type=linux \
+--os-variant=rhel7 \
+--noautoconsole \
+
+- other examples
 $ sudo virt-install \
   --vcpus=1 \
   --memory=1024 \
@@ -391,4 +401,27 @@ From 192.168.98.10 icmp_seq=2 Destination Host Unreachable
 connect: Network is unreachable
 
 - TBD
-Still the VM centos71 is not pinging outside world, or VBOX's vmnet3 IP or dhcp server IP
+Still the VM centos71 is not pinging outside world, or VBOX's vmnet3 IP or dhcp server IP or www.google.com
+
+======================================================================
+FIX ETH0 TO BE ABLE TO PING OUTSIDE WORLD (TBD - STILL TRYING)
+======================================================================
+On the VM:
+# vi ifcfg-eth0
+--> Add GATEWAY=<IP of bridge network on host>
+# Created by cloud-init on instance boot automatically, do not edit.
+#
+BOOTPROTO=dhcp
+DEVICE=eth0
+ONBOOT=yes
+TYPE=Ethernet
+USERCTL=no
+GATEWAY=192.168.98.171
+
+[root@centos71 network-scripts]# ping 192.168.40.101
+--> ping the IP of other network card of the host
+PING 192.168.40.101 (192.168.40.101) 56(84) bytes of data.
+64 bytes from 192.168.40.101: icmp_seq=1 ttl=64 time=0.311 ms
+64 bytes from 192.168.40.101: icmp_seq=2 ttl=64 time=0.385 ms
+
+
