@@ -138,7 +138,7 @@ Using enp0s9 which is one of the virtual network card of the Vbox VM 'host'.
 12: br0: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
     link/ether 08:00:27:fd:2b:a9 brd ff:ff:ff:ff:ff:ff
 
-- Add IP Address range to br0
+- Assign IP Address to br0
 -- Check before
 # ip addr show br0
 12: br0: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
@@ -152,4 +152,22 @@ Server mask 255.255.255.0
 Lower address bound 192.168.98.3
 Upper address bound 192.168.98.254
 
--- Add IP range to br0
+-- Verify connecting to vboxnet3 and its dhcp server (from within the host VM)
+[root@kvm202101 network-scripts]# ping 192.168.98.1
+PING 192.168.98.1 (192.168.98.1) 56(84) bytes of data.
+64 bytes from 192.168.98.1: icmp_seq=1 ttl=63 time=0.438 ms
+64 bytes from 192.168.98.1: icmp_seq=2 ttl=63 time=0.322 ms
+
+[root@kvm202101 network-scripts]# ping 192.168.98.2
+PING 192.168.98.2 (192.168.98.2) 56(84) bytes of data.
+64 bytes from 192.168.98.2: icmp_seq=1 ttl=63 time=0.384 ms
+64 bytes from 192.168.98.2: icmp_seq=2 ttl=63 time=0.413 ms
+
+-- Now, Assign a static IP address to the bridge
+# ip address add dev br0 192.168.98.171/24
+
+# ip a
+12: br0: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether 08:00:27:fd:2b:a9 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.98.171/24 scope global br0
+       valid_lft forever preferred_lft forever
