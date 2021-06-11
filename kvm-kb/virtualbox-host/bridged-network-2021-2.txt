@@ -289,3 +289,106 @@ $ sudo virt-install \
   --network network=bridged-network
 
 
+# virsh console centos71
+username: root
+password: secret (or other that has been set)
+
+Then, inside the vm
+# cd /etc/sysconfig/network-scripts
+# cp -p ifcfg-eth0 ifcfg-eth0.0
+# cat ifcfg-eth0
+# Created by cloud-init on instance boot automatically, do not edit.
+#
+BOOTPROTO=dhcp
+DEVICE=eth0
+HWADDR=52:54:00:e9:e4:c9
+ONBOOT=yes
+TYPE=Ethernet
+USERCTL=no
+
+# vi ifcfg-eth0
+--> Remove HWADDR=52:54:00:e9:e4:c9
+--> Otherwise, ifup eth0 gives error "unexpected mac address" or something
+# Created by cloud-init on instance boot automatically, do not edit.
+#
+BOOTPROTO=dhcp
+DEVICE=eth0
+ONBOOT=yes
+TYPE=Ethernet
+USERCTL=no
+
+# ifup eth0
+
+# ip a
+[root@centos71 network-scripts]# ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 52:54:00:5a:a5:70 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.98.10/24 brd 192.168.98.255 scope global dynamic eth0
+       valid_lft 456sec preferred_lft 456sec
+    inet6 fe80::5054:ff:fe5a:a570/64 scope link 
+       valid_lft forever preferred_lft forever
+
+[root@centos71 network-scripts]# ifup eth0
+
+Determining IP information for eth0... done.
+
+[root@centos71 network-scripts]# ip a
+--> Note that it has gotten the IP 192.168.98.10 of range of the br0's enps09 interface which is tied to vmnet3 of vbox which gives ip range of 192.168.98.x
+
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 52:54:00:5a:a5:70 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.98.10/24 brd 192.168.98.255 scope global dynamic eth0
+       valid_lft 595sec preferred_lft 595sec
+    inet6 fe80::5054:ff:fe5a:a570/64 scope link 
+       valid_lft forever preferred_lft forever
+
+- Logon to VM using ssh keys
+On host:
+# cd ~/.ssh
+# ssh-add <private key file>
+
+[root@kvm202101 .ssh]# ssh gm@192.168.98.10
+[gm@centos71 ~]$ 
+[gm@centos71 ~]$ 
+[gm@centos71 ~]$ 
+[gm@centos71 ~]$ id
+uid=1000(gm) gid=1000(gm) groups=1000(gm),0(root) context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023
+
+- Check pings from VM
+[gm@centos71 ~]$ ping 192.168.98.171
+--> the host's bridge br0's IP
+PING 192.168.98.171 (192.168.98.171) 56(84) bytes of data.
+64 bytes from 192.168.98.171: icmp_seq=1 ttl=64 time=0.381 ms
+64 bytes from 192.168.98.171: icmp_seq=2 ttl=64 time=0.442 ms
+
+[gm@centos71 ~]$ ping 192.168.98.1 
+--> the vbox vmnet3 ip
+[gm@centos71 ~]$ ping 192.168.98.1
+PING 192.168.98.1 (192.168.98.1) 56(84) bytes of data.
+From 192.168.98.10 icmp_seq=1 Destination Host Unreachable
+From 192.168.98.10 icmp_seq=2 Destination Host Unreachable
+
+[gm@centos71 ~]$ ping 192.168.98.2
+--> the vbox dhcp server IP
+PING 192.168.98.2 (192.168.98.2) 56(84) bytes of data.
+From 192.168.98.10 icmp_seq=1 Destination Host Unreachable
+From 192.168.98.10 icmp_seq=2 Destination Host Unreachable
+
+[gm@centos71 ~]$ ping 192.168.40.101
+--> Host's other IP of the other card enp0s8 or enp0s10
+connect: Network is unreachable
+
+- TBD
+Still the VM centos71 is not pinging outside world, or VBOX's vmnet3 IP or dhcp server IP
