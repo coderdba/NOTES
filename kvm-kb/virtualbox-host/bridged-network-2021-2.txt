@@ -207,10 +207,20 @@ NM_CONTROLLED=0
 # systemctl restart network --> this 'failed' - not sure what all failed
 
 - Disabling netfilter for the bridge
+Disabling netfilter for the bridge
+To allow all traffic to be forwarded to the bridge, and therefore to the virtual machines connected to it, we need to disable netfilter. 
+This is necessary, for example, for DNS resolution to work in the guest machines attached to the bridge. 
+To do this we can create a file with the .conf extension inside the /etc/sysctl.d directory, let’s call it 99-netfilter-bridge.conf. 
+Inside of it we write the following content.
+
+
 # vi /etc/sysctl.d/99-netfilter-bridge.conf
 net.bridge.bridge-nf-call-ip6tables = 0
 net.bridge.bridge-nf-call-iptables = 0
 net.bridge.bridge-nf-call-arptables = 0
+
+Also, should we add another line: (per https://serverfault.com/questions/562871/kvm-guest-can-not-connect-to-outside-of-host-vice-versa)
+net.ipv4.ip_forward = 1
 
 # modprobe br_netfilter
 
