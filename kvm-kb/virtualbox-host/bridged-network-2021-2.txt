@@ -8,6 +8,10 @@ Main Reference: https://linuxconfig.org/how-to-use-bridged-networking-with-libvi
 https://www.linux-kvm.org/page/Networking
 - main documentation
 
+Adding IP route to VMs:
+https://www.nixcraft.com/t/ip-route-add-example-for-linux/1695
+https://www.linux-kvm.org/page/Networking
+
 ============================
 REMOVE EXISTING BRIDGE 
 ============================
@@ -420,7 +424,7 @@ connect: Network is unreachable
 Still the VM centos71 is not pinging outside world, or VBOX's vmnet3 IP or dhcp server IP or www.google.com
 
 ======================================================================
-FIX ETH0 TO BE ABLE TO PING OUTSIDE WORLD (TBD - STILL TRYING)
+FIX GUEST ETH0 TO BE ABLE TO PING OUTSIDE WORLD (TBD - STILL TRYING)
 ======================================================================
 On the VM:
 # vi ifcfg-eth0
@@ -450,6 +454,18 @@ Address                  HWtype  HWaddress           Flags Mask            Iface
 
 - Still, cannot ping outside hosts like Vbox vmnet or google.com etc
 
+- ROUTE
+[root@kvm202101 sysctl.d]# route
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+default         gateway         0.0.0.0         UG    100    0        0 enp0s3
+10.0.2.0        0.0.0.0         255.255.255.0   U     100    0        0 enp0s3
+link-local      0.0.0.0         255.255.0.0     U     1006   0        0 br0
+192.168.40.0    0.0.0.0         255.255.255.0   U     102    0        0 enp0s10
+192.168.98.0    0.0.0.0         255.255.255.0   U     0      0        0 br0
+192.168.99.0    0.0.0.0         255.255.255.0   U     101    0        0 enp0s8
+192.168.122.0   0.0.0.0         255.255.255.0   U     0      0        0 virbr0
+
 - IPTABLES of HOST
 [root@kvm202101 etc]# iptables -vnL
 Chain INPUT (policy ACCEPT 1079 packets, 188K bytes)
@@ -471,7 +487,56 @@ Chain OUTPUT (policy ACCEPT 1153 packets, 113K bytes)
  pkts bytes target     prot opt in     out     source               destination         
     0     0 ACCEPT     udp  --  *      virbr0  0.0.0.0/0            0.0.0.0/0            udp dpt:68
 
+- STILL NO INTERNET FOR GUESTS
+From host, add a route to guest
+[root@kvm202101 sysctl.d]# route add -host 192.168.98.10 dev br0
+[root@kvm202101 sysctl.d]# route
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+default         gateway         0.0.0.0         UG    100    0        0 enp0s3
+10.0.2.0        0.0.0.0         255.255.255.0   U     100    0        0 enp0s3
+link-local      0.0.0.0         255.255.0.0     U     1006   0        0 br0
+192.168.40.0    0.0.0.0         255.255.255.0   U     102    0        0 enp0s10
+192.168.98.0    0.0.0.0         255.255.255.0   U     0      0        0 br0
+192.168.98.10   0.0.0.0         255.255.255.255 UH    0      0        0 br0 --> newly added
+192.168.99.0    0.0.0.0         255.255.255.0   U     101    0        0 enp0s8
+192.168.122.0   0.0.0.0         255.255.255.0   U     0      0        0 virbr0
+
+- STILL NO INTERNET TO GUEST
+[root@centos71 sysctl.d]# route add default gw 192.168.98.6
+SIOCADDRT: File exists
+[root@centos71 sysctl.d]# cd /ets/sysconfig/network-scripts
+-bash: cd: /ets/sysconfig/network-scripts: No such file or directory
+[root@centos71 sysctl.d]# cd /etc/sysconfig/network-scripts
+[root@centos71 network-scripts]# grep 192.168.98.6 *
+ifcfg-eth0:GATEWAY=192.168.98.6
+[root@centos71 network-scripts]# route add -host 192.168.40.101 enp0s10
+SIOCADDRT: No such device
+[root@centos71 network-scripts]# route add -host 192.168.40.101 eth0
+[root@centos71 network-scripts]# route
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+default         gateway         0.0.0.0         UG    0      0        0 eth0
+192.168.40.101  0.0.0.0         255.255.255.255 UH    0      0        0 eth0
+192.168.98.0    0.0.0.0         255.255.255.0   U     0      0        0 eth0
+[root@centos71 network-scripts]# ping www.google.com
+
+[root@centos71 network-scripts]# route add default gw 192.168.40.101
+[root@centos71 network-scripts]# ping 192.168.40.101
+PING 192.168.40.101 (192.168.40.101) 56(84) bytes of data.
+64 bytes from 192.168.40.101: icmp_seq=1 ttl=64 time=0.483 ms
+64 bytes from 192.168.40.101: icmp_seq=2 ttl=64 time=0.468 ms
+
+--- 192.168.40.101 ping statistics ---
+2 packets transmitted, 2 received, 0% packet loss, time 1004ms
+rtt min/avg/max/mdev = 0.468/0.475/0.483/0.023 ms
+[root@centos71 network-scripts]# 
+[root@centos71 network-scripts]# ping www.google.com
+
+- STILL NO INTERNET FOR GUEST
+=================================
 - CONSOLE OUTPUT OF VM BUILD
+=================================
 --> See the route info 192.168.98.0
 
          Starting Postfix Mail Transport Agent...
