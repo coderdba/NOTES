@@ -540,23 +540,43 @@ The following example sets eth0 parameters for the guest virtual machine named g
 IP ADDRESS
 ---------------
 
-NOTE: NO METHOD IS LISTING THE IP OF THE VMs (TBD FIND WHY)
+NOTE: SOME METHODS ARE NOT LISTING THE IP OF THE VMs (TBD FIND WHY)
 
 - https://www.systutorials.com/how-to-get-the-ip-addresses-of-vms-in-kvm-with-virsh/
-[root@kvm202101 work]# virsh domiflist centos71
+[root@kvm202101 libvirt-kvm-01]# virsh domiflist centos71
 Interface  Type       Source     Model       MAC
 -------------------------------------------------------
-vnet0      bridge     br0        virtio      52:54:00:5a:a5:70
+vnet0      bridge     br0        virtio      52:54:00:03:fa:27
 
-[root@kvm202101 work]# arp -e
-Address                  HWtype  HWaddress           Flags Mask            Iface
-192.168.98.2             ether   08:00:27:e1:07:19   C                     br0
-gateway                  ether   52:54:00:12:35:02   C                     enp0s3
-10.0.2.3                 ether   52:54:00:12:35:03   C                     enp0s3
-[root@kvm202101 work]# arp -a
+
+[root@kvm202101 libvirt-kvm-01]# virsh domiflist centos72
+Interface  Type       Source     Model       MAC
+-------------------------------------------------------
+vnet1      bridge     br0        virtio      52:54:00:4f:8a:2e
+
+[root@kvm202101 libvirt-kvm-01]# arp -a
+? (192.168.98.10) at 52:54:00:5a:a5:70 [ether] on br0
 ? (192.168.98.2) at 08:00:27:e1:07:19 [ether] on br0
 gateway (10.0.2.2) at 52:54:00:12:35:02 [ether] on enp0s3
 ? (10.0.2.3) at 52:54:00:12:35:03 [ether] on enp0s3
+? (192.168.98.11) at 52:54:00:4f:8a:2e [ether] on br0
+
+[root@kvm202101 libvirt-kvm-01]# arp -e
+Address                  HWtype  HWaddress           Flags Mask            Iface
+192.168.98.10            ether   52:54:00:5a:a5:70   C                     br0 --> showing old MAC address
+192.168.98.2             ether   08:00:27:e1:07:19   C                     br0
+gateway                  ether   52:54:00:12:35:02   C                     enp0s3
+10.0.2.3                 ether   52:54:00:12:35:03   C                     enp0s3
+192.168.98.11            ether   52:54:00:4f:8a:2e   C                     br0
+
+[root@kvm202101 libvirt-kvm-01]# arp -e
+Address                  HWtype  HWaddress           Flags Mask            Iface
+192.168.98.10                    (incomplete)                              br0 --> looks like MAC address is not yet assigned to br0 for this VM
+192.168.98.2             ether   08:00:27:e1:07:19   C                     br0
+gateway                  ether   52:54:00:12:35:02   C                     enp0s3
+10.0.2.3                 ether   52:54:00:12:35:03   C                     enp0s3
+192.168.98.11            ether   52:54:00:4f:8a:2e   C                     br0
+
 
 - https://morioh.com/p/5914d8ffee5a
 [root@kvm202101 work]# virsh net-list
