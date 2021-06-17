@@ -424,7 +424,7 @@ connect: Network is unreachable
 Still the VM centos71 is not pinging outside world, or VBOX's vmnet3 IP or dhcp server IP or www.google.com
 
 ===================================
-FIND IP DETAILS OF THE VM 
+FIND DETAILS OF THE VM 
 ===================================
 NOTE: Without logging into the VM
 
@@ -535,6 +535,48 @@ Example 20.25. How to set the guest virtual machine network interface parameters
 
 The following example sets eth0 parameters for the guest virtual machine named guest1:
 # virsh domiftune guest1 eth0 outbound --live
+
+---------------
+IP ADDRESS
+---------------
+
+NOTE: NEITHER METHOD IS LISTING THE IP OF THE VMs
+
+- https://www.systutorials.com/how-to-get-the-ip-addresses-of-vms-in-kvm-with-virsh/
+[root@kvm202101 work]# virsh domiflist centos71
+Interface  Type       Source     Model       MAC
+-------------------------------------------------------
+vnet0      bridge     br0        virtio      52:54:00:5a:a5:70
+
+[root@kvm202101 work]# arp -e
+Address                  HWtype  HWaddress           Flags Mask            Iface
+192.168.98.2             ether   08:00:27:e1:07:19   C                     br0
+gateway                  ether   52:54:00:12:35:02   C                     enp0s3
+10.0.2.3                 ether   52:54:00:12:35:03   C                     enp0s3
+[root@kvm202101 work]# arp -a
+? (192.168.98.2) at 08:00:27:e1:07:19 [ether] on br0
+gateway (10.0.2.2) at 52:54:00:12:35:02 [ether] on enp0s3
+? (10.0.2.3) at 52:54:00:12:35:03 [ether] on enp0s3
+
+- https://morioh.com/p/5914d8ffee5a
+[root@kvm202101 work]# virsh net-list
+ Name                 State      Autostart     Persistent
+----------------------------------------------------------
+ br0                  active     yes           yes
+ default              active     yes           yes
+
+[root@kvm202101 work]# virsh net-info br0
+Name:           br0
+UUID:           dc5745f2-8114-4f75-ba74-7e683f8d5b68
+Active:         yes
+Persistent:     yes
+Autostart:      yes
+Bridge:         br0
+
+[root@kvm202101 work]# virsh net-dhcp-leases br0
+ Expiry Time          MAC address        Protocol  IP address                Hostname        Client ID or DUID
+-------------------------------------------------------------------------------------------------------------------
+
 
 ---------------
 MEMORY
