@@ -176,6 +176,21 @@ PING 192.168.98.2 (192.168.98.2) 56(84) bytes of data.
 64 bytes from 192.168.98.2: icmp_seq=1 ttl=63 time=0.384 ms
 64 bytes from 192.168.98.2: icmp_seq=2 ttl=63 time=0.413 ms
 
+NOTE: Upon VM create, it will check with 192.168.98.2 dhcp server to get an IP
+	VM's /var/log/messages show like this - until it gets an IP (see the last line below):
+	--> At that time, arp -e on the host shows the mac address and IP as well for the VM
+	Jun 17 12:56:04 centos71 dhclient[2227]: DHCPREQUEST on eth0 to 192.168.98.2 port 67 (xid=0x690da555)
+	Jun 17 12:56:16 centos71 dhclient[2227]: DHCPREQUEST on eth0 to 192.168.98.2 port 67 (xid=0x690da555)
+	Jun 17 12:56:26 centos71 dhclient[2227]: DHCPREQUEST on eth0 to 192.168.98.2 port 67 (xid=0x690da555)
+	Jun 17 12:56:39 centos71 dhclient[2227]: DHCPREQUEST on eth0 to 255.255.255.255 port 67 (xid=0x690da555)
+	Jun 17 12:56:54 centos71 dhclient[2227]: DHCPREQUEST on eth0 to 255.255.255.255 port 67 (xid=0x690da555)
+	Jun 17 12:57:58 centos71 dhclient[2227]: DHCPDISCOVER on eth0 to 255.255.255.255 port 67 interval 4 (xid=0x7a9dc020)
+	Jun 17 12:57:58 centos71 dhclient[2227]: DHCPREQUEST on eth0 to 255.255.255.255 port 67 (xid=0x7a9dc020)
+	Jun 17 12:57:58 centos71 dhclient[2227]: DHCPOFFER from 192.168.98.2
+	Jun 17 12:57:58 centos71 dhclient[2227]: DHCPACK from 192.168.98.2 (xid=0x7a9dc020)
+	Jun 17 12:58:04 centos71 dhclient[2227]: bound to 192.168.98.13 -- renewal in 249 seconds.
+
+
 -- Now, Assign a static IP address to the bridge
 # ip address add dev br0 192.168.98.171/24
 
@@ -192,8 +207,8 @@ PING 192.168.98.2 (192.168.98.2) 56(84) bytes of data.
 DEVICE=br0
 TYPE=Bridge
 BOOTPROTO=none
-IPADDR=192.168.98.171
-GATEWAY=192.168.98.1
+IPADDR=192.168.98.171 --> this is a static IP address given to br0 by me
+GATEWAY=192.168.98.1 --> this is the vboxnet3 IP address described above
 NETMASK=255.255.255.0
 ONBOOT=yes
 DELAY=0
@@ -543,24 +558,34 @@ IP ADDRESS
 NOTE: SOME METHODS ARE NOT LISTING THE IP OF THE VMs (TBD FIND WHY)
 
 - https://www.systutorials.com/how-to-get-the-ip-addresses-of-vms-in-kvm-with-virsh/
-[root@kvm202101 libvirt-kvm-01]# virsh domiflist centos71
+[root@kvm202101 .ssh]# virsh domiflist centos71
 Interface  Type       Source     Model       MAC
 -------------------------------------------------------
-vnet0      bridge     br0        virtio      52:54:00:03:fa:27
-
+vnet1      bridge     br0        virtio      52:54:00:46:c3:de
 
 [root@kvm202101 libvirt-kvm-01]# virsh domiflist centos72
 Interface  Type       Source     Model       MAC
 -------------------------------------------------------
 vnet1      bridge     br0        virtio      52:54:00:4f:8a:2e
 
-[root@kvm202101 libvirt-kvm-01]# arp -a
-? (192.168.98.10) at 52:54:00:5a:a5:70 [ether] on br0
+[root@kvm202101 .ssh]# arp -a
 ? (192.168.98.2) at 08:00:27:e1:07:19 [ether] on br0
 gateway (10.0.2.2) at 52:54:00:12:35:02 [ether] on enp0s3
+? (192.168.98.13) at 52:54:00:46:c3:de [ether] on br0
 ? (10.0.2.3) at 52:54:00:12:35:03 [ether] on enp0s3
+? (192.168.98.12) at <incomplete> on br0
 ? (192.168.98.11) at 52:54:00:4f:8a:2e [ether] on br0
 
+[root@kvm202101 .ssh]# arp -e
+Address                  HWtype  HWaddress           Flags Mask            Iface
+192.168.98.2             ether   08:00:27:e1:07:19   C                     br0
+gateway                  ether   52:54:00:12:35:02   C                     enp0s3
+192.168.98.13            ether   52:54:00:46:c3:de   C                     br0 --> this is the one for centos71 based on its HWAddress/MAC
+10.0.2.3                 ether   52:54:00:12:35:03   C                     enp0s3
+192.168.98.12                    (incomplete)                              br0
+192.168.98.11            ether   52:54:00:4f:8a:2e   C                     br0
+
+-- some error cases:
 [root@kvm202101 libvirt-kvm-01]# arp -e
 Address                  HWtype  HWaddress           Flags Mask            Iface
 192.168.98.10            ether   52:54:00:5a:a5:70   C                     br0 --> showing old MAC address
