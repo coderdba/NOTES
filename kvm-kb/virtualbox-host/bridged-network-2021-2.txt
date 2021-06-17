@@ -423,9 +423,113 @@ connect: Network is unreachable
 - TBD
 Still the VM centos71 is not pinging outside world, or VBOX's vmnet3 IP or dhcp server IP or www.google.com
 
-======================================================================
+===================================
+FIND IP DETAILS OF THE VM 
+===================================
+NOTE: Without logging into the VM
+
+RETRIEVING INFORMATION ABOUT YOUR VIRTUAL MACHINE:
+https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/virtualization_deployment_and_administration_guide/sect-statlists
+
+--------------
+BLOCK DEVICES
+--------------
+- LIST BLOCK DEVICES
+[root@kvm202101 ~]# virsh domblklist centos71
+Target     Source
+------------------------------------------------
+vda        /disk1/kvm-vms/centos71/centos71-root.qcow2
+hda        /disk1/kvm-vms/centos71/centos71-seed.iso
+
+--------------
+NETWORK
+--------------
+- LIST NETWORK INTERFACES
+[root@kvm202101 ~]# virsh domiflist centos71
+Interface  Type       Source     Model       MAC
+-------------------------------------------------------
+vnet0      bridge     br0        virtio      52:54:00:5a:a5:70
+
+--> This is the same vnet0 of the host itself:
+[root@kvm202101 ~]# ip a |grep vnet0
+9: vnet0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast master br0 state UNKNOWN group default qlen 1000
+
+- STATUS OF INTERFACE vnet0 FOR ONE VM
+[root@kvm202101 ~]# virsh domif-getlink centos71 vnet0
+vnet0 up
+
+- STATUS OF INTERFACE vnet0 MAC FOR ONE VM
+[root@kvm202101 ~]# virsh domif-getlink centos71 52:54:00:5a:a5:70
+52:54:00:5a:a5:70 up
+
+- NETSTAT
+[root@kvm202101 ~]# virsh domifstat centos71 vnet0
+vnet0 rx_bytes 60224
+vnet0 rx_packets 515
+vnet0 rx_errs 0
+vnet0 rx_drop 0
+vnet0 tx_bytes 25308
+vnet0 tx_packets 366
+vnet0 tx_errs 0
+vnet0 tx_drop 0
+
+- LIST NETWORK LEASES OF BR0 BRIDGE - THIS IS NOT WORKING
+[root@kvm202101 ~]# virsh net-dhcp-leases br0
+ Expiry Time          MAC address        Protocol  IP address                Hostname        Client ID or DUID
+-------------------------------------------------------------------------------------------------------------------
+--> NOT WORKING - why? dont know.
+
+- MANAGE VM NETWORK INTERFACES
+# virsh domiflist centos71
+Interface  Type       Source     Model       MAC
+-------------------------------------------------------
+vnet0      bridge     br0        virtio      52:54:00:5a:a5:70
+
+# virsh domif-setlink centos71 vnet0 down
+Device updated successfully
+
+# virsh domif-setlink centos71 52:54:00:5a:a5:70 up
+Device updated successfully
+
+# virsh domif-setlink centos71 vnet0 down
+Device updated successfully
+
+# virsh domif-setlink centos71 vnet0 up
+Device updated successfully
+
+- WHILE DOING THIS UP/DOWN - INSIDE THE VM:
+[root@centos71 ~]# ip a --> will show UP, DOWN, UP
+
+- Setting Network Interface Bandwidth Parameters
+# virsh domiftune domain interface [--inbound] [--outbound] [--config] [--live] [--current]
+The --config, --live, and --current options are described in Section 20.43, “Setting Schedule Parameters”. If the --inbound or the --outbound option is not specified, virsh domiftune queries the specified network interface and displays the bandwidth settings. By specifying --inbound or --outbound, or both, and the average, peak, and burst values, virsh domiftune sets the bandwidth settings. At minimum the average value is required. In order to clear the bandwidth settings, provide 0 (zero). For a description of the average, peak, and burst values, see Section 20.27.6.2, “Attaching interface devices”.
+
+Example 20.25. How to set the guest virtual machine network interface parameters
+
+The following example sets eth0 parameters for the guest virtual machine named guest1:
+# virsh domiftune guest1 eth0 outbound --live
+
+---------------
+MEMORY
+---------------
+- Retrieving Memory Statistics
+[root@kvm202101 ~]# virsh dommemstat centos71
+actual 262144
+swap_in 0
+swap_out 0
+major_fault 167
+minor_fault 124738
+unused 150612
+available 240864
+last_update 1623916767
+rss 385972
+
+
+========================================================================================================================================
 FIX GUEST ETH0 TO BE ABLE TO PING OUTSIDE WORLD (TBD - STILL TRYING)
-======================================================================
+
+--> NOTE: This may not work as the 'host' network enps09 is not a internet-connected network - it is only host-only adapter
+========================================================================================================================================
 On the VM:
 # vi ifcfg-eth0
 --> Add GATEWAY=<IP of bridge network on host>
