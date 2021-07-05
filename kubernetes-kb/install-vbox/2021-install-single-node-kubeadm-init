@@ -1,0 +1,92 @@
+============================================================================================
+SINGLE NODE KUBERNETES CLUSTER - CREATE WITH KUBEADM INIT (2021 JUNE)
+============================================================================================
+
+FEATURE STATE: Kubernetes v1.21
+
+=======================
+REFERENCES
+=======================
+
+KUBERNETES INSTALL
+https://kubernetes.io/docs/setup/
+--> https://kubernetes.io/docs/setup/production-environment/
+--> https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/
+--> https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/
+
+TOOLS INSTALL AND CLUSTER MANAGEMENT
+https://kubernetes.io/docs/setup/
+--> upon clicking "learning environment": https://kubernetes.io/docs/tasks/tools/
+
+=======================
+KUBERNETES INSTALL
+=======================
+https://kubernetes.io/docs/setup/
+--> https://kubernetes.io/docs/setup/production-environment/
+--> https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/
+https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/
+
+--------------------
+INSTALL KUBEADM
+--------------------
+https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/
+
+- Letting iptables see bridged traffic
+
+cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
+br_netfilter
+EOF
+
+cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+EOF
+sudo sysctl --system
+
+- Check required ports
+
+Control-plane node(s)
+Protocol	Direction	Port Range	Purpose	Used By
+TCP	Inbound	6443*	Kubernetes API server	All
+TCP	Inbound	2379-2380	etcd server client API	kube-apiserver, etcd
+TCP	Inbound	10250	kubelet API	Self, Control plane
+TCP	Inbound	10251	kube-scheduler	Self
+TCP	Inbound	10252	kube-controller-manager	Self
+
+Worker node(s)
+Protocol	Direction	Port Range	Purpose	Used By
+TCP	Inbound	10250	kubelet API	Self, Control plane
+TCP	Inbound	30000-32767	NodePort Services†	All
+
+- Runtime (docker and such)
+Kubeadm will look at the socket for the runtime to detect.
+
+Runtime	Path to Unix domain socket
+Docker	/var/run/dockershim.sock
+containerd	/run/containerd/containerd.sock
+CRI-O	/var/run/crio/crio.sock
+
+- Install kubeadm, kubectl, kubelet
+
+cat <<EOF | sudo tee /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-\$basearch
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+exclude=kubelet kubeadm kubectl
+EOF
+
+# Set SELinux in permissive mode (effectively disabling it)
+sudo setenforce 0
+sudo sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
+
+sudo yum install -y kubelet kubeadm kubectl --disableexcludes=kubernetes
+
+sudo systemctl enable --now kubelet
+
+- Configure cgroups driver
+https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/configure-cgroup-driver/
+If the user is not setting the cgroupDriver field under KubeletConfiguration, kubeadm init will default it to systemd.
