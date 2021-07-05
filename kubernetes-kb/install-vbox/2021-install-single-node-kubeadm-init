@@ -271,6 +271,7 @@ sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
 - VERIFY AGAIN
 NOTE: All IPs are host's IP - for kubernete's own pods
+NOTE: coredns pods are in 'pending' state as we need a network plugin like Calico or Flannel
 
 # kubectl get pods --all-namespaces -o wide
 NAMESPACE     NAME                          READY   STATUS    RESTARTS   AGE   IP               NODE     NOMINATED NODE   READINESS GATES
@@ -315,5 +316,59 @@ k8s.gcr.io/etcd                      3.4.13-0   0369cf4303ff   10 months ago   2
 --------------------------
 INSTALL POD-NETWORK ADDON (TBD)
 --------------------------
-https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/#pod-network
+Reference: https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/#pod-network
+Steps from tutorial: https://devopscube.com/setup-kubernetes-cluster-kubeadm/
 
+Kubeadm does not configure any network plugin. 
+You need to install a network plugin of your choice.
+I am using Calico network plugin for this setup.
+
+- SETUP
+Make sure you execute the kubectl command from where you have configured the kubeconfig file. 
+Either from the master of your workstation with the connectivity to the kubernetes API.
+
+- INSTALL CALICO
+kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
+
+configmap/calico-config created
+customresourcedefinition.apiextensions.k8s.io/bgpconfigurations.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/bgppeers.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/blockaffinities.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/clusterinformations.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/felixconfigurations.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/globalnetworkpolicies.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/globalnetworksets.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/hostendpoints.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/ipamblocks.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/ipamconfigs.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/ipamhandles.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/ippools.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/kubecontrollersconfigurations.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/networkpolicies.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/networksets.crd.projectcalico.org created
+clusterrole.rbac.authorization.k8s.io/calico-kube-controllers created
+clusterrolebinding.rbac.authorization.k8s.io/calico-kube-controllers created
+clusterrole.rbac.authorization.k8s.io/calico-node created
+clusterrolebinding.rbac.authorization.k8s.io/calico-node created
+daemonset.apps/calico-node created
+serviceaccount/calico-node created
+deployment.apps/calico-kube-controllers created
+serviceaccount/calico-kube-controllers created
+Warning: policy/v1beta1 PodDisruptionBudget is deprecated in v1.21+, unavailable in v1.25+; use policy/v1 PodDisruptionBudget
+poddisruptionbudget.policy/calico-kube-controllers created
+
+- VERIFY
+NOTE: Now you can see all pods running - none in Pending state
+NOTE: The IPs of calico-kube-controllers and coredns are 172.... series - the CIDR we gave for pod network - when we ran kubeadm init
+
+# kubectl get pods --all-namespaces -o wide
+NAMESPACE     NAME                                       READY   STATUS    RESTARTS   AGE    IP               NODE   NOMINATED NODE   READINESS GATES
+kube-system   calico-kube-controllers-78d6f96c7b-rg25f   1/1     Running   0          111s   172.16.145.66    ks1    <none>           <none>
+kube-system   calico-node-54plk                          1/1     Running   0          112s   192.168.40.101   ks1    <none>           <none>
+kube-system   coredns-558bd4d5db-29vtn                   1/1     Running   0          18m    172.16.145.67    ks1    <none>           <none>
+kube-system   coredns-558bd4d5db-v2rbf                   1/1     Running   0          18m    172.16.145.65    ks1    <none>           <none>
+kube-system   etcd-ks1                                   1/1     Running   0          19m    192.168.40.101   ks1    <none>           <none>
+kube-system   kube-apiserver-ks1                         1/1     Running   0          19m    192.168.40.101   ks1    <none>           <none>
+kube-system   kube-controller-manager-ks1                1/1     Running   0          19m    192.168.40.101   ks1    <none>           <none>
+kube-system   kube-proxy-sswtt                           1/1     Running   0          18m    192.168.40.101   ks1    <none>           <none>
+kube-system   kube-scheduler-ks1                         1/1     Running   0          19m    192.168.40.101   ks1    <none>           <none>
