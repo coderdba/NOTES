@@ -372,3 +372,92 @@ kube-system   kube-apiserver-ks1                         1/1     Running   0    
 kube-system   kube-controller-manager-ks1                1/1     Running   0          19m    192.168.40.101   ks1    <none>           <none>
 kube-system   kube-proxy-sswtt                           1/1     Running   0          18m    192.168.40.101   ks1    <none>           <none>
 kube-system   kube-scheduler-ks1                         1/1     Running   0          19m    192.168.40.101   ks1    <none>           <none>
+
+=================================
+CREATE AN NGNIX POD
+=================================
+
+Pod 'deployment' file - nginx.yml:
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  replicas: 2 
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 80 
+
+Nodeport 'service' file - nginx-nodeport.yml:
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+spec:
+  selector: 
+    app: nginx
+  type: NodePort  
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 32000
+
+- CREATE POD
+kubectl apply -f nginx.yml
+
+- CREATE SERVICE
+kubectl apply -f nginx-nodeport.yml
+
+- VERIFY
+# kubectl get pods --all-namespaces -o wide
+NAMESPACE     NAME                                       READY   STATUS    RESTARTS   AGE     IP               NODE   NOMINATED NODE   READINESS GATES
+default       nginx-deployment-585449566-6mnpc           1/1     Running   1          6m56s   172.16.145.77    ks1    <none>           <none>
+default       nginx-deployment-585449566-cgg7f           1/1     Running   1          6m56s   172.16.145.76    ks1    <none>           <none>
+kube-system   calico-kube-controllers-78d6f96c7b-rg25f   1/1     Running   2          60m     172.16.145.73    ks1    <none>           <none>
+kube-system   calico-node-54plk                          1/1     Running   2          60m     192.168.40.101   ks1    <none>           <none>
+kube-system   coredns-558bd4d5db-29vtn                   1/1     Running   2          77m     172.16.145.74    ks1    <none>           <none>
+kube-system   coredns-558bd4d5db-v2rbf                   1/1     Running   2          77m     172.16.145.75    ks1    <none>           <none>
+kube-system   etcd-ks1                                   1/1     Running   2          77m     192.168.40.101   ks1    <none>           <none>
+kube-system   kube-apiserver-ks1                         1/1     Running   2          77m     192.168.40.101   ks1    <none>           <none>
+kube-system   kube-controller-manager-ks1                1/1     Running   2          77m     192.168.40.101   ks1    <none>           <none>
+kube-system   kube-proxy-sswtt                           1/1     Running   2          77m     192.168.40.101   ks1    <none>           <none>
+kube-system   kube-scheduler-ks1                         1/1     Running   2          77m     192.168.40.101   ks1    <none>           <none>
+
+- VERIFY
+# curl http://ks1:32000
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+    body {
+        width: 35em;
+        margin: 0 auto;
+        font-family: Tahoma, Verdana, Arial, sans-serif;
+    }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, the nginx web server is successfully installed and
+working. Further configuration is required.</p>
+
+<p>For online documentation and support please refer to
+<a href="http://nginx.org/">nginx.org</a>.<br/>
+Commercial support is available at
+<a href="http://nginx.com/">nginx.com</a>.</p>
+
+<p><em>Thank you for using nginx.</em></p>
+</body>
+</html>
+
