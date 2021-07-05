@@ -270,15 +270,30 @@ sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
 - VERIFY AGAIN
-# kubectl get pods --all-namespaces
-NAMESPACE     NAME                          READY   STATUS    RESTARTS   AGE
-kube-system   coredns-558bd4d5db-29vtn      0/1     Pending   0          10m
-kube-system   coredns-558bd4d5db-v2rbf      0/1     Pending   0          10m
-kube-system   etcd-ks1                      1/1     Running   0          10m
-kube-system   kube-apiserver-ks1            1/1     Running   0          10m
-kube-system   kube-controller-manager-ks1   1/1     Running   0          10m
-kube-system   kube-proxy-sswtt              1/1     Running   0          10m
-kube-system   kube-scheduler-ks1            1/1     Running   0          10m
+NOTE: All IPs are host's IP - for kubernete's own pods
+
+# kubectl get pods --all-namespaces -o wide
+NAMESPACE     NAME                          READY   STATUS    RESTARTS   AGE   IP               NODE     NOMINATED NODE   READINESS GATES
+kube-system   coredns-558bd4d5db-29vtn      0/1     Pending   0          13m   <none>           <none>   <none>           <none>
+kube-system   coredns-558bd4d5db-v2rbf      0/1     Pending   0          13m   <none>           <none>   <none>           <none>
+kube-system   etcd-ks1                      1/1     Running   0          14m   192.168.40.101   ks1      <none>           <none>
+kube-system   kube-apiserver-ks1            1/1     Running   0          14m   192.168.40.101   ks1      <none>           <none>
+kube-system   kube-controller-manager-ks1   1/1     Running   0          14m   192.168.40.101   ks1      <none>           <none>
+kube-system   kube-proxy-sswtt              1/1     Running   0          13m   192.168.40.101   ks1      <none>           <none>
+kube-system   kube-scheduler-ks1            1/1     Running   0          14m   192.168.40.101   ks1      <none>           <none>
+
+- FURTHER
+From tutorial: https://devopscube.com/setup-kubernetes-cluster-kubeadm/
+
+-- Accessing cluster from workstation
+Note: You can copy the admin.conf file from the master to your workstation in $HOME/.kube/config location 
+if you want to execute kubectl commands from the workstation.
+
+-- Scheduling pods in master node
+By default, apps won’t get scheduled on the master node. 
+If you want to use the master node for scheduling apps, taint the master node.
+
+kubectl taint nodes --all node-role.kubernetes.io/master-
 
 --------------------------
 INSTALL POD-NETWORK ADDON (TBD)
