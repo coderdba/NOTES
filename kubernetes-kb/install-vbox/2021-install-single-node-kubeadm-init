@@ -143,6 +143,13 @@ systemctl stop firewalld
 systemctl disable firewalld
 
 ---------------------------------
+ADD THE HOST AND IP TO /etc/hosts
+---------------------------------
+vi /etc/hosts
+
+192.168.40.101 ks1
+
+---------------------------------
 KUBEADM INIT - TO INSTALL MASTER
 ---------------------------------
 
@@ -228,9 +235,50 @@ Then you can join any number of worker nodes by running the following on each as
 kubeadm join 192.168.40.101:6443 --token goo16b.fsknqm9z4n8i6iey \
 	--discovery-token-ca-cert-hash sha256:ad641b790d073def86cd7234f86f229714c71490d8cc1ebcfa3fb42b88849eb0 
 
-
 - VERIFY
+# kubectl cluster-info
 
+To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.
+The connection to the server localhost:8080 was refused - did you specify the right host or port?
+
+# kubectl get pods --all-namespaces
+The connection to the server localhost:8080 was refused - did you specify the right host or port?
+
+# docker ps -a
+CONTAINER ID   IMAGE                    COMMAND                  CREATED         STATUS         PORTS     NAMES
+90d0ce27648d   a6ebd1c1ad98             "/usr/local/bin/kube…"   7 minutes ago   Up 7 minutes             k8s_kube-proxy_kube-proxy-sswtt_kube-system_84c4ece8-5385-4059-9c69-20f1a0ec87bc_0
+961ec60b4ae4   k8s.gcr.io/pause:3.4.1   "/pause"                 7 minutes ago   Up 7 minutes             k8s_POD_kube-proxy-sswtt_kube-system_84c4ece8-5385-4059-9c69-20f1a0ec87bc_0
+3aa3b7bd16c3   f917b8c8f55b             "kube-scheduler --au…"   8 minutes ago   Up 8 minutes             k8s_kube-scheduler_kube-scheduler-ks1_kube-system_ba8688f4108c3c7dd06cc6441064c9f2_0
+8b4a2396312d   ae24db9aa2cc             "kube-controller-man…"   8 minutes ago   Up 8 minutes             k8s_kube-controller-manager_kube-controller-manager-ks1_kube-system_e0b2a571984a85a54079fc429061e7c7_0
+cc0f6fd72c6d   106ff58d4308             "kube-apiserver --ad…"   8 minutes ago   Up 8 minutes             k8s_kube-apiserver_kube-apiserver-ks1_kube-system_8a30f65c7d45f1458e512c2348b60808_0
+f1b650cea912   0369cf4303ff             "etcd --advertise-cl…"   8 minutes ago   Up 8 minutes             k8s_etcd_etcd-ks1_kube-system_d6f2197d51efd972472cb527e4cfaa83_0
+43c14ac67fb6   k8s.gcr.io/pause:3.4.1   "/pause"                 8 minutes ago   Up 8 minutes             k8s_POD_kube-scheduler-ks1_kube-system_ba8688f4108c3c7dd06cc6441064c9f2_0
+660848f88ffe   k8s.gcr.io/pause:3.4.1   "/pause"                 8 minutes ago   Up 8 minutes             k8s_POD_kube-controller-manager-ks1_kube-system_e0b2a571984a85a54079fc429061e7c7_0
+2d11cd974a6b   k8s.gcr.io/pause:3.4.1   "/pause"                 8 minutes ago   Up 8 minutes             k8s_POD_kube-apiserver-ks1_kube-system_8a30f65c7d45f1458e512c2348b60808_0
+198aedbc0e84   k8s.gcr.io/pause:3.4.1   "/pause"                 8 minutes ago   Up 8 minutes             k8s_POD_etcd-ks1_kube-system_d6f2197d51efd972472cb527e4cfaa83_0
+
+- FIX 8080 Port error
+Problem discussed: https://discuss.kubernetes.io/t/the-connection-to-the-server-localhost-8080-was-refused-did-you-specify-the-right-host-or-port/1464/8
+Solution from: https://devopscube.com/setup-kubernetes-cluster-kubeadm/
+
+Configuration to access apiserver would be not in the KUBECONFIG path.
+Either set KUBECONFIG to /etc/kubernetes/admin.conf 
+- OR - do the following:
+
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+- VERIFY AGAIN
+# kubectl get pods --all-namespaces
+NAMESPACE     NAME                          READY   STATUS    RESTARTS   AGE
+kube-system   coredns-558bd4d5db-29vtn      0/1     Pending   0          10m
+kube-system   coredns-558bd4d5db-v2rbf      0/1     Pending   0          10m
+kube-system   etcd-ks1                      1/1     Running   0          10m
+kube-system   kube-apiserver-ks1            1/1     Running   0          10m
+kube-system   kube-controller-manager-ks1   1/1     Running   0          10m
+kube-system   kube-proxy-sswtt              1/1     Running   0          10m
+kube-system   kube-scheduler-ks1            1/1     Running   0          10m
 
 --------------------------
 INSTALL POD-NETWORK ADDON (TBD)
