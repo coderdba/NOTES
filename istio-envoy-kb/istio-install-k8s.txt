@@ -3,8 +3,20 @@ ISTIO INSTALL ON A KUBERNETES CLUSTER
 =======================================
 https://istio.io/latest/docs/setup/getting-started/
 
+======
+SETUP
+======
+Single node kubernetes - installed with kubeadm init
+Master tainted so that we can use it as worker nodes for non-system pods
+
+==============
+ISTIO INSTALL
+==============
 Logon to a machine that is running Kubernetes
 
+--------------
+ISTIO SOFTWARE
+--------------
 mkdir /root/istio
 cd /root/istio
 
@@ -42,9 +54,18 @@ Move it to /opt directory (optional)
 
 Add /opt/istio-1.10.2/bin to PATH
 
+---------------------
+INSTALL ISTIO
+---------------------
 Run this:
-istioctl install --set profile=demo -y
+# istioctl install --set profile=demo -y
+✔ Istio core installed                                                                                                                                     
+✔ Istiod installed                                                                                                                                         
+✔ Egress gateways installed                                                                                                                                
+✔ Ingress gateways installed                                                                                                                               
+✔ Installation complete                                                                                                                                    Thank you for installing Istio 1.10.  Please take a few minutes to tell us about your install/upgrade experience!  https://forms.gle/KjkrDnMPByq7akrYA
 
+-- If error like this comes - stop vpn and ensure proper internet speed
 # istioctl install --set profile=demo -y
 ✔ Istio core installed                                                                                                                                     
 ✘ Istiod encountered an error: failed to wait for resource: resources not ready after 5m0s: timed out waiting for the condition                            
@@ -57,4 +78,17 @@ Deployment/istio-system/istio-ingressgateway
 
 Issue: https://github.com/istio/istio/issues/22677
          - https://github.com/helm/charts/tree/master/stable/external-dns
+         
+-----------------------------
+ENABLE ISTIO TO INJECT ENVOY
+-----------------------------
+Add a namespace label to 'default' namespace - to instruct Istio to automatically inject Envoy sidecar proxies when you deploy your application later:
+
+kubectl label namespace default istio-injection=enabled
+--> namespace/default labeled
+
+======================================
+DEPLOY A SAMPLE APPLICATION
+======================================
+kubectl apply -f samples/bookinfo/platform/kube/bookinfo.yaml
 
