@@ -65,7 +65,26 @@ Run this:
 ✔ Ingress gateways installed                                                                                                                               
 ✔ Installation complete                                                                                                                                    Thank you for installing Istio 1.10.  Please take a few minutes to tell us about your install/upgrade experience!  https://forms.gle/KjkrDnMPByq7akrYA
 
--- If error like this comes - stop vpn and ensure proper internet speed
+
+- VERIFY
+# kubectl get pods --all-namespaces
+NAMESPACE      NAME                                       READY   STATUS    RESTARTS   AGE
+default        nginx-deployment-585449566-6mnpc           1/1     Running   1          15h
+default        nginx-deployment-585449566-cgg7f           1/1     Running   1          15h
+istio-system   istio-egressgateway-7d4f75956-fpq92        1/1     Running   0          12h
+istio-system   istio-ingressgateway-5d57955454-shm6r      1/1     Running   0          12h
+istio-system   istiod-6f6c6bbbbd-7hgnx                    1/1     Running   0          12h
+kube-system    calico-kube-controllers-78d6f96c7b-rg25f   1/1     Running   2          16h
+kube-system    calico-node-54plk                          1/1     Running   2          16h
+kube-system    coredns-558bd4d5db-29vtn                   1/1     Running   2          16h
+kube-system    coredns-558bd4d5db-v2rbf                   1/1     Running   2          16h
+kube-system    etcd-ks1                                   1/1     Running   2          16h
+kube-system    kube-apiserver-ks1                         1/1     Running   2          16h
+kube-system    kube-controller-manager-ks1                1/1     Running   2          16h
+kube-system    kube-proxy-sswtt                           1/1     Running   2          16h
+kube-system    kube-scheduler-ks1                         1/1     Running   2          16h
+
+- If error like this comes - stop vpn and ensure proper internet speed
 # istioctl install --set profile=demo -y
 ✔ Istio core installed                                                                                                                                     
 ✘ Istiod encountered an error: failed to wait for resource: resources not ready after 5m0s: timed out waiting for the condition                            
@@ -90,5 +109,78 @@ kubectl label namespace default istio-injection=enabled
 ======================================
 DEPLOY A SAMPLE APPLICATION
 ======================================
+
+------------------------
+DEPLOY THE APPLICATION
+------------------------
+- Go to Istio install directory
+cd /opt/istio* 
+
+- Run app manifest
 kubectl apply -f samples/bookinfo/platform/kube/bookinfo.yaml
 
+service/details created
+serviceaccount/bookinfo-details created
+deployment.apps/details-v1 created
+service/ratings created
+serviceaccount/bookinfo-ratings created
+deployment.apps/ratings-v1 created
+service/reviews created
+serviceaccount/bookinfo-reviews created
+deployment.apps/reviews-v1 created
+deployment.apps/reviews-v2 created
+deployment.apps/reviews-v3 created
+service/productpage created
+serviceaccount/bookinfo-productpage created
+deployment.apps/productpage-v1 created
+
+- VERIFY
+# kubectl get pods --all-namespaces
+NAMESPACE      NAME                                       READY   STATUS    RESTARTS   AGE
+default        details-v1-79f774bdb9-7sw8c                2/2     Running   0          8m31s
+default        nginx-deployment-585449566-6mnpc           1/1     Running   1          15h
+default        nginx-deployment-585449566-cgg7f           1/1     Running   1          15h
+default        productpage-v1-6b746f74dc-t87xc            2/2     Running   0          8m31s
+default        ratings-v1-b6994bb9-k6xmj                  2/2     Running   0          8m32s
+default        reviews-v1-545db77b95-2jnv4                2/2     Running   0          8m32s
+default        reviews-v2-7bf8c9648f-vtkwt                2/2     Running   0          8m32s
+default        reviews-v3-84779c7bbc-9hrwj                2/2     Running   0          8m31s
+istio-system   istio-egressgateway-7d4f75956-fpq92        1/1     Running   0          12h
+istio-system   istio-ingressgateway-5d57955454-shm6r      1/1     Running   0          12h
+istio-system   istiod-6f6c6bbbbd-7hgnx                    1/1     Running   0          12h
+kube-system    calico-kube-controllers-78d6f96c7b-rg25f   1/1     Running   2          16h
+kube-system    calico-node-54plk                          1/1     Running   2          16h
+kube-system    coredns-558bd4d5db-29vtn                   1/1     Running   2          16h
+kube-system    coredns-558bd4d5db-v2rbf                   1/1     Running   2          16h
+kube-system    etcd-ks1                                   1/1     Running   2          16h
+kube-system    kube-apiserver-ks1                         1/1     Running   2          16h
+kube-system    kube-controller-manager-ks1                1/1     Running   2          16h
+kube-system    kube-proxy-sswtt                           1/1     Running   2          16h
+kube-system    kube-scheduler-ks1                         1/1     Running   2          16h
+
+--------------------------------
+OPEN THE APP TO OUTSIDE WORLD
+--------------------------------
+- CREATE THE GATEWAY
+# kubectl apply -f samples/bookinfo/networking/bookinfo-gateway.yaml
+gateway.networking.istio.io/bookinfo-gateway created
+virtualservice.networking.istio.io/bookinfo created
+
+- VALIDATE EVERYTHING
+NOTE: The errors/warnings below are for the nginx deployment done before installing Istio - so we can ignore them
+
+# istioctl analyze
+Warning [IST0103] (Pod nginx-deployment-585449566-6mnpc.default) The pod is missing the Istio proxy. This can often be resolved by restarting or redeploying the workload.
+Warning [IST0103] (Pod nginx-deployment-585449566-cgg7f.default) The pod is missing the Istio proxy. This can often be resolved by restarting or redeploying the workload.
+Info [IST0118] (Service nginx-service.default) Port name  (port: 80, targetPort: 80) doesn't follow the naming convention of Istio port.
+
+- FIND EXTERNAL IP OF THE GATEWAY
+# kubectl get svc istio-ingressgateway -n istio-system
+NAME                   TYPE           CLUSTER-IP      EXTERNAL-IP   PORT(S)                                                                      AGE
+istio-ingressgateway   LoadBalancer   10.98.161.111   <pending>     15021:32008/TCP,80:30537/TCP,443:30751/TCP,31400:32719/TCP,15443:30388/TCP   12h
+
+If the EXTERNAL-IP value is set, your environment has an external load balancer that you can use for the ingress gateway. 
+If the EXTERNAL-IP value is <none> (or perpetually <pending>), your environment does not provide an external load balancer for the ingress gateway. 
+In this case, you can access the gateway using the service’s node port.
+
+- 
