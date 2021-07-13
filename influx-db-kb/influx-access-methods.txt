@@ -1,0 +1,31 @@
+========================
+INFLUX WEB/API ACCESS
+========================
+
+Influx port: 8086
+
+==========
+BROWSER
+==========
+SHOW MEASUREMENTS
+http://localhost:8086/query?q=SHOW measurements
+--> URL Encoded: http://localhost:8086/query?q=SHOW%20measurements
+{"results":[{"statement_id":0,"error":"database name required"}]}
+
+SHOW MEASUREMENTS on metrics (dbname is 'metrics' here)
+http://localhost:8086/query?q=SHOW%20measurements%20on%20metrics
+
+=================
+CURL
+=================
+- CURL WITH URLENCODE
+curl -G 'https://metrics-influx.myprod.com/query?pretty=true' --data-urlencode "q=SELECT mean(\"metric_value\") FROM \"ora_sysmetric\" WHERE (\"db_service\" =~ /^ORDERS/ AND \"metric_name\" = 'Database_CPU_Time_Ratio') AND time >= now() - ${hours_to_query_for} GROUP BY time(15m) fill(null)" | jq -r '.[] | .[] | .series | .[] | .values | .[] | .[1]'
+
+======================
+INFLUX COMMAND LINE
+======================
+https://docs.influxdata.com/influxdb/v1.8/tools/shell/
+
+======================
+GOLANG
+======================
