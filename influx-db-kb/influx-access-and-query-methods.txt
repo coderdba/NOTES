@@ -1,0 +1,174 @@
+========================
+INFLUX WEB/API ACCESS
+========================
+
+Influx port: 8086
+
+==========
+BROWSER
+==========
+SHOW MEASUREMENTS
+http://localhost:8086/query?q=SHOW measurements
+--> URL Encoded: http://localhost:8086/query?q=SHOW%20measurements
+{"results":[{"statement_id":0,"error":"database name required"}]}
+
+SHOW MEASUREMENTS on metrics (dbname is 'metrics' here)
+http://localhost:8086/query?q=SHOW%20measurements%20on%20metrics
+
+
+
+=================
+CURL
+=================
+https://docs.influxdata.com/influxdb/v1.8/guides/query_data/
+
+- GIVE DB NAME AS "db=mydb"
+curl -G 'http://localhost:8086/query?pretty=true' --data-urlencode "db=mydb" --data-urlencode "q=SELECT \"value\" FROM \"cpu_load_short\" WHERE \"region\"='us-west'"
+
+- CURL WITH URLENCODE - without dbname
+curl -G 'https://metrics-influx.myprod.com/query?pretty=true' --data-urlencode "q=SELECT mean(\"metric_value\") FROM \"ora_sysmetric\" WHERE (\"db_service\" =~ /^ORDERS/ AND \"metric_name\" = 'Database_CPU_Time_Ratio') AND time >= now() - ${hours_to_query_for} GROUP BY time(15m) fill(null)" | jq -r '.[] | .[] | .series | .[] | .values | .[] | .[1]'
+
+TABLE QUERY
+curl -G 'http://localhost:8086/query?pretty=true' --data-urlencode "db=cpu1" --data-urlencode "q=SELECT \"host\", \"region\", \"value\" FROM \"cpu\" "
+{
+    "results": [
+        {
+            "statement_id": 0,
+            "series": [
+                {
+                    "name": "cpu",
+                    "columns": [
+                        "time",
+                        "host",
+                        "region",
+                        "value"
+                    ],
+                    "values": [
+                        [
+                            "2020-02-26T10:51:04.788081Z",
+                            "serverA",
+                            "us_west",
+                            0.64
+                        ],
+                        [
+                            "2020-02-26T10:51:10.30838Z",
+                            "serverA",
+                            "us_west",
+                            0.64
+                        ]
+                    ]
+                }
+            ]
+        }
+    ]
+}
+
+
+TABLE QUERY
+curl -G 'http://localhost:8086/query?pretty=true' --data-urlencode "db=mydb" --data-urlencode "q=SELECT \"value\" FROM \"cpu_load_short\" WHERE \"region\"='us-west'"
+{
+    "results": [
+        {
+            "statement_id": 0,
+            "series": [
+                {
+                    "name": "cpu_load_short",
+                    "columns": [
+                        "time",
+                        "value"
+                    ],
+                    "values": [
+                        [
+                            "2015-01-29T21:55:43.702900257Z",
+                            2
+                        ],
+                        [
+                            "2015-01-29T21:55:43.702900257Z",
+                            0.55
+                        ],
+                        [
+                            "2015-06-11T20:46:02Z",
+                            0.64
+                        ]
+                    ]
+                }
+            ]
+        }
+    ]
+}
+
+$ curl -G 'http://localhost:8086/query?pretty=true' --data-urlencode "db=cpu1" --data-urlencode "q=SELECT \"host\", \"region\", \"value\" FROM \"cpu\" WHERE \"region\" = 'us_west'"
+{
+    "results": [
+        {
+            "statement_id": 0,
+            "series": [
+                {
+                    "name": "cpu",
+                    "columns": [
+                        "time",
+                        "host",
+                        "region",
+                        "value"
+                    ],
+                    "values": [
+                        [
+                            "2020-02-26T10:51:04.788081Z",
+                            "serverA",
+                            "us_west",
+                            0.64
+                        ],
+                        [
+                            "2020-02-26T10:51:10.30838Z",
+                            "serverA",
+                            "us_west",
+                            0.64
+                        ]
+                    ]
+                }
+            ]
+        }
+    ]
+}
+
+======================
+INFLUX COMMAND LINE
+======================
+https://docs.influxdata.com/influxdb/v1.8/tools/shell/
+
+$ influx -precision rfc3339
+Connected to http://localhost:8086 version 1.7.x
+InfluxDB shell 1.7.x
+>
+
+> create database cpu1
+
+> show databases
+name: databases
+name
+----
+_internal
+cpu1
+
+> USE cpu1
+Using database cpu1
+
+> show measurements
+name: measurements
+name
+----
+cpu
+
+> INSERT cpu,host=serverA,region=us_west value=0.64
+> INSERT cpu,host=serverA,region=us_west value=0.64
+
+> SELECT "host", "region", "value" FROM "cpu"
+name: cpu
+time                        host    region  value
+----                        ----    ------  -----
+2020-02-26T10:51:04.788081Z serverA us_west 0.64
+2020-02-26T10:51:10.30838Z  serverA us_west 0.64
+
+======================
+GOLANG
+======================
