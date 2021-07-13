@@ -9,11 +9,16 @@ BROWSER
 ==========
 SHOW MEASUREMENTS
 http://localhost:8086/query?q=SHOW measurements
---> URL Encoded: http://localhost:8086/query?q=SHOW%20measurements
+--> Gets URL Encoded: http://localhost:8086/query?q=SHOW%20measurements
 {"results":[{"statement_id":0,"error":"database name required"}]}
 
 SHOW MEASUREMENTS on metrics (dbname is 'metrics' here)
 http://localhost:8086/query?q=SHOW%20measurements%20on%20metrics
+
+TABLE QUERY - without DB name
+http://localhost:8086/query?q=SELECT * FROM cpu
+--> Gets URL Encoded - http://localhost:8086/query?q=SELECT%20*%20FROM%20cpu
+--> errors out: {"results":[{"statement_id":0,"error":"database name required"}]}
 
 
 
@@ -130,6 +135,15 @@ $ curl -G 'http://localhost:8086/query?pretty=true' --data-urlencode "db=cpu1" -
         }
     ]
 }
+
+POST
+$ curl -XPOST localhost:8086/api/v2/query -sS \
+  -H 'Accept:application/csv' \
+  -H 'Content-type:application/vnd.flux' \
+  -d 'from(bucket:"telegraf")
+        |> range(start:-5m)
+        |> filter(fn:(r) => r._measurement == "cpu")'  
+
 
 ======================
 INFLUX COMMAND LINE
