@@ -88,6 +88,8 @@ yum group install "Development Tools"
 =============================================
 INSTALL POSTGRES DEVELOPER PACKAGES
 =============================================
+https://computingforgeeks.com/how-to-install-postgresql-13-on-centos-7/
+
 - YUM INSTALL
 yum install postgresql13-devel.x86_64
 
@@ -130,9 +132,9 @@ https://github.com/pgspider/influxdb_fdw/
 
 NOTE: INSTALL AS ROOT - AS POSTGRES WAS INSTALLED AS ROOT
 
--------------------
-INSTALL
--------------------
+----------------------
+INSTALL THE SOFTWARE
+----------------------
 Installation
 
 Install InfluxDB Go client library
@@ -178,3 +180,38 @@ gcc -std=gnu99 -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-st
 /bin/install -c -m 644 .//influxdb_fdw.control '/usr/pgsql-13/share/extension/'
 /bin/install -c -m 644 .//influxdb_fdw--1.0.sql .//influxdb_fdw--1.1.sql .//influxdb_fdw--1.2.sql  '/usr/pgsql-13/share/extension/'
 
+----------------------------
+CREATE THE EXTENSION
+----------------------------
+
+- CREATE
+# su - postgres
+Last login: Tue Jul 20 04:31:09 CDT 2021 on pts/0
+-bash-4.2$ psql
+psql (13.3)
+Type "help" for help.
+
+postgres=# CREATE EXTENSION influxdb_fdw;
+CREATE EXTENSION
+
+- VERIFY
+postgres=# \dx
+                    List of installed extensions
+     Name     | Version |   Schema   |          Description          
+--------------+---------+------------+-------------------------------
+ influxdb_fdw | 1.2     | public     | InfluxDB Foreign Data Wrapper
+ plpgsql      | 1.0     | pg_catalog | PL/pgSQL procedural language
+(2 rows)
+
+- CREATE SERVER TO CONNECT TO INFLUX
+# su - postgres
+$ psql
+postgres-# CREATE SERVER influxdb_server FOREIGN DATA WRAPPER influxdb_fdw OPTIONS (dbname 'mydb', host 'http://localhost', port '8086');
+--> response "CREATE SERVER" should show after the command
+
+- CREATE USER MAPPING OF A USER TO THE REMOTE INFLUX DB
+postgres-# CREATE USER MAPPING FOR CURRENT_USER SERVER influxdb_server OPTIONS(user 'user', password 'pass'); 
+--> remove OPTIONS(user .... password ....) if not needed - some influx servers may have been open for access without authentication
+
+postgres-# CREATE USER MAPPING FOR postgres SERVER influxdb_server;
+--> response  CREATE USER MAPPING
