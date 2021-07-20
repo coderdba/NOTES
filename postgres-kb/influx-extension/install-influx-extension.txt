@@ -223,13 +223,20 @@ CREATE FOREIGN TABLE influx_exadata_ping(time timestamp with time zone, config_i
 -- VERIFY
 https://stackoverflow.com/questions/13902548/how-can-i-list-foreign-tables-in-postgresql
 
-# \dE[S+]
+postgres=# \dE[S+]
                                          List of relations
  Schema |          Name           |     Type      |  Owner   | Persistence |  Size   | Description 
 --------+-------------------------+---------------+----------+-------------+---------+-------------
  public | influx_exadata_ping     | foreign table | postgres | permanent   | 0 bytes | 
  
- postgres=# SELECT 
+postgres=# \d
+                      List of relations
+ Schema |          Name           |     Type      |  Owner   
+--------+-------------------------+---------------+----------
+ public | influx_sre_exadata_ping | foreign table | postgres
+
+- DESCRIBE THE FOREIGN TABLE
+postgres=# SELECT 
 postgres-#    table_name, 
 postgres-#    column_name, 
 postgres-#    data_type 
@@ -251,9 +258,15 @@ postgres-#    table_name = 'influx_exadata_ping';
 - QUERY THE TABLE
 https://stackoverflow.com/questions/31433747/postgres-where-clause-compare-timestamp
 
+NOTE: Dont use count(*) as such non-preaggregated (aka without a column to aggregate on) queries cannot be queried for interval more than 1hr
+
 postgres-#  select count(result_code)
 from public.influx_exadata_ping
 where the_timestamp_column >= timestamp '2021-07-19 00:00:00'
   and the_timestamp_column < timestamp '2021-07-20 00:00:00';
- 
+  
+ count 
+-------
+ 24548
+(1 row)
  
