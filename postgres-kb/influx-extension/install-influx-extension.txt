@@ -215,3 +215,45 @@ postgres-# CREATE USER MAPPING FOR CURRENT_USER SERVER influxdb_server OPTIONS(u
 
 postgres-# CREATE USER MAPPING FOR postgres SERVER influxdb_server;
 --> response  CREATE USER MAPPING
+
+- CREATE A FOREIGN TABLE
+CREATE FOREIGN TABLE influx_exadata_ping(time timestamp with time zone, config_item text, application text, component text, host text, url text, result_code integer ) SERVER influxdb_server OPTIONS (table 'exadata_ping');
+--> response CREATE FOREIGN TABLE
+
+-- VERIFY
+https://stackoverflow.com/questions/13902548/how-can-i-list-foreign-tables-in-postgresql
+
+# \dE[S+]
+                                         List of relations
+ Schema |          Name           |     Type      |  Owner   | Persistence |  Size   | Description 
+--------+-------------------------+---------------+----------+-------------+---------+-------------
+ public | influx_exadata_ping     | foreign table | postgres | permanent   | 0 bytes | 
+ 
+ postgres=# SELECT 
+postgres-#    table_name, 
+postgres-#    column_name, 
+postgres-#    data_type 
+postgres-# FROM 
+postgres-#    information_schema.columns
+postgres-# WHERE 
+postgres-#    table_name = 'influx_exadata_ping';
+       table_name        | column_name |        data_type         
+-------------------------+-------------+--------------------------
+ influx_exadata_ping | time        | timestamp with time zone
+ influx_exadata_ping | config_item | text
+ influx_exadata_ping | application | text
+ influx_exadata_ping | component   | text
+ influx_exadata_ping | host        | text
+ influx_exadata_ping | url         | text
+ influx_exadata_ping | result_code | integer
+(7 rows)
+
+- QUERY THE TABLE
+https://stackoverflow.com/questions/31433747/postgres-where-clause-compare-timestamp
+
+postgres-#  select count(result_code)
+from public.influx_exadata_ping
+where the_timestamp_column >= timestamp '2021-07-19 00:00:00'
+  and the_timestamp_column < timestamp '2021-07-20 00:00:00';
+ 
+ 
