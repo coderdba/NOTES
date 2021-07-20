@@ -88,14 +88,41 @@ yum group install "Development Tools"
 =============================================
 INSTALL POSTGRES DEVELOPER PACKAGES
 =============================================
+- YUM INSTALL
 yum install postgresql13-devel.x86_64
 
-Got error:
-Error: Package: postgresql13-devel-13.3-1PGDG.rhel7.x86_64 (pgdg13)
-           Requires: llvm-toolset-7-clang >= 4.0.1
- You could try using --skip-broken to work around the problem
- You could try running: rpm -Va --nofiles --nodigest
+    Got error:
+    Error: Package: postgresql13-devel-13.3-1PGDG.rhel7.x86_64 (pgdg13)
+               Requires: llvm-toolset-7-clang >= 4.0.1
+     You could try using --skip-broken to work around the problem
+     You could try running: rpm -Va --nofiles --nodigest
+
+- TRY WITH SKIP BROKEN
+yum install postgresql13-devel.x86_64 --skip-broken 
  
+    Packages skipped because of dependency problems:
+        libedit-devel-3.0-12.20121213cvs.el7.x86_64 from base
+        libicu-devel-50.2-4.el7_7.x86_64 from base
+        llvm5.0-5.0.1-7.el7.x86_64 from epel
+        llvm5.0-devel-5.0.1-7.el7.x86_64 from epel
+        llvm5.0-libs-5.0.1-7.el7.x86_64 from epel
+        ncurses-devel-5.9-14.20130511.el7_4.x86_64 from base
+        postgresql13-devel-13.3-1PGDG.rhel7.x86_64 from pgdg13
+--> This did not help when installing the extension
+
+- TRY INSTALL LLVM-CLANG
+https://centos.pkgs.org/7/centos-sclo-rh-testing-x86_64/llvm-toolset-7-clang-4.0.1-1.el7.x86_64.rpm.html
+
+Install CentOS SCLo RH Testing repository:
+yum install centos-release-scl-rh
+
+Install llvm-toolset-7-clang rpm package:
+yum --enablerepo=centos-sclo-rh-testing install llvm-toolset-7-clang
+--> actually did yum install llvm-toolset-7-clang
+
+- AGAIN, INSTALL POSTGRES DEVELOPER PACKAGES
+yum install postgresql13-devel.x86_64
+
 =============================================
 INSTALL THE INFLUX EXTENSION
 =============================================
@@ -111,11 +138,12 @@ Installation
 Install InfluxDB Go client library
 
 go get github.com/influxdata/influxdb1-client/v2
+go get github.com/pgspider/influxdb_fdw/
 
 Add a directory of pg_config to PATH and build and install influxdb_fdw.
 export PATH=$PATH:/usr/pgsql-13/bin
 
-cd ~/go/src/github.com/influxdata/influxdb1-client/v2
+cd /root/go/src/github.com/pgspider/influxdb_fdw
 make USE_PGXS=1 with_llvm=no
 make install USE_PGXS=1 with_llvm=no
 
@@ -127,6 +155,26 @@ If you want to build influxdb_fdw in a source tree of PostgreSQL instead, use
 make with_llvm=no
 make install  with_llvm=no
 
+--> Trials
+# make USE_PGXS=1 with_llvm=no
+Makefile:32: /usr/pgsql-13/lib/pgxs/src/makefiles/pgxs.mk: No such file or directory
+Makefile:48: *** PostgreSQL 9.6, 10, 11, 12 or 13 is required to compile this extension.  Stop.
+--> Ensure postgres-developer tools were installed properly (go back to steps)
 
+# make USE_PGXS=1 with_llvm=no
+go tool cgo query.go
+gcc -std=gnu99 -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong --param=ssp-buffer-size=4 -grecord-gcc-switches   -m64 -mtune=generic -fPIC -I. -I./ -I/usr/pgsql-13/include/server -I/usr/pgsql-13/include/internal  -D_GNU_SOURCE -I/usr/include/libxml2  -I/usr/include  -c -o option.o option.c
+gcc -std=gnu99 -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong --param=ssp-buffer-size=4 -grecord-gcc-switches   -m64 -mtune=generic -fPIC -I. -I./ -I/usr/pgsql-13/include/server -I/usr/pgsql-13/include/internal  -D_GNU_SOURCE -I/usr/include/libxml2  -I/usr/include  -c -o deparse.o deparse.c
+gcc -std=gnu99 -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong --param=ssp-buffer-size=4 -grecord-gcc-switches   -m64 -mtune=generic -fPIC -I. -I./ -I/usr/pgsql-13/include/server -I/usr/pgsql-13/include/internal  -D_GNU_SOURCE -I/usr/include/libxml2  -I/usr/include  -c -o influxdb_query.o influxdb_query.c
+gcc -std=gnu99 -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong --param=ssp-buffer-size=4 -grecord-gcc-switches   -m64 -mtune=generic -fPIC -I. -I./ -I/usr/pgsql-13/include/server -I/usr/pgsql-13/include/internal  -D_GNU_SOURCE -I/usr/include/libxml2  -I/usr/include  -c -o influxdb_fdw.o influxdb_fdw.c
+go build -buildmode=c-archive query.go
+gcc -std=gnu99 -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong --param=ssp-buffer-size=4 -grecord-gcc-switches   -m64 -mtune=generic -fPIC -shared -o influxdb_fdw.so option.o deparse.o influxdb_query.o influxdb_fdw.o query.a -L/usr/pgsql-13/lib   -L/usr/lib64/llvm5.0/lib  -L/usr/lib64 -Wl,--as-needed -Wl,-rpath,'/usr/pgsql-13/lib',--enable-new-dtags
 
+# make install USE_PGXS=1 with_llvm=no
+/bin/mkdir -p '/usr/pgsql-13/lib'
+/bin/mkdir -p '/usr/pgsql-13/share/extension'
+/bin/mkdir -p '/usr/pgsql-13/share/extension'
+/bin/install -c -m 755  influxdb_fdw.so '/usr/pgsql-13/lib/influxdb_fdw.so'
+/bin/install -c -m 644 .//influxdb_fdw.control '/usr/pgsql-13/share/extension/'
+/bin/install -c -m 644 .//influxdb_fdw--1.0.sql .//influxdb_fdw--1.1.sql .//influxdb_fdw--1.2.sql  '/usr/pgsql-13/share/extension/'
 
