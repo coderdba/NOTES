@@ -1,0 +1,185 @@
+===============================
+EXAMPLES
+===============================
+Python-postgres tutorial: https://wiki.postgresql.org/wiki/Psycopg2_Tutorial
+Python-postgres tutorial: https://zetcode.com/python/psycopg2/
+
+From CSV - COPY command: https://www.postgresqltutorial.com/import-csv-file-into-posgresql-table/
+From CSV - import: https://learnsql.com/blog/how-to-import-csv-to-postgresql/
+From CSV - import: https://dataschool.com/learn-sql/importing-data-from-csv-in-postgresql/
+Python and CSV - INSERT and COPY methods - https://www.dataquest.io/blog/loading-data-into-postgres/
+
+https://docs.influxdata.com/influxdb/v1.8/tools/influx-cli/
+https://www.quora.com/How-can-I-extract-data-from-influxDB-to-external-files?share=1
+
+- SYNTAX
+#influx -host https://metrics.company.com -port 443 -database metrics -format csv/json -execute "select n from tab1 limit 100"
+
+- RUN
+influx -ssl -host metrics.company.com -port 443 -database metrics -format csv -execute "select count(result_code) from exadata_ping where time >= now() - 1h"
+
+--> OUTPUT:
+--> name,time,count
+--> exadata_ping,1626781678770699703,1015
+
+influx -ssl -host metrics.company.com -port 443 -database metrics -format csv -execute "select * from exadata_ping where time >= now() - 1h limit 10"
+name,time,config_item,application,component,host,result_code,url
+exadata_ping,1626781872000000000,CI1234,dbtech,oracle,telegrafhost1,0,e08vm01.dd.com
+exadata_ping,1626781872000000000,CI1234,dbtech,oracle,telegrafhost1,0,e09vm01.dd.com
+
+===============================
+PYTHON INSTALL
+===============================
+# yum install -y python3 pip
+
+===============================
+POSTGRES LIBRARY FOR PYTHON
+===============================
+https://www.psycopg.org/docs/install.html#binary-install-from-pypi
+https://izziswift.com/django-core-exceptions-improperlyconfigured-error-loading-psycopg-module-no-module-named-psycopg/
+https://stackoverflow.com/questions/55755095/postgresql-modulenotfounderror-no-module-named-psycopg2
+
+NOTE: psycopg2 itself needs to be 'built' from source - alternative, though not recommended is to install psycopg2-binary instead 
+
+Try install as 'root' user:
+NOTE: Just pip3 install psycopg2-binary errors out for the latest version 2.9.1
+      Therefore, use an older version per http://www.dark-hamster.com/programming/how-to-solve-error-on-installing-psycopg2-using-pip-by-using-psycopg2-binary-instead/
+# pip install psycopg2-binary==2.7.4
+# pip3 install psycopg2-binary==2.7.4
+--> This still errored saying psycopg2 not found when imported
+
+Try local install: (under postgres user)
+$ pip install psycopg2==2.7.4 --user
+$ pip uninstall psycopg2
+--> This install gave some weird messages though it seemed to work
+
+Finally this worked:
+$ pip install psycopg2-binary=2.7.4 --user
+$ pip3 install psycopg2-binary==2.7.4 --user
+
+===============================
+COMMANDS
+===============================
+
+- CREATE TABLE IN POSTGRES
+CREATE TABLE copy_influx_exadata_ping(time timestamp with time zone, _blossom_id text, application text, component text, host text, url text, result_code integer );
+
+- QUERYING INFLUX DATA INTO CSV
+influx -ssl -host metricsengine.mycompany.com -port 443 -database metrics -format csv -execute "select count(result_code) from exadata_ping where time >= now() - 1h"
+
+--> OUTPUT:
+name,time,count
+exadata_ping,1626841241086480284,1050
+
+- QUERYING INFLUX DATA INTO CSV
+influx -ssl -host metricsengine.mycompany.com -port 443 -database metrics -format csv -execute "select * from exadata_ping where time >= now() - 1h limit 10"
+
+--> OUTPUT:
+name,time,_blossom_id,application,component,host,result_code,url
+exadata_ping,1626841398000000000,CI123,RDBMS,oracle,metricollector1,0,abchost
+exadata_ping,1626841398000000000,CI123,RDBMS,oracle,metricollector1,2,pqrhost
+
+==================================================
+EXAMPLE PYTHON PROGRAM TO COPY FROM FILE TO TABLE
+==================================================
+https://www.dataquest.io/blog/loading-data-into-postgres/
+
+import psycopg2
+conn = psycopg2.connect("host=localhost dbname=postgres user=postgres")
+cur = conn.cursor()
+with open('user_accounts.csv', 'r') as f:
+    # Notice that we don't need the `csv` module.
+    next(f) # Skip the header row.
+    cur.copy_from(f, 'users', sep=',')
+conn.commit()
+
+==================================================
+TEST1
+==================================================
+
+CREATE TABLE users(
+    id integer PRIMARY KEY,
+    email text,
+    name text,
+    address text
+);
+
+
+==================================================
+PYTHON PROGRAMS TO LOAD FROM CSV
+==================================================
+
+-----------------
+TEST1 SET
+-----------------
+test1-create-table.py
+test1-load.py
+test1-query-table.py
+test1-user_accounts.csv
+
+- test1-create-table.py:
+
+#!/bin/python3
+import psycopg2
+
+conn = psycopg2.connect("host=localhost dbname=postgres user=postgres password=postgres123")
+cur = conn.cursor()
+cur.execute("""CREATE TABLE users(
+    id integer PRIMARY KEY,
+    email text,
+    name text,
+    address text
+)
+""")
+conn.commit()
+
+- test1-load.py
+
+#!/bin/python3
+import psycopg2
+
+conn = psycopg2.connect("host=localhost dbname=postgres user=postgres password=postgres123")
+cur = conn.cursor()
+with open('test1-user_accounts.csv', 'r') as f:
+    # Notice that we don't need the `csv` module.
+    next(f) # Skip the header row.
+    cur.copy_from(f, 'users', sep=',')
+conn.commit()
+
+- test1-query-table.py
+
+#!/bin/python3
+import psycopg2
+
+conn = psycopg2.connect("host=localhost dbname=postgres user=postgres password=postgres123")
+cur = conn.cursor()
+#cur.execute(""" SELECT * FROM users """)
+cur.execute("SELECT * FROM users")
+
+# Commit is not necessary for SELECT
+#conn.commit()
+
+#one = cur.fetchone()
+all = cur.fetchall()
+
+#print ("\nHere are the rows in 'one':\n")
+#for rowone in one:
+#    print ("   ", rowone[0])
+
+print ("\nHere are the rows in 'all':\n")
+for rowall in all:
+    print ("   ", rowall)
+    print ("   ", rowall[0])
+    #print ("   ", rowall[0])
+    #print ("   ", rowall[1])
+    #print ("   ", rowall[1][1])
+
+conn.close()
+
+- test1-user_accounts.csv
+
+id email name address
+1,user1@t.com,user1,user1 at bangalore
+2,user2@t.com,user2,user2 at mysore
+3,user3@t.com,user3,user3 at mysore
+4,user4@t.com,user4,user4 at mysore
