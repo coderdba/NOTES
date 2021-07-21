@@ -207,6 +207,8 @@ postgres=# \dx
 # su - postgres
 $ psql
 postgres-# CREATE SERVER influxdb_server FOREIGN DATA WRAPPER influxdb_fdw OPTIONS (dbname 'mydb', host 'http://localhost', port '8086');
+postgres-# CREATE SERVER influxdb_server FOREIGN DATA WRAPPER influxdb_fdw OPTIONS (dbname 'metrics', host 'https://metricsengine.dd.com', port '443');
+
 --> response "CREATE SERVER" should show after the command
 
 - CREATE USER MAPPING OF A USER TO THE REMOTE INFLUX DB
@@ -215,6 +217,29 @@ postgres-# CREATE USER MAPPING FOR CURRENT_USER SERVER influxdb_server OPTIONS(u
 
 postgres-# CREATE USER MAPPING FOR postgres SERVER influxdb_server;
 --> response  CREATE USER MAPPING
+
+-- VERIFY
+
+postgres=# \des
+List of foreign servers
+-[ RECORD 1 ]--------+---------------------------
+Name                 | influxdb_server
+Owner                | postgres
+Foreign-data wrapper | influxdb_fdw
+
+postgres=# select 
+postgres-#     srvname as name, 
+postgres-#     srvowner::regrole as owner, 
+postgres-#     fdwname as wrapper, 
+postgres-#     srvoptions as options
+postgres-# from pg_foreign_server
+postgres-# join pg_foreign_data_wrapper w on w.oid = srvfdw;
+-[ RECORD 1 ]-----------------------------------------------------------------------------
+name    | influxdb_server
+owner   | postgres
+wrapper | influxdb_fdw
+options | {dbname=metrics,host=https://metricsengine.dd.com,port=443} 
+
 
 - CREATE A FOREIGN TABLE
 CREATE FOREIGN TABLE influx_exadata_ping(time timestamp with time zone, config_item text, application text, component text, host text, url text, result_code integer ) SERVER influxdb_server OPTIONS (table 'exadata_ping');
