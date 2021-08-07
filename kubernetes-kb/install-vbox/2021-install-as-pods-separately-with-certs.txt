@@ -8,6 +8,9 @@ Docker version:
 ================
 OWN REFERENCES
 ================
+
+Earlier attempt: https://github.com/coderdba/NOTES/blob/master/kubernetes-kb/install-vbox/WIP-install-as-pods-separately.txt
+
 Configuration files, shell scripts: https://github.com/coderdba-coding-org/k8s-multinode-vm-as-pods-1
 Some basic stuff: https://github.com/coderdba-coding-org/ansible/tree/master/various01/k8s-deploy01
 Ansible single node: https://github.com/coderdba-coding-org/code1/tree/master/kubernetes/kube-vbox-ans-singlenode-1
@@ -83,3 +86,33 @@ net.bridge.bridge-nf-call-iptables = 1
 
 And, make it persistent:
 # sysctl -p
+
+---------------------------------------
+INSTALL DOCKER-CE (community edition)
+---------------------------------------
+- FIRST INSTALL CONTAINER-SELINUX > v2.9 --> say, 2.119
+http://mirror.centos.org/centos/7/extras/x86_64/Packages/container-selinux-2.119.1-1.c57a6f9.el7.noarch.rpm
+(perviously had used in 2019: http://mirror.centos.org/centos/7/extras/x86_64/Packages/container-selinux-2.68-1.el7.noarch.rpm)
+
+--> Download this, and then do: (dont do rpm -ivh container-selinux-2.74-1.el7.noarch.rpm)
+# yum install -y container-selinux-2.119.1-1.c57a6f9.el7.noarch.rpm
+
+- INSTALL DOCKER
+Check, and install if needed - dependencies with the following command:
+# yum install -y yum-utils device-mapper-persistent-data lvm2
+
+Next, add the Docker-ce repository with the command:
+# yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+
+Install Docker-ce with the command:
+# yum install -y docker-ce
+
+- ENABLE DOCKER SERVICE
+# systemctl enable docker
+
+- START DOCKER
+# service docker start
+
+- CHECK CGROUP
+# docker info | grep -i cgroup
+Cgroup Driver: cgroupfs
