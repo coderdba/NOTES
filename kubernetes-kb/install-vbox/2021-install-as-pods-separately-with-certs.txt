@@ -28,6 +28,7 @@ Ansible modules:
 - Shell: https://www.middlewareinventory.com/blog/ansible-shell-examples/#Example_1_Execute_a_Single_Command_with_Ansible_Shell
 - Shell: https://docs.ansible.com/ansible/latest/collections/ansible/builtin/shell_module.html
 - Shell: https://www.middlewareinventory.com/blog/ansible-shell-examples/#Example_7_Execute_multiple_commands_in_a_Single_Shell_Play
+- Shell - multiple commands: https://stackoverflow.com/questions/24851575/ansible-how-to-pass-multiple-commands
 
 - Yum: https://docs.ansible.com/ansible/2.3/yum_module.html#examples
 
@@ -123,3 +124,129 @@ Install Docker-ce with the command:
 - CHECK CGROUP
 # docker info | grep -i cgroup
 Cgroup Driver: cgroupfs
+
+----------------------------------------
+INSTALL CFSSL - TO GENERATE CERTIFICATES
+----------------------------------------
+https://blog.inkubate.io/deploy-kubernetes-1-9-from-scratch-on-vmware-vsphere/
+
+Installation of cfssl
+1- Download the binaries.
+
+$ wget https://pkg.cfssl.org/R1.2/cfssl_linux-amd64
+$ wget https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64
+2- Add the execution permission to the binaries.
+
+$ chmod +x cfssl*
+3- Move the binaries to /usr/local/bin.
+
+$ sudo mv cfssl_linux-amd64 /usr/local/bin/cfssl
+$ sudo mv cfssljson_linux-amd64 /usr/local/bin/cfssljson
+4- Verify the installation.
+
+$ cfssl version
+
+-----------------------------------
+FIREWALL - FOR MASTER NODES
+-----------------------------------
+firewall-cmd --permanent --add-port=6443/tcp
+firewall-cmd --permanent --add-port=2379-2380/tcp
+firewall-cmd --permanent --add-port=10250/tcp
+firewall-cmd --permanent --add-port=10251/tcp
+firewall-cmd --permanent --add-port=10252/tcp
+firewall-cmd --permanent --add-port=10255/tcp
+firewall-cmd --reload
+
+-----------------------------------
+FIREWALL - FOR WORKER NODES
+-----------------------------------
+firewall-cmd --permanent --add-port=10251/tcp
+firewall-cmd --permanent --add-port=10255/tcp
+firewall-cmd --reload
+
+--------
+VERIFY
+--------
+# firewall-cmd --list-all
+public (active)
+  target: default
+  icmp-block-inversion: no
+  interfaces: enp0s3 enp0s8
+  sources: 
+  services: ssh dhcpv6-client
+  ports: 6443/tcp 2379-2380/tcp 10250/tcp 10251/tcp 10252/tcp 10255/tcp
+  protocols: 
+  masquerade: no
+  forward-ports: 
+  source-ports: 
+  icmp-blocks: 
+  rich rules: 
+
+==========================================
+PULL DOCKER IMAGES NEEDED FOR KUBERNETES
+==========================================
+
+----------------------------------------------------------------------
+LIST OF IMAGES FROM CLUSTER WITH KUBEADM-INIT
+----------------------------------------------------------------------
+[root@ks1 etc]# docker images
+REPOSITORY                               TAG        IMAGE ID       CREATED         SIZE
+nginx                                    latest     08b152afcfae   2 weeks ago     133MB
+nginx                                    <none>     4f380adfc10f   6 weeks ago     133MB
+istio/proxyv2                            1.10.2     704d8c3c91a4   6 weeks ago     282MB
+istio/pilot                              1.10.2     8c8ea32730d4   6 weeks ago     217MB
+k8s.gcr.io/kube-apiserver                v1.21.2    106ff58d4308   7 weeks ago     126MB
+k8s.gcr.io/kube-controller-manager       v1.21.2    ae24db9aa2cc   7 weeks ago     120MB
+k8s.gcr.io/kube-proxy                    v1.21.2    a6ebd1c1ad98   7 weeks ago     131MB
+k8s.gcr.io/kube-scheduler                v1.21.2    f917b8c8f55b   7 weeks ago     50.6MB
+calico/node                              v3.19.1    c4d75af7e098   2 months ago    168MB
+calico/pod2daemon-flexvol                v3.19.1    5660150975fb   2 months ago    21.7MB
+calico/cni                               v3.19.1    5749e8b276f9   2 months ago    146MB
+calico/kube-controllers                  v3.19.1    5d3d5ddc8605   2 months ago    60.6MB
+k8s.gcr.io/pause                         3.4.1      0f8457a4c2ec   6 months ago    683kB
+k8s.gcr.io/coredns/coredns               v1.8.0     296a6d5035e2   9 months ago    42.5MB
+busybox                                  latest     f0b02e9d092d   9 months ago    1.23MB
+nginx                                    <none>     f35646e83998   9 months ago    133MB
+k8s.gcr.io/etcd                          3.4.13-0   0369cf4303ff   11 months ago   253MB
+istio/examples-bookinfo-reviews-v3       1.16.2     83e6a8464b84   13 months ago   694MB
+istio/examples-bookinfo-reviews-v2       1.16.2     39cff5d782e1   13 months ago   694MB
+istio/examples-bookinfo-reviews-v1       1.16.2     181be23dc1af   13 months ago   694MB
+istio/examples-bookinfo-ratings-v1       1.16.2     99ce598b98cf   13 months ago   161MB
+istio/examples-bookinfo-details-v1       1.16.2     edf6b9bea3db   13 months ago   149MB
+istio/examples-bookinfo-productpage-v1   1.16.2     7f1e097aad6d   13 months ago   207MB
+
+-----------------------------------
+PULL IMAGES
+-----------------------------------
+
+- ETCD
+# docker pull quay.io/coreos/etcd:latest
+or
+# docker pull quay.io/coreos/etcd:v3.3
+
+- MASTER (with additional components for workers also)
+--- FOR SPECIFIC VERSIONS
+https://kubernetes.io/docs/setup/release/notes/
+gcr.io/google_containers/kube-proxy-amd64(and such)
+
+docker pull gcr.io/google_containers/kube-apiserver-amd64:v1.21.2
+docker pull gcr.io/google_containers/kube-scheduler-amd64:v1.21.2 
+docker pull gcr.io/google_containers/kube-controller-manager-amd64:v1.21.2 
+docker pull gcr.io/google_containers/kube-proxy-amd64:v1.21.2
+docker pull quay.io/calico/node:v3.19.1 (https://hub.docker.com/r/calico/node/tags)
+docker pull quay.io/calico/pod2daemon-flexvol:v3.19.1
+docker pull quay.io/calico/cni:v3.19.1
+docker pull quay.io/calico/kube-controllers:v3.19.1
+docker pull k8s.gcr.io/pause:3.4.1
+docker pull k8s.gcr.io/coredns/coredns:v1.8.0
+
+
+-- FOR LATER
+docker pull gcr.io/google-containers/kube-addon-manager-amd64:v9.0.1  (gcr.io/google_containers/kube-proxy-amd64)
+docker pull gcr.io/google_containers/metrics-server-amd64:v0.3.3 
+docker pull gcr.io/google-containers/rescheduler:v0.4.0 (is there a later one)
+docker pull k8s.gcr.io/pause-amd64:3.1 (https://console.cloud.google.com/gcr/images/google-containers/GLOBAL/pause-amd64?gcrImageListsize=30)
+docker pull coredns/coredns
+
+# Add this to make a common image for master and woker
+docker pull quay.io/jcmoraisjr/haproxy-ingress:v0.7.2
