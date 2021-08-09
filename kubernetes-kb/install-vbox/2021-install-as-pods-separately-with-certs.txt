@@ -8,6 +8,10 @@ Docker version:
 =====================
 ANSIBLE DOCKER SETUP
 =====================
+---------------------
+TO USE DOCKER PLUGIN
+---------------------
+- SET VARIABLE TO INDICATE PYTHON VERSION IN THE VM (not laptop)
 https://stackoverflow.com/questions/53941356/failed-to-import-docker-or-docker-py-no-module-named-docker
 Add this ansible_python_interpreter on to your 'hosts' file:
 
@@ -20,6 +24,59 @@ ansible_python_interpreter=/usr/bin/python3 # For Python3 [default Ubuntu-18.04]
 Python <= 2.7
 [servers:vars]
 ansible_python_interpreter=/usr/bin/python # For Python2.7
+
+- INSTALL REQUIRED MODULES IN VM (not laptop)
+
+-- To avoid:  The error was: No module named docker
+# pip install docker==4.4.4 (if using python 2.7 or less)
+# pip install docker (if using python 3+ --> docker module should be version 5+)
+
+-- To avoid: The error was: No module named selectors
+# pip install selector
+
+----- Also, do this:
+https://dockerquestions.com/2021/07/07/ansible-playbook-error-against-remote-host/
+      From the above website:
+      If you try to use docker module, you’ll notice that its using the “websocket” module, which in turn is using the “selectors” module.
+
+      [root@mybox ~]# python
+      Python 2.7.5 (default, Nov 16 2020, 22:23:17)
+      [GCC 4.8.5 20150623 (Red Hat 4.8.5-44)] on linux2
+      Type “help”, “copyright”, “credits” or “license” for more information.
+      >>> import docker
+      Traceback (most recent call last):
+      File “”, line 1, in
+      File “/usr/lib/python2.7/site-packages/docker/__init__.py”, line 2, in
+      from .api import APIClient
+      File “/usr/lib/python2.7/site-packages/docker/api/__init__.py”, line 2, in
+      from .client import APIClient
+      File “/usr/lib/python2.7/site-packages/docker/api/client.py”, line 8, in
+      import websocket
+      File “/usr/lib/python2.7/site-packages/websocket/__init__.py”, line 22, in
+      from ._app import WebSocketApp
+      File “/usr/lib/python2.7/site-packages/websocket/_app.py”, line 25, in
+      import selectors
+      ImportError: No module named selectors
+      >>>
+
+      Im my case, version 1.1.0 of “websocket-client” was installed. After downgrading it, i was able to use the docker module again,
+
+[root@k9sv112model log]# pip list | grep webs
+websocket-client (1.1.1)
+
+[root@k9sv112model log]#  pip install websocket-client==0.57.0
+Collecting websocket-client==0.57.0
+  Downloading https://files.pythonhosted.org/packages/4c/5f/f61b420143ed1c8dc69f9eaec5ff1ac36109d52c80de49d66e0c36c3dfdf/websocket_client-0.57.0-py2.py3-none-any.whl (200kB)
+    100% |████████████████████████████████| 204kB 454kB/s 
+Requirement already satisfied (use --upgrade to upgrade): six in /usr/lib/python2.7/site-packages (from websocket-client==0.57.0)
+Installing collected packages: websocket-client
+  Found existing installation: websocket-client 1.1.1
+    Uninstalling websocket-client-1.1.1:
+      Successfully uninstalled websocket-client-1.1.1
+Successfully installed websocket-client-0.57.0
+You are using pip version 8.1.2, however version 21.2.3 is available.
+You should consider upgrading via the 'pip install --upgrade pip' command.
+
 
 ================
 OWN REFERENCES
