@@ -349,9 +349,9 @@ docker pull k8s.gcr.io/pause-amd64:3.1
 docker pull quay.io/jcmoraisjr/haproxy-ingress:v0.12.7
 - older docker pull quay.io/jcmoraisjr/haproxy-ingress:v0.12.6 --> to make common vm image for master and worker
 - https://quay.io/repository/jcmoraisjr/haproxy-ingress?tag=latest&tab=tags
-
 docker pull gcr.io/google-containers/kube-addon-manager-amd64:v9.1.1
-docker pull gcr.io/google-containers/metrics-server-amd64:v0.3.6
+docker pull bitnami/metrics-server:0.5.0
+- old docker pull gcr.io/google-containers/metrics-server-amd64:v0.3.6
 docker pull gcr.io/google-containers/rescheduler:v0.4.0
 
 -- DID NOT WORK
@@ -363,3 +363,23 @@ INSTALL KUBEADM, KUBECTL, KUBELET
 https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/
 https://www.linuxtechi.com/install-kubernetes-1-7-centos7-rhel7/
 https://www.howtoforge.com/tutorial/centos-kubernetes-docker-cluster/
+
+- STEPS FROM https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/
+cat <<EOF | sudo tee /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-\$basearch
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+exclude=kubelet kubeadm kubectl
+EOF
+
+# Set SELinux in permissive mode (effectively disabling it)
+sudo setenforce 0
+sudo sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
+
+sudo yum install -y kubelet kubeadm kubectl --disableexcludes=kubernetes
+
+sudo systemctl enable --now kubelet
