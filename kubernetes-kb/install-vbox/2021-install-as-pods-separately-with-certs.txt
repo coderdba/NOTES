@@ -34,6 +34,9 @@ https://blog.inkubate.io/deploy-kubernetes-1-9-from-scratch-on-vmware-vsphere/  
 --> Use this for concepts and CERTS 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+Kubeadm init method:
+- https://medium.com/twodigits/install-kubernetes-1-21-1-on-centos-8-stream-include-fix-cap-perfmon-acf23a6879c6
+
 Installing Kubectl, Kubeadm, Kubelet
 - https://computingforgeeks.com/manually-pull-container-images-used-by-kubernetes-kubeadm/
 - https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/
@@ -380,6 +383,22 @@ EOF
 sudo setenforce 0
 sudo sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
 
-sudo yum install -y kubelet kubeadm kubectl --disableexcludes=kubernetes
-
+--> For latest versions: sudo yum install -y kubelet kubeadm kubectl --disableexcludes=kubernetes
+--> For specific versions: sudo yum install -y kubelet-1.21.2-0.x86_64 kubeadm-1.21.2-0.x86_64 kubectl-1.22.0-0.x86_64 --disableexcludes=kubernetes
+            The following get installed (cni as well gets installed)
+            kubeadm-1.21.2-0.x86_64
+            kubelet-1.21.2-0.x86_64
+            kubernetes-cni-0.8.7-0.x86_64
+            kubectl-1.22.0-0.x86_64
+            
+- KUBELET SERVICE STATUS
+# systemctl status kubelet
+● kubelet.service - kubelet: The Kubernetes Node Agent
+   Loaded: loaded (/usr/lib/systemd/system/kubelet.service; disabled; vendor preset: disabled)
+  Drop-In: /usr/lib/systemd/system/kubelet.service.d
+           └─10-kubeadm.conf
+   Active: inactive (dead)
+     Docs: https://kubernetes.io/docs/
+     
+- ENABLE KUBELET SERVICE
 sudo systemctl enable --now kubelet
