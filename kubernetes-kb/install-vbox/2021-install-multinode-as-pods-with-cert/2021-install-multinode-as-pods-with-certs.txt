@@ -468,8 +468,14 @@ NOTE: Do only if it is necessary - we can always use docker exec to run the etcd
 - With yum: yum install etcd - not sure which repo
 - Tar/zip: https://computingforgeeks.com/setup-etcd-cluster-on-centos-debian-ubuntu/
 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+SINGLE NODE SETUP - TO TRY SINGLE NODE FIRST AND THEN MULTINODE
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 ============================================================================
-ETCD - TRY JUST ETCD - WITH NO CERTIFICATES - to learn, and verify vm setup
+SINGLE NODE - ETCD - WITHOUT CERTIFICATES - to learn, and verify vm setup
 ============================================================================
 
 https://etcd.io/docs/v3.5/op-guide/container
@@ -1170,7 +1176,7 @@ etcd-peer-ksn1-key.pem - key for peer (public)
 etcd-peer-ksn1.csr
 
 =====================================================
-ETCD WITH CERTS - SINGLE NODE
+SINGLE NODE - ETCD - WITH CERTS 
 =====================================================
 
 -----------------------------------
@@ -1215,7 +1221,6 @@ docker run --rm \
 --peer-key-file=/etc/kubernetes/pki/etcd-peer-ksn1-key.pem \
 --peer-trusted-ca-file=/etc/kubernetes/pki/ca.pem
 
-
 - MESSAGES
 raft2021/08/13 14:35:19 INFO: d5673e1f00b32e05 is starting a new election at term 7
 raft2021/08/13 14:35:19 INFO: d5673e1f00b32e05 became candidate at term 8
@@ -1250,3 +1255,77 @@ https://mvallim.github.io/kubernetes-under-the-hood/documentation/etcd.html
 +------------------+---------+------+----------------------------+-----------------------------+------------+
 | d5673e1f00b32e05 | started | ksn1 | http://192.168.99.101:2380 | https://192.168.99.101:2379 |      false |
 +------------------+---------+------+----------------------------+-----------------------------+------------+
+
+-----------------------------------
+ETCD SERVICE
+-----------------------------------
+
+- File: /etc/environment
+
+THIS_NAME=ksn1
+THIS_IP=192.168.99.101
+DATA_DIR="etcd-data"
+ETCD_IMAGE="k8s.gcr.io/etcd:3.4.13-0"
+CLUSTER_STATE=new
+CLUSTER="ksn1=https://192.168.99/101:2380"
+TOKEN=arbitrary-token
+
+- File: /etc/systemd/system/etcd.service
+
+[Unit]
+Description=etcd
+Documentation=https://github.com/coreos
+Wants=docker.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+IOSchedulingClass=2
+IOSchedulingPriority=0
+EnvironmentFile=/etc/environment
+
+# START ETCD
+ExecStart=/usr/bin/docker run --rm \
+  --net=host \
+  -p 2379:2379 \
+  -p 2380:2380 \
+  --volume=${DATA_DIR}:/etcd-data \
+  --volume=/etc/kubernetes/pki:/etc/kubernetes/pki \
+  --name etcd ${ETCD_IMAGE} \
+  /usr/local/bin/etcd \
+  --data-dir=/etcd-data --name=${THIS_NAME} \
+  --initial-advertise-peer-urls https://${THIS_IP}:2380 \
+  --listen-peer-urls https://0.0.0.0:2380 \
+  --advertise-client-urls https://${THIS_IP}:2379 \
+  --listen-client-urls https://0.0.0.0:2379 \
+  --initial-cluster ${CLUSTER} \
+  --initial-cluster-state ${CLUSTER_STATE} \
+  --initial-cluster-token ${TOKEN} \
+  --cert-file=/etc/kubernetes/pki/etcd-ksn1.pem \
+  --key-file=/etc/kubernetes/pki/etcd-ksn1-key.pem \
+  --trusted-ca-file=/etc/kubernetes/pki/ca.pem \
+  --peer-cert-file=/etc/kubernetes/pki/etcd-peer-ksn1.pem \
+  --peer-key-file=/etc/kubernetes/pki/etcd-peer-ksn1-key.pem \
+  --peer-trusted-ca-file=/etc/kubernetes/pki/ca.pem 
+
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+
+- Start etcd
+# systemctl stop etcd
+# systemctl daemon-reload
+# systemctl start etcd
+
+- VERIFY
+# docker exec etcd /bin/sh -c "export ETCDCTL_API=3 && etcdctl member list --cacert=/etc/kubernetes/pki/ca.pem --cert=/etc/kubernetes/pki/etcd-ksn1.pem --key=/etc/kubernetes/pki/etcd-ksn1-key.pem -w table"
+
++------------------+---------+------+----------------------------+-----------------------------+------------+
+|        ID        | STATUS  | NAME |         PEER ADDRS         |        CLIENT ADDRS         | IS LEARNER |
++------------------+---------+------+----------------------------+-----------------------------+------------+
+| d5673e1f00b32e05 | started | ksn1 | http://192.168.99.101:2380 | https://192.168.99.101:2379 |      false |
++------------------+---------+------+----------------------------+-----------------------------+------------+
+
