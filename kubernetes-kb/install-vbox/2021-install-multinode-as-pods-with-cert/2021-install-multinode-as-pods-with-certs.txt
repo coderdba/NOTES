@@ -483,10 +483,15 @@ Modified steps from https://etcd.io/docs/v3.5/op-guide/container
 --> Kept the steps and commands, changed IP and such
 
 - Configure a Docker volume to store etcd data:
+NOTE: The folder on host/node for this volume will be: /var/lib/docker/volumes/etcd-data
+      And, in the etcd container it will be: /etcd-data 
+            --> could not view it in the container as 'docker exec -ti /bin/sh' took me to the docker container, but it did not have 'ls' command
+
 # docker volume create --name etcd-data
 # docker volume ls
 DRIVER    VOLUME NAME
 local     etcd-data
+
 
 - Run etcd:
 export NODE1=192.168.99.101
@@ -570,4 +575,31 @@ https://etcd.io/docs/v3.5/op-guide/container
             List the cluster member:
             etcdctl --endpoints=http://${NODE1}:2379 member list
 
+----------------------
+ETCD SERVICE
+----------------------
+Reference: https://github.com/coderdba/NOTES/blob/master/kubernetes-kb/install-vbox/WIP-2019-install-as-pods-multinode-no-cert.txt
+
+To start etcd container when host machine starts - create a systemd service.
+
+----
+File: /etc/environment
+----
+# ETCD RELATED ENVIRONMENT 
+
+REGISTRY=quay.io/coreos/etcd
+# available from v3.2.5
+# REGISTRY=gcr.io/etcd-development/etcd
+
+# For each machine
+#ETCD_VERSION=latest
+ETCD_VERSION=3.4.13-0
+
+# Note: TOKEN can be any string
+TOKEN=my-etcd-token
+CLUSTER_STATE=new
+CLUSTER="ksn1=http://192.168.99.101:2380"
+DATA_DIR="etcd-data"
+THIS_NAME=ksn1
+THIS_IP=192.168.99.101
 
