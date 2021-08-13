@@ -95,6 +95,8 @@ ETCD SSL/Certs:
 - https://etcd.io/docs/v3.5/op-guide/security/
 -- https://github.com/etcd-io/etcd/blob/main/hack/tls-setup
 -- https://github.com/coreos/docs/blob/master/os/generate-self-signed-certificates.md
+- Setup: https://medium.com/nirman-tech-blog/setting-up-etcd-cluster-with-tls-authentication-enabled-49c44e4151bb
+- Verify with TLS cert & key: https://mvallim.github.io/kubernetes-under-the-hood/documentation/etcd.html
 
 Cert generation with cfssl:
 - https://rob-blackbourn.medium.com/how-to-use-cfssl-to-create-self-signed-certificates-d55f76ba5781
@@ -1163,7 +1165,84 @@ etcd-peer-ksn1.pem - cert for peer (public)
 etcd-peer-ksn1-key.pem - key for peer (public)
 etcd-peer-ksn1.csr
 
+=====================================================
+ETCD WITH CERTS - SINGLE NODE
+=====================================================
 
-=====================================================
-ETCD WITH CERTS
-=====================================================
+-----------------------------------
+COPY CERTS TO /etc/kubernetes/pki
+-----------------------------------
+Copy all .pem files generated to /etc/kubernetes/pki
+
+-----------------------------------
+START ETCD
+-----------------------------------
+
+Script: etcd-start-docker-run.sh
+
+export THIS_NAME=ksn1
+export THIS_IP=192.168.99.101
+export DATA_DIR="etcd-data"
+export ETCD_IMAGE="k8s.gcr.io/etcd:3.4.13-0"
+CLUSTER_STATE=new
+CLUSTER="ksn1=https://192.168.99/101:2380"
+TOKEN=arbitrary-token
+
+docker run --rm \
+--net=host \
+-p 2379:2379 \
+-p 2380:2380 \
+--volume=${DATA_DIR}:/etcd-data \
+--volume=/etc/kubernetes/pki:/etc/kubernetes/pki \
+--name etcd ${ETCD_IMAGE} \
+/usr/local/bin/etcd \
+--data-dir=/etcd-data --name=${THIS_NAME} \
+--initial-advertise-peer-urls https://${THIS_IP}:2380 \
+--listen-peer-urls https://0.0.0.0:2380 \
+--advertise-client-urls https://${THIS_IP}:2379 \
+--listen-client-urls https://0.0.0.0:2379 \
+--initial-cluster ${CLUSTER} \
+--initial-cluster-state ${CLUSTER_STATE} \
+--initial-cluster-token ${TOKEN} \
+--cert-file=/etc/kubernetes/pki/etcd-ksn1.pem \
+--key-file=/etc/kubernetes/pki/etcd-ksn1-key.pem \
+--trusted-ca-file=/etc/kubernetes/pki/ca.pem \
+--peer-cert-file=/etc/kubernetes/pki/etcd-peer-ksn1.pem \
+--peer-key-file=/etc/kubernetes/pki/etcd-peer-ksn1-key.pem \
+--peer-trusted-ca-file=/etc/kubernetes/pki/ca.pem
+
+
+- MESSAGES
+raft2021/08/13 14:35:19 INFO: d5673e1f00b32e05 is starting a new election at term 7
+raft2021/08/13 14:35:19 INFO: d5673e1f00b32e05 became candidate at term 8
+raft2021/08/13 14:35:19 INFO: d5673e1f00b32e05 received MsgVoteResp from d5673e1f00b32e05 at term 8
+raft2021/08/13 14:35:19 INFO: d5673e1f00b32e05 became leader at term 8
+raft2021/08/13 14:35:19 INFO: raft.node: d5673e1f00b32e05 elected leader d5673e1f00b32e05 at term 8
+2021-08-13 14:35:19.104724 I | etcdserver: published {Name:ksn1 ClientURLs:[https://192.168.99.101:2379]} to cluster a28fae6205c8aca6
+2021-08-13 14:35:19.105171 I | embed: ready to serve client requests
+2021-08-13 14:35:19.106576 I | embed: serving client requests on [::]:2379
+
+- VERIFY
+# docker exec etcd /bin/sh -c "export ETCDCTL_API=3 && /usr/local/bin/etcdctl member list"
+--> This failed with the following messages
+
+-- On screen message from the command
+--endpoints=http://${192.168.99.101}:2379: bad substitution
+{"level":"warn","ts":"2021-08-13T14:35:32.148Z","caller":"clientv3/retry_interceptor.go:62","msg":"retrying of unary invoker failed","target":"endpoint://client-84fac414-159a-4b58-ae6f-62f2716aec99/127.0.0.1:2379","attempt":0,"error":"rpc error: code = DeadlineExceeded desc = latest balancer error: all SubConns are in TransientFailure, latest connection error: connection closed"}
+
+-- Message in Docker run screen
+2021-08-13 14:35:27.148531 I | embed: rejected connection from "127.0.0.1:55728" (error "tls: first record does not look like a TLS handshake", ServerName "")
+2021-08-13 14:35:28.149266 I | embed: rejected connection from "127.0.0.1:55730" (error "tls: first record does not look like a TLS handshake", ServerName "")
+2021-08-13 14:35:29.641143 I | embed: rejected connection from "127.0.0.1:55732" (error "tls: first record does not look like a TLS handshake", ServerName "")
+2021-08-13 14:35:31.728138 I | embed: rejected connection from "127.0.0.1:55734" (error "tls: first record does not look like a TLS handshake", ServerName "")
+
+- VERIFY WITH CERTS
+https://mvallim.github.io/kubernetes-under-the-hood/documentation/etcd.html
+
+# docker exec etcd /bin/sh -c "export ETCDCTL_API=3 && etcdctl member list --cacert=/etc/kubernetes/pki/ca.pem --cert=/etc/kubernetes/pki/etcd-ksn1.pem --key=/etc/kubernetes/pki/etcd-ksn1-key.pem -w table"
+
++------------------+---------+------+----------------------------+-----------------------------+------------+
+|        ID        | STATUS  | NAME |         PEER ADDRS         |        CLIENT ADDRS         | IS LEARNER |
++------------------+---------+------+----------------------------+-----------------------------+------------+
+| d5673e1f00b32e05 | started | ksn1 | http://192.168.99.101:2380 | https://192.168.99.101:2379 |      false |
++------------------+---------+------+----------------------------+-----------------------------+------------+
