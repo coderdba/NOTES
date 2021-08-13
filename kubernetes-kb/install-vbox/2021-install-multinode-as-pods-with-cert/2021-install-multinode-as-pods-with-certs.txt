@@ -955,6 +955,69 @@ kube-proxy.pem - cert (public)
 kube-proxy-key.pem - key (private)
 kube-proxy.csr - cert signing request
 
+--------------------------------------------
+APISERVER CERTIFICATE - for master nodes
+--------------------------------------------
+
+- CSR config file:
+
+File: kube-apiserver-csr.json
+
+{
+  "CN": "kubernetes",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "ABC",
+      "L": "ABC",
+      "O": "Kubernetes",
+      "OU": "Kubernetes",
+      "ST": "ABC"
+    }
+  ]
+}
+
+- Run command
+Command file: kube-apiserver-csr.sh
+
+NOTE: hostname has IP and hostname (not just IP as in the web 'deploying...' example)
+NOTE: 10.96.0.1 is derived from pod-ip cidr - with 1 at the end - this is assigned to apiserver pod by default
+NOTE: 127.0.0.1 is required as well
+
+# Multi Node
+cfssl gencert \
+-ca=ca.pem \
+-ca-key=ca-key.pem \
+-config=ca-config.json \
+-hostname=10.96.0.1,192.168.99.101,k1,192.168.99.102,k2,192.168.99.103,k3,127.0.0.1,kubernetes.default \
+-profile=kubernetes kubernetes-csr.json | \
+cfssljson -bare kube-apiserver
+
+# Single Node
+cfssl gencert \
+-ca=ca.pem \
+-ca-key=ca-key.pem \
+-config=ca-config.json \
+-hostname=10.96.0.1,192.168.99.101,ksn1,127.0.0.1,kubernetes.default \
+-profile=kubernetes kubernetes-csr.json | \
+cfssljson -bare kube-apiserver
+
+- Messages
+2021/08/13 17:50:43 [INFO] generate received request
+2021/08/13 17:50:43 [INFO] received CSR
+2021/08/13 17:50:43 [INFO] generating key: rsa-2048
+2021/08/13 17:50:43 [INFO] encoded CSR
+2021/08/13 17:50:43 [INFO] signed certificate with serial number 723709945155263733370719602601318911309064062039
+
+- Get these cert and key files
+kube-apiserver.pem - cert (public)
+kube-apiserver-key.pem - key (private)
+kube-apiserver.csr - cert signing request
+
+
 
 
 =====================================================
