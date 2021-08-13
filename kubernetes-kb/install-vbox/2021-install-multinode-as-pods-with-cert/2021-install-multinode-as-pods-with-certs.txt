@@ -449,9 +449,12 @@ IP: 192.168.99.101 (pingable from laptop) (set using nmtui command in VM)
 Running a single node etcd
 Use the host IP address when configuring etcd:
 
----------------
-RUN ETCD
----------------
+---------------------------
+RUN ETCD - FOREGROUND
+---------------------------
+NOTE: This makes etcd docker command run in foreground - on command line - NOT AS A SERVICE
+      Keep an additional terminal/tab to do verifications
+      
 Modified steps from https://etcd.io/docs/v3.5/op-guide/container
 --> Kept the steps and commands, changed IP and such
 
@@ -464,52 +467,73 @@ local     etcd-data
 - Run etcd:
 export NODE1=192.168.99.101
 export DATA_DIR="etcd-data"
+export ETCD_IMAGE="k8s.gcr.io/etcd:3.4.13-0"
 
 docker run \
   -p 2379:2379 \
   -p 2380:2380 \
   --volume=${DATA_DIR}:/etcd-data \
-  --name etcd ${REGISTRY}:latest \
+  --name etcd ${ETCD_IMAGE} \
   /usr/local/bin/etcd \
   --data-dir=/etcd-data --name node1 \
   --initial-advertise-peer-urls http://${NODE1}:2380 --listen-peer-urls http://0.0.0.0:2380 \
   --advertise-client-urls http://${NODE1}:2379 --listen-client-urls http://0.0.0.0:2379 \
   --initial-cluster node1=http://${NODE1}:2380
-  
-- List the cluster member:
+
+- MESSAGES (on screen)
+raft2021/08/13 05:44:24 INFO: d5673e1f00b32e05 is starting a new election at term 1
+raft2021/08/13 05:44:24 INFO: d5673e1f00b32e05 became candidate at term 2
+raft2021/08/13 05:44:24 INFO: d5673e1f00b32e05 received MsgVoteResp from d5673e1f00b32e05 at term 2
+raft2021/08/13 05:44:24 INFO: d5673e1f00b32e05 became leader at term 2
+raft2021/08/13 05:44:24 INFO: raft.node: d5673e1f00b32e05 elected leader d5673e1f00b32e05 at term 2
+2021-08-13 05:44:24.339696 I | etcdserver: setting up the initial cluster version to 3.4
+2021-08-13 05:44:24.339748 I | etcdserver: published {Name:node1 ClientURLs:[http://192.168.99.101:2379]} to cluster a28fae6205c8aca6
+2021-08-13 05:44:24.340086 I | embed: ready to serve client requests
+2021-08-13 05:44:24.340859 N | embed: serving insecure client requests on [::]:2379, this is strongly discouraged!
+2021-08-13 05:44:24.341438 N | etcdserver/membership: set the initial cluster version to 3.4
+2021-08-13 05:44:24.341481 I | etcdserver/api: enabled capabilities for version 3.4
+
+- VERIFY
+# docker ps -a
+CONTAINER ID   IMAGE                      COMMAND                  CREATED          STATUS          PORTS                                                                               NAMES
+fa46a547646c   k8s.gcr.io/etcd:3.4.13-0   "/usr/local/bin/etcd…"   51 seconds ago   Up 49 seconds   4001/tcp, 0.0.0.0:2379-2380->2379-2380/tcp, :::2379-2380->2379-2380/tcp, 7001/tcp   etcd
+
+- VERIFY - List the cluster member:
 etcdctl --endpoints=http://${NODE1}:2379 member list
+etcdctl --endpoints=http://${192.168.99.101}:2379 member list
 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 - REFERENCE - STEPS AS IN DOC
-
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 https://etcd.io/docs/v3.5/op-guide/container
 
-Running a single node etcd
-Use the host IP address when configuring etcd:
+            Running a single node etcd
+            Use the host IP address when configuring etcd:
 
-export NODE1=192.168.1.21
-Configure a Docker volume to store etcd data:
+            export NODE1=192.168.1.21
+            Configure a Docker volume to store etcd data:
 
-docker volume create --name etcd-data
-export DATA_DIR="etcd-data"
+            docker volume create --name etcd-data
+            export DATA_DIR="etcd-data"
 
-Run the latest version of etcd:
+            Run the latest version of etcd:
 
-REGISTRY=quay.io/coreos/etcd
-# available from v3.2.5
-REGISTRY=gcr.io/etcd-development/etcd
+            REGISTRY=quay.io/coreos/etcd
+            # available from v3.2.5
+            REGISTRY=gcr.io/etcd-development/etcd
 
-docker run \
-  -p 2379:2379 \
-  -p 2380:2380 \
-  --volume=${DATA_DIR}:/etcd-data \
-  --name etcd ${REGISTRY}:latest \
-  /usr/local/bin/etcd \
-  --data-dir=/etcd-data --name node1 \
-  --initial-advertise-peer-urls http://${NODE1}:2380 --listen-peer-urls http://0.0.0.0:2380 \
-  --advertise-client-urls http://${NODE1}:2379 --listen-client-urls http://0.0.0.0:2379 \
-  --initial-cluster node1=http://${NODE1}:2380
-List the cluster member:
+            docker run \
+              -p 2379:2379 \
+              -p 2380:2380 \
+              --volume=${DATA_DIR}:/etcd-data \
+              --name etcd ${REGISTRY}:latest \
+              /usr/local/bin/etcd \
+              --data-dir=/etcd-data --name node1 \
+              --initial-advertise-peer-urls http://${NODE1}:2380 --listen-peer-urls http://0.0.0.0:2380 \
+              --advertise-client-urls http://${NODE1}:2379 --listen-client-urls http://0.0.0.0:2379 \
+              --initial-cluster node1=http://${NODE1}:2380
 
-etcdctl --endpoints=http://${NODE1}:2379 member list
+            List the cluster member:
+            etcdctl --endpoints=http://${NODE1}:2379 member list
 
 
