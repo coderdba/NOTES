@@ -1018,6 +1018,150 @@ kube-apiserver-key.pem - key (private)
 kube-apiserver.csr - cert signing request
 
 
+-------------------------------------
+ETCD CERTIFICATES
+-------------------------------------
+Based on: https://github.com/etcd-io/etcd/blob/main/hack/tls-setup
+NOTE: This was not there in https://blog.inkubate.io/deploy-kubernetes-1-9-from-scratch-on-vmware-vsphere/
+      - in that, they used kubernetes.pem and kubernetes-key.pem for both apiserver and etcd client and peer
+      
+- Config file - single node
+File: etcd-singlenode-csr.json
+{
+  "CN": "etcd",
+  "hosts": [
+    "localhost",
+    "127.0.0.1",
+    "192.168.99.101"
+  ],
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "O": "etcd",
+      "OU": "etcd cluster",
+      "L": "ABC"
+    }
+  ]
+}
+
+- Config file - multinode
+etcd-multinode-csr.json
+{
+  "CN": "etcd",
+  "hosts": [
+    "localhost",
+    "127.0.0.1",
+    "192.168.99.201",
+    "192.168.99.202",
+    "192.168.99.203"
+  ],
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "O": "etcd",
+      "OU": "etcd cluster",
+      "L": "ABC"
+    }
+  ]
+}
+
+- Run command to create certs
+Command file: etcd-gen.sh
+
+# NOTE: Uncomment and modify as needed - for single and multi nodes
+# NOTE: Modify hostname-suffix ksn1, k1, k2, k3 as needed
+# NOTE: Also, probably we dont really need k1,k2,k3 - maybe one file-pair can be used by all etcd instances
+
+#================
+# Single Node
+#================
+# Client certificates
+cfssl gencert \
+-ca ca.pem -ca-key ca-key.pem \
+-config ca-config.json -profile=kubernetes etcd-singlenode-csr.json | \
+cfssljson -bare etcd-ksn1
+
+# Peer certificates
+cfssl gencert \
+-ca ca.pem -ca-key ca-key.pem \
+-config ca-config.json -profile=kubernetes etcd-singlenode-csr.json | \
+cfssljson -bare etcd-peer-ksn1
+
+
+#================
+# Multi Node
+#================
+# Client certificates
+#cfssl gencert \
+#-ca ca.pem -ca-key ca-key.pem \
+#-config ca-config.json -profile=kubernetes etcd-multinode-csr.json | \
+#cfssljson -bare etcd-k1
+
+# Peer certificates
+#cfssl gencert \
+#-ca ca.pem -ca-key ca-key.pem \
+#-config ca-config.json -profile=kubernetes etcd-multinode-csr.json | \
+#cfssljson -bare etcd-peer-k1
+
+# Client certificates
+#cfssl gencert \
+#-ca ca.pem -ca-key ca-key.pem \
+#-config ca-config.json -profile=kubernetes etcd-multinode-csr.json | \
+#cfssljson -bare etcd-k2
+
+# Peer certificates
+#cfssl gencert \
+#-ca ca.pem -ca-key ca-key.pem \
+#-config ca-config.json etcd-multinode-csr.json | \
+#cfssljson -bare etcd-peer-k2
+
+# Client certificates
+#cfssl gencert \
+#-ca ca.pem -ca-key ca-key.pem \
+#-config ca-config.json etcd-multinode-csr.json | \
+#cfssljson -bare etcd-k3
+
+# Peer certificates
+#cfssl gencert \
+#-ca ca.pem -ca-key ca-key.pem \
+#-config ca-config.json etcd-multinode-csr.json | \
+#cfssljson -bare etcd-peer-k3
+
+- Messages
+2021/08/13 18:12:45 [INFO] generate received request
+2021/08/13 18:12:45 [INFO] received CSR
+2021/08/13 18:12:45 [INFO] generating key: rsa-2048
+2021/08/13 18:12:46 [INFO] encoded CSR
+2021/08/13 18:12:46 [INFO] signed certificate with serial number 273897464124933817446336638248002839394198199442
+2021/08/13 18:12:46 [WARNING] This certificate lacks a "hosts" field. This makes it unsuitable for
+websites. For more information see the Baseline Requirements for the Issuance and Management
+of Publicly-Trusted Certificates, v.1.1.6, from the CA/Browser Forum (https://cabforum.org);
+specifically, section 10.2.3 ("Information Requirements").
+2021/08/13 18:12:46 [INFO] generate received request
+2021/08/13 18:12:46 [INFO] received CSR
+2021/08/13 18:12:46 [INFO] generating key: rsa-2048
+2021/08/13 18:12:46 [INFO] encoded CSR
+2021/08/13 18:12:46 [INFO] signed certificate with serial number 588100363056942112025633808003647473103553087425
+2021/08/13 18:12:46 [WARNING] This certificate lacks a "hosts" field. This makes it unsuitable for
+websites. For more information see the Baseline Requirements for the Issuance and Management
+of Publicly-Trusted Certificates, v.1.1.6, from the CA/Browser Forum (https://cabforum.org);
+specifically, section 10.2.3 ("Information Requirements").
+
+
+- These files get created (for single node)
+etcd-ksn1.pem - cert for client (public)
+etcd-ksn1-key.pem - key for client (private)
+etcd-ksn1.csr
+
+etcd-peer-ksn1.pem - cert for peer (public)
+etcd-peer-ksn1-key.pem - key for peer (public)
+etcd-peer-ksn1.csr
 
 
 =====================================================
