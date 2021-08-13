@@ -171,7 +171,7 @@ Memory: 2048 MB (2GB)
 Vbox network: vboxnet0
 Adapter type: host-only
 Adapter name in VM: enp0s8
-IP: 192.168.88.100 (pingable from laptop) (set using nmtui command in VM)
+IP: 192.168.99.100 (pingable from laptop) (set using nmtui command in VM)
 
 ----------------------------
 COPY SSH PUBLIC KEY TO VM
@@ -428,3 +428,88 @@ sudo sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
      
 - ENABLE KUBELET SERVICE
 sudo systemctl enable --now kubelet
+
+============================================================================
+ETCD - TRY JUST ETCD - WITH NO CERTIFICATES - to learn, and verify vm setup
+============================================================================
+
+https://etcd.io/docs/v3.5/op-guide/container
+  
+---------------
+PREP VM
+---------------
+Clone the model machine
+VM hostname: ksn1 (sn for single-node)
+Memory: 2048 MB (2GB)
+Vbox network: vboxnet0
+Adapter type: host-only
+Adapter name in VM: enp0s8
+IP: 192.168.99.101 (pingable from laptop) (set using nmtui command in VM)
+
+Running a single node etcd
+Use the host IP address when configuring etcd:
+
+---------------
+RUN ETCD
+---------------
+Modified steps from https://etcd.io/docs/v3.5/op-guide/container
+--> Kept the steps and commands, changed IP and such
+
+- Configure a Docker volume to store etcd data:
+# docker volume create --name etcd-data
+# docker volume ls
+DRIVER    VOLUME NAME
+local     etcd-data
+
+- Run etcd:
+export NODE1=192.168.99.101
+export DATA_DIR="etcd-data"
+
+docker run \
+  -p 2379:2379 \
+  -p 2380:2380 \
+  --volume=${DATA_DIR}:/etcd-data \
+  --name etcd ${REGISTRY}:latest \
+  /usr/local/bin/etcd \
+  --data-dir=/etcd-data --name node1 \
+  --initial-advertise-peer-urls http://${NODE1}:2380 --listen-peer-urls http://0.0.0.0:2380 \
+  --advertise-client-urls http://${NODE1}:2379 --listen-client-urls http://0.0.0.0:2379 \
+  --initial-cluster node1=http://${NODE1}:2380
+  
+- List the cluster member:
+etcdctl --endpoints=http://${NODE1}:2379 member list
+
+- REFERENCE - STEPS AS IN DOC
+
+https://etcd.io/docs/v3.5/op-guide/container
+
+Running a single node etcd
+Use the host IP address when configuring etcd:
+
+export NODE1=192.168.1.21
+Configure a Docker volume to store etcd data:
+
+docker volume create --name etcd-data
+export DATA_DIR="etcd-data"
+
+Run the latest version of etcd:
+
+REGISTRY=quay.io/coreos/etcd
+# available from v3.2.5
+REGISTRY=gcr.io/etcd-development/etcd
+
+docker run \
+  -p 2379:2379 \
+  -p 2380:2380 \
+  --volume=${DATA_DIR}:/etcd-data \
+  --name etcd ${REGISTRY}:latest \
+  /usr/local/bin/etcd \
+  --data-dir=/etcd-data --name node1 \
+  --initial-advertise-peer-urls http://${NODE1}:2380 --listen-peer-urls http://0.0.0.0:2380 \
+  --advertise-client-urls http://${NODE1}:2379 --listen-client-urls http://0.0.0.0:2379 \
+  --initial-cluster node1=http://${NODE1}:2380
+List the cluster member:
+
+etcdctl --endpoints=http://${NODE1}:2379 member list
+
+
