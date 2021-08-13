@@ -22,6 +22,8 @@ Earlier attempt:
 
 Cert generation scripts:
 - Own SCRIPTS: https://github.com/coderdba-coding-org/kubernetes/tree/master/2020-multinode-as-pods-with-certs-v15.5/certs
+- Own SCRIPTS(older): https://github.com/coderdba-coding-org/code1/tree/master/kubernetes/kube-vbox-ans-singlenode-15.5/roles/certs-gen
+
 - Cert generation With a Makefile: https://github.com/etcd-io/etcd/blob/main/hack/tls-setup/
 - Cert generation Manually: https://blog.inkubate.io/deploy-kubernetes-1-9-from-scratch-on-vmware-vsphere/
 - Own Doc: https://github.com/coderdba-coding-org/kubernetes/tree/master/2020-multinode-as-pods-with-certs-v15.5/certs
@@ -673,13 +675,18 @@ GENERATE CERTIFICATES
 =====================================================
 Cert generation With a Makefile: https://github.com/etcd-io/etcd/blob/main/hack/tls-setup/
 Cert generation Manually: https://blog.inkubate.io/deploy-kubernetes-1-9-from-scratch-on-vmware-vsphere/
+
 Own Doc: https://github.com/coderdba/NOTES/blob/master/kubernetes-kb/install-vbox/WIP-2019-single-node-pods-with-certs.txt
-
+--> Much of the stuff in this section is based on this repo
 Own SCRIPTS: https://github.com/coderdba-coding-org/kubernetes/tree/master/2020-multinode-as-pods-with-certs-v15.5/certs
+--> The stuff in this section is based on this repo
+
+Own SCRIPTS(older): https://github.com/coderdba-coding-org/code1/tree/master/kubernetes/kube-vbox-ans-singlenode-15.5/roles/certs-gen
 
 -----------------
-CREATE CA CERT
+CA CERTIFICATE
 -----------------
+This will produce certificate-authority certificate - to use while generating other certificates
 
 - Create the certificate authority configuration file
 ca-config.json file:
@@ -733,8 +740,61 @@ Run command: (ca-gen.sh)
 
 - It will produce these:
 ca.csr - file containing the csr (certificate signing request)
-ca.pem - ca public certificate
-ca-key.pem - ca private key
+ca.pem - ca certificate (public)
+ca-key.pem - ca key (private)
+
+--------------------------
+ADMIN-CLIENT CERTIFICATE
+--------------------------
+This certificate will be used to connect to the Kubernetes cluster as an administrator.
+NOTE:  No IP/hostname needed for this
+
+- Create the admin-client csr config file
+File: admin-csr.json
+{
+  "CN": "admin",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "ABC",
+      "L": "ABC",
+      "O": "system:masters",
+      "OU": "Kubernetes",
+      "ST": "ABC"
+    }
+  ]
+}
+
+- Run the command to generate the admin-client certs
+Script file: admin-gen.sh
+
+cfssl gencert \
+-ca=ca.pem \
+-ca-key=ca-key.pem \
+-config=ca-config.json \
+-profile=kubernetes admin-csr.json | \
+cfssljson -bare admin
+
+# ./admin-gen.sh
+2021/08/13 16:35:16 [INFO] generate received request
+2021/08/13 16:35:16 [INFO] received CSR
+2021/08/13 16:35:16 [INFO] generating key: rsa-2048
+2021/08/13 16:35:17 [INFO] encoded CSR
+2021/08/13 16:35:17 [INFO] signed certificate with serial number 727036575979191653126949921137901971843610903400
+2021/08/13 16:35:17 [WARNING] This certificate lacks a "hosts" field. This makes it unsuitable for
+websites. For more information see the Baseline Requirements for the Issuance and Management
+of Publicly-Trusted Certificates, v.1.1.6, from the CA/Browser Forum (https://cabforum.org);
+specifically, section 10.2.3 ("Information Requirements").
+
+- It will produce these files
+admin.csr - file containing the csr (certificate signing request)
+admin.pem - cert (public)
+admin-key.pem - key (private)
+
+
 
 =====================================================
 ETCD WITH CERTS
