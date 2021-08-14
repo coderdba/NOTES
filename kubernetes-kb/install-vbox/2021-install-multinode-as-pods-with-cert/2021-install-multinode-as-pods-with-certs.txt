@@ -1609,7 +1609,7 @@ spec:
     - kube-controller-manager
     - --allocate-node-cidrs=true
     - --bind-address=127.0.0.1
-    - --master=http://127.0.0.1:8080
+    - --master=http://127.0.0.1:8080 --> This could have to be https://192.168.99.101:6443
     - --leader-elect=true
     - --client-ca-file=/etc/kubernetes/pki/ca.pem
     - --cluster-cidr=172.16.0.0/16
@@ -1706,7 +1706,7 @@ spec:
   - command:
     - kube-scheduler
     - --bind-address=127.0.0.1
-    - --master=http://127.0.0.1:8080
+    - --master=http://127.0.0.1:8080 --> This could have to be https://192.168.99.101:6443
     - --leader-elect=true
     - --port=0
     image: k8s.gcr.io/kube-scheduler:v1.21.2
@@ -1792,4 +1792,101 @@ cp /etc/kubernetes/kubelet-kubeconfig ~/.kube/config
 CURRENT   NAME      CLUSTER      AUTHINFO                   NAMESPACE
 *         default   kubernetes   system:node:192.168.60.102
 
+----------------------
+KUBELET CONFIG FILES
+----------------------
+
+
+- File: /etc/kubernetes/kubelet.conf
+NOTE: Taken from kubeadm init machine and modified key and cert files and certificate-authority-data
+NOTE: In certificate-authority-data copy the stuff from 192.168.99.101.kubeconfig under the same head 'certificate-authority-data'
+
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data:  LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUR4akNDQXE2Z0F3SUJBZ0lVVlp4SVJST01hSzRvWjVHbFJOLy9TbUdyRjR3d0RRWUpLb1pJaHZjTkFRRUwKQlFBd2FURU1NQW9HQTFVRUJoTURRVUpETVF3d0NnWURWUVFJRXdOQlFrTXhEREFLQmdOVkJBY1RBMEZDUXpFVApNQkVH
+...
+...
+owV2hoRDV1R0dXUUFBNVdBNGttZUwyZnBFMFRhaUZ5VXdNNzk1a1RoRmdrcVQrRFR4dlB5ZVFlVzQ4azRoZEUyClVKeHVCL3BwamEvNHg1NjVrdUFBRFdrbFNmOHp0UkVHUXJwQ1pXMU1DMXoyODFMZUVBNDRSR3p5Wm4rZndxLzQKSm5pVkRnV2k0M2xUdnl4NzNqMyt2amZzK0cvNTFXNmUrLytSQ0l4K2RsOUQvN1lWR0lVamFKeXllMzdrVVRSUwpjR2NiMnl0cVQ3ZTFrQT09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+    server: https://192.168.99.101:6443
+  name: kubernetes
+contexts:
+- context:
+    cluster: kubernetes
+    user: system:node:ksn1
+  name: system:node:ksn1@kubernetes
+current-context: system:node:ksn1@kubernetes
+kind: Config
+preferences: {}
+users:
+- name: system:node:ks1
+  user:
+    client-certificate: /etc/kubernetes/pki/kubelet-ksn1.pem
+    client-key: etc/kubernetes/pki/kubelet-ksn1-key.pem
+
+
+- File: /usr/lib/systemd/system/kubelet.d/10-kubeadm.conf
+# Note: This dropin only works with kubeadm and kubelet v1.11+
+
+[Service]
+#Environment="KUBELET_KUBECONFIG_ARGS=--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf"
+Environment="KUBELET_KUBECONFIG_ARGS=--kubeconfig=/etc/kubernetes/kubelet.conf"
+Environment="KUBELET_CONFIG_ARGS=--config=/var/lib/kubelet/config.yaml --pod-manifest-path=/etc/kubernetes/manifests"
+# This is a file that "kubeadm init" and "kubeadm join" generates at runtime, populating the KUBELET_KUBEADM_ARGS variable dynamically
+#EnvironmentFile=-/var/lib/kubelet/kubeadm-flags.env
+# This is a file that the user can use for overrides of the kubelet args as a last resort. Preferably, the user should use
+# the .NodeRegistration.KubeletExtraArgs object in the configuration files instead. KUBELET_EXTRA_ARGS should be sourced from this file.
+EnvironmentFile=-/etc/sysconfig/kubelet
+ExecStart=
+ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS
+
+
+- File: /var/lib/kubelet/config.yaml
+NOTE: Taken from kubeadm init machine and modified clientCAFile
+
+apiVersion: kubelet.config.k8s.io/v1beta1
+authentication:
+  anonymous:
+    enabled: false
+  webhook:
+    cacheTTL: 0s
+    enabled: true
+  x509:
+    clientCAFile: /etc/kubernetes/pki/ca.pem
+authorization:
+  mode: Webhook
+  webhook:
+    cacheAuthorizedTTL: 0s
+    cacheUnauthorizedTTL: 0s
+cgroupDriver: cgroupfs
+clusterDNS:
+- 10.96.0.10
+clusterDomain: cluster.local
+cpuManagerReconcilePeriod: 0s
+evictionPressureTransitionPeriod: 0s
+fileCheckFrequency: 0s
+healthzBindAddress: 127.0.0.1
+healthzPort: 10248
+httpCheckFrequency: 0s
+imageMinimumGCAge: 0s
+kind: KubeletConfiguration
+logging: {}
+nodeStatusReportFrequency: 0s
+nodeStatusUpdateFrequency: 0s
+rotateCertificates: true
+runtimeRequestTimeout: 0s
+shutdownGracePeriod: 0s
+shutdownGracePeriodCriticalPods: 0s
+staticPodPath: /etc/kubernetes/manifests
+streamingConnectionIdleTimeout: 0s
+syncFrequency: 0s
+volumeStatsAggPeriod: 0s
+
+------------------
+KUBELET ERRORS
+------------------
+Aug 15 01:01:33 ksn1 kubelet[6590]: E0815 01:01:33.100944    6590 reflector.go:138] k8s.io/client-go/informers/factory.go:134: Failed to watch *v1.CSIDriver: failed to list *v1.CSIDriver: csidrivers.storage.k8s.io is forbidden: User "system:anonymous" cannot list resource "csidrivers" in API group "storage.k8s.io" at the cluster scope
+Aug 15 01:01:33 ksn1 kubelet[6590]: E0815 01:01:33.157639    6590 kubelet.go:2291] "Error getting node" err="node \"ksn1\" not found"
+Aug 15 01:01:33 ksn1 kubelet[6590]: E0815 01:01:33.258389    6590 kubelet.go:2291] "Error getting node" err="node \"ksn1\" not found"
+Aug 15 01:01:33 ksn1 kubelet[6590]: E0815 01:01:33.359550    6590 kubelet.go:2291] "Error getting node" err="node \"ksn1\" not found"
 
