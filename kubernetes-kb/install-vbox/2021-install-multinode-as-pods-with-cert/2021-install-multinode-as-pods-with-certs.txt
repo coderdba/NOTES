@@ -1766,11 +1766,16 @@ kubectl config set-cluster kubernetes \
 --kubeconfig=192.168.99.101.kubeconfig
 
 # Add the credentials for the node IP
-
 kubectl config set-credentials system:node:192.168.99.101 \
 --client-certificate=certs/kubelet-ksn1.pem \
 --client-key=certs/kubelet-ksn1-key.pem \
 --embed-certs=true \
+--kubeconfig=192.168.99.101.kubeconfig
+
+# Add the context for the node IP
+kubectl config set-context default \
+--cluster=kubernetes \
+--user=system:node:192.168.99.101 \
 --kubeconfig=192.168.99.101.kubeconfig
 
 # Use the context for the node
@@ -1791,6 +1796,11 @@ cp /etc/kubernetes/kubelet-kubeconfig ~/.kube/config
 # kubectl config get-contexts 
 CURRENT   NAME      CLUSTER      AUTHINFO                   NAMESPACE
 *         default   kubernetes   system:node:192.168.60.102
+
+--> if the above command does not work
+# kubectl config get-contexts --kubeconfig=./192.168.99.101.kubeconfig
+CURRENT   NAME      CLUSTER      AUTHINFO                     NAMESPACE
+*         default   kubernetes   system:node:192.168.99.101
 
 ----------------------
 KUBELET CONFIG FILES
