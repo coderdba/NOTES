@@ -1463,7 +1463,7 @@ volumeStatsAggPeriod: 0s
 
 
 ------------------------------------
-KUBE-APISERVER CONFIG FILE
+KUBE-APISERVER MANIFEST FILE
 ------------------------------------
 
 NOTE: "SecurityContextDeny" was removed from the following line - as it was disallowing kube-dns pod from creating
@@ -1478,16 +1478,6 @@ Error: [service-account-issuer is a required flag, --service-account-signing-key
     - --service-account-issuer=https://kubernetes.default.svc.cluster.local
     - --service-account-signing-key-file=/etc/kubernetes/pki/ca-key.pem
 
-GOT ERROR (upon starting kubelet - with docker logs <container id> of apiserver):
-Flag --insecure-port has been deprecated, This flag has no effect now and will be removed in v1.24.
-I0814 15:05:22.806425       1 server.go:629] external host was not specified, using 192.168.99.101
-I0814 15:05:22.806812       1 server.go:181] Version: v1.21.2
-I0814 15:05:23.105839       1 plugins.go:158] Loaded 12 mutating admission controller(s) successfully in the following order: NamespaceLifecycle,LimitRanger,ServiceAccount,NodeRestriction,TaintNodesByCondition,Priority,DefaultTolerationSeconds,DefaultStorageClass,StorageObjectInUseProtection,RuntimeClass,DefaultIngressClass,MutatingAdmissionWebhook.
-I0814 15:05:23.105853       1 plugins.go:161] Loaded 10 validating admission controller(s) successfully in the following order: LimitRanger,ServiceAccount,Priority,PersistentVolumeClaimResize,RuntimeClass,CertificateApproval,CertificateSigning,CertificateSubjectRestriction,ValidatingAdmissionWebhook,ResourceQuota.
-I0814 15:05:23.106562       1 plugins.go:158] Loaded 12 mutating admission controller(s) successfully in the following order: NamespaceLifecycle,LimitRanger,ServiceAccount,NodeRestriction,TaintNodesByCondition,Priority,DefaultTolerationSeconds,DefaultStorageClass,StorageObjectInUseProtection,RuntimeClass,DefaultIngressClass,MutatingAdmissionWebhook.
-I0814 15:05:23.106569       1 plugins.go:161] Loaded 10 validating admission controller(s) successfully in the following order: LimitRanger,ServiceAccount,Priority,PersistentVolumeClaimResize,RuntimeClass,CertificateApproval,CertificateSigning,CertificateSubjectRestriction,ValidatingAdmissionWebhook,ResourceQuota.
-Error: open /etc/kubernetes/pki/etcd.pem: no such file or directory
-
 
 File: /etc/kubernetes/manifests/kube-apiserver.yaml
 
@@ -1495,44 +1485,303 @@ apiVersion: v1
 kind: Pod
 metadata:
   annotations:
-    scheduler.alpha.kubernetes.io/critical-pod: ""
+    kubeadm.kubernetes.io/kube-apiserver.advertise-address.endpoint: 192.168.99.101:6443
+  creationTimestamp: null
   labels:
     component: kube-apiserver
     tier: control-plane
   name: kube-apiserver
   namespace: kube-system
 spec:
-  hostNetwork: true
   containers:
   - command:
     - kube-apiserver
+    - --advertise-address=192.168.99.101
     - --allow-privileged=true
-    - --advertise-address=192.168.60.102
-    - --insecure-bind-address=127.0.0.1
-    - --bind-address=0.0.0.0
-    - --etcd-servers=https://192.168.60.102:2379
-    - --service-cluster-ip-range=10.96.0.0/12
-    - --admission-control=NamespaceLifecycle,LimitRanger,ServiceAccount,ResourceQuota
+    - --authorization-mode=Node,RBAC
     - --client-ca-file=/etc/kubernetes/pki/ca.pem
-    - --etcd-cafile=/etc/kubernetes/pki/ca.pem 
-    - --etcd-certfile=/etc/kubernetes/pki/kubernetes.pem 
-    - --etcd-keyfile=/etc/kubernetes/pki/kubernetes-key.pem 
-    - --kubelet-certificate-authority=/etc/kubernetes/pki/ca.pem 
-    - --kubelet-client-certificate=/etc/kubernetes/pki/kubernetes.pem 
-    - --kubelet-client-key=/etc/kubernetes/pki/kubernetes-key.pem 
-    - --service-account-key-file=/etc/kubernetes/pki/ca-key.pem 
+    - --enable-admission-plugins=NodeRestriction
+    - --enable-bootstrap-token-auth=true
+    - --etcd-cafile=/etc/kubernetes/pki/ca.pem
+    - --etcd-certfile=/etc/kubernetes/pki/etcd-ksn1.pem
+    - --etcd-keyfile=/etc/kubernetes/pki/etcd-ksn1-key.pem
+    - --etcd-servers=https://127.0.0.1:2379
+    - --insecure-port=0
+    - --kubelet-client-certificate=/etc/kubernetes/pki/kubelet-ksn1.pem
+    - --kubelet-client-key=/etc/kubernetes/pki/kubelet-ksn1-key.pem
+    - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
+    - --proxy-client-cert-file=/etc/kubernetes/pki/kube-proxy.pem
+    - --proxy-client-key-file=/etc/kubernetes/pki/kube-proxy-key.pem
+    - --secure-port=6443
+    - --service-cluster-ip-range=10.96.0.0/12
+    - --service-account-key-file=/etc/kubernetes/pki/ca-key.pem
     - --service-account-issuer=https://kubernetes.default.svc.cluster.local
     - --service-account-signing-key-file=/etc/kubernetes/pki/ca-key.pem
-    - --tls-cert-file=/etc/kubernetes/pki/kubernetes.pem 
-    - --tls-private-key-file=/etc/kubernetes/pki/kubernetes-key.pem
-    - --secure-port=6443
-    image: gcr.io/google_containers/kube-apiserver-amd64:v1.12.8
+    - --tls-cert-file=/etc/kubernetes/pki/kube-apiserver.pem
+    - --tls-private-key-file=/etc/kubernetes/pki/kube-apiserver-key.pem
+    image: k8s.gcr.io/kube-apiserver:v1.21.2
+    imagePullPolicy: IfNotPresent
+    livenessProbe:
+      failureThreshold: 8
+      httpGet:
+        host: 192.168.99.101
+        path: /livez
+        port: 6443
+        scheme: HTTPS
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 15
     name: kube-apiserver
+    readinessProbe:
+      failureThreshold: 3
+      httpGet:
+        host: 192.168.99.101
+        path: /readyz
+        port: 6443
+        scheme: HTTPS
+      periodSeconds: 1
+      timeoutSeconds: 15
+    resources:
+      requests:
+        cpu: 250m
+    startupProbe:
+      failureThreshold: 24
+      httpGet:
+        host: 192.168.99.101
+        path: /livez
+        port: 6443
+        scheme: HTTPS
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 15
     volumeMounts:
+    - mountPath: /etc/ssl/certs
+      name: ca-certs
+      readOnly: true
+    - mountPath: /etc/pki
+      name: etc-pki
+      readOnly: true
     - mountPath: /etc/kubernetes/pki
       name: k8s-certs
+      readOnly: true
+  hostNetwork: true
+  priorityClassName: system-node-critical
   volumes:
   - hostPath:
+      path: /etc/ssl/certs
+      type: DirectoryOrCreate
+    name: ca-certs
+  - hostPath:
+      path: /etc/pki
+      type: DirectoryOrCreate
+    name: etc-pki
+  - hostPath:
       path: /etc/kubernetes/pki
-      type: Directory
+      type: DirectoryOrCreate
     name: k8s-certs
+status: {}
+
+----------------------------------------
+KUBE-CONTROLLER-MANAGER MANIFEST FILE
+----------------------------------------
+File: /etc/kubernetes/manifests/kube-controller-manager.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    component: kube-controller-manager
+    tier: control-plane
+  name: kube-controller-manager
+  namespace: kube-system
+spec:
+  containers:
+  - command:
+    - kube-controller-manager
+    - --allocate-node-cidrs=true
+    - --bind-address=127.0.0.1
+    - --master=http://127.0.0.1:8080
+    - --leader-elect=true
+    - --client-ca-file=/etc/kubernetes/pki/ca.pem
+    - --cluster-cidr=172.16.0.0/16
+    - --cluster-name=kubernetes
+    - --cluster-signing-cert-file=/etc/kubernetes/pki/ca.pem
+    - --cluster-signing-key-file=/etc/kubernetes/pki/ca-key.pem
+    - --controllers=*,bootstrapsigner,tokencleaner
+    - --port=0
+    - --root-ca-file=/etc/kubernetes/pki/ca.pem
+    - --service-cluster-ip-range=10.96.0.0/12
+    image: k8s.gcr.io/kube-controller-manager:v1.21.2
+    imagePullPolicy: IfNotPresent
+    livenessProbe:
+      failureThreshold: 8
+      httpGet:
+        host: 127.0.0.1
+        path: /healthz
+        port: 10257
+        scheme: HTTPS
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 15
+    name: kube-controller-manager
+    resources:
+      requests:
+        cpu: 200m
+    startupProbe:
+      failureThreshold: 24
+      httpGet:
+        host: 127.0.0.1
+        path: /healthz
+        port: 10257
+        scheme: HTTPS
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 15
+    volumeMounts:
+    - mountPath: /etc/ssl/certs
+      name: ca-certs
+      readOnly: true
+    - mountPath: /etc/pki
+      name: etc-pki
+      readOnly: true
+    - mountPath: /usr/libexec/kubernetes/kubelet-plugins/volume/exec
+      name: flexvolume-dir
+    - mountPath: /etc/kubernetes/pki
+      name: k8s-certs
+      readOnly: true
+    - mountPath: /etc/kubernetes/controller-manager.conf
+      name: kubeconfig
+      readOnly: true
+  hostNetwork: true
+  priorityClassName: system-node-critical
+  volumes:
+  - hostPath:
+      path: /etc/ssl/certs
+      type: DirectoryOrCreate
+    name: ca-certs
+  - hostPath:
+      path: /etc/pki
+      type: DirectoryOrCreate
+    name: etc-pki
+  - hostPath:
+      path: /usr/libexec/kubernetes/kubelet-plugins/volume/exec
+      type: DirectoryOrCreate
+    name: flexvolume-dir
+  - hostPath:
+      path: /etc/kubernetes/pki
+      type: DirectoryOrCreate
+    name: k8s-certs
+  - hostPath:
+      path: /etc/kubernetes/controller-manager.conf
+      type: FileOrCreate
+    name: kubeconfig
+status: {}
+
+-----------------------------------
+KUBE-SCHEDULER MANIFEST FILE
+-----------------------------------
+    
+File: /etc/kubernetes/manifests/kube-scheduler.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    component: kube-scheduler
+    tier: control-plane
+  name: kube-scheduler
+  namespace: kube-system
+spec:
+  containers:
+  - command:
+    - kube-scheduler
+    - --bind-address=127.0.0.1
+    - --master=http://127.0.0.1:8080
+    - --leader-elect=true
+    - --port=0
+    image: k8s.gcr.io/kube-scheduler:v1.21.2
+    imagePullPolicy: IfNotPresent
+    livenessProbe:
+      failureThreshold: 8
+      httpGet:
+        host: 127.0.0.1
+        path: /healthz
+        port: 10259
+        scheme: HTTPS
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 15
+    name: kube-scheduler
+    resources:
+      requests:
+        cpu: 100m
+    startupProbe:
+      failureThreshold: 24
+      httpGet:
+        host: 127.0.0.1
+        path: /healthz
+        port: 10259
+        scheme: HTTPS
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 15
+    volumeMounts:
+    - mountPath: /etc/kubernetes/scheduler.conf
+      name: kubeconfig
+      readOnly: true
+  hostNetwork: true
+  priorityClassName: system-node-critical
+  volumes:
+  - hostPath:
+      path: /etc/kubernetes/scheduler.conf
+      type: FileOrCreate
+    name: kubeconfig
+status: {}
+
+    
+-----------------------------------
+KUBECONFIG AND SECURITY FOR KUBELET
+-----------------------------------
+Reference: https://github.com/coderdba/NOTES/blob/master/kubernetes-kb/install-vbox/WIP-2019-single-node-pods-with-certs.txt
+
+- CREATE KUBECONFIG
+Script: kubeconfig-kubelet-gen.sh
+
+# CREATE A kubeconfig FILE FOR KUBELET - for the node
+# Add the cluster information for the node IP
+kubectl config set-cluster kubernetes \
+--certificate-authority=certs/ca.pem \
+--embed-certs=true \
+--server=https://192.168.99.101:6443 \
+--kubeconfig=192.168.99.101.kubeconfig
+
+# Add the credentials for the node IP
+
+kubectl config set-credentials system:node:192.168.99.101 \
+--client-certificate=certs/kubelet-ksn1.pem \
+--client-key=certs/kubelet-ksn1-key.pem \
+--embed-certs=true \
+--kubeconfig=192.168.99.101.kubeconfig
+
+# Use the context for the node
+kubectl config use-context default --kubeconfig=192.168.99.101.kubeconfig
+
+-->
+--> This will create a file 192.168.99.101.kubeconfig
+
+
+- COPY THAT FILE TO /etc/kubernetes/kubelet-kubeconfig
+cp 192.168.99.101.kubeconfig /etc/kubernetes/kubelet-kubeconfig
+
+-- ALSO, COPY THE KUBECONFIG FILE TO ~/.kube/config
+cp /etc/kubernetes/kubelet-kubeconfig ~/.kube/config
+
+--> This will enable the context (or something) for the linux session
+--> and the following command gives the current context if set in ~/.kube/config
+# kubectl config get-contexts 
+CURRENT   NAME      CLUSTER      AUTHINFO                   NAMESPACE
+*         default   kubernetes   system:node:192.168.60.102
+
+
