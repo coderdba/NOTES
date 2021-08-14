@@ -1469,6 +1469,26 @@ KUBE-APISERVER CONFIG FILE
 NOTE: "SecurityContextDeny" was removed from the following line - as it was disallowing kube-dns pod from creating
     - --admission-control=NamespaceLifecycle,LimitRanger,SecurityContextDeny,ServiceAccount,ResourceQuota
 
+GOT ERROR (upon starting kubelet - with docker logs <container id> of apiserver):
+# docker logs 8bf377bd4408
+Flag --insecure-port has been deprecated, This flag has no effect now and will be removed in v1.24.
+I0814 14:51:57.988934       1 server.go:629] external host was not specified, using 192.168.99.101
+Error: [service-account-issuer is a required flag, --service-account-signing-key-file and --service-account-issuer are required flags]
+--> Added these lines:
+    - --service-account-issuer=https://kubernetes.default.svc.cluster.local
+    - --service-account-signing-key-file=/etc/kubernetes/pki/ca-key.pem
+
+GOT ERROR (upon starting kubelet - with docker logs <container id> of apiserver):
+Flag --insecure-port has been deprecated, This flag has no effect now and will be removed in v1.24.
+I0814 15:05:22.806425       1 server.go:629] external host was not specified, using 192.168.99.101
+I0814 15:05:22.806812       1 server.go:181] Version: v1.21.2
+I0814 15:05:23.105839       1 plugins.go:158] Loaded 12 mutating admission controller(s) successfully in the following order: NamespaceLifecycle,LimitRanger,ServiceAccount,NodeRestriction,TaintNodesByCondition,Priority,DefaultTolerationSeconds,DefaultStorageClass,StorageObjectInUseProtection,RuntimeClass,DefaultIngressClass,MutatingAdmissionWebhook.
+I0814 15:05:23.105853       1 plugins.go:161] Loaded 10 validating admission controller(s) successfully in the following order: LimitRanger,ServiceAccount,Priority,PersistentVolumeClaimResize,RuntimeClass,CertificateApproval,CertificateSigning,CertificateSubjectRestriction,ValidatingAdmissionWebhook,ResourceQuota.
+I0814 15:05:23.106562       1 plugins.go:158] Loaded 12 mutating admission controller(s) successfully in the following order: NamespaceLifecycle,LimitRanger,ServiceAccount,NodeRestriction,TaintNodesByCondition,Priority,DefaultTolerationSeconds,DefaultStorageClass,StorageObjectInUseProtection,RuntimeClass,DefaultIngressClass,MutatingAdmissionWebhook.
+I0814 15:05:23.106569       1 plugins.go:161] Loaded 10 validating admission controller(s) successfully in the following order: LimitRanger,ServiceAccount,Priority,PersistentVolumeClaimResize,RuntimeClass,CertificateApproval,CertificateSigning,CertificateSubjectRestriction,ValidatingAdmissionWebhook,ResourceQuota.
+Error: open /etc/kubernetes/pki/etcd.pem: no such file or directory
+
+
 File: /etc/kubernetes/manifests/kube-apiserver.yaml
 
 apiVersion: v1
@@ -1501,6 +1521,8 @@ spec:
     - --kubelet-client-certificate=/etc/kubernetes/pki/kubernetes.pem 
     - --kubelet-client-key=/etc/kubernetes/pki/kubernetes-key.pem 
     - --service-account-key-file=/etc/kubernetes/pki/ca-key.pem 
+    - --service-account-issuer=https://kubernetes.default.svc.cluster.local
+    - --service-account-signing-key-file=/etc/kubernetes/pki/ca-key.pem
     - --tls-cert-file=/etc/kubernetes/pki/kubernetes.pem 
     - --tls-private-key-file=/etc/kubernetes/pki/kubernetes-key.pem
     - --secure-port=6443
