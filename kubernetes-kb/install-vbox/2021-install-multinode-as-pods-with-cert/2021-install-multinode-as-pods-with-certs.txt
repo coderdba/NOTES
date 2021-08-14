@@ -1883,8 +1883,37 @@ syncFrequency: 0s
 volumeStatsAggPeriod: 0s
 
 ------------------
+START KUBELET
+------------------
+# systemctl daemon-reload
+# systemctl enable kubelet
+# systemctl start kubelet
+
+- VERIFY
+# docker ps -a
+CONTAINER ID   IMAGE                      COMMAND                  CREATED          STATUS          PORTS     NAMES
+d84bac4fc106   ae24db9aa2cc               "kube-controller-man…"   22 minutes ago   Up 22 minutes             k8s_kube-controller-manager_kube-controller-manager-ksn1_kube-system_1aa8a25aa9fb815f143bf827c7cea11e_0
+e1859ecdd480   f917b8c8f55b               "kube-scheduler --bi…"   22 minutes ago   Up 22 minutes             k8s_kube-scheduler_kube-scheduler-ksn1_kube-system_cbc88132952e06e66710edb2b4b19b76_0
+faed176bf737   106ff58d4308               "kube-apiserver --ad…"   22 minutes ago   Up 22 minutes             k8s_kube-apiserver_kube-apiserver-ksn1_kube-system_4324f968266b0ff9a56234bc83bf395f_0
+fdc56ed3078d   k8s.gcr.io/pause:3.4.1     "/pause"                 22 minutes ago   Up 22 minutes             k8s_POD_kube-scheduler-ksn1_kube-system_cbc88132952e06e66710edb2b4b19b76_0
+54794a655fa1   k8s.gcr.io/pause:3.4.1     "/pause"                 22 minutes ago   Up 22 minutes             k8s_POD_kube-controller-manager-ksn1_kube-system_1aa8a25aa9fb815f143bf827c7cea11e_0
+482876130f01   k8s.gcr.io/pause:3.4.1     "/pause"                 22 minutes ago   Up 22 minutes             k8s_POD_kube-apiserver-ksn1_kube-system_4324f968266b0ff9a56234bc83bf395f_0
+b24c8873f1e6   k8s.gcr.io/etcd:3.4.13-0   "/usr/local/bin/etcd…"   31 minutes ago   Up 31 minutes             etcd
+
+
+- VERIFY
+# curl --cacert /etc/kubernetes/pki/ca.pem https://192.168.99.101:6443/healthz
+ok
+
+- VERIFY
+# kubectl get pods
+The connection to the server localhost:8080 was refused - did you specify the right host or port?
+
+------------------
 KUBELET ERRORS
 ------------------
+https://bugzilla.redhat.com/show_bug.cgi?format=multiple&id=1814433
+
 Aug 15 01:01:33 ksn1 kubelet[6590]: E0815 01:01:33.100944    6590 reflector.go:138] k8s.io/client-go/informers/factory.go:134: Failed to watch *v1.CSIDriver: failed to list *v1.CSIDriver: csidrivers.storage.k8s.io is forbidden: User "system:anonymous" cannot list resource "csidrivers" in API group "storage.k8s.io" at the cluster scope
 Aug 15 01:01:33 ksn1 kubelet[6590]: E0815 01:01:33.157639    6590 kubelet.go:2291] "Error getting node" err="node \"ksn1\" not found"
 Aug 15 01:01:33 ksn1 kubelet[6590]: E0815 01:01:33.258389    6590 kubelet.go:2291] "Error getting node" err="node \"ksn1\" not found"
