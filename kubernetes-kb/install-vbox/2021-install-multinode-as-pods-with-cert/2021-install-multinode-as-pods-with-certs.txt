@@ -2063,7 +2063,7 @@ rules:
 1a. Create the cluster-role:
 kubectl create -f kube-apiserver-to-kubelet.yaml
 
---> clusterrole.rbac.authorization.k8s.io/system:kube-apiserver-to-kubelet created
+--> TBD - EXPECTED RESULT: clusterrole.rbac.authorization.k8s.io/system:kube-apiserver-to-kubelet created
 
 2. kube-apiserver-to-kubelet-bind.yaml
 
@@ -2084,13 +2084,86 @@ subjects:
 2a. Create the cluster-role-binding:
 
 kubectl create -f kube-apiserver-to-kubelet-bind.yaml
+--> TBD - EXPECTED RESULT: clusterrolebinding.rbac.authorization.k8s.io/system:kube-apiserver created
 
---> clusterrolebinding.rbac.authorization.k8s.io/system:kube-apiserver created
 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+APPENDIX - KEY KNOWLEDGE
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-------------------
-KUBELET ERRORS
-------------------
+==========================================================
+KUBELET.CONF, KUBECONFIG - certificate-authority-data
+==========================================================
+https://insujang.github.io/2019-12-18/kubernetes-authentication/
+
+kubectl access
+When we use kubectl, everything works fine. This does not mean kubectl is special, nor bypasses authentication module. With KUBECONFIG environment variable, kubectl automatically loads a configuration file with certificate information before accessing the api server. With higher level of verbose, you can see this flow.
+
+$ echo $KUBECONFIG
+/etc/kubernetes/admin.conf
+$ kubectl --v=7 get pods
+I1218 16:27:24.481836   11192 loader.go:375] Config loaded from file:  /etc/kubernetes/admin.conf
+I1218 16:27:24.485689   11192 round_trippers.go:420] GET https://ip:6443/api/v1/namespaces/default/pods?limit=500
+I1218 16:27:24.485700   11192 round_trippers.go:427] Request Headers:
+I1218 16:27:24.485704   11192 round_trippers.go:431]     User-Agent: kubectl/v1.16.3 (linux/amd64) kubernetes/b3cbbae
+I1218 16:27:24.485708   11192 round_trippers.go:431]     Accept: application/json;as=Table;v=v1beta1;g=meta.k8s.io, application/json
+I1218 16:27:24.505055   11192 round_trippers.go:446] Response Status: 200 OK in 19 milliseconds
+No resources found in default namespace.
+In this node kubectl uses /etc/kubernetes/admin.conf as its credentials, which contains:
+
+clusters:
+- cluster:
+    certificate-authority-data: LS0tLS1CRU...
+    server: https://ip:6443
+  name: kubernetes
+...
+users:
+- name: kubernetes-admin
+  user:
+    client-certificate-data: LS0tLS1CRU...
+    client-key-data: LS0tLS1CRU...
+certificate-authority-data is a base64-encoded string of /etc/kubernetes/ca.crt 5. client-certificate-data and client-key-data are base64-encoded kubernetes-admin certificate and key, respectively. This admin certificate is automatically created and managed by kubeadm.
+
+$ kubeadm alpha certs check-expiration
+CERTIFICATE                EXPIRES                  RESIDUAL TIME   EXTERNALLY MANAGED
+admin.conf                 Dec 17, 2020 07:20 UTC   364d            no      
+apiserver                  Dec 17, 2020 07:20 UTC   364d            no      
+apiserver-etcd-client      Dec 17, 2020 07:20 UTC   364d            no      
+apiserver-kubelet-client   Dec 17, 2020 07:20 UTC   364d            no      
+controller-manager.conf    Dec 17, 2020 07:20 UTC   364d            no      
+etcd-healthcheck-client    Dec 17, 2020 07:20 UTC   364d            no      
+etcd-peer                  Dec 17, 2020 07:20 UTC   364d            no      
+etcd-server                Dec 17, 2020 07:20 UTC   364d            no      
+front-proxy-client         Dec 17, 2020 07:20 UTC   364d            no      
+scheduler.conf             Dec 17, 2020 07:20 UTC   364d            no  
+kubeadm alpha certs command shows the client certificates in the /etc/kubernetes/pki6 and the client certificate embedded in KUBECONFIG files (admin.conf, controller-manager.conf, and scheduler.conf).
+
+For more details, refer to 4, 7, and 8.
+
+Controlling access: https://kubernetes.io/docs/reference/access-authn-authz/controlling-access/ ↩︎
+
+Authentication strategies: https://kubernetes.io/docs/reference/access-authn-authz/authentication/#authentication-strategies ↩︎
+
+쿠버네티스 #16: 보안 계정 인증과 권한 인가 https://bcho.tistory.com/1272 ↩︎
+
+Understanding Kubernetes Authentication and Authorization http://cloudgeekz.com/1045/kubernetes-authentication-and-authorization.html ↩︎
+
+Access Kubernetes API with Client Ceritifcate. https://codefarm.me/2019/02/01/access-kubernetes-api-with-client-certificates/ ↩︎
+
+Certificate Management with kubeadm. https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-certs/ ↩︎
+
+Authentication and Authorization in Kubernetes https://www.sovsystems.com/blog/authentication-and-authorization-in-kubernetes ↩︎
+
+쿠버네티스 인증 https://arisu1000.tistory.com/27847 ↩︎
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+APPENDIX - TROUBLESHOOTING
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+========================
+KUBELET ERRORS 1
+========================
+--> ALL THIS GOT FIXED WITH BASE64 ENCODED certificate-authority-data in kubelet.conf
+
 Maybe this needs kube-proxy to be running.
 
 https://bugzilla.redhat.com/show_bug.cgi?id=1796844
