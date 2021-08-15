@@ -19,6 +19,7 @@ This attempt:
 - Scripts repo (shell and ansible): coderdba-coding-org/kubernetes/2021-multinode-as-pods-with-certs-v1.21
 
 Earlier attempt: 
+- Multi node with certs: https://github.com/coderdba/NOTES/blob/master/kubernetes-kb/install-vbox/WIP-2019-install-as-pods-multinode-no-cert.txt
 - Single node with certs: https://github.com/coderdba/NOTES/blob/master/kubernetes-kb/install-vbox/WIP-2019-single-node-pods-with-certs.txt
 - https://github.com/coderdba/NOTES/blob/master/kubernetes-kb/install-vbox/WIP-2019-install-as-pods-multinode-no-cert.txt
 --- old filename: - https://github.com/coderdba/NOTES/blob/master/kubernetes-kb/install-vbox/WIP-install-as-pods-separately.txt
@@ -91,6 +92,7 @@ Kubernetes flags / command line tools:
 - Kubelet config file: https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/ 
       (from https://stackoverflow.com/questions/64850658/how-to-add-certificates-to-kube-config-file)
 - Kubelet certificate-authority-data: https://insujang.github.io/2019-12-18/kubernetes-authentication/
+- Kubelet bootstrapping etc: https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet-tls-bootstrapping/
 
 Apiserver 8080 port, security:
 https://kubernetes.io/docs/concepts/security/controlling-access/
@@ -849,7 +851,26 @@ KUBELET-CLIENT CERTIFICATE (for worker nodes)
 Worker-node kubelets will need a certificate to join the Kubernetes cluster
 NOTE: The IP is for the specific WORKER node
 
-- Configuration files
+- Configuration files - for single-node
+File: kubelet-ksn1-csr.json
+{
+  "CN": "system:node:192.168.99.101",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "ABC",
+      "L": "ABC",
+      "O": "system:nodes",
+      "OU": "Kubernetes",
+      "ST": "ABC"
+    }
+  ]
+}
+
+- Configuration files - for multi-node
 File kubelet-node1-csr.json file:
 {
   "CN": "system:node:192.168.99.101",
@@ -1923,6 +1944,77 @@ ok
 - VERIFY - ERRORING
 # kubectl get pods
 The connection to the server localhost:8080 was refused - did you specify the right host or port?
+
+- VERIFY - ERRORING
+Somehow, the 8080 error went away for get pods
+--> but, other errors now
+Fix potential:
+- https://stackoverflow.com/questions/53908848/kubernetes-pods-nodes-is-forbidden/53909115
+
+[root@ksn1 manifests]# kubectl get pods
+No resources found in default namespace.
+[root@ksn1 manifests]# kubectl get pods --all-namespaces
+No resources found
+[root@ksn1 manifests]# kubectl get namespaces
+Error from server (Forbidden): namespaces is forbidden: User "system:node:192.168.99.101" cannot list resource "namespaces" in API group "" at the cluster scope
+[root@ksn1 manifests]# kubectl get context
+error: the server doesn't have a resource type "context"
+
+---------------------------------------
+CLUSTER ROLE AND CLUSTER ROLE BINDING
+---------------------------------------
+To make apiserver talk to kubelets in woker nodes (here, same node)
+- create a ClusterRole and ClusterRoleBinding
+
+1. kube-apiserver-to-kubelet.yaml
+
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  annotations:
+    rbac.authorization.kubernetes.io/autoupdate: "true"
+  labels:
+    kubernetes.io/bootstrapping: rbac-defaults
+  name: system:kube-apiserver-to-kubelet
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - nodes/proxy
+      - nodes/stats
+      - nodes/log
+      - nodes/spec
+      - nodes/metrics
+    verbs:
+      - "*"
+
+1a. Create the cluster-role:
+kubectl create -f kube-apiserver-to-kubelet.yaml
+
+--> clusterrole.rbac.authorization.k8s.io/system:kube-apiserver-to-kubelet created
+
+2. kube-apiserver-to-kubelet-bind.yaml
+
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: system:kube-apiserver
+  namespace: ""
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:kube-apiserver-to-kubelet
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: User
+    name: kubernetes
+    
+2a. Create the cluster-role-binding:
+
+kubectl create -f kube-apiserver-to-kubelet-bind.yaml
+
+--> clusterrolebinding.rbac.authorization.k8s.io/system:kube-apiserver created
+
 
 ------------------
 KUBELET ERRORS
