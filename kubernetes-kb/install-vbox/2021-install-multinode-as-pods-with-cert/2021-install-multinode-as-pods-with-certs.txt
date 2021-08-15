@@ -132,7 +132,9 @@ ETCD SSL/Certs:
 - Verify with TLS cert & key: https://mvallim.github.io/kubernetes-under-the-hood/documentation/etcd.html
 
 KUBE-PROXY:
-- Kube-proxy config files: https://gitlab.cncf.ci/kubernetes/kubernetes/tree/master/cluster/addons/kube-proxy
+- Kube-proxy config files: 
+      - https://gitlab.cncf.ci/kubernetes/kubernetes/tree/master/cluster/addons/kube-proxy
+      - https://github.com/QingCloudAppcenter/kubernetes/blob/master/k8s/addons/kube-proxy
 
 
 App example and explanation of networking:
@@ -1866,10 +1868,130 @@ Aug 15 13:44:55 ksn1 kubelet: E0815 13:44:55.994862   13706 eviction_manager.go:
 Aug 15 13:44:56 ksn1 kubelet: E0815 13:44:56.077359   13706 kubelet.go:2291] "Error getting node" err="node \"ksn1\" not found"
 Aug 15 13:44:56 ksn1 kubelet: E0815 13:44:56.178100   13706 kubelet.go:2291] "Error getting node" err="node \"ksn1\" not found"
 
+------------------------------------------------
+KUBE-PROXY
+------------------------------------------------
+Reference for config files: 
+- https://gitlab.cncf.ci/kubernetes/kubernetes/tree/master/cluster/addons/kube-proxy
+- https://github.com/QingCloudAppcenter/kubernetes/blob/master/k8s/addons/kube-proxy/kube-proxy-ds.yaml
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+RBAC
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kube-proxy
+  namespace: kube-system
+  labels:
+    addonmanager.kubernetes.io/mode: Reconcile
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: system:kube-proxy
+  labels:
+    addonmanager.kubernetes.io/mode: Reconcile
+subjects:
+  - kind: ServiceAccount
+    name: kube-proxy
+    namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: system:node-proxier
+  apiGroup: rbac.authorization.k8s.io
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Daemonset: kube-proxy-ds.yaml
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Please keep kube-proxy configuration in-sync with:
+# cluster/saltbase/salt/kube-proxy/kube-proxy.manifest
+
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    k8s-app: kube-proxy
+    addonmanager.kubernetes.io/mode: Reconcile
+  name: kube-proxy
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      k8s-app: kube-proxy
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 10%
+  template:
+    metadata:
+      labels:
+        k8s-app: kube-proxy
+    spec:
+      priorityClassName: system-node-critical
+      hostNetwork: true
+      nodeSelector:
+        kubernetes.io/os: linux
+        node.kubernetes.io/kube-proxy-ds-ready: "true"
+      tolerations:
+      - operator: "Exists"
+        effect: "NoExecute"
+      - operator: "Exists"
+        effect: "NoSchedule"
+      containers:
+      - name: kube-proxy
+        image: k8s.gcr.io/kube-proxy:v1.21.2
+        resources:
+          requests:
+            cpu: 100
+        command:
+        - /bin/sh
+        - -c
+        - kube-proxy {{cluster_cidr}} --oom-score-adj=-998 {{params}} 1>>/var/log/kube-proxy.log 2>&1
+        env:
+        - name: KUBERNETES_SERVICE_HOST
+          value: {{kubernetes_service_host_env_value}}
+        {{kube_cache_mutation_detector_env_name}}
+          {{kube_cache_mutation_detector_env_value}}
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - mountPath: /var/log
+          name: varlog
+          readOnly: false
+        - mountPath: /run/xtables.lock
+          name: xtables-lock
+          readOnly: false
+        - mountPath: /lib/modules
+          name: lib-modules
+          readOnly: true
+      volumes:
+      - name: varlog
+        hostPath:
+          path: /var/log
+      - name: xtables-lock
+        hostPath:
+          path: /run/xtables.lock
+          type: FileOrCreate
+      - name: lib-modules
+        hostPath:
+          path: /lib/modules
+      serviceAccountName: kube-proxy
+
+
+
+------------------------------------------------
+COREDNS
+------------------------------------------------
+
+------------------------------------------------
+CALICO
+------------------------------------------------
+
 ---------------------------------------------------------------------------------------
-NOT SURE IF THIS IS NEEDED - CLUSTER ROLE AND CLUSTER ROLE BINDING (TBD)
+NOT SURE IF THIS IS NEEDED (this is for workers) - CLUSTER ROLE AND CLUSTER ROLE BINDING (TBD)
 ---------------------------------------------------------------------------------------
-To make apiserver talk to kubelets in woker nodes (here, same node)
+To make apiserver talk to kubelets in worker nodes (here, same node)
 - create a ClusterRole and ClusterRoleBinding
 
 1. kube-apiserver-to-kubelet.yaml
