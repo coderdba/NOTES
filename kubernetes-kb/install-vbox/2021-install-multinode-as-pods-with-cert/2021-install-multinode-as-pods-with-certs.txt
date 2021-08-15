@@ -133,6 +133,7 @@ ETCD SSL/Certs:
 
 KUBE-PROXY:
 - Kube-proxy config files: 
+      - https://github.com/coderdba-coding-org/code1/blob/master/kubernetes/kube-vbox-ans-singlenode-15.5/roles/kube-proxy/templates/kube-proxy.yaml.j2
       - https://gitlab.cncf.ci/kubernetes/kubernetes/tree/master/cluster/addons/kube-proxy
       - https://github.com/QingCloudAppcenter/kubernetes/blob/master/k8s/addons/kube-proxy
 
@@ -527,6 +528,139 @@ NOTE: Do only if it is necessary - we can always use docker exec to run the etcd
 SINGLE NODE SETUP - TO TRY SINGLE NODE FIRST AND THEN MULTINODE
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+==================================
+KUBECONFIG NOTES
+==================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+USER TYPE
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In the xyz-csr.json the "CN"s denote the purpose of the user - which is also real nature of the user in many cases:
+
+"CN": "admin" --> administrator which can access kube-system as well to create pods and other objects
+"CN": "Kubernetes" --> CA and Apiserver
+"CN": "etcd"
+"CN": "system:node:192.168.99.101" (or node hostname instead of IP) --> Kubelet
+"CN": "system:kube-proxy" 
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- CREATING CONFIG WITH EMBEDDED CERTS
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# CREATE A KUBECONFIG FILE FOR 'admin' USER
+kubectl config set-cluster kubernetes \
+--certificate-authority=certs/ca.pem \
+--server=https://ksn1:6443 \
+--embed-certs=true \
+--kubeconfig=kubeconfig/admin.kubeconfig
+
+kubectl config set-credentials admin \
+--client-certificate=certs/admin.pem \
+--client-key=certs/admin-key.pem \
+--embed-certs=true \
+--kubeconfig=kubeconfig/admin.kubeconfig
+
+kubectl config set-context kubernetes --cluster=kubernetes --user=admin --kubeconfig=kubeconfig/admin.kubeconfig
+kubectl config use-context kubernetes --kubeconfig=kubeconfig/admin.kubeconfig
+kubectl get nodes
+
+-- THIS WILL CREATE A KUBECONFIG WITH CONTENTS OF PEM FILES IN BASE64 FORMAT EMBEDDED IN THE KUBECONFIG
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FU ....
+    ...
+    ...
+aQpSTlNubG5UMHNPUFJadz09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+    server: https://ksn1:6443
+  name: kubernetes
+contexts:
+- context:
+    cluster: kubernetes
+    user: admin
+  name: kubernetes
+current-context: kubernetes
+kind: Config
+preferences: {}
+users:
+- name: admin
+  user:
+    client-certificate-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FU ....
+    ...
+    ...
+aQpSTlNubG5UMHNPUFJadz09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+    client-key-data: LS0tLS1CRUdJTiBSU0EgUFJ ...
+    ...
+    ...
+CBSU0EgUFJJVkFURSBLRVktLS0tLQo=
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- CREATING CONFIG WITH NO EMBEDDED CERTS - BUT REFERENCING THE PEM FILES
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# CREATE A KUBECONFIG FILE FOR 'admin' USER
+kubectl config set-cluster kubernetes \
+--certificate-authority=/etc/kubernetes/pki/ca.pem \
+--server=https://ksn1:6443 \
+--kubeconfig=kubeconfig/admin.kubeconfig.noEmbedCerts
+
+kubectl config set-credentials admin \
+--client-certificate=/etc/kubernetes/pki/admin.pem \
+--client-key=/etc/kubernetes/pki/admin-key.pem \
+--kubeconfig=kubeconfig/admin.kubeconfig.noEmbedCerts
+
+kubectl config set-context kubernetes --cluster=kubernetes --user=admin --kubeconfig=kubeconfig/admin.kubeconfig.noEmbedCerts
+kubectl config use-context kubernetes --kubeconfig=kubeconfig/admin.kubeconfig.noEmbedCerts
+kubectl get nodes
+
+-- THIS WILL CREATE A KUBECONFIG WITH PEM FILE PATHS REFERENCED IN THE KUBECONFIG
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority: /etc/kubernetes/pki/ca.pem
+    server: https://ksn1:6443
+  name: kubernetes
+contexts:
+- context:
+    cluster: kubernetes
+    user: admin
+  name: kubernetes
+current-context: kubernetes
+kind: Config
+preferences: {}
+users:
+- name: admin
+  user:
+    client-certificate: /etc/kubernetes/pki/admin.pem
+    client-key: /etc/kubernetes/pki/admin-key.pem
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- USING A SPECIFIC KUBECONFIG
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# kubectl apply -f kube-proxy-rbac.yaml --kubeconfig /etc/kubernetes/admin.kubeconfig
+# kubectl get pods --all-namespaces --kubeconfig /etc/kubernetes/kubelet.conf
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- VIEWING CURRENT CONFIG
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# kubectl config view
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: DATA+OMITTED
+    server: https://ksn1:6443
+  name: kubernetes
+contexts:
+- context:
+    cluster: kubernetes
+    user: system:node:ksn1
+  name: system:node:ksn1@kubernetes
+current-context: system:node:ksn1@kubernetes
+kind: Config
+preferences: {}
+users:
+- name: system:node:ksn1
+  user:
+    client-certificate: /etc/kubernetes/pki/kubelet-ksn1.pem
+    client-key: /etc/kubernetes/pki/kubelet-ksn1-key.pem
 
 ============================================================================
 SINGLE NODE - ETCD - WITHOUT CERTIFICATES - to learn, and verify vm setup
@@ -1422,7 +1556,6 @@ Error: [service-account-issuer is a required flag, --service-account-signing-key
 GOT ERROR (in journaltl -xe upon kubelet start):
 Aug 14 23:54:39 ksn1 kubelet[24703]: E0814 23:54:39.436292   24703 reflector.go:138] k8s.io/client-go/informers/factory.go:134: Failed to watch *v1.CSIDriver: failed to list *v1.CSIDriver: Get "https://192.168.99.101:6443/apis/storage.k8s.io/v1/csidrivers?limit=500&resourceVersion=0": x509: certificate signed by unknown authority
 
-
 File: /etc/kubernetes/manifests/kube-apiserver.yaml
 
 apiVersion: v1
@@ -1871,13 +2004,18 @@ Aug 15 13:44:56 ksn1 kubelet: E0815 13:44:56.178100   13706 kubelet.go:2291] "Er
 ------------------------------------------------
 KUBE-PROXY
 ------------------------------------------------
-Reference for config files: 
+Reference for config files:
+- https://github.com/coderdba-coding-org/code1/blob/master/kubernetes/kube-vbox-ans-singlenode-15.5/roles/kube-proxy/templates/kube-proxy.yaml.j2
+- https://github.com/coderdba/NOTES/blob/master/kubernetes-kb/install-vbox/WIP-2019-single-node-pods-with-certs.txt
+
 - https://gitlab.cncf.ci/kubernetes/kubernetes/tree/master/cluster/addons/kube-proxy
 - https://github.com/QingCloudAppcenter/kubernetes/blob/master/k8s/addons/kube-proxy/kube-proxy-ds.yaml
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-RBAC
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+RBAC File: /etc/kubernetes/addons/kube-proxy-rbac.yaml
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+From: https://github.com/coderdba-coding-org/code1/blob/master/kubernetes/kube-vbox-ans-singlenode-15.5/roles/kube-proxy/templates/kube-proxy.yaml.j2
+
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -1901,12 +2039,13 @@ roleRef:
   name: system:node-proxier
   apiGroup: rbac.authorization.k8s.io
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Daemonset: kube-proxy-ds.yaml
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Daemonset File: /etc/kubernetes/addons/kube-proxy-ds.yaml
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Please keep kube-proxy configuration in-sync with:
 # cluster/saltbase/salt/kube-proxy/kube-proxy.manifest
 
+---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -1930,9 +2069,8 @@ spec:
     spec:
       priorityClassName: system-node-critical
       hostNetwork: true
-      nodeSelector:
-        kubernetes.io/os: linux
-        node.kubernetes.io/kube-proxy-ds-ready: "true"
+      #nodeSelector:
+        #node.kubernetes.io/kube-proxy-ds-ready: "true"
       tolerations:
       - operator: "Exists"
         effect: "NoExecute"
@@ -1940,19 +2078,21 @@ spec:
         effect: "NoSchedule"
       containers:
       - name: kube-proxy
-        image: k8s.gcr.io/kube-proxy:v1.21.2
+        image: {{ var_kube_proxy_image }}
         resources:
           requests:
-            cpu: 100
+            cpu: 100m
         command:
-        - /bin/sh
-        - -c
-        - kube-proxy {{cluster_cidr}} --oom-score-adj=-998 {{params}} 1>>/var/log/kube-proxy.log 2>&1
+        - /usr/local/bin/kube-proxy
+        - --kubeconfig=/etc/kubernetes/kubeconfig-kubelet-gen.sh
+        - --master=https://kns1:6443
+        - --cluster-cidr=172.16.0.0/16
+        - --masquerade-all
         env:
-        - name: KUBERNETES_SERVICE_HOST
-          value: {{kubernetes_service_host_env_value}}
-        {{kube_cache_mutation_detector_env_name}}
-          {{kube_cache_mutation_detector_env_value}}
+        - name: MASTER_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
         securityContext:
           privileged: true
         volumeMounts:
@@ -1965,6 +2105,9 @@ spec:
         - mountPath: /lib/modules
           name: lib-modules
           readOnly: true
+        - mountPath: /etc/kubernetes
+          name: etc-kubernetes
+          readOnly: true
       volumes:
       - name: varlog
         hostPath:
@@ -1976,8 +2119,50 @@ spec:
       - name: lib-modules
         hostPath:
           path: /lib/modules
+      - name: etc-kubernetes
+        hostPath:
+          path: /etc/kubernetes
+          type: Directory
       serviceAccountName: kube-proxy
 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Kubeconfig File: /etc/kubernetes/pki/admin.kubeconfig
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Create a kubeconfig for 'admin' user.
+Note that admin-csr.json was earlier used to create admin.pem and admin-key.pem
+In that "CN": "admin" is the thing that makes it admin user
+
+- File: kubeconfig-admin.sh
+
+# CREATE A KUBECONFIG FILE FOR 'admin' USER
+kubectl config set-cluster kubernetes \
+--certificate-authority=certs/ca.pem \
+--server=https://ksn1:6443 \
+--embed-certs=true \
+--kubeconfig=kubeconfig/admin.kubeconfig
+
+kubectl config set-credentials admin \
+--client-certificate=certs/admin.pem \
+--client-key=certs/admin-key.pem \
+--embed-certs=true \
+--kubeconfig=kubeconfig/admin.kubeconfig
+
+kubectl config set-context kubernetes --cluster=kubernetes --user=admin --kubeconfig=kubeconfig/admin.kubeconfig
+
+kubectl config use-context kubernetes --kubeconfig=kubeconfig/admin.kubeconfig
+
+kubectl get nodes
+
+- Run the file to create the admin.kubeconfig file
+- Copy that file to /etc/kubernetes
+
+~~~~~~~~~~~~~~~~~~~~~~~~~
+CREATE DAEMONSET
+~~~~~~~~~~~~~~~~~~~~~~~~~
+Note: You MUST use the admin.kubeconfig file to create pod, rbac etc
+
+# kubectl apply -f kube-proxy-rbac.yaml --kubeconfig /etc/kubernetes/admin.kubeconfig
+# kubectl apply -f kube-proxy-ds.yaml --kubeconfig /etc/kubernetes/admin.kubeconfig
 
 
 ------------------------------------------------
