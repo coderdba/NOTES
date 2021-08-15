@@ -100,6 +100,8 @@ Kubernetes flags / command line tools:
 
 Kubernetes API(?): https://cluster-api.sigs.k8s.io/introduction.html
 
+Kubelet unknown cert authority fix: https://stackoverflow.com/questions/46234295/kubectl-unable-to-connect-to-server-x509-certificate-signed-by-unknown-authori
+
 Apiserver 8080 port, security:
 https://kubernetes.io/docs/concepts/security/controlling-access/
 https://www.stackrox.com/wiki/securing-the-kubernetes-api-server/
@@ -128,6 +130,11 @@ ETCD SSL/Certs:
 
 Cert generation with cfssl:
 - https://rob-blackbourn.medium.com/how-to-use-cfssl-to-create-self-signed-certificates-d55f76ba5781
+
+PEM TO CRT etc:
+- PEM TO CRT etc: https://stackoverflow.com/questions/19979171/how-to-convert-pem-into-key
+- PEM TO CRT etc: https://stackoverflow.com/questions/13732826/convert-pem-to-crt-and-key
+- certificate-authority-data: https://insujang.github.io/2019-12-18/kubernetes-authentication/ --> 
 
 Ansible modules: 
 - Shell: https://www.middlewareinventory.com/blog/ansible-shell-examples/#Example_1_Execute_a_Single_Command_with_Ansible_Shell
@@ -1840,19 +1847,51 @@ CURRENT   NAME      CLUSTER      AUTHINFO                     NAMESPACE
 KUBELET CONFIG FILES
 ----------------------
 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- GENERATE "certificate-authority-data" to enter in kubelet.conf
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Reference: https://insujang.github.io/2019-12-18/kubernetes-authentication/
+# base64 /etc/kubernetes/ca.pem 
 
-- File: /etc/kubernetes/kubelet.conf
+This will give a listing like the following:
+--> CONCATENATE all lines into one line - removing spaces in between --> AND, USE THAT IN kubelet.conf
+LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUR4akNDQXE2Z0F3SUJBZ0lVU2oveStjbTNZ
+KytDQVZ0RWY1R0Fhd0h6eitZd0RRWUpLb1pJaHZjTkFRRUwKQlFBd2FURU1NQW9HQTFVRUJoTURR
+VUpETVF3d0NnWURWUVFJRXdOQlFrTXhEREFLQmdOVkJBY1RBMEZDUXpFVApNQkVHQTFVRUNoTUtT
+M1ZpWlhKdVpYUmxjekVUTUJFR0ExVUVDeE1LUzNWaVpYSnVaWFJsY3pFVE1CRUdBMVVFCkF4TUtT
+M1ZpWlhKdVpYUmxjekFlRncweU1UQTRNVFV3TmpFNU1EQmFGdzB5TmpBNE1UUXdOakU1TURCYU1H
+a3gKRERBS0JnTlZCQVlUQTBGQ1F6RU1NQW9HQTFVRUNCTURRVUpETVF3d0NnWURWUVFIRXdOQlFr
+TXhFekFSQmdOVgpCQW9UQ2t0MVltVnlibVYwWlhNeEV6QVJCZ05WQkFzVENrdDFZbVZ5Ym1WMFpY
+TXhFekFSQmdOVkJBTVRDa3QxClltVnlibVYwWlhNd2dnRWlNQTBHQ1NxR1NJYjNEUUVCQVFVQUE0
+SUJEd0F3Z2dFS0FvSUJBUURHYWRCS2VEb0YKY1RzK1ZCUGVrd0ZYdEFCZndDTHZnZVdPL2hna3lP
+MWRFaGNZY1k5T3NiN1VLaWRYa2lqWExNTjFma3RaeXFjagoxYzB3djFlUEtnQS9Sa3lic2dsck1z
+N2lVdU1ySXhOZFo5RC8yTndOWUNiVDZtTjRodDZDR3lTSytteVAwTnhkCkpZWGp1WldoSXJYQnhJ
+VkdUTlhkVG1XUnFrNVlVTmRjVDFieURXWXJqUzlzR0l5UEQ2WW03NEYwaFdHT1h5KysKUVdETUFi
+OWlCWUg4SUU4Tm9FZDZBaS9sV1FRTXBTNjRPM1ByVG5udkVGY1ZsVm1idElhNW5lVW8wSWtZUkMz
+VgpLMVkvL1MzQWFubWIveURKSTNBVysvbGppdFBKN1dJZlYrU00xWmZydjBkaXdLYmJzUks5bWNj
+REk5TjZaT3NDCkNkSVY3SWs2WlhYL0FnTUJBQUdqWmpCa01BNEdBMVVkRHdFQi93UUVBd0lCQmpB
+U0JnTlZIUk1CQWY4RUNEQUcKQVFIL0FnRUNNQjBHQTFVZERnUVdCQlNyNVk3NUlFMW9nc1c1K3N6
+K2JXSXplalo5M2pBZkJnTlZIU01FR0RBVwpnQlNyNVk3NUlFMW9nc1c1K3N6K2JXSXplalo5M2pB
+TkJna3Foa2lHOXcwQkFRc0ZBQU9DQVFFQWdXR21ZYktoCittSXNEMkpZbFR0b1FGOHdOYXdmNEc3
+Mk1ERmJPc0liNWtDR3B0VVY1dDIwcS9MbDJ6VTVMS3l3UzIwM2kzMW8KOTB2TDlnYXNKT2NNV3FF
+SURJK3NaRmZIQVN6d21FTmVjZ3liOFBUWVhzU1A3cFlhYjhFM0hkaFNJTVNqeTU5cQo5QzBFd3B3
+SEtVTmtJaWlZN2Rad1BMTS92RUJsYjI0V2wyaFBkclYrbEthaVR1Snppck9WTnhwSjhmQldZNHA1
+CjRxWi9MdW92MzJNc09SS0pBbTdZc0s2emZjWTlZNnhLcFgzVTNWbkc1ck9NNnNic0xHY1NrdEVR
+c2lKTWFVMDIKbHc2VHVGSE11ODAyeVdrbzcvR1A1WEFYdEEzQStqT2loVStjUGpMYVcxRFJ3RUc2
+LzdGaXNKaXZQMWRqNTFXaQpSTlNubG5UMHNPUFJadz09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0t
+LS0K
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- Create File: /etc/kubernetes/kubelet.conf
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 NOTE: Taken from kubeadm init machine and modified key and cert files and certificate-authority-data
-NOTE: In certificate-authority-data copy the stuff from 192.168.99.101.kubeconfig under the same head 'certificate-authority-data'
+NOTE: In certificate-authority-data copy the stuff from the CONCATENATED base64 data above
 
 apiVersion: v1
 clusters:
 - cluster:
-    certificate-authority-data:  LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUR4akNDQXE2Z0F3SUJBZ0lVVlp4SVJST01hSzRvWjVHbFJOLy9TbUdyRjR3d0RRWUpLb1pJaHZjTkFRRUwKQlFBd2FURU1NQW9HQTFVRUJoTURRVUpETVF3d0NnWURWUVFJRXdOQlFrTXhEREFLQmdOVkJBY1RBMEZDUXpFVApNQkVH
-...
-...
-owV2hoRDV1R0dXUUFBNVdBNGttZUwyZnBFMFRhaUZ5VXdNNzk1a1RoRmdrcVQrRFR4dlB5ZVFlVzQ4azRoZEUyClVKeHVCL3BwamEvNHg1NjVrdUFBRFdrbFNmOHp0UkVHUXJwQ1pXMU1DMXoyODFMZUVBNDRSR3p5Wm4rZndxLzQKSm5pVkRnV2k0M2xUdnl4NzNqMyt2amZzK0cvNTFXNmUrLytSQ0l4K2RsOUQvN1lWR0lVamFKeXllMzdrVVRSUwpjR2NiMnl0cVQ3ZTFrQT09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
-    server: https://192.168.99.101:6443
+    certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUR4akNDQXE2Z0F3SUJBZ0lVU2oveStjbTNZKytDQVZ0RWY1R0Fhd0h6eitZd0RRWUpLb1pJaHZjTkFRRUwKQlFBd2FURU1NQW9HQTFVRUJoTURRVUpETVF3d0NnWURWUVFJRXdOQlFrTXhEREFLQmdOVkJBY1RBMEZDUXpFVApNQkVHQTFVRUNoTUtTM1ZpWlhKdVpYUmxjekVUTUJFR0ExVUVDeE1LUzNWaVpYSnVaWFJsY3pFVE1CRUdBMVVFCkF4TUtTM1ZpWlhKdVpYUmxjekFlRncweU1UQTRNVFV3TmpFNU1EQmFGdzB5TmpBNE1UUXdOakU1TURCYU1Ha3gKRERBS0JnTlZCQVlUQTBGQ1F6RU1NQW9HQTFVRUNCTURRVUpETVF3d0NnWURWUVFIRXdOQlFrTXhFekFSQmdOVgpCQW9UQ2t0MVltVnlibVYwWlhNeEV6QVJCZ05WQkFzVENrdDFZbVZ5Ym1WMFpYTXhFekFSQmdOVkJBTVRDa3QxClltVnlibVYwWlhNd2dnRWlNQTBHQ1NxR1NJYjNEUUVCQVFVQUE0SUJEd0F3Z2dFS0FvSUJBUURHYWRCS2VEb0YKY1RzK1ZCUGVrd0ZYdEFCZndDTHZnZVdPL2hna3lPMWRFaGNZY1k5T3NiN1VLaWRYa2lqWExNTjFma3RaeXFjagoxYzB3djFlUEtnQS9Sa3lic2dsck1zN2lVdU1ySXhOZFo5RC8yTndOWUNiVDZtTjRodDZDR3lTSytteVAwTnhkCkpZWGp1WldoSXJYQnhJVkdUTlhkVG1XUnFrNVlVTmRjVDFieURXWXJqUzlzR0l5UEQ2WW03NEYwaFdHT1h5KysKUVdETUFiOWlCWUg4SUU4Tm9FZDZBaS9sV1FRTXBTNjRPM1ByVG5udkVGY1ZsVm1idElhNW5lVW8wSWtZUkMzVgpLMVkvL1MzQWFubWIveURKSTNBVysvbGppdFBKN1dJZlYrU00xWmZydjBkaXdLYmJzUks5bWNjREk5TjZaT3NDCkNkSVY3SWs2WlhYL0FnTUJBQUdqWmpCa01BNEdBMVVkRHdFQi93UUVBd0lCQmpBU0JnTlZIUk1CQWY4RUNEQUcKQVFIL0FnRUNNQjBHQTFVZERnUVdCQlNyNVk3NUlFMW9nc1c1K3N6K2JXSXplalo5M2pBZkJnTlZIU01FR0RBVwpnQlNyNVk3NUlFMW9nc1c1K3N6K2JXSXplalo5M2pBTkJna3Foa2lHOXcwQkFRc0ZBQU9DQVFFQWdXR21ZYktoCittSXNEMkpZbFR0b1FGOHdOYXdmNEc3Mk1ERmJPc0liNWtDR3B0VVY1dDIwcS9MbDJ6VTVMS3l3UzIwM2kzMW8KOTB2TDlnYXNKT2NNV3FFSURJK3NaRmZIQVN6d21FTmVjZ3liOFBUWVhzU1A3cFlhYjhFM0hkaFNJTVNqeTU5cQo5QzBFd3B3SEtVTmtJaWlZN2Rad1BMTS92RUJsYjI0V2wyaFBkclYrbEthaVR1Snppck9WTnhwSjhmQldZNHA1CjRxWi9MdW92MzJNc09SS0pBbTdZc0s2emZjWTlZNnhLcFgzVTNWbkc1ck9NNnNic0xHY1NrdEVRc2lKTWFVMDIKbHc2VHVGSE11ODAyeVdrbzcvR1A1WEFYdEEzQStqT2loVStjUGpMYVcxRFJ3RUc2LzdGaXNKaXZQMWRqNTFXaQpSTlNubG5UMHNPUFJadz09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+    server: https://ksn1:6443
   name: kubernetes
 contexts:
 - context:
@@ -1867,10 +1906,25 @@ users:
   user:
     client-certificate: /etc/kubernetes/pki/kubelet-ksn1.pem
     client-key: /etc/kubernetes/pki/kubelet-ksn1-key.pem
+    
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- Kubeconfig File for kubectl ~/.kube/config
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Initially, for kubelet to work, create a config file or link
 
-- File: /usr/lib/systemd/system/kubelet.d/10-kubeadm.conf
+# mkdir ~/.kube
+# cd ~/.kube
+# ln -s /etc/kubernetes/kubelet.conf config
+- OR - 
+# cp /etc/kubernetes/kubelet.conf config
+- OR - 
+# cp /etc/kubernetes/kubelet.conf kubelet.conf.initial
+# ln -s /etc/kubernetes/kubelet.conf.initial config
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- Create File: /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Note: This dropin only works with kubeadm and kubelet v1.11+
-
 [Service]
 #Environment="KUBELET_KUBECONFIG_ARGS=--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf"
 Environment="KUBELET_KUBECONFIG_ARGS=--kubeconfig=/etc/kubernetes/kubelet.conf"
@@ -1883,8 +1937,9 @@ EnvironmentFile=-/etc/sysconfig/kubelet
 ExecStart=
 ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS
 
-
-- File: /var/lib/kubelet/config.yaml
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- Create File: /var/lib/kubelet/config.yaml
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 NOTE: Taken from kubeadm init machine and modified clientCAFile
 
 apiVersion: kubelet.config.k8s.io/v1beta1
@@ -1934,35 +1989,31 @@ START KUBELET
 
 - VERIFY
 # docker ps -a
-CONTAINER ID   IMAGE                      COMMAND                  CREATED          STATUS          PORTS     NAMES
-d84bac4fc106   ae24db9aa2cc               "kube-controller-man…"   22 minutes ago   Up 22 minutes             k8s_kube-controller-manager_kube-controller-manager-ksn1_kube-system_1aa8a25aa9fb815f143bf827c7cea11e_0
-e1859ecdd480   f917b8c8f55b               "kube-scheduler --bi…"   22 minutes ago   Up 22 minutes             k8s_kube-scheduler_kube-scheduler-ksn1_kube-system_cbc88132952e06e66710edb2b4b19b76_0
-faed176bf737   106ff58d4308               "kube-apiserver --ad…"   22 minutes ago   Up 22 minutes             k8s_kube-apiserver_kube-apiserver-ksn1_kube-system_4324f968266b0ff9a56234bc83bf395f_0
-fdc56ed3078d   k8s.gcr.io/pause:3.4.1     "/pause"                 22 minutes ago   Up 22 minutes             k8s_POD_kube-scheduler-ksn1_kube-system_cbc88132952e06e66710edb2b4b19b76_0
-54794a655fa1   k8s.gcr.io/pause:3.4.1     "/pause"                 22 minutes ago   Up 22 minutes             k8s_POD_kube-controller-manager-ksn1_kube-system_1aa8a25aa9fb815f143bf827c7cea11e_0
-482876130f01   k8s.gcr.io/pause:3.4.1     "/pause"                 22 minutes ago   Up 22 minutes             k8s_POD_kube-apiserver-ksn1_kube-system_4324f968266b0ff9a56234bc83bf395f_0
-b24c8873f1e6   k8s.gcr.io/etcd:3.4.13-0   "/usr/local/bin/etcd…"   31 minutes ago   Up 31 minutes             etcd
+CONTAINER ID   IMAGE                      COMMAND                  CREATED       STATUS       PORTS     NAMES
+fef4dccf2631   106ff58d4308               "kube-apiserver --ad…"   2 hours ago   Up 2 hours             k8s_kube-apiserver_kube-apiserver-ksn1_kube-system_4324f968266b0ff9a56234bc83bf395f_4
+8faffde72f9d   k8s.gcr.io/etcd:3.4.13-0   "/usr/local/bin/etcd…"   2 hours ago   Up 2 hours             etcd
+f4f38068d582   f917b8c8f55b               "kube-scheduler --bi…"   2 hours ago   Up 2 hours             k8s_kube-scheduler_kube-scheduler-ksn1_kube-system_cbc88132952e06e66710edb2b4b19b76_0
+86570555ba2b   ae24db9aa2cc               "kube-controller-man…"   2 hours ago   Up 2 hours             k8s_kube-controller-manager_kube-controller-manager-ksn1_kube-system_1aa8a25aa9fb815f143bf827c7cea11e_0
+134ebe4f83de   k8s.gcr.io/pause:3.4.1     "/pause"                 2 hours ago   Up 2 hours             k8s_POD_kube-scheduler-ksn1_kube-system_cbc88132952e06e66710edb2b4b19b76_0
+e68eaf29915d   k8s.gcr.io/pause:3.4.1     "/pause"                 2 hours ago   Up 2 hours             k8s_POD_kube-controller-manager-ksn1_kube-system_1aa8a25aa9fb815f143bf827c7cea11e_0
+a6188f807172   k8s.gcr.io/pause:3.4.1     "/pause"                 2 hours ago   Up 2 hours             k8s_POD_kube-apiserver-ksn1_kube-system_4324f968266b0ff9a56234bc83bf395f_0
 
 
 - VERIFY
 # curl --cacert /etc/kubernetes/pki/ca.pem https://192.168.99.101:6443/healthz
 ok
 
-- VERIFY - ERRORING
+- VERIFY
 # kubectl get pods
-The connection to the server localhost:8080 was refused - did you specify the right host or port?
---> FIX - do the kubeconfig correctly
-
-- VERIFY - ERRORING
-Somehow, the 8080 error went away for get pods
---> but, other errors now
-Fix potential:
-- https://stackoverflow.com/questions/53908848/kubernetes-pods-nodes-is-forbidden/53909115
-
-[root@ksn1 manifests]# kubectl get pods
 No resources found in default namespace.
-[root@ksn1 manifests]# kubectl get pods --all-namespaces
-No resources found
+
+# kubectl get pods --all-namespaces
+NAMESPACE     NAME                           READY   STATUS    RESTARTS   AGE
+kube-system   kube-apiserver-ksn1            1/1     Running   4          18m
+kube-system   kube-controller-manager-ksn1   1/1     Running   0          18m
+kube-system   kube-scheduler-ksn1            1/1     Running   0          18m
+
+-- PREVIOUS ERRORS
 [root@ksn1 manifests]# kubectl get namespaces
 Error from server (Forbidden): namespaces is forbidden: User "system:node:192.168.99.101" cannot list resource "namespaces" in API group "" at the cluster scope
 [root@ksn1 manifests]# kubectl get context
@@ -1975,9 +2026,8 @@ Aug 15 13:44:55 ksn1 kubelet: E0815 13:44:55.994862   13706 eviction_manager.go:
 Aug 15 13:44:56 ksn1 kubelet: E0815 13:44:56.077359   13706 kubelet.go:2291] "Error getting node" err="node \"ksn1\" not found"
 Aug 15 13:44:56 ksn1 kubelet: E0815 13:44:56.178100   13706 kubelet.go:2291] "Error getting node" err="node \"ksn1\" not found"
 
-
 ---------------------------------------
-CLUSTER ROLE AND CLUSTER ROLE BINDING
+CLUSTER ROLE AND CLUSTER ROLE BINDING (TBD)
 ---------------------------------------
 To make apiserver talk to kubelets in woker nodes (here, same node)
 - create a ClusterRole and ClusterRoleBinding
