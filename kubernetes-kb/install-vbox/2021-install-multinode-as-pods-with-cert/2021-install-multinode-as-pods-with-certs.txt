@@ -2183,10 +2183,77 @@ Note: You MUST use the admin.kubeconfig file to create pod, rbac etc
 # kubectl apply -f kube-proxy-rbac.yaml --kubeconfig /etc/kubernetes/admin.kubeconfig
 # kubectl apply -f kube-proxy-ds.yaml --kubeconfig /etc/kubernetes/admin.kubeconfig
 
+- VERIFY
+# kubectl get ds --kubeconfig /etc/kubernetes/admin.kubeconfig --all-namespaces
+NAMESPACE     NAME         DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR   AGE
+kube-system   kube-proxy   0         0         0       0            0           <none>          2d23h
+
+# kubectl logs kube-proxy -n kube-system --kubeconfig /etc/kubernetes/admin.kubeconfig
+Error from server (NotFound): pods "kube-proxy" not found
+
+# kubectl describe ds kube-proxy -n kube-system --kubeconfig /etc/kubernetes/admin.kubeconfig
+Name:           kube-proxy
+Selector:       k8s-app=kube-proxy
+Node-Selector:  <none>
+Labels:         addonmanager.kubernetes.io/mode=Reconcile
+                k8s-app=kube-proxy
+Annotations:    deprecated.daemonset.template.generation: 1
+Desired Number of Nodes Scheduled: 0
+Current Number of Nodes Scheduled: 0
+Number of Nodes Scheduled with Up-to-date Pods: 0
+Number of Nodes Scheduled with Available Pods: 0
+Number of Nodes Misscheduled: 0
+Pods Status:  0 Running / 0 Waiting / 0 Succeeded / 0 Failed
+Pod Template:
+  Labels:           k8s-app=kube-proxy
+  Service Account:  kube-proxy
+  Containers:
+   kube-proxy:
+    Image:      k8s.gcr.io/kube-proxy
+    Port:       <none>
+    Host Port:  <none>
+    Command:
+      /usr/local/bin/kube-proxy
+      --kubeconfig=/etc/kubernetes/kube-proxy.kubeconfig
+      --master=https://ksn1:6443
+      --cluster-cidr=172.16.0.0/16
+      --masquerade-all
+    Requests:
+      cpu:  100m
+    Environment:
+      MASTER_IP:   (v1:status.podIP)
+    Mounts:
+      /etc/kubernetes from etc-kubernetes (ro)
+      /lib/modules from lib-modules (ro)
+      /run/xtables.lock from xtables-lock (rw)
+      /var/log from varlog (rw)
+  Volumes:
+   varlog:
+    Type:          HostPath (bare host directory volume)
+    Path:          /var/log
+    HostPathType:  
+   xtables-lock:
+    Type:          HostPath (bare host directory volume)
+    Path:          /run/xtables.lock
+    HostPathType:  FileOrCreate
+   lib-modules:
+    Type:          HostPath (bare host directory volume)
+    Path:          /lib/modules
+    HostPathType:  
+   etc-kubernetes:
+    Type:               HostPath (bare host directory volume)
+    Path:               /etc/kubernetes
+    HostPathType:       Directory
+  Priority Class Name:  system-node-critical
+Events:                 <none>
+[root@ksn1 addons]# 
+
 
 ------------------------------------------------
 COREDNS
 ------------------------------------------------
+https://kubernetes.io/docs/tasks/administer-cluster/dns-custom-nameservers/
+--> https://coredns.io/2018/01/29/deploying-kubernetes-with-coredns-using-kubeadm/
 
 ------------------------------------------------
 CALICO
