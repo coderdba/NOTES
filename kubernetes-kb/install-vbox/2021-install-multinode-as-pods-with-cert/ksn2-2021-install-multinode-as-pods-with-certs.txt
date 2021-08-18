@@ -1,0 +1,2592 @@
+================================================================================
+INSTALL AS PODS - SEPARATELY INSTALL EACH POD - NOT WITH INIT
+================================================================================
+
+Kubernetes version: 1.21
+Docker version:
+
+================
+TBD
+================
+Install etcdctl on model VM
+
+================
+OWN REFERENCES
+================
+
+This attempt:
+- Document: This file
+- Scripts repo (shell and ansible): coderdba-coding-org/kubernetes/2021-multinode-as-pods-with-certs-v1.21
+
+Earlier attempt: 
+- Multi node with certs: https://github.com/coderdba/NOTES/blob/master/kubernetes-kb/install-vbox/WIP-2019-install-as-pods-multinode-no-cert.txt
+- Single node with certs: https://github.com/coderdba/NOTES/blob/master/kubernetes-kb/install-vbox/WIP-2019-single-node-pods-with-certs.txt
+- https://github.com/coderdba/NOTES/blob/master/kubernetes-kb/install-vbox/WIP-2019-install-as-pods-multinode-no-cert.txt
+--- old filename: - https://github.com/coderdba/NOTES/blob/master/kubernetes-kb/install-vbox/WIP-install-as-pods-separately.txt
+- https://github.com/coderdba/NOTES/blob/master/kubernetes-kb/install-vbox/WIP-2020-multinode-as-pods-with-certs-v15.5.txt
+
+Cert generation scripts:
+- Own SCRIPTS: https://github.com/coderdba-coding-org/kubernetes/tree/master/2020-multinode-as-pods-with-certs-v15.5/certs
+- Own SCRIPTS(older): https://github.com/coderdba-coding-org/code1/tree/master/kubernetes/kube-vbox-ans-singlenode-15.5/roles/certs-gen
+
+- Cert generation With a Makefile: https://github.com/etcd-io/etcd/blob/main/hack/tls-setup/
+- Cert generation Manually: https://blog.inkubate.io/deploy-kubernetes-1-9-from-scratch-on-vmware-vsphere/
+- Own Doc: https://github.com/coderdba-coding-org/kubernetes/tree/master/2020-multinode-as-pods-with-certs-v15.5/certs
+- Own Doc: https://github.com/coderdba/NOTES/blob/master/kubernetes-kb/install-vbox/WIP-2019-single-node-pods-with-certs.txt
+
+K8S Cluster code: (non-ansible)
+- https://github.com/coderdba-coding-org/k8s-single-node-vm-as-pods-1
+- https://github.com/coderdba-coding-org/k8s-single-node-vm-as-pods-2
+- https://github.com/coderdba-coding-org/k8s-multinode-vm-as-pods-1
+
+K8S Cluster code: (ansible)
+- Single node with certs: https://github.com/coderdba-coding-org/code1/tree/master/kubernetes/kube-vbox-ans-singlenode-1
+- Single node with certs: https://github.com/coderdba-coding-org/code1/tree/master/kubernetes/kube-vbox-ans-singlenode-15.5
+- Node prep: https://github.com/coderdba-coding-org/code1/tree/master/kubernetes/kube-machine-prep/roles/yum
+
+Configuration files, shell scripts: https://github.com/coderdba-coding-org/k8s-multinode-vm-as-pods-1
+Some basic stuff: https://github.com/coderdba-coding-org/ansible/tree/master/various01/k8s-deploy01
+Ansible single node: https://github.com/coderdba-coding-org/code1/tree/master/kubernetes/kube-vbox-ans-singlenode-1
+Ansible single node: https://github.com/coderdba-coding-org/code1/tree/master/kubernetes/kube-vbox-ans-singlenode-15.5
+
+VM Setup: 
+- https://github.com/coderdba/NOTES/blob/master/kubernetes-kb/kub-machines/k8s-model-vm.txt
+- https://github.com/coderdba/NOTES/blob/master/kubernetes-kb/install-vbox/WIP-install-as-pods-separately.txt
+- https://github.com/coderdba/NOTES/blob/master/docker-kb/install-config-oel-2019.txt
+
+================
+OTHER REFERENCES
+================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-- REAL MAIN ONES
+https://medium.com/containerum/4-ways-to-bootstrap-a-kubernetes-cluster-de0d5150a1e4 (simple docker-image based cluster)
+--> Includes setting up using images in 'Option 2 - self hosted'
+
+https://blog.inkubate.io/deploy-kubernetes-1-9-from-scratch-on-vmware-vsphere/  (3-node with certs -BUT WITH BINARIES)
+--> Use this for concepts and CERTS 
+
+Hard Way: https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/04-certificate-authority.md
+--> updated for K8S 1.21
+
+Many steps nicely documented (very old version): https://github.com/kelseyhightower/intro-to-kubernetes-workshop/tree/master/labs
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Kubeadm init method:
+- https://medium.com/twodigits/install-kubernetes-1-21-1-on-centos-8-stream-include-fix-cap-perfmon-acf23a6879c6
+- https://upcloud.com/community/tutorials/install-kubernetes-cluster-centos-8/
+- 3 node: https://k21academy.com/docker-kubernetes/three-node-kubernetes-cluster/
+- Official: https://kubernetes.io/docs/reference/setup-tools/kubeadm/implementation-details/
+
+From binaries:
+- http://pwittrock.github.io/docs/getting-started-guides/centos/centos_manual_config/
+
+Installing Kubectl, Kubeadm, Kubelet
+- https://computingforgeeks.com/manually-pull-container-images-used-by-kubernetes-kubeadm/
+- https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/
+- https://www.linuxtechi.com/install-kubernetes-1-7-centos7-rhel7/
+- https://www.howtoforge.com/tutorial/centos-kubernetes-docker-cluster/
+
+Kubernetes TLS Certificates:
+- Files, file-locations, best-practices: https://kubernetes.io/docs/setup/best-practices/certificates/
+--> CN and O in csr.json files
+
+Kubernetes flags / command line tools:
+- Apiserver: https://kubernetes.io/docs/reference/command-line-tools-reference/kube-apiserver/
+- Controller Manager: https://kubernetes.io/docs/reference/command-line-tools-reference/kube-controller-manager/
+- Scheduler: https://kubernetes.io/docs/reference/command-line-tools-reference/kube-scheduler/
+- Kube-Proxy: https://kubernetes.io/docs/reference/command-line-tools-reference/kube-proxy/
+- Kubelet: https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/
+- Kubelet config file: https://kubernetes.io/docs/tasks/administer-cluster/kubelet-config-file/ 
+- Kubelet config file: https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/ 
+      (from https://stackoverflow.com/questions/64850658/how-to-add-certificates-to-kube-config-file)
+- Kubelet certificate-authority-data: https://insujang.github.io/2019-12-18/kubernetes-authentication/
+- Kubelet bootstrapping etc: https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet-tls-bootstrapping/
+
+Kubernetes API(?): https://cluster-api.sigs.k8s.io/introduction.html
+
+Kubelet unknown cert authority fix: https://stackoverflow.com/questions/46234295/kubectl-unable-to-connect-to-server-x509-certificate-signed-by-unknown-authori
+
+Apiserver 8080 port, security:
+https://kubernetes.io/docs/concepts/security/controlling-access/
+https://www.stackrox.com/wiki/securing-the-kubernetes-api-server/
+
+ETCD from binaries (just for reference):
+https://computingforgeeks.com/setup-etcd-cluster-on-centos-debian-ubuntu/
+
+ETCD Configuration settings:
+https://etcd.io/docs/v3.1/op-guide/configuration/
+
+ETCDCTL:
+https://computingforgeeks.com/setup-etcd-cluster-on-centos-debian-ubuntu/
+
+ETCD clustering:
+https://etcd.io/docs/v3.5/op-guide/clustering/
+
+ETCD as container:
+- https://etcd.io/docs/v3.5/op-guide/container/
+
+ETCD SSL/Certs:
+- https://etcd.io/docs/v3.5/op-guide/security/
+-- https://github.com/etcd-io/etcd/blob/main/hack/tls-setup
+-- https://github.com/coreos/docs/blob/master/os/generate-self-signed-certificates.md
+- Setup: https://medium.com/nirman-tech-blog/setting-up-etcd-cluster-with-tls-authentication-enabled-49c44e4151bb
+- Verify with TLS cert & key: https://mvallim.github.io/kubernetes-under-the-hood/documentation/etcd.html
+
+KUBE-PROXY:
+- Kube-proxy config files: 
+      - https://github.com/coderdba-coding-org/code1/blob/master/kubernetes/kube-vbox-ans-singlenode-15.5/roles/kube-proxy/templates/kube-proxy.yaml.j2
+      - https://gitlab.cncf.ci/kubernetes/kubernetes/tree/master/cluster/addons/kube-proxy
+      - https://github.com/QingCloudAppcenter/kubernetes/blob/master/k8s/addons/kube-proxy
+
+
+App example and explanation of networking:
+- https://www.stackrox.com/post/2020/01/kubernetes-networking-demystified/
+
+Cert generation with cfssl:
+- https://rob-blackbourn.medium.com/how-to-use-cfssl-to-create-self-signed-certificates-d55f76ba5781
+
+PEM TO CRT etc:
+- PEM TO CRT etc: https://stackoverflow.com/questions/19979171/how-to-convert-pem-into-key
+- PEM TO CRT etc: https://stackoverflow.com/questions/13732826/convert-pem-to-crt-and-key
+
+Access to multiple clusters, kubeconfig, kubelet.conf, admin.conf, base64:
+- certificate-authority-data (very IMPORTANT doc to configure kubelet.conf): https://insujang.github.io/2019-12-18/kubernetes-authentication/
+-- ABOVE DOC ~~~~~ IMPORTANT ONE ~~~~~~
+- https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/
+- https://kubernetes.io/docs/tasks/access-application-cluster/access-cluster/
+
+Ansible modules: 
+- Shell: https://www.middlewareinventory.com/blog/ansible-shell-examples/#Example_1_Execute_a_Single_Command_with_Ansible_Shell
+- Shell: https://docs.ansible.com/ansible/latest/collections/ansible/builtin/shell_module.html
+- Shell: https://www.middlewareinventory.com/blog/ansible-shell-examples/#Example_7_Execute_multiple_commands_in_a_Single_Shell_Play
+- Shell - multiple commands: https://stackoverflow.com/questions/24851575/ansible-how-to-pass-multiple-commands
+
+- Yum: https://docs.ansible.com/ansible/2.3/yum_module.html#examples
+- Docker python module: https://stackoverflow.com/questions/53941356/failed-to-import-docker-or-docker-py-no-module-named-docker
+
+Sed:
+- http://www.yourownlinux.com/2015/04/sed-command-in-linux-append-and-insert-lines-to-file.html
+- https://stackoverflow.com/questions/17998763/sed-commenting-a-line-matching-a-specific-string-and-that-is-not-already-comme/17999003
+- https://www.cyberciti.biz/faq/how-to-use-sed-to-find-and-replace-text-in-files-in-linux-unix-shell/
+
+Ansible playbooks:
+- Docker: https://faun.pub/configuring-docker-using-ansible-8dc1d9df3f69
+- Docker: https://gist.github.com/yonglai/d4617d6914d5f4eb22e4e5a15c0e9a03
+
+===============================================================
+PREP MODEL VM - PART 1 - ANSIBLE DOCKER SETUP
+===============================================================
+---------------------
+TO USE DOCKER PLUGIN
+---------------------
+- SET VARIABLE TO INDICATE PYTHON VERSION IN THE VM (not laptop)
+https://stackoverflow.com/questions/53941356/failed-to-import-docker-or-docker-py-no-module-named-docker
+Add this ansible_python_interpreter on to your 'hosts' file:
+
+Change [servers:vars] to [your-group-of-server-names:vars]
+
+For Python >= 2.7
+[servers:vars]
+ansible_python_interpreter=/usr/bin/python3 # For Python3 [default Ubuntu-18.04]
+
+Python <= 2.7
+[servers:vars]
+ansible_python_interpreter=/usr/bin/python # For Python2.7
+
+- INSTALL REQUIRED MODULES IN VM (not laptop)
+
+-- To avoid:  The error was: No module named docker
+# pip install docker==4.4.4 (if using python 2.7 or less)
+# pip install docker (if using python 3+ --> docker module should be version 5+)
+
+-- To avoid: The error was: No module named selectors
+# pip install selector
+
+----- Also, do this:
+https://dockerquestions.com/2021/07/07/ansible-playbook-error-against-remote-host/
+      From the above website:
+      If you try to use docker module, you’ll notice that its using the “websocket” module, which in turn is using the “selectors” module.
+
+      [root@mybox ~]# python
+      Python 2.7.5 (default, Nov 16 2020, 22:23:17)
+      [GCC 4.8.5 20150623 (Red Hat 4.8.5-44)] on linux2
+      Type “help”, “copyright”, “credits” or “license” for more information.
+      >>> import docker
+      Traceback (most recent call last):
+      File “”, line 1, in
+      File “/usr/lib/python2.7/site-packages/docker/__init__.py”, line 2, in
+      from .api import APIClient
+      File “/usr/lib/python2.7/site-packages/docker/api/__init__.py”, line 2, in
+      from .client import APIClient
+      File “/usr/lib/python2.7/site-packages/docker/api/client.py”, line 8, in
+      import websocket
+      File “/usr/lib/python2.7/site-packages/websocket/__init__.py”, line 22, in
+      from ._app import WebSocketApp
+      File “/usr/lib/python2.7/site-packages/websocket/_app.py”, line 25, in
+      import selectors
+      ImportError: No module named selectors
+      >>>
+
+      Im my case, version 1.1.0 of “websocket-client” was installed. After downgrading it, i was able to use the docker module again,
+
+[root@k9sv112model log]# pip list | grep webs
+websocket-client (1.1.1)
+
+[root@k9sv112model log]#  pip install websocket-client==0.57.0
+Collecting websocket-client==0.57.0
+  Downloading https://files.pythonhosted.org/packages/4c/5f/f61b420143ed1c8dc69f9eaec5ff1ac36109d52c80de49d66e0c36c3dfdf/websocket_client-0.57.0-py2.py3-none-any.whl (200kB)
+    100% |████████████████████████████████| 204kB 454kB/s 
+Requirement already satisfied (use --upgrade to upgrade): six in /usr/lib/python2.7/site-packages (from websocket-client==0.57.0)
+Installing collected packages: websocket-client
+  Found existing installation: websocket-client 1.1.1
+    Uninstalling websocket-client-1.1.1:
+      Successfully uninstalled websocket-client-1.1.1
+Successfully installed websocket-client-0.57.0
+You are using pip version 8.1.2, however version 21.2.3 is available.
+You should consider upgrading via the 'pip install --upgrade pip' command.
+
+========================================================
+PREP MODEL VM PART 2 - KUBERNETES SOFTWARE
+========================================================
+
+----------------------------
+VM BASIC SETTINGS
+----------------------------
+VM hostname: k9sv112model
+Memory: 2048 MB (2GB)
+Vbox network: vboxnet0
+Adapter type: host-only
+Adapter name in VM: enp0s8
+IP: 192.168.99.100 (pingable from laptop) (set using nmtui command in VM)
+
+----------------------------
+COPY SSH PUBLIC KEY TO VM
+----------------------------
+Copy SSH public key to vm for passwordless logon for manual and Ansible work from laptop.
+
+laptop$ scp id_rsa.pub.gdby root@192.168.99.100:/root/.ssh/authorized-keys
+--> asks for root password and then copies it
+
+Try logon now without password:
+laptop$ ssh-add ~/.ssh/id_rsa.gdby (the private key)
+laptop$ ssh root@192.168.99.100
+[root@k9sv112model ~]# 
+
+---------------------------------
+DISABLE SELINUX
+---------------------------------
+# setenforce 0
+
+Edit the file /etc/sysconfig/selinux (or /etc/selinux/config) and set enforcing as disabled
+
+---------------------------------
+DISABLE SWAP
+---------------------------------
+# swapoff -a
+
+Edit /etc/fstab and comment out line of swap
+#/dev/mapper/ol-swap     swap                    swap    defaults        0 0
+
+---------------------------------
+ENABLE br_netfilter
+---------------------------------
+# modprobe br_netfilter
+# echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables
+
+Also, put it in /etc/sysctl.conf as follows:
+net.bridge.bridge-nf-call-iptables = 1
+
+And, make it persistent:
+# sysctl -p
+
+---------------------------------------
+INSTALL DOCKER-CE (community edition)
+---------------------------------------
+- FIRST INSTALL CONTAINER-SELINUX > v2.9 --> say, 2.119
+http://mirror.centos.org/centos/7/extras/x86_64/Packages/container-selinux-2.119.1-1.c57a6f9.el7.noarch.rpm
+(perviously had used in 2019: http://mirror.centos.org/centos/7/extras/x86_64/Packages/container-selinux-2.68-1.el7.noarch.rpm)
+
+--> Download this, and then do: (dont do rpm -ivh container-selinux-2.74-1.el7.noarch.rpm)
+# yum install -y container-selinux-2.119.1-1.c57a6f9.el7.noarch.rpm
+
+- INSTALL DOCKER
+Check, and install if needed - dependencies with the following command:
+# yum install -y yum-utils device-mapper-persistent-data lvm2
+
+Next, add the Docker-ce repository with the command:
+# yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+
+Install Docker-ce with the command:
+# yum install -y docker-ce
+
+- ENABLE DOCKER SERVICE
+# systemctl enable docker
+
+- START DOCKER
+# service docker start
+
+- CHECK CGROUP
+# docker info | grep -i cgroup
+Cgroup Driver: cgroupfs
+
+----------------------------------------
+INSTALL CFSSL - TO GENERATE CERTIFICATES
+----------------------------------------
+https://blog.inkubate.io/deploy-kubernetes-1-9-from-scratch-on-vmware-vsphere/
+
+Installation of cfssl
+1- Download the binaries.
+
+$ wget https://pkg.cfssl.org/R1.2/cfssl_linux-amd64
+$ wget https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64
+2- Add the execution permission to the binaries.
+
+$ chmod +x cfssl*
+3- Move the binaries to /usr/local/bin.
+
+$ sudo mv cfssl_linux-amd64 /usr/local/bin/cfssl
+$ sudo mv cfssljson_linux-amd64 /usr/local/bin/cfssljson
+4- Verify the installation.
+
+$ cfssl version
+
+-----------------------------------
+FIREWALL - FOR MASTER NODES
+-----------------------------------
+firewall-cmd --permanent --add-port=6443/tcp
+firewall-cmd --permanent --add-port=2379-2380/tcp
+firewall-cmd --permanent --add-port=10250/tcp
+firewall-cmd --permanent --add-port=10251/tcp
+firewall-cmd --permanent --add-port=10252/tcp
+firewall-cmd --permanent --add-port=10255/tcp
+firewall-cmd --reload
+
+-----------------------------------
+FIREWALL - FOR WORKER NODES
+-----------------------------------
+firewall-cmd --permanent --add-port=10251/tcp
+firewall-cmd --permanent --add-port=10255/tcp
+firewall-cmd --reload
+
+--------
+VERIFY
+--------
+# firewall-cmd --list-all
+public (active)
+  target: default
+  icmp-block-inversion: no
+  interfaces: enp0s3 enp0s8
+  sources: 
+  services: ssh dhcpv6-client
+  ports: 6443/tcp 2379-2380/tcp 10250/tcp 10251/tcp 10252/tcp 10255/tcp
+  protocols: 
+  masquerade: no
+  forward-ports: 
+  source-ports: 
+  icmp-blocks: 
+  rich rules: 
+
+==========================================
+PYTHON SETUP - TO USE ANSIBLE DOCKER PULL
+==========================================
+https://linuxize.com/post/how-to-install-pip-on-centos-7/
+yum install epel-release
+yum install python-pip
+
+https://docs.ansible.com/ansible/2.8/modules/docker_image_module.html
+pip install docker (for python >= 2.7)
+pip install docker-py (for python 2.6)
+
+==========================================
+PULL DOCKER IMAGES NEEDED FOR KUBERNETES
+==========================================
+
+----------------------------------------------------------------------
+LIST OF IMAGES FROM CLUSTER WITH KUBEADM-INIT
+----------------------------------------------------------------------
+[root@ks1 etc]# docker images
+REPOSITORY                               TAG        IMAGE ID       CREATED         SIZE
+nginx                                    latest     08b152afcfae   2 weeks ago     133MB
+nginx                                    <none>     4f380adfc10f   6 weeks ago     133MB
+istio/proxyv2                            1.10.2     704d8c3c91a4   6 weeks ago     282MB
+istio/pilot                              1.10.2     8c8ea32730d4   6 weeks ago     217MB
+k8s.gcr.io/kube-apiserver                v1.21.2    106ff58d4308   7 weeks ago     126MB
+k8s.gcr.io/kube-controller-manager       v1.21.2    ae24db9aa2cc   7 weeks ago     120MB
+k8s.gcr.io/kube-proxy                    v1.21.2    a6ebd1c1ad98   7 weeks ago     131MB
+k8s.gcr.io/kube-scheduler                v1.21.2    f917b8c8f55b   7 weeks ago     50.6MB
+calico/node                              v3.19.1    c4d75af7e098   2 months ago    168MB
+calico/pod2daemon-flexvol                v3.19.1    5660150975fb   2 months ago    21.7MB
+calico/cni                               v3.19.1    5749e8b276f9   2 months ago    146MB
+calico/kube-controllers                  v3.19.1    5d3d5ddc8605   2 months ago    60.6MB
+k8s.gcr.io/pause                         3.4.1      0f8457a4c2ec   6 months ago    683kB
+k8s.gcr.io/coredns/coredns               v1.8.0     296a6d5035e2   9 months ago    42.5MB
+busybox                                  latest     f0b02e9d092d   9 months ago    1.23MB
+nginx                                    <none>     f35646e83998   9 months ago    133MB
+k8s.gcr.io/etcd                          3.4.13-0   0369cf4303ff   11 months ago   253MB
+istio/examples-bookinfo-reviews-v3       1.16.2     83e6a8464b84   13 months ago   694MB
+istio/examples-bookinfo-reviews-v2       1.16.2     39cff5d782e1   13 months ago   694MB
+istio/examples-bookinfo-reviews-v1       1.16.2     181be23dc1af   13 months ago   694MB
+istio/examples-bookinfo-ratings-v1       1.16.2     99ce598b98cf   13 months ago   161MB
+istio/examples-bookinfo-details-v1       1.16.2     edf6b9bea3db   13 months ago   149MB
+istio/examples-bookinfo-productpage-v1   1.16.2     7f1e097aad6d   13 months ago   207MB
+
+-----------------------------------
+PULL IMAGES
+-----------------------------------
+- DOCKER IMAGE REPOS
+https://console.cloud.google.com/gcr/images/google-containers/GLOBAL
+https://quay.io/repository/jcmoraisjr/haproxy-ingress?tag=latest&tab=tags
+
+- ETCD
+# docker pull quay.io/coreos/etcd:latest
+or
+# docker pull quay.io/coreos/etcd:3.4.13-0
+
+- MASTER (with additional components for workers also)
+--- FOR SPECIFIC VERSIONS
+https://kubernetes.io/docs/setup/release/notes/ 
+gcr.io/google_containers/kube-proxy-amd64(and such)
+
+-- REQUIRED
+docker pull k8s.gcr.io/etcd:3.4.13-0
+docker pull k8s.gcr.io/kube-apiserver:v1.21.2
+docker pull k8s.gcr.io/kube-scheduler:v1.21.2
+docker pull k8s.gcr.io/kube-controller-manager:v1.21.2
+docker pull k8s.gcr.io/kube-proxy:v1.21.2
+docker pull calico/node:v3.19.1
+docker pull calico/pod2daemon-flexvol:v3.19.1
+docker pull calico/cni:v3.19.1
+docker pull calico/kube-controllers:v3.19.1
+docker pull k8s.gcr.io/coredns/coredns:v1.8.0
+docker pull k8s.gcr.io/pause-amd64:3.1
+
+-- ADDITIONAL (TBD)
+docker pull quay.io/jcmoraisjr/haproxy-ingress:v0.12.7
+- older docker pull quay.io/jcmoraisjr/haproxy-ingress:v0.12.6 --> to make common vm image for master and worker
+- https://quay.io/repository/jcmoraisjr/haproxy-ingress?tag=latest&tab=tags
+docker pull gcr.io/google-containers/kube-addon-manager-amd64:v9.1.1
+docker pull bitnami/metrics-server:0.5.0
+- old docker pull gcr.io/google-containers/metrics-server-amd64:v0.3.6
+docker pull gcr.io/google-containers/rescheduler:v0.4.0
+
+-- DID NOT WORK
+docker pull k8s.gcr.io/pause-amd64:3.4.1
+
+-----------------------------------
+INSTALL KUBEADM, KUBECTL, KUBELET
+-----------------------------------
+https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/
+https://www.linuxtechi.com/install-kubernetes-1-7-centos7-rhel7/
+https://www.howtoforge.com/tutorial/centos-kubernetes-docker-cluster/
+
+NOTE: Installing kubelet will install its systemd service file also: /usr/lib/systemd/system/kubelet.service.d
+
+- STEPS FROM https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/
+cat <<EOF | sudo tee /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-\$basearch
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+exclude=kubelet kubeadm kubectl
+EOF
+
+# Set SELinux in permissive mode (effectively disabling it)
+sudo setenforce 0
+sudo sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
+
+--> For latest versions: sudo yum install -y kubelet kubeadm kubectl --disableexcludes=kubernetes
+--> For specific versions: sudo yum install -y kubelet-1.21.2-0.x86_64 kubeadm-1.21.2-0.x86_64 kubectl-1.22.0-0.x86_64 --disableexcludes=kubernetes
+            The following get installed (cni as well gets installed)
+            kubeadm-1.21.2-0.x86_64
+            kubelet-1.21.2-0.x86_64
+            kubernetes-cni-0.8.7-0.x86_64
+            kubectl-1.22.0-0.x86_64
+            
+- KUBELET SERVICE STATUS
+# systemctl status kubelet
+● kubelet.service - kubelet: The Kubernetes Node Agent
+   Loaded: loaded (/usr/lib/systemd/system/kubelet.service; disabled; vendor preset: disabled)
+  Drop-In: /usr/lib/systemd/system/kubelet.service.d
+           └─10-kubeadm.conf
+   Active: inactive (dead)
+     Docs: https://kubernetes.io/docs/
+     
+- ENABLE KUBELET SERVICE
+sudo systemctl enable --now kubelet
+
+---------------------
+INSTALL ETCDCTL
+---------------------
+NOTE: Do only if it is necessary - we can always use docker exec to run the etcdctl command from within the etcd container itself
+- With yum: yum install etcd - not sure which repo
+- Tar/zip: https://computingforgeeks.com/setup-etcd-cluster-on-centos-debian-ubuntu/
+
+
+==================================
+KUBECONFIG NOTES
+==================================
+https://kubernetes.io/docs/setup/best-practices/certificates/
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+USER TYPE in csr.json - CN and O etc
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In the xyz-csr.json the "CN"s denote the purpose of the user - which is also real nature of the user in many cases:
+
+"CN": "admin" (or kubernetes-admin)--> administrator which can access kube-system as well to create pods and other objects
+"CN": "Kubernetes" --> CA and Apiserver
+"CN": "etcd"
+"CN": "system:node:192.168.99.101" (or node hostname instead of IP) --> Kubelet
+"CN": "system:kube-proxy" 
+
+- FROM: https://kubernetes.io/docs/setup/best-practices/certificates/
+
+Configure certificates for user accounts 
+You must manually configure these administrator account and service accounts:
+
+filename	            credential name	            Default CN	                        O (in Subject)
+admin.conf	            default-admin	            kubernetes-admin	                  system:masters
+kubelet.conf	      default-auth	            system:node:<nodeName> (see note)	system:nodes
+controller-manager.conf	default-controller-manager	system:kube-controller-manager	
+scheduler.conf	      default-scheduler	            system:kube-scheduler	
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- CREATING CONFIG WITH EMBEDDED CERTS
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# CREATE A KUBECONFIG FILE FOR 'admin' USER
+kubectl config set-cluster kubernetes \
+--certificate-authority=certs/ca.pem \
+--server=https://ksn1:6443 \
+--embed-certs=true \
+--kubeconfig=kubeconfig/admin.kubeconfig
+
+kubectl config set-credentials admin \
+--client-certificate=certs/admin.pem \
+--client-key=certs/admin-key.pem \
+--embed-certs=true \
+--kubeconfig=kubeconfig/admin.kubeconfig
+
+kubectl config set-context kubernetes --cluster=kubernetes --user=admin --kubeconfig=kubeconfig/admin.kubeconfig
+kubectl config use-context kubernetes --kubeconfig=kubeconfig/admin.kubeconfig
+kubectl get nodes
+
+-- THIS WILL CREATE A KUBECONFIG WITH CONTENTS OF PEM FILES IN BASE64 FORMAT EMBEDDED IN THE KUBECONFIG
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FU ....
+    ...
+    ...
+aQpSTlNubG5UMHNPUFJadz09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+    server: https://ksn1:6443
+  name: kubernetes
+contexts:
+- context:
+    cluster: kubernetes
+    user: admin
+  name: kubernetes
+current-context: kubernetes
+kind: Config
+preferences: {}
+users:
+- name: admin
+  user:
+    client-certificate-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FU ....
+    ...
+    ...
+aQpSTlNubG5UMHNPUFJadz09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+    client-key-data: LS0tLS1CRUdJTiBSU0EgUFJ ...
+    ...
+    ...
+CBSU0EgUFJJVkFURSBLRVktLS0tLQo=
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- CREATING CONFIG WITH NO EMBEDDED CERTS - BUT REFERENCING THE PEM FILES
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# CREATE A KUBECONFIG FILE FOR 'admin' USER
+kubectl config set-cluster kubernetes \
+--certificate-authority=/etc/kubernetes/pki/ca.pem \
+--server=https://ksn1:6443 \
+--kubeconfig=kubeconfig/admin.kubeconfig.noEmbedCerts
+
+kubectl config set-credentials admin \
+--client-certificate=/etc/kubernetes/pki/admin.pem \
+--client-key=/etc/kubernetes/pki/admin-key.pem \
+--kubeconfig=kubeconfig/admin.kubeconfig.noEmbedCerts
+
+kubectl config set-context kubernetes --cluster=kubernetes --user=admin --kubeconfig=kubeconfig/admin.kubeconfig.noEmbedCerts
+kubectl config use-context kubernetes --kubeconfig=kubeconfig/admin.kubeconfig.noEmbedCerts
+kubectl get nodes
+
+-- THIS WILL CREATE A KUBECONFIG WITH PEM FILE PATHS REFERENCED IN THE KUBECONFIG
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority: /etc/kubernetes/pki/ca.pem
+    server: https://ksn1:6443
+  name: kubernetes
+contexts:
+- context:
+    cluster: kubernetes
+    user: admin
+  name: kubernetes
+current-context: kubernetes
+kind: Config
+preferences: {}
+users:
+- name: admin
+  user:
+    client-certificate: /etc/kubernetes/pki/admin.pem
+    client-key: /etc/kubernetes/pki/admin-key.pem
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- USING A SPECIFIC KUBECONFIG
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# kubectl apply -f kube-proxy-rbac.yaml --kubeconfig /etc/kubernetes/admin.kubeconfig
+# kubectl get pods --all-namespaces --kubeconfig /etc/kubernetes/kubelet.conf
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- VIEWING CURRENT CONFIG
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# kubectl config view
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: DATA+OMITTED
+    server: https://ksn1:6443
+  name: kubernetes
+contexts:
+- context:
+    cluster: kubernetes
+    user: system:node:ksn1
+  name: system:node:ksn1@kubernetes
+current-context: system:node:ksn1@kubernetes
+kind: Config
+preferences: {}
+users:
+- name: system:node:ksn1
+  user:
+    client-certificate: /etc/kubernetes/pki/kubelet-ksn1.pem
+    client-key: /etc/kubernetes/pki/kubelet-ksn1-key.pem
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+SINGLE NODE SETUP - TO TRY SINGLE NODE FIRST AND THEN MULTINODE
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+============================================================================
+SINGLE NODE - ETCD - WITHOUT CERTIFICATES - to learn, and verify vm setup
+============================================================================
+
+https://etcd.io/docs/v3.5/op-guide/container
+  
+---------------
+PREP VM
+---------------
+Clone the model machine
+VM hostname: ksn1 (sn for single-node)
+Memory: 2048 MB (2GB)
+Vbox network: vboxnet0
+Adapter type: host-only
+Adapter name in VM: enp0s8
+IP: 192.168.99.101 (pingable from laptop) (set using nmtui command in VM)
+
+Running a single node etcd
+Use the host IP address when configuring etcd:
+
+---------------------------
+RUN ETCD - FOREGROUND
+---------------------------
+NOTE: This makes etcd docker command run in foreground - on command line - NOT AS A SERVICE
+      Keep an additional terminal/tab to do verifications
+      
+Modified steps from https://etcd.io/docs/v3.5/op-guide/container
+--> Kept the steps and commands, changed IP and such
+
+- Configure a Docker volume to store etcd data:
+NOTE: The folder on host/node for this volume will be: /var/lib/docker/volumes/etcd-data
+      And, in the etcd container it will be: /etcd-data 
+            --> could not view it in the container as 'docker exec -ti /bin/sh' took me to the docker container, but it did not have 'ls' command
+
+# docker volume create --name etcd-data
+# docker volume ls
+DRIVER    VOLUME NAME
+local     etcd-data
+
+
+- Run etcd:
+Note: Use "/usr/bin/docker run --rm" if you dont want the docker container to exist after you kill the running command
+
+export NODE1=192.168.99.101
+export DATA_DIR="etcd-data"
+export ETCD_IMAGE="k8s.gcr.io/etcd:3.4.13-0"
+
+docker run --rm \
+  -p 2379:2379 \
+  -p 2380:2380 \
+  --volume=${DATA_DIR}:/etcd-data \
+  --name etcd ${ETCD_IMAGE} \
+  /usr/local/bin/etcd \
+  --data-dir=/etcd-data --name node1 \
+  --initial-advertise-peer-urls http://${NODE1}:2380 --listen-peer-urls http://0.0.0.0:2380 \
+  --advertise-client-urls http://${NODE1}:2379 --listen-client-urls http://0.0.0.0:2379 \
+  --initial-cluster node1=http://${NODE1}:2380
+
+- MESSAGES (on screen)
+raft2021/08/13 05:44:24 INFO: d5673e1f00b32e05 is starting a new election at term 1
+raft2021/08/13 05:44:24 INFO: d5673e1f00b32e05 became candidate at term 2
+raft2021/08/13 05:44:24 INFO: d5673e1f00b32e05 received MsgVoteResp from d5673e1f00b32e05 at term 2
+raft2021/08/13 05:44:24 INFO: d5673e1f00b32e05 became leader at term 2
+raft2021/08/13 05:44:24 INFO: raft.node: d5673e1f00b32e05 elected leader d5673e1f00b32e05 at term 2
+2021-08-13 05:44:24.339696 I | etcdserver: setting up the initial cluster version to 3.4
+2021-08-13 05:44:24.339748 I | etcdserver: published {Name:node1 ClientURLs:[http://192.168.99.101:2379]} to cluster a28fae6205c8aca6
+2021-08-13 05:44:24.340086 I | embed: ready to serve client requests
+2021-08-13 05:44:24.340859 N | embed: serving insecure client requests on [::]:2379, this is strongly discouraged!
+2021-08-13 05:44:24.341438 N | etcdserver/membership: set the initial cluster version to 3.4
+2021-08-13 05:44:24.341481 I | etcdserver/api: enabled capabilities for version 3.4
+
+- VERIFY
+# docker ps -a
+CONTAINER ID   IMAGE                      COMMAND                  CREATED          STATUS          PORTS                                                                               NAMES
+fa46a547646c   k8s.gcr.io/etcd:3.4.13-0   "/usr/local/bin/etcd…"   51 seconds ago   Up 49 seconds   4001/tcp, 0.0.0.0:2379-2380->2379-2380/tcp, :::2379-2380->2379-2380/tcp, 7001/tcp   etcd
+
+- VERIFY - List the cluster member:
+
+-- WITH ETCDCTL ON THE NODE
+# etcdctl --endpoints=http://${NODE1}:2379 member list
+# etcdctl --endpoints=http://${192.168.99.101}:2379 member list
+--> These did not work yet as etcdctl was not yet installed on the VM/node
+
+-- WITH ETCDCTL IN THE ETCD CONTAINER 
+Reference: https://github.com/coderdba/NOTES/blob/master/kubernetes-kb/install-vbox/WIP-2019-install-as-pods-multinode-no-cert.txt
+This does "docker exec" into pod name "etcd" and runs etcdctl from within the pod
+
+# docker exec etcd /bin/sh -c "export ETCDCTL_API=3 && /usr/local/bin/etcdctl member list"
+d5673e1f00b32e05, started, node1, http://192.168.99.101:2380, http://192.168.99.101:2379, false
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- REFERENCE - STEPS AS IN DOC
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+https://etcd.io/docs/v3.5/op-guide/container
+
+            Running a single node etcd
+            Use the host IP address when configuring etcd:
+
+            export NODE1=192.168.1.21
+            Configure a Docker volume to store etcd data:
+
+            docker volume create --name etcd-data
+            export DATA_DIR="etcd-data"
+
+            Run the latest version of etcd:
+
+            REGISTRY=quay.io/coreos/etcd
+            # available from v3.2.5
+            REGISTRY=gcr.io/etcd-development/etcd
+
+            docker run \
+              -p 2379:2379 \
+              -p 2380:2380 \
+              --volume=${DATA_DIR}:/etcd-data \
+              --name etcd ${REGISTRY}:latest \
+              /usr/local/bin/etcd \
+              --data-dir=/etcd-data --name node1 \
+              --initial-advertise-peer-urls http://${NODE1}:2380 --listen-peer-urls http://0.0.0.0:2380 \
+              --advertise-client-urls http://${NODE1}:2379 --listen-client-urls http://0.0.0.0:2379 \
+              --initial-cluster node1=http://${NODE1}:2380
+
+            List the cluster member:
+            etcdctl --endpoints=http://${NODE1}:2379 member list
+
+----------------------
+ETCD SERVICE
+----------------------
+Reference: https://github.com/coderdba/NOTES/blob/master/kubernetes-kb/install-vbox/WIP-2019-install-as-pods-multinode-no-cert.txt
+
+To start etcd container when host machine starts - create a systemd service.
+
+----
+File: /etc/environment
+----
+# ETCD RELATED ENVIRONMENT 
+
+REGISTRY=quay.io/coreos/etcd
+# available from v3.2.5
+# REGISTRY=gcr.io/etcd-development/etcd
+
+# For each machine
+#ETCD_VERSION=latest
+ETCD_VERSION=3.4.13-0
+
+# Note: TOKEN can be any string
+TOKEN=my-etcd-token
+CLUSTER_STATE=new
+CLUSTER="ksn1=http://192.168.99.101:2380"
+DATA_DIR="etcd-data"
+THIS_NAME=ksn1
+THIS_IP=192.168.99.101
+
+----
+File: /etc/systemd/system/etcd.service:
+----
+Note: Use "/usr/bin/docker run --rm" if you dont want the docker container to exist after the service stops
+
+[Unit]
+Description=etcd
+Documentation=https://github.com/coreos
+Wants=docker.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+IOSchedulingClass=2
+IOSchedulingPriority=0
+EnvironmentFile=/etc/environment
+
+# START ETCD
+ExecStart=/usr/bin/docker run --rm \
+  --net=host \
+  -p 2379:2379 \
+  -p 2380:2380 \
+  --volume=${DATA_DIR}:/etcd-data \
+  --name etcd ${REGISTRY}:${ETCD_VERSION} \
+  /usr/local/bin/etcd \
+  --data-dir=/etcd-data --name ${THIS_NAME} \
+  --initial-advertise-peer-urls http://${THIS_IP}:2380 --listen-peer-urls http://0.0.0.0:2380 \
+  --advertise-client-urls http://${THIS_IP}:2379 --listen-client-urls http://0.0.0.0:2379 \
+  --initial-cluster ${CLUSTER} \
+  --initial-cluster-state ${CLUSTER_STATE} --initial-cluster-token ${TOKEN}
+
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+
+- START ETCD SERVICE
+-- Reload the daemon configuration.
+# systemctl daemon-reload
+
+-- Enable etcd to start at boot time.
+# systemctl enable etcd
+
+-- Start etcd.
+# systemctl start etcd
+
+-- Verify
+# journalctl -xe 
+Aug 13 14:53:19 ksn1 docker[21061]: raft2021/08/13 09:23:19 INFO: raft.node: d5673e1f00b32e05 elected leader d5673e1f00b
+Aug 13 14:53:19 ksn1 docker[21061]: 2021-08-13 09:23:19.912468 I | etcdserver: published {Name:ksn1 ClientURLs:[http://1
+Aug 13 14:53:19 ksn1 docker[21061]: 2021-08-13 09:23:19.912680 I | embed: ready to serve client requests
+Aug 13 14:53:19 ksn1 docker[21061]: 2021-08-13 09:23:19.913499 N | embed: serving insecure client requests on [::]:2379
+
+-- Verify
+# docker exec etcd /bin/sh -c "export ETCDCTL_API=3 && /usr/local/bin/etcdctl member list"
+d5673e1f00b32e05, started, ksn1, http://192.168.99.101:2380, http://192.168.99.101:2379, false
+
+
+=====================================================
+GENERATE CERTIFICATES
+=====================================================
+Cert generation With a Makefile: https://github.com/etcd-io/etcd/blob/main/hack/tls-setup/
+Cert generation Manually: https://blog.inkubate.io/deploy-kubernetes-1-9-from-scratch-on-vmware-vsphere/
+
+Own Doc: https://github.com/coderdba/NOTES/blob/master/kubernetes-kb/install-vbox/WIP-2019-single-node-pods-with-certs.txt
+--> Much of the stuff in this section is based on this repo
+Own SCRIPTS: https://github.com/coderdba-coding-org/kubernetes/tree/master/2020-multinode-as-pods-with-certs-v15.5/certs
+--> The stuff in this section is based on this repo
+
+Own SCRIPTS(older): https://github.com/coderdba-coding-org/code1/tree/master/kubernetes/kube-vbox-ans-singlenode-15.5/roles/certs-gen
+
+---------------------------------------------------
+LIST OF CERTIFICATES THAT WE WILL CREATE
+---------------------------------------------------
+CA Certificate and Key - certificate authority public cert, private key
+Admin client cert - To connect to Kubernetes cluster as admin from another machine (Note: This is not required to create the cluster itself)
+Kubelet client cert - For kubelet on each worker node to join the Kubernetes cluster
+Kube-Proxy client cert - For kube-proxy on each worker node to join the Kubernetes cluster
+API-Server cert - For kube-apiserver
+Etcd cert - use API-Server cert itself - OR - GENERATE A DIFFERENT ONES - 1. CLIENT AND 2. PEER CERTS 
+--> For etcd certs: https://etcd.io/docs/v3.5/op-guide/security/,  https://github.com/etcd-io/etcd/blob/main/hack/tls-setup/
+
+-----------------
+CA CERTIFICATE
+-----------------
+This will produce certificate-authority certificate - to use while generating other certificates
+
+- Create the certificate authority configuration file
+ca-config.json file:
+
+{
+  "signing": {
+    "default": {
+      "expiry": "87600h"
+    },
+    "profiles": {
+      "kubernetes": {
+        "usages": ["signing", "key encipherment", "server auth", "client auth"],
+        "expiry": "87600h"
+      }
+    }
+  }
+}
+
+- Create the certificate authority signing request configuration file.
+ca-csr.json file:
+
+{
+  "CN": "Kubernetes",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "ABC",
+      "L": "ABC",
+      "O": "Kubernetes",
+      "OU": "Kubernetes",
+      "ST": "ABC"
+    }
+  ]
+}
+
+
+- Generate the certificate authority certificate and private key (CA Cert and CA Key)
+Run command: (ca-gen.sh)
+
+# cfssl gencert -initca ca-csr.json | cfssljson -bare ca
+
+2021/08/13 15:55:58 [INFO] generating a new CA key and certificate from CSR
+2021/08/13 15:55:58 [INFO] generate received request
+2021/08/13 15:55:58 [INFO] received CSR
+2021/08/13 15:55:58 [INFO] generating key: rsa-2048
+2021/08/13 15:55:58 [INFO] encoded CSR
+2021/08/13 15:55:58 [INFO] signed certificate with serial number 488749427361051917701321279809948885154880231308
+
+- It will produce these:
+ca.csr - file containing the csr (certificate signing request)
+ca.pem - ca certificate (public)
+ca-key.pem - ca key (private)
+
+--------------------------
+ADMIN-CLIENT CERTIFICATE
+--------------------------
+This certificate will be used to connect to the Kubernetes cluster as an administrator.
+NOTE:  No IP/hostname needed for this
+
+- Create the admin-client csr config file
+File: admin-csr.json
+{
+  "CN": "admin",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "ABC",
+      "L": "ABC",
+      "O": "system:masters",
+      "OU": "Kubernetes",
+      "ST": "ABC"
+    }
+  ]
+}
+
+- Run the command to generate the admin-client certs
+Script file: admin-gen.sh
+
+cfssl gencert \
+-ca=ca.pem \
+-ca-key=ca-key.pem \
+-config=ca-config.json \
+-profile=kubernetes admin-csr.json | \
+cfssljson -bare admin
+
+# ./admin-gen.sh
+2021/08/13 16:35:16 [INFO] generate received request
+2021/08/13 16:35:16 [INFO] received CSR
+2021/08/13 16:35:16 [INFO] generating key: rsa-2048
+2021/08/13 16:35:17 [INFO] encoded CSR
+2021/08/13 16:35:17 [INFO] signed certificate with serial number 727036575979191653126949921137901971843610903400
+2021/08/13 16:35:17 [WARNING] This certificate lacks a "hosts" field. This makes it unsuitable for
+websites. For more information see the Baseline Requirements for the Issuance and Management
+of Publicly-Trusted Certificates, v.1.1.6, from the CA/Browser Forum (https://cabforum.org);
+specifically, section 10.2.3 ("Information Requirements").
+
+- It will produce these files
+admin.pem - cert (public)
+admin-key.pem - key (private)
+admin.csr - file containing the csr (certificate signing request)
+
+------------------------------------------------------
+KUBELET-CLIENT CERTIFICATE (for worker nodes)
+------------------------------------------------------
+Worker-node kubelets will need a certificate to join the Kubernetes cluster
+NOTE: The IP is for the specific WORKER node
+
+- Configuration files - for single-node
+File: kubelet-ksn1-csr.json
+{
+  "CN": "system:node:192.168.99.101",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "ABC",
+      "L": "ABC",
+      "O": "system:nodes",
+      "OU": "Kubernetes",
+      "ST": "ABC"
+    }
+  ]
+}
+
+- Configuration files - for multi-node
+File kubelet-node1-csr.json file:
+{
+  "CN": "system:node:192.168.99.101",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "ABC",
+      "L": "ABC",
+      "O": "system:nodes",
+      "OU": "Kubernetes",
+      "ST": "ABC"
+    }
+  ]
+}
+
+File kubelet-node2-csr.json file:
+{
+  "CN": "system:node:192.168.99.102",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "ABC",
+      "L": "ABC",
+      "O": "system:nodes",
+      "OU": "Kubernetes",
+      "ST": "ABC"
+    }
+  ]
+}
+
+File kubelet-node3-csr.json file:
+{
+  "CN": "system:node:192.168.99.103",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "ABC",
+      "L": "ABC",
+      "O": "system:nodes",
+      "OU": "Kubernetes",
+      "ST": "ABC"
+    }
+  ]
+}
+
+- Cert generator command file
+Note: In hostname 'k1', 'k2', 'k3' represent hostnames alongwith IP addresses
+--> modify IP and hostname as needed
+--> If creating a single-node cluster, then retain only one command call
+
+File: kubelet-gen.sh
+
+# 3-node model commands below
+# Uncomment and change IP and hostname as needed
+# If a single-node cluster, then copy just one and change IP and hostname as needed
+#cfssl gencert \
+#-ca=certs/ca.pem \
+#-ca-key=certs/ca-key.pem \
+#-config=ca-config.json \
+#-hostname=192,168.99.201,k1,127.0.0.1 \
+#-profile=kubernetes kubelet-k1-csr.json | \
+#cfssljson -bare certs/kubelet-k1
+#
+#cfssl gencert \
+#-ca=ca.pem \
+#-ca-key=certs/ca-key.pem \
+#-config=certs/ca-config.json \
+#-hostname=192,168.99.202,k2,127.0.0.1 \
+#-profile=kubernetes kubelet-k2-csr.json | \
+#cfssljson -bare certs/kubelet-k2
+#
+#cfssl gencert \
+#-ca=ca.pem \
+#-ca-key=certs/ca-key.pem \
+#-config=certs/ca-config.json \
+#-hostname=192,168.99.203,k3 \
+#-profile=kubernetes kubelet-k3-csr.json | \
+#cfssljson -bare certs/kubelet-k3
+
+# Single node
+cfssl gencert \
+-ca=certs/ca.pem \
+-ca-key=certs/ca-key.pem \
+-config=ca-config.json \
+-hostname=192,168.99.101,ksn1,127.0.0.1 \
+-profile=kubernetes kubelet-ksn1-csr.json | \
+cfssljson -bare certs/kubelet-ksn1
+
+
+- For single-node you get these files
+kubelet-ksn1.pem - cert (public)
+kubelet-ksn1-key.pem - key (private)
+kubelet-ksn1.csr - cert signing request
+
+-------------------------------------------------
+KUBE-PROXY CLIENT CERTIFICATE (for worker nodes) 
+-------------------------------------------------
+
+File: kube-proxy-csr.json
+
+{
+  "CN": "system:kube-proxy",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "ABC",
+      "L": "ABC",
+      "O": "system:node-proxier",
+      "OU": "Kubernetes",
+      "ST": "ABC"
+    }
+  ]
+}
+
+- Run command to generate cert
+Command File: kube-proxy-gen.sh
+
+cfssl gencert \
+-ca=ca.pem -ca-key=ca-key.pem \
+-config=ca-config.json \
+-profile=kubernetes kube-proxy-csr.json | \
+cfssljson -bare kube-proxy
+
+- Get these files
+kube-proxy.pem - cert (public)
+kube-proxy-key.pem - key (private)
+kube-proxy.csr - cert signing request
+
+--------------------------------------------
+APISERVER CERTIFICATE - for master nodes
+--------------------------------------------
+
+- CSR config file:
+
+File: kube-apiserver-csr.json
+
+{
+  "CN": "kubernetes",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "ABC",
+      "L": "ABC",
+      "O": "Kubernetes",
+      "OU": "Kubernetes",
+      "ST": "ABC"
+    }
+  ]
+}
+
+- Run command
+Command file: kube-apiserver-csr.sh
+
+NOTE: hostname has IP and hostname (not just IP as in the web 'deploying...' example)
+NOTE: 10.96.0.1 is derived from pod-ip cidr - with 1 at the end - this is assigned to apiserver pod by default
+NOTE: 127.0.0.1 is required as well
+
+# Multi Node
+cfssl gencert \
+-ca=ca.pem \
+-ca-key=ca-key.pem \
+-config=ca-config.json \
+-hostname=10.96.0.1,192.168.99.101,k1,192.168.99.102,k2,192.168.99.103,k3,127.0.0.1,kubernetes.default \
+-profile=kubernetes kubernetes-csr.json | \
+cfssljson -bare kube-apiserver
+
+# Single Node
+cfssl gencert \
+-ca=ca.pem \
+-ca-key=ca-key.pem \
+-config=ca-config.json \
+-hostname=10.96.0.1,192.168.99.101,ksn1,127.0.0.1,kubernetes.default \
+-profile=kubernetes kubernetes-csr.json | \
+cfssljson -bare kube-apiserver
+
+- Messages
+2021/08/13 17:50:43 [INFO] generate received request
+2021/08/13 17:50:43 [INFO] received CSR
+2021/08/13 17:50:43 [INFO] generating key: rsa-2048
+2021/08/13 17:50:43 [INFO] encoded CSR
+2021/08/13 17:50:43 [INFO] signed certificate with serial number 723709945155263733370719602601318911309064062039
+
+- Get these cert and key files
+kube-apiserver.pem - cert (public)
+kube-apiserver-key.pem - key (private)
+kube-apiserver.csr - cert signing request
+
+
+-------------------------------------
+ETCD CERTIFICATES
+-------------------------------------
+Based on: https://github.com/etcd-io/etcd/blob/main/hack/tls-setup
+NOTE: This was not there in https://blog.inkubate.io/deploy-kubernetes-1-9-from-scratch-on-vmware-vsphere/
+      - in that, they used kubernetes.pem and kubernetes-key.pem for both apiserver and etcd client and peer
+      
+- Config file - single node
+File: etcd-singlenode-csr.json
+{
+  "CN": "etcd",
+  "hosts": [
+    "localhost",
+    "127.0.0.1",
+    "192.168.99.101"
+  ],
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "O": "etcd",
+      "OU": "etcd cluster",
+      "L": "ABC"
+    }
+  ]
+}
+
+- Config file - multinode
+etcd-multinode-csr.json
+{
+  "CN": "etcd",
+  "hosts": [
+    "localhost",
+    "127.0.0.1",
+    "192.168.99.201",
+    "192.168.99.202",
+    "192.168.99.203"
+  ],
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "O": "etcd",
+      "OU": "etcd cluster",
+      "L": "ABC"
+    }
+  ]
+}
+
+- Run command to create certs
+Command file: etcd-gen.sh
+
+# NOTE: Uncomment and modify as needed - for single and multi nodes
+# NOTE: Modify hostname-suffix ksn1, k1, k2, k3 as needed
+# NOTE: Also, probably we dont really need k1,k2,k3 - maybe one file-pair can be used by all etcd instances
+
+#================
+# Single Node
+#================
+# Client certificates
+cfssl gencert \
+-ca ca.pem -ca-key ca-key.pem \
+-config ca-config.json -profile=kubernetes etcd-singlenode-csr.json | \
+cfssljson -bare etcd-ksn1
+
+# Peer certificates
+cfssl gencert \
+-ca ca.pem -ca-key ca-key.pem \
+-config ca-config.json -profile=kubernetes etcd-singlenode-csr.json | \
+cfssljson -bare etcd-peer-ksn1
+
+
+#================
+# Multi Node
+#================
+# Client certificates
+#cfssl gencert \
+#-ca ca.pem -ca-key ca-key.pem \
+#-config ca-config.json -profile=kubernetes etcd-multinode-csr.json | \
+#cfssljson -bare etcd-k1
+
+# Peer certificates
+#cfssl gencert \
+#-ca ca.pem -ca-key ca-key.pem \
+#-config ca-config.json -profile=kubernetes etcd-multinode-csr.json | \
+#cfssljson -bare etcd-peer-k1
+
+# Client certificates
+#cfssl gencert \
+#-ca ca.pem -ca-key ca-key.pem \
+#-config ca-config.json -profile=kubernetes etcd-multinode-csr.json | \
+#cfssljson -bare etcd-k2
+
+# Peer certificates
+#cfssl gencert \
+#-ca ca.pem -ca-key ca-key.pem \
+#-config ca-config.json etcd-multinode-csr.json | \
+#cfssljson -bare etcd-peer-k2
+
+# Client certificates
+#cfssl gencert \
+#-ca ca.pem -ca-key ca-key.pem \
+#-config ca-config.json etcd-multinode-csr.json | \
+#cfssljson -bare etcd-k3
+
+# Peer certificates
+#cfssl gencert \
+#-ca ca.pem -ca-key ca-key.pem \
+#-config ca-config.json etcd-multinode-csr.json | \
+#cfssljson -bare etcd-peer-k3
+
+- Messages
+2021/08/13 18:12:45 [INFO] generate received request
+2021/08/13 18:12:45 [INFO] received CSR
+2021/08/13 18:12:45 [INFO] generating key: rsa-2048
+2021/08/13 18:12:46 [INFO] encoded CSR
+2021/08/13 18:12:46 [INFO] signed certificate with serial number 273897464124933817446336638248002839394198199442
+2021/08/13 18:12:46 [WARNING] This certificate lacks a "hosts" field. This makes it unsuitable for
+websites. For more information see the Baseline Requirements for the Issuance and Management
+of Publicly-Trusted Certificates, v.1.1.6, from the CA/Browser Forum (https://cabforum.org);
+specifically, section 10.2.3 ("Information Requirements").
+2021/08/13 18:12:46 [INFO] generate received request
+2021/08/13 18:12:46 [INFO] received CSR
+2021/08/13 18:12:46 [INFO] generating key: rsa-2048
+2021/08/13 18:12:46 [INFO] encoded CSR
+2021/08/13 18:12:46 [INFO] signed certificate with serial number 588100363056942112025633808003647473103553087425
+2021/08/13 18:12:46 [WARNING] This certificate lacks a "hosts" field. This makes it unsuitable for
+websites. For more information see the Baseline Requirements for the Issuance and Management
+of Publicly-Trusted Certificates, v.1.1.6, from the CA/Browser Forum (https://cabforum.org);
+specifically, section 10.2.3 ("Information Requirements").
+
+
+- These files get created (for single node)
+etcd-ksn1.pem - cert for client (public)
+etcd-ksn1-key.pem - key for client (private)
+etcd-ksn1.csr
+
+etcd-peer-ksn1.pem - cert for peer (public)
+etcd-peer-ksn1-key.pem - key for peer (public)
+etcd-peer-ksn1.csr
+
+=====================================================
+SINGLE NODE - ETCD - WITH CERTS 
+=====================================================
+
+-----------------------------------
+COPY CERTS TO /etc/kubernetes/pki
+-----------------------------------
+Copy all .pem files generated to /etc/kubernetes/pki
+
+-----------------------------------
+START ETCD
+-----------------------------------
+
+Script: etcd-start-docker-run.sh
+
+export THIS_NAME=ksn1
+export THIS_IP=192.168.99.101
+export DATA_DIR="etcd-data"
+export ETCD_IMAGE="k8s.gcr.io/etcd:3.4.13-0"
+CLUSTER_STATE=new
+CLUSTER="ksn1=https://192.168.99/101:2380"
+TOKEN=arbitrary-token
+
+docker run --rm \
+--net=host \
+-p 2379:2379 \
+-p 2380:2380 \
+--volume=${DATA_DIR}:/etcd-data \
+--volume=/etc/kubernetes/pki:/etc/kubernetes/pki \
+--name etcd ${ETCD_IMAGE} \
+/usr/local/bin/etcd \
+--data-dir=/etcd-data --name=${THIS_NAME} \
+--initial-advertise-peer-urls https://${THIS_IP}:2380 \
+--listen-peer-urls https://0.0.0.0:2380 \
+--advertise-client-urls https://${THIS_IP}:2379 \
+--listen-client-urls https://0.0.0.0:2379 \
+--initial-cluster ${CLUSTER} \
+--initial-cluster-state ${CLUSTER_STATE} \
+--initial-cluster-token ${TOKEN} \
+--cert-file=/etc/kubernetes/pki/etcd-ksn1.pem \
+--key-file=/etc/kubernetes/pki/etcd-ksn1-key.pem \
+--trusted-ca-file=/etc/kubernetes/pki/ca.pem \
+--peer-cert-file=/etc/kubernetes/pki/etcd-peer-ksn1.pem \
+--peer-key-file=/etc/kubernetes/pki/etcd-peer-ksn1-key.pem \
+--peer-trusted-ca-file=/etc/kubernetes/pki/ca.pem
+
+- MESSAGES
+raft2021/08/13 14:35:19 INFO: d5673e1f00b32e05 is starting a new election at term 7
+raft2021/08/13 14:35:19 INFO: d5673e1f00b32e05 became candidate at term 8
+raft2021/08/13 14:35:19 INFO: d5673e1f00b32e05 received MsgVoteResp from d5673e1f00b32e05 at term 8
+raft2021/08/13 14:35:19 INFO: d5673e1f00b32e05 became leader at term 8
+raft2021/08/13 14:35:19 INFO: raft.node: d5673e1f00b32e05 elected leader d5673e1f00b32e05 at term 8
+2021-08-13 14:35:19.104724 I | etcdserver: published {Name:ksn1 ClientURLs:[https://192.168.99.101:2379]} to cluster a28fae6205c8aca6
+2021-08-13 14:35:19.105171 I | embed: ready to serve client requests
+2021-08-13 14:35:19.106576 I | embed: serving client requests on [::]:2379
+
+- VERIFY
+# docker exec etcd /bin/sh -c "export ETCDCTL_API=3 && /usr/local/bin/etcdctl member list"
+--> This failed with the following messages
+
+-- On screen message from the command
+--endpoints=http://${192.168.99.101}:2379: bad substitution
+{"level":"warn","ts":"2021-08-13T14:35:32.148Z","caller":"clientv3/retry_interceptor.go:62","msg":"retrying of unary invoker failed","target":"endpoint://client-84fac414-159a-4b58-ae6f-62f2716aec99/127.0.0.1:2379","attempt":0,"error":"rpc error: code = DeadlineExceeded desc = latest balancer error: all SubConns are in TransientFailure, latest connection error: connection closed"}
+
+-- Message in Docker run screen
+2021-08-13 14:35:27.148531 I | embed: rejected connection from "127.0.0.1:55728" (error "tls: first record does not look like a TLS handshake", ServerName "")
+2021-08-13 14:35:28.149266 I | embed: rejected connection from "127.0.0.1:55730" (error "tls: first record does not look like a TLS handshake", ServerName "")
+2021-08-13 14:35:29.641143 I | embed: rejected connection from "127.0.0.1:55732" (error "tls: first record does not look like a TLS handshake", ServerName "")
+2021-08-13 14:35:31.728138 I | embed: rejected connection from "127.0.0.1:55734" (error "tls: first record does not look like a TLS handshake", ServerName "")
+
+- VERIFY WITH CERTS
+https://mvallim.github.io/kubernetes-under-the-hood/documentation/etcd.html
+
+# docker exec etcd /bin/sh -c "export ETCDCTL_API=3 && etcdctl member list --cacert=/etc/kubernetes/pki/ca.pem --cert=/etc/kubernetes/pki/etcd-ksn1.pem --key=/etc/kubernetes/pki/etcd-ksn1-key.pem -w table"
+
++------------------+---------+------+----------------------------+-----------------------------+------------+
+|        ID        | STATUS  | NAME |         PEER ADDRS         |        CLIENT ADDRS         | IS LEARNER |
++------------------+---------+------+----------------------------+-----------------------------+------------+
+| d5673e1f00b32e05 | started | ksn1 | http://192.168.99.101:2380 | https://192.168.99.101:2379 |      false |
++------------------+---------+------+----------------------------+-----------------------------+------------+
+
+-----------------------------------
+ETCD SERVICE
+-----------------------------------
+
+- File: /etc/environment
+
+THIS_NAME=ksn1
+THIS_IP=192.168.99.101
+DATA_DIR="etcd-data"
+ETCD_IMAGE="k8s.gcr.io/etcd:3.4.13-0"
+CLUSTER_STATE=new
+CLUSTER="ksn1=https://192.168.99/101:2380"
+TOKEN=arbitrary-token
+
+- File: /etc/systemd/system/etcd.service
+
+[Unit]
+Description=etcd
+Documentation=https://github.com/coreos
+Wants=docker.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+IOSchedulingClass=2
+IOSchedulingPriority=0
+EnvironmentFile=/etc/environment
+
+# START ETCD
+ExecStart=/usr/bin/docker run --rm \
+  --net=host \
+  -p 2379:2379 \
+  -p 2380:2380 \
+  --volume=${DATA_DIR}:/etcd-data \
+  --volume=/etc/kubernetes/pki:/etc/kubernetes/pki \
+  --name etcd ${ETCD_IMAGE} \
+  /usr/local/bin/etcd \
+  --data-dir=/etcd-data --name=${THIS_NAME} \
+  --initial-advertise-peer-urls https://${THIS_IP}:2380 \
+  --listen-peer-urls https://0.0.0.0:2380 \
+  --advertise-client-urls https://${THIS_IP}:2379 \
+  --listen-client-urls https://0.0.0.0:2379 \
+  --initial-cluster ${CLUSTER} \
+  --initial-cluster-state ${CLUSTER_STATE} \
+  --initial-cluster-token ${TOKEN} \
+  --cert-file=/etc/kubernetes/pki/etcd-ksn1.pem \
+  --key-file=/etc/kubernetes/pki/etcd-ksn1-key.pem \
+  --trusted-ca-file=/etc/kubernetes/pki/ca.pem \
+  --peer-cert-file=/etc/kubernetes/pki/etcd-peer-ksn1.pem \
+  --peer-key-file=/etc/kubernetes/pki/etcd-peer-ksn1-key.pem \
+  --peer-trusted-ca-file=/etc/kubernetes/pki/ca.pem 
+
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+
+- Start etcd
+# systemctl stop etcd
+# systemctl daemon-reload
+# systemctl start etcd
+
+- VERIFY
+# docker exec etcd /bin/sh -c "export ETCDCTL_API=3 && etcdctl member list --cacert=/etc/kubernetes/pki/ca.pem --cert=/etc/kubernetes/pki/etcd-ksn1.pem --key=/etc/kubernetes/pki/etcd-ksn1-key.pem -w table"
+
++------------------+---------+------+----------------------------+-----------------------------+------------+
+|        ID        | STATUS  | NAME |         PEER ADDRS         |        CLIENT ADDRS         | IS LEARNER |
++------------------+---------+------+----------------------------+-----------------------------+------------+
+| d5673e1f00b32e05 | started | ksn1 | http://192.168.99.101:2380 | https://192.168.99.101:2379 |      false |
++------------------+---------+------+----------------------------+-----------------------------+------------+
+
+------------------------------------
+KUBE-APISERVER MANIFEST FILE
+------------------------------------
+
+NOTE: "SecurityContextDeny" was removed from the following line - as it was disallowing kube-dns pod from creating
+    - --admission-control=NamespaceLifecycle,LimitRanger,SecurityContextDeny,ServiceAccount,ResourceQuota
+
+GOT ERROR (upon starting kubelet - with docker logs <container id> of apiserver):
+# docker logs 8bf377bd4408
+Flag --insecure-port has been deprecated, This flag has no effect now and will be removed in v1.24.
+I0814 14:51:57.988934       1 server.go:629] external host was not specified, using 192.168.99.101
+Error: [service-account-issuer is a required flag, --service-account-signing-key-file and --service-account-issuer are required flags]
+--> Added these lines:
+    - --service-account-issuer=https://kubernetes.default.svc.cluster.local
+    - --service-account-signing-key-file=/etc/kubernetes/pki/ca-key.pem
+
+GOT ERROR (in journaltl -xe upon kubelet start):
+Aug 14 23:54:39 ksn1 kubelet[24703]: E0814 23:54:39.436292   24703 reflector.go:138] k8s.io/client-go/informers/factory.go:134: Failed to watch *v1.CSIDriver: failed to list *v1.CSIDriver: Get "https://192.168.99.101:6443/apis/storage.k8s.io/v1/csidrivers?limit=500&resourceVersion=0": x509: certificate signed by unknown authority
+
+File: /etc/kubernetes/manifests/kube-apiserver.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    kubeadm.kubernetes.io/kube-apiserver.advertise-address.endpoint: 192.168.99.101:6443
+  creationTimestamp: null
+  labels:
+    component: kube-apiserver
+    tier: control-plane
+  name: kube-apiserver
+  namespace: kube-system
+spec:
+  containers:
+  - command:
+    - kube-apiserver
+    - --advertise-address=192.168.99.101
+    - --allow-privileged=true
+    - --authorization-mode=Node,RBAC
+    - --client-ca-file=/etc/kubernetes/pki/ca.pem
+    - --enable-admission-plugins=NodeRestriction
+    - --enable-bootstrap-token-auth=true
+    - --etcd-cafile=/etc/kubernetes/pki/ca.pem
+    - --etcd-certfile=/etc/kubernetes/pki/etcd-ksn1.pem
+    - --etcd-keyfile=/etc/kubernetes/pki/etcd-ksn1-key.pem
+    - --etcd-servers=https://127.0.0.1:2379
+    - --insecure-port=0
+    - --kubelet-client-certificate=/etc/kubernetes/pki/kubelet-ksn1.pem
+    - --kubelet-client-key=/etc/kubernetes/pki/kubelet-ksn1-key.pem
+    - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
+    - --proxy-client-cert-file=/etc/kubernetes/pki/kube-proxy.pem
+    - --proxy-client-key-file=/etc/kubernetes/pki/kube-proxy-key.pem
+    - --secure-port=6443
+    - --service-cluster-ip-range=10.96.0.0/12
+    - --service-account-key-file=/etc/kubernetes/pki/ca-key.pem
+    - --service-account-issuer=https://kubernetes.default.svc.cluster.local
+    - --service-account-signing-key-file=/etc/kubernetes/pki/ca-key.pem
+    - --tls-cert-file=/etc/kubernetes/pki/kube-apiserver.pem
+    - --tls-private-key-file=/etc/kubernetes/pki/kube-apiserver-key.pem
+    image: k8s.gcr.io/kube-apiserver:v1.21.2
+    imagePullPolicy: IfNotPresent
+    livenessProbe:
+      failureThreshold: 8
+      httpGet:
+        host: 192.168.99.101
+        path: /livez
+        port: 6443
+        scheme: HTTPS
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 15
+    name: kube-apiserver
+    readinessProbe:
+      failureThreshold: 3
+      httpGet:
+        host: 192.168.99.101
+        path: /readyz
+        port: 6443
+        scheme: HTTPS
+      periodSeconds: 1
+      timeoutSeconds: 15
+    resources:
+      requests:
+        cpu: 250m
+    startupProbe:
+      failureThreshold: 24
+      httpGet:
+        host: 192.168.99.101
+        path: /livez
+        port: 6443
+        scheme: HTTPS
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 15
+    volumeMounts:
+    - mountPath: /etc/ssl/certs
+      name: ca-certs
+      readOnly: true
+    - mountPath: /etc/pki
+      name: etc-pki
+      readOnly: true
+    - mountPath: /etc/kubernetes/pki
+      name: k8s-certs
+      readOnly: true
+  hostNetwork: true
+  priorityClassName: system-node-critical
+  volumes:
+  - hostPath:
+      path: /etc/ssl/certs
+      type: DirectoryOrCreate
+    name: ca-certs
+  - hostPath:
+      path: /etc/pki
+      type: DirectoryOrCreate
+    name: etc-pki
+  - hostPath:
+      path: /etc/kubernetes/pki
+      type: DirectoryOrCreate
+    name: k8s-certs
+status: {}
+
+----------------------------------------
+KUBE-CONTROLLER-MANAGER MANIFEST FILE
+----------------------------------------
+File: /etc/kubernetes/manifests/kube-controller-manager.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    component: kube-controller-manager
+    tier: control-plane
+  name: kube-controller-manager
+  namespace: kube-system
+spec:
+  containers:
+  - command:
+    - kube-controller-manager
+    - --allocate-node-cidrs=true
+    - --bind-address=127.0.0.1
+    - --master=http://127.0.0.1:8080 --> This could have to be https://192.168.99.101:6443
+    - --leader-elect=true
+    - --client-ca-file=/etc/kubernetes/pki/ca.pem
+    - --cluster-cidr=172.16.0.0/16
+    - --cluster-name=kubernetes
+    - --cluster-signing-cert-file=/etc/kubernetes/pki/ca.pem
+    - --cluster-signing-key-file=/etc/kubernetes/pki/ca-key.pem
+    - --controllers=*,bootstrapsigner,tokencleaner
+    - --port=0
+    - --root-ca-file=/etc/kubernetes/pki/ca.pem
+    - --service-cluster-ip-range=10.96.0.0/12
+    image: k8s.gcr.io/kube-controller-manager:v1.21.2
+    imagePullPolicy: IfNotPresent
+    livenessProbe:
+      failureThreshold: 8
+      httpGet:
+        host: 127.0.0.1
+        path: /healthz
+        port: 10257
+        scheme: HTTPS
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 15
+    name: kube-controller-manager
+    resources:
+      requests:
+        cpu: 200m
+    startupProbe:
+      failureThreshold: 24
+      httpGet:
+        host: 127.0.0.1
+        path: /healthz
+        port: 10257
+        scheme: HTTPS
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 15
+    volumeMounts:
+    - mountPath: /etc/ssl/certs
+      name: ca-certs
+      readOnly: true
+    - mountPath: /etc/pki
+      name: etc-pki
+      readOnly: true
+    - mountPath: /usr/libexec/kubernetes/kubelet-plugins/volume/exec
+      name: flexvolume-dir
+    - mountPath: /etc/kubernetes/pki
+      name: k8s-certs
+      readOnly: true
+    - mountPath: /etc/kubernetes/controller-manager.conf
+      name: kubeconfig
+      readOnly: true
+  hostNetwork: true
+  priorityClassName: system-node-critical
+  volumes:
+  - hostPath:
+      path: /etc/ssl/certs
+      type: DirectoryOrCreate
+    name: ca-certs
+  - hostPath:
+      path: /etc/pki
+      type: DirectoryOrCreate
+    name: etc-pki
+  - hostPath:
+      path: /usr/libexec/kubernetes/kubelet-plugins/volume/exec
+      type: DirectoryOrCreate
+    name: flexvolume-dir
+  - hostPath:
+      path: /etc/kubernetes/pki
+      type: DirectoryOrCreate
+    name: k8s-certs
+  - hostPath:
+      path: /etc/kubernetes/controller-manager.conf
+      type: FileOrCreate
+    name: kubeconfig
+status: {}
+
+-----------------------------------
+KUBE-SCHEDULER MANIFEST FILE
+-----------------------------------
+    
+File: /etc/kubernetes/manifests/kube-scheduler.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    component: kube-scheduler
+    tier: control-plane
+  name: kube-scheduler
+  namespace: kube-system
+spec:
+  containers:
+  - command:
+    - kube-scheduler
+    - --bind-address=127.0.0.1
+    - --master=http://127.0.0.1:8080 --> This could have to be https://192.168.99.101:6443
+    - --leader-elect=true
+    - --port=0
+    image: k8s.gcr.io/kube-scheduler:v1.21.2
+    imagePullPolicy: IfNotPresent
+    livenessProbe:
+      failureThreshold: 8
+      httpGet:
+        host: 127.0.0.1
+        path: /healthz
+        port: 10259
+        scheme: HTTPS
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 15
+    name: kube-scheduler
+    resources:
+      requests:
+        cpu: 100m
+    startupProbe:
+      failureThreshold: 24
+      httpGet:
+        host: 127.0.0.1
+        path: /healthz
+        port: 10259
+        scheme: HTTPS
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 15
+    volumeMounts:
+    - mountPath: /etc/kubernetes/scheduler.conf
+      name: kubeconfig
+      readOnly: true
+  hostNetwork: true
+  priorityClassName: system-node-critical
+  volumes:
+  - hostPath:
+      path: /etc/kubernetes/scheduler.conf
+      type: FileOrCreate
+    name: kubeconfig
+status: {}
+
+----------------------
+KUBELET CONFIG FILES
+----------------------
+NOTE: This fine can be created by "kubectl config" command also - see "KUBECONFIG NOTES" section
+- somehow that did not work intially, and hence used this manual method
+- ALSO NOTE: see the appendix on kubeconfig for "kubeadm init config" method - modify those steps to match content in this section
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- GENERATE "certificate-authority-data" to enter in kubelet.conf
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Reference: https://insujang.github.io/2019-12-18/kubernetes-authentication/
+# base64 /etc/kubernetes/ca.pem 
+
+This will give a listing like the following:
+--> CONCATENATE all lines into one line - removing spaces in between --> AND, USE THAT IN kubelet.conf
+LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUR4akNDQXE2Z0F3SUJBZ0lVU2oveStjbTNZ
+KytDQVZ0RWY1R0Fhd0h6eitZd0RRWUpLb1pJaHZjTkFRRUwKQlFBd2FURU1NQW9HQTFVRUJoTURR
+VUpETVF3d0NnWURWUVFJRXdOQlFrTXhEREFLQmdOVkJBY1RBMEZDUXpFVApNQkVHQTFVRUNoTUtT
+M1ZpWlhKdVpYUmxjekVUTUJFR0ExVUVDeE1LUzNWaVpYSnVaWFJsY3pFVE1CRUdBMVVFCkF4TUtT
+M1ZpWlhKdVpYUmxjekFlRncweU1UQTRNVFV3TmpFNU1EQmFGdzB5TmpBNE1UUXdOakU1TURCYU1H
+a3gKRERBS0JnTlZCQVlUQTBGQ1F6RU1NQW9HQTFVRUNCTURRVUpETVF3d0NnWURWUVFIRXdOQlFr
+TXhFekFSQmdOVgpCQW9UQ2t0MVltVnlibVYwWlhNeEV6QVJCZ05WQkFzVENrdDFZbVZ5Ym1WMFpY
+TXhFekFSQmdOVkJBTVRDa3QxClltVnlibVYwWlhNd2dnRWlNQTBHQ1NxR1NJYjNEUUVCQVFVQUE0
+SUJEd0F3Z2dFS0FvSUJBUURHYWRCS2VEb0YKY1RzK1ZCUGVrd0ZYdEFCZndDTHZnZVdPL2hna3lP
+MWRFaGNZY1k5T3NiN1VLaWRYa2lqWExNTjFma3RaeXFjagoxYzB3djFlUEtnQS9Sa3lic2dsck1z
+N2lVdU1ySXhOZFo5RC8yTndOWUNiVDZtTjRodDZDR3lTSytteVAwTnhkCkpZWGp1WldoSXJYQnhJ
+VkdUTlhkVG1XUnFrNVlVTmRjVDFieURXWXJqUzlzR0l5UEQ2WW03NEYwaFdHT1h5KysKUVdETUFi
+OWlCWUg4SUU4Tm9FZDZBaS9sV1FRTXBTNjRPM1ByVG5udkVGY1ZsVm1idElhNW5lVW8wSWtZUkMz
+VgpLMVkvL1MzQWFubWIveURKSTNBVysvbGppdFBKN1dJZlYrU00xWmZydjBkaXdLYmJzUks5bWNj
+REk5TjZaT3NDCkNkSVY3SWs2WlhYL0FnTUJBQUdqWmpCa01BNEdBMVVkRHdFQi93UUVBd0lCQmpB
+U0JnTlZIUk1CQWY4RUNEQUcKQVFIL0FnRUNNQjBHQTFVZERnUVdCQlNyNVk3NUlFMW9nc1c1K3N6
+K2JXSXplalo5M2pBZkJnTlZIU01FR0RBVwpnQlNyNVk3NUlFMW9nc1c1K3N6K2JXSXplalo5M2pB
+TkJna3Foa2lHOXcwQkFRc0ZBQU9DQVFFQWdXR21ZYktoCittSXNEMkpZbFR0b1FGOHdOYXdmNEc3
+Mk1ERmJPc0liNWtDR3B0VVY1dDIwcS9MbDJ6VTVMS3l3UzIwM2kzMW8KOTB2TDlnYXNKT2NNV3FF
+SURJK3NaRmZIQVN6d21FTmVjZ3liOFBUWVhzU1A3cFlhYjhFM0hkaFNJTVNqeTU5cQo5QzBFd3B3
+SEtVTmtJaWlZN2Rad1BMTS92RUJsYjI0V2wyaFBkclYrbEthaVR1Snppck9WTnhwSjhmQldZNHA1
+CjRxWi9MdW92MzJNc09SS0pBbTdZc0s2emZjWTlZNnhLcFgzVTNWbkc1ck9NNnNic0xHY1NrdEVR
+c2lKTWFVMDIKbHc2VHVGSE11ODAyeVdrbzcvR1A1WEFYdEEzQStqT2loVStjUGpMYVcxRFJ3RUc2
+LzdGaXNKaXZQMWRqNTFXaQpSTlNubG5UMHNPUFJadz09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0t
+LS0K
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- Create File: /etc/kubernetes/kubelet.conf
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+NOTE: Taken from kubeadm init methond machine and modified key and cert files and certificate-authority-data
+NOTE: In certificate-authority-data copy the stuff from the CONCATENATED base64 data above
+
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUR4akNDQXE2Z0F3SUJBZ0lVU2oveStjbTNZKytDQVZ0RWY1R0Fhd0h6eitZd0RRWUpLb1pJaHZjTkFRRUwKQlFBd2FURU1NQW9HQTFVRUJoTURRVUpETVF3d0NnWURWUVFJRXdOQlFrTXhEREFLQmdOVkJBY1RBMEZDUXpFVApNQkVHQTFVRUNoTUtTM1ZpWlhKdVpYUmxjekVUTUJFR0ExVUVDeE1LUzNWaVpYSnVaWFJsY3pFVE1CRUdBMVVFCkF4TUtTM1ZpWlhKdVpYUmxjekFlRncweU1UQTRNVFV3TmpFNU1EQmFGdzB5TmpBNE1UUXdOakU1TURCYU1Ha3gKRERBS0JnTlZCQVlUQTBGQ1F6RU1NQW9HQTFVRUNCTURRVUpETVF3d0NnWURWUVFIRXdOQlFrTXhFekFSQmdOVgpCQW9UQ2t0MVltVnlibVYwWlhNeEV6QVJCZ05WQkFzVENrdDFZbVZ5Ym1WMFpYTXhFekFSQmdOVkJBTVRDa3QxClltVnlibVYwWlhNd2dnRWlNQTBHQ1NxR1NJYjNEUUVCQVFVQUE0SUJEd0F3Z2dFS0FvSUJBUURHYWRCS2VEb0YKY1RzK1ZCUGVrd0ZYdEFCZndDTHZnZVdPL2hna3lPMWRFaGNZY1k5T3NiN1VLaWRYa2lqWExNTjFma3RaeXFjagoxYzB3djFlUEtnQS9Sa3lic2dsck1zN2lVdU1ySXhOZFo5RC8yTndOWUNiVDZtTjRodDZDR3lTSytteVAwTnhkCkpZWGp1WldoSXJYQnhJVkdUTlhkVG1XUnFrNVlVTmRjVDFieURXWXJqUzlzR0l5UEQ2WW03NEYwaFdHT1h5KysKUVdETUFiOWlCWUg4SUU4Tm9FZDZBaS9sV1FRTXBTNjRPM1ByVG5udkVGY1ZsVm1idElhNW5lVW8wSWtZUkMzVgpLMVkvL1MzQWFubWIveURKSTNBVysvbGppdFBKN1dJZlYrU00xWmZydjBkaXdLYmJzUks5bWNjREk5TjZaT3NDCkNkSVY3SWs2WlhYL0FnTUJBQUdqWmpCa01BNEdBMVVkRHdFQi93UUVBd0lCQmpBU0JnTlZIUk1CQWY4RUNEQUcKQVFIL0FnRUNNQjBHQTFVZERnUVdCQlNyNVk3NUlFMW9nc1c1K3N6K2JXSXplalo5M2pBZkJnTlZIU01FR0RBVwpnQlNyNVk3NUlFMW9nc1c1K3N6K2JXSXplalo5M2pBTkJna3Foa2lHOXcwQkFRc0ZBQU9DQVFFQWdXR21ZYktoCittSXNEMkpZbFR0b1FGOHdOYXdmNEc3Mk1ERmJPc0liNWtDR3B0VVY1dDIwcS9MbDJ6VTVMS3l3UzIwM2kzMW8KOTB2TDlnYXNKT2NNV3FFSURJK3NaRmZIQVN6d21FTmVjZ3liOFBUWVhzU1A3cFlhYjhFM0hkaFNJTVNqeTU5cQo5QzBFd3B3SEtVTmtJaWlZN2Rad1BMTS92RUJsYjI0V2wyaFBkclYrbEthaVR1Snppck9WTnhwSjhmQldZNHA1CjRxWi9MdW92MzJNc09SS0pBbTdZc0s2emZjWTlZNnhLcFgzVTNWbkc1ck9NNnNic0xHY1NrdEVRc2lKTWFVMDIKbHc2VHVGSE11ODAyeVdrbzcvR1A1WEFYdEEzQStqT2loVStjUGpMYVcxRFJ3RUc2LzdGaXNKaXZQMWRqNTFXaQpSTlNubG5UMHNPUFJadz09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+    server: https://ksn1:6443
+  name: kubernetes
+contexts:
+- context:
+    cluster: kubernetes
+    user: system:node:ksn1
+  name: system:node:ksn1@kubernetes
+current-context: system:node:ksn1@kubernetes
+kind: Config
+preferences: {}
+users:
+- name: system:node:ksn1
+  user:
+    client-certificate: /etc/kubernetes/pki/kubelet-ksn1.pem
+    client-key: /etc/kubernetes/pki/kubelet-ksn1-key.pem
+    
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- Kubeconfig File for kubectl ~/.kube/config
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Initially, for kubelet to work, create a config file or link
+
+# mkdir ~/.kube
+# cd ~/.kube
+# ln -s /etc/kubernetes/kubelet.conf config
+- OR - 
+# cp /etc/kubernetes/kubelet.conf config
+- OR - 
+# cp /etc/kubernetes/kubelet.conf kubelet.conf.initial
+# ln -s /etc/kubernetes/kubelet.conf.initial config
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- Create File: /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Note: This dropin only works with kubeadm and kubelet v1.11+
+[Service]
+#Environment="KUBELET_KUBECONFIG_ARGS=--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf"
+Environment="KUBELET_KUBECONFIG_ARGS=--kubeconfig=/etc/kubernetes/kubelet.conf"
+Environment="KUBELET_CONFIG_ARGS=--config=/var/lib/kubelet/config.yaml --pod-manifest-path=/etc/kubernetes/manifests"
+# This is a file that "kubeadm init" and "kubeadm join" generates at runtime, populating the KUBELET_KUBEADM_ARGS variable dynamically
+#EnvironmentFile=-/var/lib/kubelet/kubeadm-flags.env
+# This is a file that the user can use for overrides of the kubelet args as a last resort. Preferably, the user should use
+# the .NodeRegistration.KubeletExtraArgs object in the configuration files instead. KUBELET_EXTRA_ARGS should be sourced from this file.
+EnvironmentFile=-/etc/sysconfig/kubelet
+ExecStart=
+ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- Create File: /var/lib/kubelet/config.yaml
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+NOTE: Taken from kubeadm init machine and modified clientCAFile
+
+apiVersion: kubelet.config.k8s.io/v1beta1
+authentication:
+  anonymous:
+    enabled: false
+  webhook:
+    cacheTTL: 0s
+    enabled: true
+  x509:
+    clientCAFile: /etc/kubernetes/pki/ca.pem
+authorization:
+  mode: Webhook
+  webhook:
+    cacheAuthorizedTTL: 0s
+    cacheUnauthorizedTTL: 0s
+cgroupDriver: cgroupfs
+clusterDNS:
+- 10.96.0.10
+clusterDomain: cluster.local
+cpuManagerReconcilePeriod: 0s
+evictionPressureTransitionPeriod: 0s
+fileCheckFrequency: 0s
+healthzBindAddress: 127.0.0.1
+healthzPort: 10248
+httpCheckFrequency: 0s
+imageMinimumGCAge: 0s
+kind: KubeletConfiguration
+logging: {}
+nodeStatusReportFrequency: 0s
+nodeStatusUpdateFrequency: 0s
+rotateCertificates: true
+runtimeRequestTimeout: 0s
+shutdownGracePeriod: 0s
+shutdownGracePeriodCriticalPods: 0s
+staticPodPath: /etc/kubernetes/manifests
+streamingConnectionIdleTimeout: 0s
+syncFrequency: 0s
+volumeStatsAggPeriod: 0s
+
+------------------
+START KUBELET
+------------------
+# systemctl daemon-reload
+# systemctl enable kubelet
+# systemctl start kubelet
+
+- VERIFY
+# docker ps -a
+CONTAINER ID   IMAGE                      COMMAND                  CREATED       STATUS       PORTS     NAMES
+fef4dccf2631   106ff58d4308               "kube-apiserver --ad…"   2 hours ago   Up 2 hours             k8s_kube-apiserver_kube-apiserver-ksn1_kube-system_4324f968266b0ff9a56234bc83bf395f_4
+8faffde72f9d   k8s.gcr.io/etcd:3.4.13-0   "/usr/local/bin/etcd…"   2 hours ago   Up 2 hours             etcd
+f4f38068d582   f917b8c8f55b               "kube-scheduler --bi…"   2 hours ago   Up 2 hours             k8s_kube-scheduler_kube-scheduler-ksn1_kube-system_cbc88132952e06e66710edb2b4b19b76_0
+86570555ba2b   ae24db9aa2cc               "kube-controller-man…"   2 hours ago   Up 2 hours             k8s_kube-controller-manager_kube-controller-manager-ksn1_kube-system_1aa8a25aa9fb815f143bf827c7cea11e_0
+134ebe4f83de   k8s.gcr.io/pause:3.4.1     "/pause"                 2 hours ago   Up 2 hours             k8s_POD_kube-scheduler-ksn1_kube-system_cbc88132952e06e66710edb2b4b19b76_0
+e68eaf29915d   k8s.gcr.io/pause:3.4.1     "/pause"                 2 hours ago   Up 2 hours             k8s_POD_kube-controller-manager-ksn1_kube-system_1aa8a25aa9fb815f143bf827c7cea11e_0
+a6188f807172   k8s.gcr.io/pause:3.4.1     "/pause"                 2 hours ago   Up 2 hours             k8s_POD_kube-apiserver-ksn1_kube-system_4324f968266b0ff9a56234bc83bf395f_0
+
+- VERIFY
+# curl --cacert /etc/kubernetes/pki/ca.pem https://192.168.99.101:6443/healthz
+ok
+
+- VERIFY
+# kubectl get pods
+No resources found in default namespace.
+
+# kubectl get pods --all-namespaces
+NAMESPACE     NAME                           READY   STATUS    RESTARTS   AGE
+kube-system   kube-apiserver-ksn1            1/1     Running   4          18m
+kube-system   kube-controller-manager-ksn1   1/1     Running   0          18m
+kube-system   kube-scheduler-ksn1            1/1     Running   0          18m
+
+- ERROR PERSISTS
+Kube Controller manager logs:
+# kubectl logs kube-controller-manager-ksn1 --kubeconfig /etc/kubernetes/admin.kubeconfig -n kube-system
+Error from server (Forbidden): Forbidden (user=system:node:ksn1, verb=get, resource=nodes, subresource=proxy) ( pods/log kube-controller-manager-ksn1)
+
+So, tried docker logs of the container of kube-controller-manager
+# docker ps -a | grep control
+585e016ef966   ae24db9aa2cc               "kube-controller-man…"
+
+# docker logs 585e016ef966 -f
+ Get "http://127.0.0.1:8080/apis/coordination.k8s.io/v1/namespaces/kube-system/leases/kube-controller-manager?timeout=5s": dial tcp 127.0.0.1:8080: connect: connection refused
+E0818 14:40:05.384906       1 leaderelection.go:325] error retrieving resource lock kube-system/kube-controller-manager: Get "http://127.0.0.1:8080/apis/coordination.k8s.io/v1/namespaces/kube-system/leases/kube-controller-manager?timeout=5s": dial tcp 127.0.0.1:8080: connect: connection refused
+
+---------------------------------------------------------------------------------------
+-- PREVIOUS ERRORS - ALL RESOLVED NOW
+---------------------------------------------------------------------------------------
+[root@ksn1 manifests]# kubectl get namespaces
+Error from server (Forbidden): namespaces is forbidden: User "system:node:192.168.99.101" cannot list resource "namespaces" in API group "" at the cluster scope
+[root@ksn1 manifests]# kubectl get context
+error: the server doesn't have a resource type "context"
+
+- VERIFY ERRORING (kubelet journalctl -fe
+Aug 15 13:44:55 ksn1 kubelet: E0815 13:44:55.985509   13706 controller.go:144] failed to ensure lease exists, will retry in 7s, error: Get "https://ksn1:6443/apis/coordination.k8s.io/v1/namespaces/kube-node-lease/leases/ksn1?timeout=10s": x509: certificate signed by unknown authority
+
+Aug 15 13:44:55 ksn1 kubelet: E0815 13:44:55.994862   13706 eviction_manager.go:255] "Eviction manager: failed to get summary stats" err="failed to get node info: node \"ksn1\" not found"
+Aug 15 13:44:56 ksn1 kubelet: E0815 13:44:56.077359   13706 kubelet.go:2291] "Error getting node" err="node \"ksn1\" not found"
+Aug 15 13:44:56 ksn1 kubelet: E0815 13:44:56.178100   13706 kubelet.go:2291] "Error getting node" err="node \"ksn1\" not found"
+
+------------------------------------------------
+KUBE-PROXY
+------------------------------------------------
+Reference for config files:
+- https://github.com/coderdba-coding-org/code1/blob/master/kubernetes/kube-vbox-ans-singlenode-15.5/roles/kube-proxy/templates/kube-proxy.yaml.j2
+- https://github.com/coderdba/NOTES/blob/master/kubernetes-kb/install-vbox/WIP-2019-single-node-pods-with-certs.txt
+
+- https://gitlab.cncf.ci/kubernetes/kubernetes/tree/master/cluster/addons/kube-proxy
+- https://github.com/QingCloudAppcenter/kubernetes/blob/master/k8s/addons/kube-proxy/kube-proxy-ds.yaml
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+RBAC File: /etc/kubernetes/addons/kube-proxy-rbac.yaml
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+From: https://github.com/coderdba-coding-org/code1/blob/master/kubernetes/kube-vbox-ans-singlenode-15.5/roles/kube-proxy/templates/kube-proxy.yaml.j2
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kube-proxy
+  namespace: kube-system
+  labels:
+    addonmanager.kubernetes.io/mode: Reconcile
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: system:kube-proxy
+  labels:
+    addonmanager.kubernetes.io/mode: Reconcile
+subjects:
+  - kind: ServiceAccount
+    name: kube-proxy
+    namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: system:node-proxier
+  apiGroup: rbac.authorization.k8s.io
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Daemonset File: /etc/kubernetes/addons/kube-proxy-ds.yaml
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Please keep kube-proxy configuration in-sync with:
+# cluster/saltbase/salt/kube-proxy/kube-proxy.manifest
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    k8s-app: kube-proxy
+    addonmanager.kubernetes.io/mode: Reconcile
+  name: kube-proxy
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      k8s-app: kube-proxy
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 10%
+  template:
+    metadata:
+      labels:
+        k8s-app: kube-proxy
+    spec:
+      priorityClassName: system-node-critical
+      hostNetwork: true
+      #nodeSelector:
+        #node.kubernetes.io/kube-proxy-ds-ready: "true"
+      tolerations:
+      - operator: "Exists"
+        effect: "NoExecute"
+      - operator: "Exists"
+        effect: "NoSchedule"
+      containers:
+      - name: kube-proxy
+        image: {{ var_kube_proxy_image }}
+        resources:
+          requests:
+            cpu: 100m
+        command:
+        - /usr/local/bin/kube-proxy
+        - --kubeconfig=/etc/kubernetes/kubeconfig-kubelet-gen.sh
+        - --master=https://kns1:6443
+        - --cluster-cidr=172.16.0.0/16
+        - --masquerade-all
+        env:
+        - name: MASTER_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - mountPath: /var/log
+          name: varlog
+          readOnly: false
+        - mountPath: /run/xtables.lock
+          name: xtables-lock
+          readOnly: false
+        - mountPath: /lib/modules
+          name: lib-modules
+          readOnly: true
+        - mountPath: /etc/kubernetes
+          name: etc-kubernetes
+          readOnly: true
+      volumes:
+      - name: varlog
+        hostPath:
+          path: /var/log
+      - name: xtables-lock
+        hostPath:
+          path: /run/xtables.lock
+          type: FileOrCreate
+      - name: lib-modules
+        hostPath:
+          path: /lib/modules
+      - name: etc-kubernetes
+        hostPath:
+          path: /etc/kubernetes
+          type: Directory
+      serviceAccountName: kube-proxy
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Kubeconfig File: /etc/kubernetes/pki/admin.kubeconfig
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Create a kubeconfig for 'admin' user.
+Note that admin-csr.json was earlier used to create admin.pem and admin-key.pem
+In that "CN": "admin" is the thing that makes it admin user
+
+- File: kubeconfig-admin.sh
+
+# CREATE A KUBECONFIG FILE FOR 'admin' USER
+kubectl config set-cluster kubernetes \
+--certificate-authority=certs/ca.pem \
+--server=https://ksn1:6443 \
+--embed-certs=true \
+--kubeconfig=kubeconfig/admin.kubeconfig
+
+kubectl config set-credentials admin \
+--client-certificate=certs/admin.pem \
+--client-key=certs/admin-key.pem \
+--embed-certs=true \
+--kubeconfig=kubeconfig/admin.kubeconfig
+
+kubectl config set-context kubernetes --cluster=kubernetes --user=admin --kubeconfig=kubeconfig/admin.kubeconfig
+
+kubectl config use-context kubernetes --kubeconfig=kubeconfig/admin.kubeconfig
+
+kubectl get nodes
+
+- Run the file to create the admin.kubeconfig file
+- Copy that file to /etc/kubernetes
+
+~~~~~~~~~~~~~~~~~~~~~~~~~
+CREATE DAEMONSET
+~~~~~~~~~~~~~~~~~~~~~~~~~
+Note: You MUST use the admin.kubeconfig file to create pod, rbac etc
+
+# kubectl apply -f kube-proxy-rbac.yaml --kubeconfig /etc/kubernetes/admin.kubeconfig
+# kubectl apply -f kube-proxy-ds.yaml --kubeconfig /etc/kubernetes/admin.kubeconfig
+
+- VERIFY
+# kubectl get ds --kubeconfig /etc/kubernetes/admin.kubeconfig --all-namespaces
+NAMESPACE     NAME         DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR   AGE
+kube-system   kube-proxy   0         0         0       0            0           <none>          2d23h
+
+# kubectl logs kube-proxy -n kube-system --kubeconfig /etc/kubernetes/admin.kubeconfig
+Error from server (NotFound): pods "kube-proxy" not found
+
+# kubectl describe ds kube-proxy -n kube-system --kubeconfig /etc/kubernetes/admin.kubeconfig
+Name:           kube-proxy
+Selector:       k8s-app=kube-proxy
+Node-Selector:  <none>
+Labels:         addonmanager.kubernetes.io/mode=Reconcile
+                k8s-app=kube-proxy
+Annotations:    deprecated.daemonset.template.generation: 1
+Desired Number of Nodes Scheduled: 0
+Current Number of Nodes Scheduled: 0
+Number of Nodes Scheduled with Up-to-date Pods: 0
+Number of Nodes Scheduled with Available Pods: 0
+Number of Nodes Misscheduled: 0
+Pods Status:  0 Running / 0 Waiting / 0 Succeeded / 0 Failed
+Pod Template:
+  Labels:           k8s-app=kube-proxy
+  Service Account:  kube-proxy
+  Containers:
+   kube-proxy:
+    Image:      k8s.gcr.io/kube-proxy
+    Port:       <none>
+    Host Port:  <none>
+    Command:
+      /usr/local/bin/kube-proxy
+      --kubeconfig=/etc/kubernetes/kube-proxy.kubeconfig
+      --master=https://ksn1:6443
+      --cluster-cidr=172.16.0.0/16
+      --masquerade-all
+    Requests:
+      cpu:  100m
+    Environment:
+      MASTER_IP:   (v1:status.podIP)
+    Mounts:
+      /etc/kubernetes from etc-kubernetes (ro)
+      /lib/modules from lib-modules (ro)
+      /run/xtables.lock from xtables-lock (rw)
+      /var/log from varlog (rw)
+  Volumes:
+   varlog:
+    Type:          HostPath (bare host directory volume)
+    Path:          /var/log
+    HostPathType:  
+   xtables-lock:
+    Type:          HostPath (bare host directory volume)
+    Path:          /run/xtables.lock
+    HostPathType:  FileOrCreate
+   lib-modules:
+    Type:          HostPath (bare host directory volume)
+    Path:          /lib/modules
+    HostPathType:  
+   etc-kubernetes:
+    Type:               HostPath (bare host directory volume)
+    Path:               /etc/kubernetes
+    HostPathType:       Directory
+  Priority Class Name:  system-node-critical
+Events:                 <none>
+[root@ksn1 addons]# 
+
+------------------------------------------------
+COREDNS
+------------------------------------------------
+https://kubernetes.io/docs/tasks/administer-cluster/dns-custom-nameservers/
+--> https://coredns.io/2018/01/29/deploying-kubernetes-with-coredns-using-kubeadm/
+
+------------------------------------------------
+CALICO
+------------------------------------------------
+
+---------------------------------------------------------------------------------------
+NOT SURE IF THIS IS NEEDED (this is for workers) - CLUSTER ROLE AND CLUSTER ROLE BINDING (TBD)
+---------------------------------------------------------------------------------------
+To make apiserver talk to kubelets in worker nodes (here, same node)
+- create a ClusterRole and ClusterRoleBinding
+
+1. kube-apiserver-to-kubelet.yaml
+
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  annotations:
+    rbac.authorization.kubernetes.io/autoupdate: "true"
+  labels:
+    kubernetes.io/bootstrapping: rbac-defaults
+  name: system:kube-apiserver-to-kubelet
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - nodes/proxy
+      - nodes/stats
+      - nodes/log
+      - nodes/spec
+      - nodes/metrics
+    verbs:
+      - "*"
+
+1a. Create the cluster-role:
+kubectl create -f kube-apiserver-to-kubelet.yaml
+
+--> TBD - EXPECTED RESULT: clusterrole.rbac.authorization.k8s.io/system:kube-apiserver-to-kubelet created
+
+2. kube-apiserver-to-kubelet-bind.yaml
+
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: system:kube-apiserver
+  namespace: ""
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:kube-apiserver-to-kubelet
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: User
+    name: kubernetes
+    
+2a. Create the cluster-role-binding:
+
+kubectl create -f kube-apiserver-to-kubelet-bind.yaml
+--> TBD - EXPECTED RESULT: clusterrolebinding.rbac.authorization.k8s.io/system:kube-apiserver created
+
+-----------------------------------
+KUBECONFIG AND SECURITY FOR KUBELET
+-----------------------------------
+Reference: https://github.com/coderdba/NOTES/blob/master/kubernetes-kb/install-vbox/WIP-2019-single-node-pods-with-certs.txt
+
+- CREATE KUBECONFIG
+Script: kubeconfig-kubelet-gen.sh
+
+# CREATE A kubeconfig FILE FOR KUBELET - for the node
+# Add the cluster information for the node IP
+kubectl config set-cluster kubernetes \
+--certificate-authority=certs/ca.pem \
+--embed-certs=true \
+--server=https://192.168.99.101:6443 \
+--kubeconfig=192.168.99.101.kubeconfig
+
+# Add the credentials for the node IP
+kubectl config set-credentials system:node:192.168.99.101 \
+--client-certificate=certs/kubelet-ksn1.pem \
+--client-key=certs/kubelet-ksn1-key.pem \
+--embed-certs=true \
+--kubeconfig=192.168.99.101.kubeconfig
+
+# Add the context for the node IP
+kubectl config set-context default \
+--cluster=kubernetes \
+--user=system:node:192.168.99.101 \
+--kubeconfig=192.168.99.101.kubeconfig
+
+# Use the context for the node
+kubectl config use-context default --kubeconfig=192.168.99.101.kubeconfig
+
+-->
+--> This will create a file 192.168.99.101.kubeconfig
+
+
+- COPY THAT FILE TO /etc/kubernetes/kubelet-kubeconfig
+cp 192.168.99.101.kubeconfig /etc/kubernetes/kubelet-kubeconfig
+
+-- ALSO, COPY THE KUBECONFIG FILE TO ~/.kube/config
+cp /etc/kubernetes/kubelet-kubeconfig ~/.kube/config
+
+--> This will enable the context (or something) for the linux session
+--> and the following command gives the current context if set in ~/.kube/config
+# kubectl config get-contexts 
+CURRENT   NAME      CLUSTER      AUTHINFO                   NAMESPACE
+*         default   kubernetes   system:node:192.168.60.102
+
+--> if the above command does not work
+# kubectl config get-contexts --kubeconfig=./192.168.99.101.kubeconfig
+CURRENT   NAME      CLUSTER      AUTHINFO                     NAMESPACE
+*         default   kubernetes   system:node:192.168.99.101
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+APPENDIX - KUBELET CONFIGURATION FROM OLD NOTES - DID NOT WORK - used new steps mentioned in the documentation above
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------------------
+KUBELET CONFIG YAML
+------------------------------------
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+NOTE: LOOK IN ANOTHER SECTION 
+
+THE STUFF BELOW WAS NOT USED AS THIS DID NOT WORK WELL
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+                        Multiple ways of doing this:
+                        - Kubeadm init copy: Copy and modify the two files from kubeadm init method in the default locations /var/lib/kubelet/config.yaml, /etc/kubernetes/kubelet.conf
+                        - Custom yaml in /etc/kubernetes/kubelet-config.yaml
+
+                        - CUSTOM YAML METHOD
+                        NOTE: 
+                        - This is as in comp. 
+                        - In kubeadm init method, it is created as /var/lib/kubelet/config.yaml (which is referenced in kubelet systemd file)
+                        - WE NEED TO MODIFY kubelet systemd file to reflect this new yaml file below as the config file 
+                              (or, alternatively, copy our custom yaml to /var/lib/kubelet/config.yaml)
+                          --> WE TAKE THE APPROACH OF MODIFYING kubelet systemd file - so that all Kubernetes config files are under /etc/kubernetes
+
+                        File: /etc/kubernetes/kubelet-config.yaml:
+                        (reference from https://medium.com/containerum/4-ways-to-bootstrap-a-kubernetes-cluster-de0d5150a1e4)
+                        NOTE: For now, the CA and user-authentication cert/key file info is not added
+
+                        apiVersion: v1
+                        clusters:
+                        - cluster:
+                            server: http://127.0.0.1:8080
+                          name: kubernetes
+                        contexts:
+                        - context:
+                            cluster: kubernetes
+                            user: system:node:ksn1
+                          name: system:node:ksn1@kubernetes
+                        current-context: system:node:kns1@kubernetes
+                        kind: Config
+                        preferences: {}
+                        users:
+                        - name: system:node:ksn1
+
+                        REFERENCE - from https://medium.com/containerum/4-ways-to-bootstrap-a-kubernetes-cluster-de0d5150a1e4
+                        apiVersion: v1
+                        clusters:
+                        - cluster:
+                            server: http://127.0.0.1:8080
+                          name: kubernetes-systemd
+                        contexts:
+                        - context:
+                            cluster: kubernetes-systemd
+                            user: system:node:<HOSTNAME>
+                          name: system:node:<HOSTNAME>@kubernetes-systemd
+                        current-context: system:node:<HOSTNAME>@kubernetes-systemd
+                        kind: Config
+                        preferences: {}
+                        users:
+                        - name: system:node:<HOSTNAME>
+
+                        REFERENCE - from kubeadm init:
+                        apiVersion: v1
+                        clusters:
+                        - cluster:
+                            certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUM1ekNDQWMrZ0F3SUJBZ0lCQURBTkJna3Foa2lHOXcwQkFRc0ZBREFWTVJNd0VRWURWUVFERXdwcmRXSmwKY201bGRHVnpNQjRYRFRJeE1EY3dOVEV3TXpJeU1Wb1hEVE14TURjd016RXdNekl5TVZvd0ZURVRNQkVHQTFVRQpBeE1LYTNWaVpYSnVaWFJsY3pDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBUENqCmd5Q2VUUnh0andWaTFMcVlhbG9zektiQ0hjbW4wTjgwME5Qck5mWk9icFhoWDNlT1IrY2Q5b0g2L1E5Y0VjOUIKRkJrMWpFN1IzeExpVWZFN09oN2tVZFliKzhGRC9XVnhoSnpraXZLM016T09kcEo1am1JVktMdTE3UHdGVlNZZgp0dkJab2ppdm5VL3lpZ0FXdzd0YklraFljYTBvd3lWTm1oa2pBeFlYeEgzOTVPb01lTEV0N3N4Yy9EQllReDlxCm55a3hOTlAwZkcvSjZLTGhmOTVSTVk1VVNCWlJhVVh1eEt3Ulp0WHVBY3FmblJJQ3ArNjZVV1ExQnpEZDEwUWIKcFFhUXhWWjlzZ0p3c3l4b1lWSnF0NTBXU0RyeGNPUUxMUjNiZUtMQXVmeTJoM2Rac0I1QnhEeC9ad3puRWJXeQowZE1jR0pRR3FJSWFSTVV3TlZFQ0F3RUFBYU5DTUVBd0RnWURWUjBQQVFIL0JBUURBZ0trTUE4R0ExVWRFd0VCCi93UUZNQU1CQWY4d0hRWURWUjBPQkJZRUZINU1iQkVueDlQdUxlK3lHYVAwYWIvTzFJeEhNQTBHQ1NxR1NJYjMKRFFFQkN3VUFBNElCQVFBbXhPSXhUNm5LK0NaNmhPSUo1RlFicUg2MkM5QjFJM3pYV3YrR05TaytmeXppd3QvMgpPenJJY1ZuSytUT1VKaHRPOUF2bkpBUGxTaGZsM0VCM2RSVjN6UkNPbFA1b1JoL3h6N3NTOWlrcC9xRU1oVDNKCkJQaThJMVNIOVN4NllXL0lKM2hoMDZsTXd5eWU2MzVuY0xqeDJDUGxPT28rR0Nlbjg2OWQzOGY4RlN4cDlxSGoKc2p0VnU4OG1OTHpIL2REcXpvcDRuS3ZDTmthWmVHdkJONGw5YlViN2xhYVJyZk1lMlNjTEJZM3RDbWYyOHVjQwpobkY0bytMSGF1QThhc1FQNW84LzNMNHNYOFcxajZrV0pFenAyM2VIU1EyUkZZNE9JUkhVYTFaZDc3dzV3YkUvCm95Y1hCNzRJYmZwemtWUDNUT3hlVlg2ZTlFcWtPc0R2d0Y2WAotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+                            server: https://192.168.40.101:6443
+                          name: kubernetes
+                        contexts:
+                        - context:
+                            cluster: kubernetes
+                            user: system:node:ks1
+                          name: system:node:ks1@kubernetes
+                        current-context: system:node:ks1@kubernetes
+                        kind: Config
+                        preferences: {}
+                        users:
+                        - name: system:node:ks1
+                          user:
+                            client-certificate: /var/lib/kubelet/pki/kubelet-client-current.pem
+                            client-key: /var/lib/kubelet/pki/kubelet-client-current.pem
+
+                        - DEFAULT YAML METHOD
+                        Copy and modify the content of /var/lib/kubelet/config.yaml - taking it from kubeadm init method 
+
+                        File (not yet modified for our purpose): /var/lib/kubelet/config.yaml
+                        apiVersion: kubelet.config.k8s.io/v1beta1
+                        authentication:
+                          anonymous:
+                            enabled: false
+                          webhook:
+                            cacheTTL: 0s 
+                            enabled: true
+                          x509:
+                            clientCAFile: /etc/kubernetes/pki/ca.crt
+                        authorization:
+                          mode: Webhook
+                          webhook: 
+                            cacheAuthorizedTTL: 0s
+                            cacheUnauthorizedTTL: 0s
+                        cgroupDriver: cgroupfs
+                        clusterDNS:
+                        - 10.96.0.10
+                        clusterDomain: cluster.local
+                        cpuManagerReconcilePeriod: 0s
+                        evictionPressureTransitionPeriod: 0s
+                        fileCheckFrequency: 0s
+                        healthzBindAddress: 127.0.0.1
+                        healthzPort: 10248
+                        httpCheckFrequency: 0s
+                        imageMinimumGCAge: 0s
+                        kind: KubeletConfiguration
+                        logging: {}
+                        nodeStatusReportFrequency: 0s
+                        nodeStatusUpdateFrequency: 0s
+                        rotateCertificates: true
+                        runtimeRequestTimeout: 0s
+                        shutdownGracePeriod: 0s
+                        shutdownGracePeriodCriticalPods: 0s
+                        staticPodPath: /etc/kubernetes/manifests
+                        streamingConnectionIdleTimeout: 0s
+                        syncFrequency: 0s
+                        volumeStatsAggPeriod: 0s
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+APPENDIX - KEY KNOWLEDGE
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+==========================================================
+KUBELET.CONF, KUBECONFIG - certificate-authority-data
+==========================================================
+https://insujang.github.io/2019-12-18/kubernetes-authentication/
+
+kubectl access
+When we use kubectl, everything works fine. This does not mean kubectl is special, nor bypasses authentication module. With KUBECONFIG environment variable, kubectl automatically loads a configuration file with certificate information before accessing the api server. With higher level of verbose, you can see this flow.
+
+$ echo $KUBECONFIG
+/etc/kubernetes/admin.conf
+$ kubectl --v=7 get pods
+I1218 16:27:24.481836   11192 loader.go:375] Config loaded from file:  /etc/kubernetes/admin.conf
+I1218 16:27:24.485689   11192 round_trippers.go:420] GET https://ip:6443/api/v1/namespaces/default/pods?limit=500
+I1218 16:27:24.485700   11192 round_trippers.go:427] Request Headers:
+I1218 16:27:24.485704   11192 round_trippers.go:431]     User-Agent: kubectl/v1.16.3 (linux/amd64) kubernetes/b3cbbae
+I1218 16:27:24.485708   11192 round_trippers.go:431]     Accept: application/json;as=Table;v=v1beta1;g=meta.k8s.io, application/json
+I1218 16:27:24.505055   11192 round_trippers.go:446] Response Status: 200 OK in 19 milliseconds
+No resources found in default namespace.
+In this node kubectl uses /etc/kubernetes/admin.conf as its credentials, which contains:
+
+clusters:
+- cluster:
+    certificate-authority-data: LS0tLS1CRU...
+    server: https://ip:6443
+  name: kubernetes
+...
+users:
+- name: kubernetes-admin
+  user:
+    client-certificate-data: LS0tLS1CRU...
+    client-key-data: LS0tLS1CRU...
+certificate-authority-data is a base64-encoded string of /etc/kubernetes/ca.crt 5. client-certificate-data and client-key-data are base64-encoded kubernetes-admin certificate and key, respectively. This admin certificate is automatically created and managed by kubeadm.
+
+$ kubeadm alpha certs check-expiration
+CERTIFICATE                EXPIRES                  RESIDUAL TIME   EXTERNALLY MANAGED
+admin.conf                 Dec 17, 2020 07:20 UTC   364d            no      
+apiserver                  Dec 17, 2020 07:20 UTC   364d            no      
+apiserver-etcd-client      Dec 17, 2020 07:20 UTC   364d            no      
+apiserver-kubelet-client   Dec 17, 2020 07:20 UTC   364d            no      
+controller-manager.conf    Dec 17, 2020 07:20 UTC   364d            no      
+etcd-healthcheck-client    Dec 17, 2020 07:20 UTC   364d            no      
+etcd-peer                  Dec 17, 2020 07:20 UTC   364d            no      
+etcd-server                Dec 17, 2020 07:20 UTC   364d            no      
+front-proxy-client         Dec 17, 2020 07:20 UTC   364d            no      
+scheduler.conf             Dec 17, 2020 07:20 UTC   364d            no  
+kubeadm alpha certs command shows the client certificates in the /etc/kubernetes/pki6 and the client certificate embedded in KUBECONFIG files (admin.conf, controller-manager.conf, and scheduler.conf).
+
+For more details, refer to 4, 7, and 8.
+
+Controlling access: https://kubernetes.io/docs/reference/access-authn-authz/controlling-access/ ↩︎
+
+Authentication strategies: https://kubernetes.io/docs/reference/access-authn-authz/authentication/#authentication-strategies ↩︎
+
+쿠버네티스 #16: 보안 계정 인증과 권한 인가 https://bcho.tistory.com/1272 ↩︎
+
+Understanding Kubernetes Authentication and Authorization http://cloudgeekz.com/1045/kubernetes-authentication-and-authorization.html ↩︎
+
+Access Kubernetes API with Client Ceritifcate. https://codefarm.me/2019/02/01/access-kubernetes-api-with-client-certificates/ ↩︎
+
+Certificate Management with kubeadm. https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-certs/ ↩︎
+
+Authentication and Authorization in Kubernetes https://www.sovsystems.com/blog/authentication-and-authorization-in-kubernetes ↩︎
+
+쿠버네티스 인증 https://arisu1000.tistory.com/27847 ↩︎
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+APPENDIX - TROUBLESHOOTING
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+========================
+KUBELET ERRORS 1
+========================
+--> ALL THIS GOT FIXED WITH BASE64 ENCODED certificate-authority-data in kubelet.conf
+
+Maybe this needs kube-proxy to be running.
+
+https://bugzilla.redhat.com/show_bug.cgi?id=1796844
+Aug 15 01:22:19 ksn1 kubelet[9854]: E0815 01:22:19.750549    9854 controller.go:144] failed to ensure lease exists, will retry in 7s, error: leases.coordination.k8s.io "ksn1" is forbidden: User "system:anonymous" cannot get resource "leases" in API group "coordination.k8s.io" in the namespace "kube-node-lease"
+
+https://bugzilla.redhat.com/show_bug.cgi?format=multiple&id=1814433
+Aug 15 01:01:33 ksn1 kubelet[6590]: E0815 01:01:33.100944    6590 reflector.go:138] k8s.io/client-go/informers/factory.go:134: Failed to watch *v1.CSIDriver: failed to list *v1.CSIDriver: csidrivers.storage.k8s.io is forbidden: User "system:anonymous" cannot list resource "csidrivers" in API group "storage.k8s.io" at the cluster scope
+Aug 15 01:01:33 ksn1 kubelet[6590]: E0815 01:01:33.157639    6590 kubelet.go:2291] "Error getting node" err="node \"ksn1\" not found"
+Aug 15 01:01:33 ksn1 kubelet[6590]: E0815 01:01:33.258389    6590 kubelet.go:2291] "Error getting node" err="node \"ksn1\" not found"
+Aug 15 01:01:33 ksn1 kubelet[6590]: E0815 01:01:33.359550    6590 kubelet.go:2291] "Error getting node" err="node \"ksn1\" not found"
