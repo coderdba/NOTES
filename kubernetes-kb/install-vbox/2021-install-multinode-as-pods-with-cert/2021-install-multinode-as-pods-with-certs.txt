@@ -2327,117 +2327,117 @@ NOTE: LOOK FURTHER DOWN BELOW IN ANOTHER SECTION
 THE STUFF BELOW WAS NOT USED AS THIS DID NOT WORK WELL
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Multiple ways of doing this:
-- Kubeadm init copy: Copy and modify the two files from kubeadm init method in the default locations /var/lib/kubelet/config.yaml, /etc/kubernetes/kubelet.conf
-- Custom yaml in /etc/kubernetes/kubelet-config.yaml
+                        Multiple ways of doing this:
+                        - Kubeadm init copy: Copy and modify the two files from kubeadm init method in the default locations /var/lib/kubelet/config.yaml, /etc/kubernetes/kubelet.conf
+                        - Custom yaml in /etc/kubernetes/kubelet-config.yaml
 
-- CUSTOM YAML METHOD
-NOTE: 
-- This is as in comp. 
-- In kubeadm init method, it is created as /var/lib/kubelet/config.yaml (which is referenced in kubelet systemd file)
-- WE NEED TO MODIFY kubelet systemd file to reflect this new yaml file below as the config file 
-      (or, alternatively, copy our custom yaml to /var/lib/kubelet/config.yaml)
-  --> WE TAKE THE APPROACH OF MODIFYING kubelet systemd file - so that all Kubernetes config files are under /etc/kubernetes
+                        - CUSTOM YAML METHOD
+                        NOTE: 
+                        - This is as in comp. 
+                        - In kubeadm init method, it is created as /var/lib/kubelet/config.yaml (which is referenced in kubelet systemd file)
+                        - WE NEED TO MODIFY kubelet systemd file to reflect this new yaml file below as the config file 
+                              (or, alternatively, copy our custom yaml to /var/lib/kubelet/config.yaml)
+                          --> WE TAKE THE APPROACH OF MODIFYING kubelet systemd file - so that all Kubernetes config files are under /etc/kubernetes
 
-File: /etc/kubernetes/kubelet-config.yaml:
-(reference from https://medium.com/containerum/4-ways-to-bootstrap-a-kubernetes-cluster-de0d5150a1e4)
-NOTE: For now, the CA and user-authentication cert/key file info is not added
+                        File: /etc/kubernetes/kubelet-config.yaml:
+                        (reference from https://medium.com/containerum/4-ways-to-bootstrap-a-kubernetes-cluster-de0d5150a1e4)
+                        NOTE: For now, the CA and user-authentication cert/key file info is not added
 
-apiVersion: v1
-clusters:
-- cluster:
-    server: http://127.0.0.1:8080
-  name: kubernetes
-contexts:
-- context:
-    cluster: kubernetes
-    user: system:node:ksn1
-  name: system:node:ksn1@kubernetes
-current-context: system:node:kns1@kubernetes
-kind: Config
-preferences: {}
-users:
-- name: system:node:ksn1
+                        apiVersion: v1
+                        clusters:
+                        - cluster:
+                            server: http://127.0.0.1:8080
+                          name: kubernetes
+                        contexts:
+                        - context:
+                            cluster: kubernetes
+                            user: system:node:ksn1
+                          name: system:node:ksn1@kubernetes
+                        current-context: system:node:kns1@kubernetes
+                        kind: Config
+                        preferences: {}
+                        users:
+                        - name: system:node:ksn1
 
-REFERENCE - from https://medium.com/containerum/4-ways-to-bootstrap-a-kubernetes-cluster-de0d5150a1e4
-apiVersion: v1
-clusters:
-- cluster:
-    server: http://127.0.0.1:8080
-  name: kubernetes-systemd
-contexts:
-- context:
-    cluster: kubernetes-systemd
-    user: system:node:<HOSTNAME>
-  name: system:node:<HOSTNAME>@kubernetes-systemd
-current-context: system:node:<HOSTNAME>@kubernetes-systemd
-kind: Config
-preferences: {}
-users:
-- name: system:node:<HOSTNAME>
+                        REFERENCE - from https://medium.com/containerum/4-ways-to-bootstrap-a-kubernetes-cluster-de0d5150a1e4
+                        apiVersion: v1
+                        clusters:
+                        - cluster:
+                            server: http://127.0.0.1:8080
+                          name: kubernetes-systemd
+                        contexts:
+                        - context:
+                            cluster: kubernetes-systemd
+                            user: system:node:<HOSTNAME>
+                          name: system:node:<HOSTNAME>@kubernetes-systemd
+                        current-context: system:node:<HOSTNAME>@kubernetes-systemd
+                        kind: Config
+                        preferences: {}
+                        users:
+                        - name: system:node:<HOSTNAME>
 
-REFERENCE - from kubeadm init:
-apiVersion: v1
-clusters:
-- cluster:
-    certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUM1ekNDQWMrZ0F3SUJBZ0lCQURBTkJna3Foa2lHOXcwQkFRc0ZBREFWTVJNd0VRWURWUVFERXdwcmRXSmwKY201bGRHVnpNQjRYRFRJeE1EY3dOVEV3TXpJeU1Wb1hEVE14TURjd016RXdNekl5TVZvd0ZURVRNQkVHQTFVRQpBeE1LYTNWaVpYSnVaWFJsY3pDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBUENqCmd5Q2VUUnh0andWaTFMcVlhbG9zektiQ0hjbW4wTjgwME5Qck5mWk9icFhoWDNlT1IrY2Q5b0g2L1E5Y0VjOUIKRkJrMWpFN1IzeExpVWZFN09oN2tVZFliKzhGRC9XVnhoSnpraXZLM016T09kcEo1am1JVktMdTE3UHdGVlNZZgp0dkJab2ppdm5VL3lpZ0FXdzd0YklraFljYTBvd3lWTm1oa2pBeFlYeEgzOTVPb01lTEV0N3N4Yy9EQllReDlxCm55a3hOTlAwZkcvSjZLTGhmOTVSTVk1VVNCWlJhVVh1eEt3Ulp0WHVBY3FmblJJQ3ArNjZVV1ExQnpEZDEwUWIKcFFhUXhWWjlzZ0p3c3l4b1lWSnF0NTBXU0RyeGNPUUxMUjNiZUtMQXVmeTJoM2Rac0I1QnhEeC9ad3puRWJXeQowZE1jR0pRR3FJSWFSTVV3TlZFQ0F3RUFBYU5DTUVBd0RnWURWUjBQQVFIL0JBUURBZ0trTUE4R0ExVWRFd0VCCi93UUZNQU1CQWY4d0hRWURWUjBPQkJZRUZINU1iQkVueDlQdUxlK3lHYVAwYWIvTzFJeEhNQTBHQ1NxR1NJYjMKRFFFQkN3VUFBNElCQVFBbXhPSXhUNm5LK0NaNmhPSUo1RlFicUg2MkM5QjFJM3pYV3YrR05TaytmeXppd3QvMgpPenJJY1ZuSytUT1VKaHRPOUF2bkpBUGxTaGZsM0VCM2RSVjN6UkNPbFA1b1JoL3h6N3NTOWlrcC9xRU1oVDNKCkJQaThJMVNIOVN4NllXL0lKM2hoMDZsTXd5eWU2MzVuY0xqeDJDUGxPT28rR0Nlbjg2OWQzOGY4RlN4cDlxSGoKc2p0VnU4OG1OTHpIL2REcXpvcDRuS3ZDTmthWmVHdkJONGw5YlViN2xhYVJyZk1lMlNjTEJZM3RDbWYyOHVjQwpobkY0bytMSGF1QThhc1FQNW84LzNMNHNYOFcxajZrV0pFenAyM2VIU1EyUkZZNE9JUkhVYTFaZDc3dzV3YkUvCm95Y1hCNzRJYmZwemtWUDNUT3hlVlg2ZTlFcWtPc0R2d0Y2WAotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-    server: https://192.168.40.101:6443
-  name: kubernetes
-contexts:
-- context:
-    cluster: kubernetes
-    user: system:node:ks1
-  name: system:node:ks1@kubernetes
-current-context: system:node:ks1@kubernetes
-kind: Config
-preferences: {}
-users:
-- name: system:node:ks1
-  user:
-    client-certificate: /var/lib/kubelet/pki/kubelet-client-current.pem
-    client-key: /var/lib/kubelet/pki/kubelet-client-current.pem
+                        REFERENCE - from kubeadm init:
+                        apiVersion: v1
+                        clusters:
+                        - cluster:
+                            certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUM1ekNDQWMrZ0F3SUJBZ0lCQURBTkJna3Foa2lHOXcwQkFRc0ZBREFWTVJNd0VRWURWUVFERXdwcmRXSmwKY201bGRHVnpNQjRYRFRJeE1EY3dOVEV3TXpJeU1Wb1hEVE14TURjd016RXdNekl5TVZvd0ZURVRNQkVHQTFVRQpBeE1LYTNWaVpYSnVaWFJsY3pDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBUENqCmd5Q2VUUnh0andWaTFMcVlhbG9zektiQ0hjbW4wTjgwME5Qck5mWk9icFhoWDNlT1IrY2Q5b0g2L1E5Y0VjOUIKRkJrMWpFN1IzeExpVWZFN09oN2tVZFliKzhGRC9XVnhoSnpraXZLM016T09kcEo1am1JVktMdTE3UHdGVlNZZgp0dkJab2ppdm5VL3lpZ0FXdzd0YklraFljYTBvd3lWTm1oa2pBeFlYeEgzOTVPb01lTEV0N3N4Yy9EQllReDlxCm55a3hOTlAwZkcvSjZLTGhmOTVSTVk1VVNCWlJhVVh1eEt3Ulp0WHVBY3FmblJJQ3ArNjZVV1ExQnpEZDEwUWIKcFFhUXhWWjlzZ0p3c3l4b1lWSnF0NTBXU0RyeGNPUUxMUjNiZUtMQXVmeTJoM2Rac0I1QnhEeC9ad3puRWJXeQowZE1jR0pRR3FJSWFSTVV3TlZFQ0F3RUFBYU5DTUVBd0RnWURWUjBQQVFIL0JBUURBZ0trTUE4R0ExVWRFd0VCCi93UUZNQU1CQWY4d0hRWURWUjBPQkJZRUZINU1iQkVueDlQdUxlK3lHYVAwYWIvTzFJeEhNQTBHQ1NxR1NJYjMKRFFFQkN3VUFBNElCQVFBbXhPSXhUNm5LK0NaNmhPSUo1RlFicUg2MkM5QjFJM3pYV3YrR05TaytmeXppd3QvMgpPenJJY1ZuSytUT1VKaHRPOUF2bkpBUGxTaGZsM0VCM2RSVjN6UkNPbFA1b1JoL3h6N3NTOWlrcC9xRU1oVDNKCkJQaThJMVNIOVN4NllXL0lKM2hoMDZsTXd5eWU2MzVuY0xqeDJDUGxPT28rR0Nlbjg2OWQzOGY4RlN4cDlxSGoKc2p0VnU4OG1OTHpIL2REcXpvcDRuS3ZDTmthWmVHdkJONGw5YlViN2xhYVJyZk1lMlNjTEJZM3RDbWYyOHVjQwpobkY0bytMSGF1QThhc1FQNW84LzNMNHNYOFcxajZrV0pFenAyM2VIU1EyUkZZNE9JUkhVYTFaZDc3dzV3YkUvCm95Y1hCNzRJYmZwemtWUDNUT3hlVlg2ZTlFcWtPc0R2d0Y2WAotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+                            server: https://192.168.40.101:6443
+                          name: kubernetes
+                        contexts:
+                        - context:
+                            cluster: kubernetes
+                            user: system:node:ks1
+                          name: system:node:ks1@kubernetes
+                        current-context: system:node:ks1@kubernetes
+                        kind: Config
+                        preferences: {}
+                        users:
+                        - name: system:node:ks1
+                          user:
+                            client-certificate: /var/lib/kubelet/pki/kubelet-client-current.pem
+                            client-key: /var/lib/kubelet/pki/kubelet-client-current.pem
 
-- DEFAULT YAML METHOD
-Copy and modify the content of /var/lib/kubelet/config.yaml - taking it from kubeadm init method 
+                        - DEFAULT YAML METHOD
+                        Copy and modify the content of /var/lib/kubelet/config.yaml - taking it from kubeadm init method 
 
-File (not yet modified for our purpose): /var/lib/kubelet/config.yaml
-apiVersion: kubelet.config.k8s.io/v1beta1
-authentication:
-  anonymous:
-    enabled: false
-  webhook:
-    cacheTTL: 0s 
-    enabled: true
-  x509:
-    clientCAFile: /etc/kubernetes/pki/ca.crt
-authorization:
-  mode: Webhook
-  webhook: 
-    cacheAuthorizedTTL: 0s
-    cacheUnauthorizedTTL: 0s
-cgroupDriver: cgroupfs
-clusterDNS:
-- 10.96.0.10
-clusterDomain: cluster.local
-cpuManagerReconcilePeriod: 0s
-evictionPressureTransitionPeriod: 0s
-fileCheckFrequency: 0s
-healthzBindAddress: 127.0.0.1
-healthzPort: 10248
-httpCheckFrequency: 0s
-imageMinimumGCAge: 0s
-kind: KubeletConfiguration
-logging: {}
-nodeStatusReportFrequency: 0s
-nodeStatusUpdateFrequency: 0s
-rotateCertificates: true
-runtimeRequestTimeout: 0s
-shutdownGracePeriod: 0s
-shutdownGracePeriodCriticalPods: 0s
-staticPodPath: /etc/kubernetes/manifests
-streamingConnectionIdleTimeout: 0s
-syncFrequency: 0s
-volumeStatsAggPeriod: 0s
+                        File (not yet modified for our purpose): /var/lib/kubelet/config.yaml
+                        apiVersion: kubelet.config.k8s.io/v1beta1
+                        authentication:
+                          anonymous:
+                            enabled: false
+                          webhook:
+                            cacheTTL: 0s 
+                            enabled: true
+                          x509:
+                            clientCAFile: /etc/kubernetes/pki/ca.crt
+                        authorization:
+                          mode: Webhook
+                          webhook: 
+                            cacheAuthorizedTTL: 0s
+                            cacheUnauthorizedTTL: 0s
+                        cgroupDriver: cgroupfs
+                        clusterDNS:
+                        - 10.96.0.10
+                        clusterDomain: cluster.local
+                        cpuManagerReconcilePeriod: 0s
+                        evictionPressureTransitionPeriod: 0s
+                        fileCheckFrequency: 0s
+                        healthzBindAddress: 127.0.0.1
+                        healthzPort: 10248
+                        httpCheckFrequency: 0s
+                        imageMinimumGCAge: 0s
+                        kind: KubeletConfiguration
+                        logging: {}
+                        nodeStatusReportFrequency: 0s
+                        nodeStatusUpdateFrequency: 0s
+                        rotateCertificates: true
+                        runtimeRequestTimeout: 0s
+                        shutdownGracePeriod: 0s
+                        shutdownGracePeriodCriticalPods: 0s
+                        staticPodPath: /etc/kubernetes/manifests
+                        streamingConnectionIdleTimeout: 0s
+                        syncFrequency: 0s
+                        volumeStatsAggPeriod: 0s
 
 -----------------------------------
 KUBECONFIG AND SECURITY FOR KUBELET
