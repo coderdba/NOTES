@@ -2005,6 +2005,19 @@ kube-system   kube-apiserver-ksn1            1/1     Running   4          18m
 kube-system   kube-controller-manager-ksn1   1/1     Running   0          18m
 kube-system   kube-scheduler-ksn1            1/1     Running   0          18m
 
+- ERROR PERSISTS
+Kube Controller manager logs:
+# kubectl logs kube-controller-manager-ksn1 --kubeconfig /etc/kubernetes/admin.kubeconfig -n kube-system
+Error from server (Forbidden): Forbidden (user=system:node:ksn1, verb=get, resource=nodes, subresource=proxy) ( pods/log kube-controller-manager-ksn1)
+
+So, tried docker logs of the container of kube-controller-manager
+# docker ps -a | grep control
+585e016ef966   ae24db9aa2cc               "kube-controller-man…"
+
+# docker logs 585e016ef966 -f
+ Get "http://127.0.0.1:8080/apis/coordination.k8s.io/v1/namespaces/kube-system/leases/kube-controller-manager?timeout=5s": dial tcp 127.0.0.1:8080: connect: connection refused
+E0818 14:40:05.384906       1 leaderelection.go:325] error retrieving resource lock kube-system/kube-controller-manager: Get "http://127.0.0.1:8080/apis/coordination.k8s.io/v1/namespaces/kube-system/leases/kube-controller-manager?timeout=5s": dial tcp 127.0.0.1:8080: connect: connection refused
+
 ---------------------------------------------------------------------------------------
 -- PREVIOUS ERRORS - ALL RESOLVED NOW
 ---------------------------------------------------------------------------------------
@@ -2248,7 +2261,6 @@ Pod Template:
 Events:                 <none>
 [root@ksn1 addons]# 
 
-
 ------------------------------------------------
 COREDNS
 ------------------------------------------------
@@ -2313,16 +2325,68 @@ subjects:
 kubectl create -f kube-apiserver-to-kubelet-bind.yaml
 --> TBD - EXPECTED RESULT: clusterrolebinding.rbac.authorization.k8s.io/system:kube-apiserver created
 
+-----------------------------------
+KUBECONFIG AND SECURITY FOR KUBELET
+-----------------------------------
+Reference: https://github.com/coderdba/NOTES/blob/master/kubernetes-kb/install-vbox/WIP-2019-single-node-pods-with-certs.txt
+
+- CREATE KUBECONFIG
+Script: kubeconfig-kubelet-gen.sh
+
+# CREATE A kubeconfig FILE FOR KUBELET - for the node
+# Add the cluster information for the node IP
+kubectl config set-cluster kubernetes \
+--certificate-authority=certs/ca.pem \
+--embed-certs=true \
+--server=https://192.168.99.101:6443 \
+--kubeconfig=192.168.99.101.kubeconfig
+
+# Add the credentials for the node IP
+kubectl config set-credentials system:node:192.168.99.101 \
+--client-certificate=certs/kubelet-ksn1.pem \
+--client-key=certs/kubelet-ksn1-key.pem \
+--embed-certs=true \
+--kubeconfig=192.168.99.101.kubeconfig
+
+# Add the context for the node IP
+kubectl config set-context default \
+--cluster=kubernetes \
+--user=system:node:192.168.99.101 \
+--kubeconfig=192.168.99.101.kubeconfig
+
+# Use the context for the node
+kubectl config use-context default --kubeconfig=192.168.99.101.kubeconfig
+
+-->
+--> This will create a file 192.168.99.101.kubeconfig
+
+
+- COPY THAT FILE TO /etc/kubernetes/kubelet-kubeconfig
+cp 192.168.99.101.kubeconfig /etc/kubernetes/kubelet-kubeconfig
+
+-- ALSO, COPY THE KUBECONFIG FILE TO ~/.kube/config
+cp /etc/kubernetes/kubelet-kubeconfig ~/.kube/config
+
+--> This will enable the context (or something) for the linux session
+--> and the following command gives the current context if set in ~/.kube/config
+# kubectl config get-contexts 
+CURRENT   NAME      CLUSTER      AUTHINFO                   NAMESPACE
+*         default   kubernetes   system:node:192.168.60.102
+
+--> if the above command does not work
+# kubectl config get-contexts --kubeconfig=./192.168.99.101.kubeconfig
+CURRENT   NAME      CLUSTER      AUTHINFO                     NAMESPACE
+*         default   kubernetes   system:node:192.168.99.101
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-KUBELET CONFIGURATION FROM OLD NOTES - DID NOT WORK - used new steps mentioned in the documentation above
+APPENDIX - KUBELET CONFIGURATION FROM OLD NOTES - DID NOT WORK - used new steps mentioned in the documentation above
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ------------------------------------
 KUBELET CONFIG YAML
 ------------------------------------
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-NOTE: LOOK FURTHER DOWN BELOW IN ANOTHER SECTION 
+NOTE: LOOK IN ANOTHER SECTION 
 
 THE STUFF BELOW WAS NOT USED AS THIS DID NOT WORK WELL
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2438,60 +2502,6 @@ THE STUFF BELOW WAS NOT USED AS THIS DID NOT WORK WELL
                         streamingConnectionIdleTimeout: 0s
                         syncFrequency: 0s
                         volumeStatsAggPeriod: 0s
-
------------------------------------
-KUBECONFIG AND SECURITY FOR KUBELET
------------------------------------
-Reference: https://github.com/coderdba/NOTES/blob/master/kubernetes-kb/install-vbox/WIP-2019-single-node-pods-with-certs.txt
-
-- CREATE KUBECONFIG
-Script: kubeconfig-kubelet-gen.sh
-
-# CREATE A kubeconfig FILE FOR KUBELET - for the node
-# Add the cluster information for the node IP
-kubectl config set-cluster kubernetes \
---certificate-authority=certs/ca.pem \
---embed-certs=true \
---server=https://192.168.99.101:6443 \
---kubeconfig=192.168.99.101.kubeconfig
-
-# Add the credentials for the node IP
-kubectl config set-credentials system:node:192.168.99.101 \
---client-certificate=certs/kubelet-ksn1.pem \
---client-key=certs/kubelet-ksn1-key.pem \
---embed-certs=true \
---kubeconfig=192.168.99.101.kubeconfig
-
-# Add the context for the node IP
-kubectl config set-context default \
---cluster=kubernetes \
---user=system:node:192.168.99.101 \
---kubeconfig=192.168.99.101.kubeconfig
-
-# Use the context for the node
-kubectl config use-context default --kubeconfig=192.168.99.101.kubeconfig
-
--->
---> This will create a file 192.168.99.101.kubeconfig
-
-
-- COPY THAT FILE TO /etc/kubernetes/kubelet-kubeconfig
-cp 192.168.99.101.kubeconfig /etc/kubernetes/kubelet-kubeconfig
-
--- ALSO, COPY THE KUBECONFIG FILE TO ~/.kube/config
-cp /etc/kubernetes/kubelet-kubeconfig ~/.kube/config
-
---> This will enable the context (or something) for the linux session
---> and the following command gives the current context if set in ~/.kube/config
-# kubectl config get-contexts 
-CURRENT   NAME      CLUSTER      AUTHINFO                   NAMESPACE
-*         default   kubernetes   system:node:192.168.60.102
-
---> if the above command does not work
-# kubectl config get-contexts --kubeconfig=./192.168.99.101.kubeconfig
-CURRENT   NAME      CLUSTER      AUTHINFO                     NAMESPACE
-*         default   kubernetes   system:node:192.168.99.101
-
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 APPENDIX - KEY KNOWLEDGE
