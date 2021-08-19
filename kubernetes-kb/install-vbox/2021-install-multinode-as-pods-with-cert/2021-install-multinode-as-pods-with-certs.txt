@@ -71,6 +71,10 @@ Hard Way: https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master
 Many steps nicely documented (very old version): https://github.com/kelseyhightower/intro-to-kubernetes-workshop/tree/master/labs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+Courses online:
+- Udemy Learn Kubernetes by Doing: Kubernetes the Hard Way (CKA)
+      - Udemy Kubernetes hard way: https://www.udemy.com/course/kubernetes-training/?utm_source=adwords&utm_medium=udemyads&utm_campaign=LongTail_la.EN_cc.INDIA&utm_content=deal4584&utm_term=_._ag_77882236223_._ad_533093955804_._kw__._de_c_._dm__._pl__._ti_dsa-1007766171032_._li_1007768_._pd__._&matchtype=b&gclid=EAIaIQobChMIl8qW-I288gIVlNV3Ch1yMQyNEAAYASAAEgJGufD_BwE
+
 Kubeadm init method:
 - https://medium.com/twodigits/install-kubernetes-1-21-1-on-centos-8-stream-include-fix-cap-perfmon-acf23a6879c6
 - https://upcloud.com/community/tutorials/install-kubernetes-cluster-centos-8/
@@ -527,7 +531,6 @@ INSTALL ETCDCTL
 NOTE: Do only if it is necessary - we can always use docker exec to run the etcdctl command from within the etcd container itself
 - With yum: yum install etcd - not sure which repo
 - Tar/zip: https://computingforgeeks.com/setup-etcd-cluster-on-centos-debian-ubuntu/
-
 
 ==================================
 KUBECONFIG NOTES
@@ -1035,7 +1038,7 @@ admin-key.pem - key (private)
 admin.csr - file containing the csr (certificate signing request)
 
 ------------------------------------------------------
-KUBELET-CLIENT CERTIFICATE (for worker nodes)
+KUBELET CLIENT CERTIFICATE (for worker nodes)
 ------------------------------------------------------
 Worker-node kubelets will need a certificate to join the Kubernetes cluster
 NOTE: The IP is for the specific WORKER node
@@ -1053,7 +1056,7 @@ File: kubelet-ksn1-csr.json
       "C": "ABC",
       "L": "ABC",
       "O": "system:nodes",
-      "OU": "Kubernetes",
+      "OU": "Kubernetes", --> This is arbitrary - could be just ABC also
       "ST": "ABC"
     }
   ]
@@ -1072,7 +1075,7 @@ File kubelet-node1-csr.json file:
       "C": "ABC",
       "L": "ABC",
       "O": "system:nodes",
-      "OU": "Kubernetes",
+      "OU": "Kubernetes", --> This is arbitrary - could be just ABC also
       "ST": "ABC"
     }
   ]
@@ -1090,7 +1093,7 @@ File kubelet-node2-csr.json file:
       "C": "ABC",
       "L": "ABC",
       "O": "system:nodes",
-      "OU": "Kubernetes",
+      "OU": "Kubernetes", --> This is arbitrary - could be just ABC also
       "ST": "ABC"
     }
   ]
@@ -1108,7 +1111,7 @@ File kubelet-node3-csr.json file:
       "C": "ABC",
       "L": "ABC",
       "O": "system:nodes",
-      "OU": "Kubernetes",
+      "OU": "Kubernetes", --> This is arbitrary - could be just ABC also
       "ST": "ABC"
     }
   ]
@@ -1157,7 +1160,6 @@ cfssl gencert \
 -profile=kubernetes kubelet-ksn1-csr.json | \
 cfssljson -bare certs/kubelet-ksn1
 
-
 - For single-node you get these files
 kubelet-ksn1.pem - cert (public)
 kubelet-ksn1-key.pem - key (private)
@@ -1166,6 +1168,8 @@ kubelet-ksn1.csr - cert signing request
 -------------------------------------------------
 KUBE-PROXY CLIENT CERTIFICATE (for worker nodes) 
 -------------------------------------------------
+Another component that we will install on all our worker nodes is the kube-proxy. 
+The kube-proxy also needs a client certificate.
 
 File: kube-proxy-csr.json
 
@@ -1180,7 +1184,7 @@ File: kube-proxy-csr.json
       "C": "ABC",
       "L": "ABC",
       "O": "system:node-proxier",
-      "OU": "Kubernetes",
+      "OU": "Kubernetes", --> This can be arbitrary like ABC also
       "ST": "ABC"
     }
   ]
@@ -1203,6 +1207,7 @@ kube-proxy.csr - cert signing request
 --------------------------------------------
 APISERVER CERTIFICATE - for master nodes
 --------------------------------------------
+The API component will be installed on each of our Kubernetes master nodes.
 
 - CSR config file:
 
@@ -1219,14 +1224,14 @@ File: kube-apiserver-csr.json
       "C": "ABC",
       "L": "ABC",
       "O": "Kubernetes",
-      "OU": "Kubernetes",
+      "OU": "Kubernetes", --> This can be arbitrary like ABC also
       "ST": "ABC"
     }
   ]
 }
 
 - Run command
-Command file: kube-apiserver-csr.sh
+Command file: kube-apiserver-gen.sh
 
 NOTE: hostname has IP and hostname (not just IP as in the web 'deploying...' example)
 NOTE: 10.96.0.1 is derived from pod-ip cidr - with 1 at the end - this is assigned to apiserver pod by default
