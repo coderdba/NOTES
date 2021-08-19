@@ -1687,8 +1687,9 @@ done
 Results:
 kubeconfig/kubelet-ksn1.kubeconfig
 
-
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 - DUMB/ALTERNATIVE METHOD
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 - GENERATE "certificate-authority-data" to enter in kubelet.conf
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2454,16 +2455,23 @@ KUBELET CONFIG FILES
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 - Kubeconfig File for kubectl ~/.kube/config
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Initially, for kubelet to work, create a config file or link
 
-# mkdir ~/.kube
-# cd ~/.kube
-# ln -s /etc/kubernetes/kubelet.conf config
-- OR - 
-# cp /etc/kubernetes/kubelet.conf config
-- OR - 
-# cp /etc/kubernetes/kubelet.conf kubelet.conf.initial
-# ln -s /etc/kubernetes/kubelet.conf.initial config
+Initially copy (when just built cluster): kubelet-ksn1.kubeconfig to ~/.kube/config
+Later use: 
+
+!!!!!!!!!!!!!!!!!!!!!!!!
+OLD NOTES - DUBIOUS
+!!!!!!!!!!!!!!!!!!!!!!!!
+      Initially, for kubelet to work, create a config file or link
+
+      # mkdir ~/.kube
+      # cd ~/.kube
+      # ln -s /etc/kubernetes/kubelet.conf config
+      - OR - 
+      # cp /etc/kubernetes/kubelet.conf config
+      - OR - 
+      # cp /etc/kubernetes/kubelet.conf kubelet.conf.initial
+      # ln -s /etc/kubernetes/kubelet.conf.initial config
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 - Create File: /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf
@@ -2547,14 +2555,20 @@ a6188f807172   k8s.gcr.io/pause:3.4.1     "/pause"                 2 hours ago  
 ok
 
 - VERIFY
-# kubectl get pods
-No resources found in default namespace.
-
-# kubectl get pods --all-namespaces
+# kubectl get pods --all-namespaces --kubeconfig /etc/kubernetes/kubelet.conf
 NAMESPACE     NAME                           READY   STATUS    RESTARTS   AGE
-kube-system   kube-apiserver-ksn1            1/1     Running   4          18m
-kube-system   kube-controller-manager-ksn1   1/1     Running   0          18m
-kube-system   kube-scheduler-ksn1            1/1     Running   0          18m
+kube-system   kube-apiserver-ksn1            1/1     Running   0          84s
+kube-system   kube-controller-manager-ksn1   1/1     Running   0          84s
+kube-system   kube-scheduler-ksn1            1/1     Running   0          79s
+
+- VERIFY - with kubeconfig set in ~/.kube folder
+# cd ~/.kube
+# ln -s kubelet-ksn1.kubeconfig config
+[root@ksn1 .kube]# kubectl get pods --all-namespaces
+NAMESPACE     NAME                           READY   STATUS    RESTARTS   AGE
+kube-system   kube-apiserver-ksn1            1/1     Running   0          5m32s
+kube-system   kube-controller-manager-ksn1   1/1     Running   0          5m32s
+kube-system   kube-scheduler-ksn1            1/1     Running   0          5m27s
 
 - ERROR PERSISTS
 Kube Controller manager logs:
@@ -2711,6 +2725,8 @@ spec:
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Kubeconfig File: /etc/kubernetes/pki/admin.kubeconfig
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+NOTE: ALREADY CREATED IN EARLIER STEPS
+
 Create a kubeconfig for 'admin' user.
 Note that admin-csr.json was earlier used to create admin.pem and admin-key.pem
 In that "CN": "admin" is the thing that makes it admin user
@@ -2876,6 +2892,14 @@ subjects:
 kubectl create -f kube-apiserver-to-kubelet-bind.yaml
 --> TBD - EXPECTED RESULT: clusterrolebinding.rbac.authorization.k8s.io/system:kube-apiserver created
 
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+APPENDICES
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+APPENDIX - KUBELET CONFIGURATION FROM OLD NOTES - DID NOT WORK - used new steps mentioned in the documentation above
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 -----------------------------------
 KUBECONFIG AND SECURITY FOR KUBELET
 -----------------------------------
@@ -2929,9 +2953,6 @@ CURRENT   NAME      CLUSTER      AUTHINFO                   NAMESPACE
 CURRENT   NAME      CLUSTER      AUTHINFO                     NAMESPACE
 *         default   kubernetes   system:node:192.168.99.101
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-APPENDIX - KUBELET CONFIGURATION FROM OLD NOTES - DID NOT WORK - used new steps mentioned in the documentation above
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ------------------------------------
 KUBELET CONFIG YAML
 ------------------------------------
