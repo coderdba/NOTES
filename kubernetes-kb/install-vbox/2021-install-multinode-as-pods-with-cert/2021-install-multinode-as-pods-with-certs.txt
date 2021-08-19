@@ -67,6 +67,7 @@ https://blog.inkubate.io/deploy-kubernetes-1-9-from-scratch-on-vmware-vsphere/  
 
 Hard Way: https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/04-certificate-authority.md
 --> updated for K8S 1.21
+--> USE THIS VERY MUCH - PARTICULARLY THE CERT GENERATION, KUBECONFIG ETC
 
 Many steps nicely documented (very old version): https://github.com/kelseyhightower/intro-to-kubernetes-workshop/tree/master/labs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -93,6 +94,7 @@ Installing Kubectl, Kubeadm, Kubelet
 Kubernetes TLS Certificates:
 - Files, file-locations, best-practices: https://kubernetes.io/docs/setup/best-practices/certificates/
 --> CN and O in csr.json files
+- Kubernetes hard way: https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/04-certificate-authority.md
 
 Kubernetes flags / command line tools:
 - Apiserver: https://kubernetes.io/docs/reference/command-line-tools-reference/kube-apiserver/
@@ -108,7 +110,8 @@ Kubernetes flags / command line tools:
 
 Kubernetes API(?): https://cluster-api.sigs.k8s.io/introduction.html
 
-Kubelet unknown cert authority fix: https://stackoverflow.com/questions/46234295/kubectl-unable-to-connect-to-server-x509-certificate-signed-by-unknown-authori
+Kubelet unknown cert authority fix: 
+- https://stackoverflow.com/questions/46234295/kubectl-unable-to-connect-to-server-x509-certificate-signed-by-unknown-authori
 
 Apiserver 8080 port, security:
 https://kubernetes.io/docs/concepts/security/controlling-access/
@@ -1194,7 +1197,8 @@ File: kube-proxy-csr.json
 Command File: kube-proxy-gen.sh
 
 cfssl gencert \
--ca=ca.pem -ca-key=ca-key.pem \
+-ca=ca.pem \
+-ca-key=ca-key.pem \
 -config=ca-config.json \
 -profile=kubernetes kube-proxy-csr.json | \
 cfssljson -bare kube-proxy
@@ -1203,6 +1207,84 @@ cfssljson -bare kube-proxy
 kube-proxy.pem - cert (public)
 kube-proxy-key.pem - key (private)
 kube-proxy.csr - cert signing request
+
+
+--------------------------------------------
+The Controller Manager Client Certificate - for master nodes
+--------------------------------------------
+Generate the kube-controller-manager client certificate and private key.
+Note: This is from "Kubernetes the hard way" for version 1.21
+- https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/04-certificate-authority.md
+
+File: kube-controller-manager-csr.json
+
+{
+  "CN": "system:kube-controller-manager",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "ABC",
+      "L": "ABC",
+      "O": "system:kube-controller-manager",
+      "OU": "ABC",
+      "ST": "ABC"
+    }
+  ]
+}
+
+Command-file: kube-controller-manager-gen.sh
+
+cfssl gencert \
+  -ca=ca.pem \
+  -ca-key=ca-key.pem \
+  -config=ca-config.json \
+  -profile=kubernetes \
+  kube-controller-manager-csr.json | cfssljson -bare kube-controller-manager
+
+Results:
+
+kube-controller-manager-key.pem
+kube-controller-manager.pem
+
+----------------------------------------------
+The Scheduler Client Certificate - for master nodes
+----------------------------------------------
+Generate the kube-scheduler client certificate and private key:
+Note: This is from "Kubernetes the hard way" for version 1.21
+- https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/04-certificate-authority.md
+
+File: kube-scheduler-csr.json
+{
+  "CN": "system:kube-scheduler",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "ABC",
+      "L": "ABC",
+      "O": "system:kube-scheduler",
+      "OU": "ABC",
+      "ST": "ABC"
+    }
+  ]
+}
+
+Command-file: kube-scheduler-gen.sh
+cfssl gencert \
+  -ca=ca.pem \
+  -ca-key=ca-key.pem \
+  -config=ca-config.json \
+  -profile=kubernetes \
+  kube-scheduler-csr.json | cfssljson -bare kube-scheduler
+  
+Results:
+kube-scheduler-key.pem
+kube-scheduler.pem
 
 --------------------------------------------
 APISERVER CERTIFICATE - for master nodes
@@ -1224,7 +1306,7 @@ File: kube-apiserver-csr.json
       "C": "ABC",
       "L": "ABC",
       "O": "Kubernetes",
-      "OU": "Kubernetes", --> This can be arbitrary like ABC also
+      "OU": "ABC", 
       "ST": "ABC"
     }
   ]
