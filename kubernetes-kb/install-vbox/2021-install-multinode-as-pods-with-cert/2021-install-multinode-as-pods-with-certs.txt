@@ -1733,9 +1733,15 @@ Script: kubeconfig-kube-controller-manager-gen.sh
   kubectl config use-context default --kubeconfig=kubeconfig/kube-controller-manager.kubeconfig
 }
 
+Results:
+
+kubeconfig/kube-controller-manager.kubeconfig
+
 -----------------------------------------------------------
 The kube-scheduler Kubernetes Configuration File
 -----------------------------------------------------------
+Generate a kubeconfig file for the kube-scheduler service.
+NOTE: Taken from hard-way document https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/05-kubernetes-configuration-files.md
 
 Script: kubeconfig-kube-scheduler-gen.sh
 
@@ -1759,6 +1765,67 @@ Script: kubeconfig-kube-scheduler-gen.sh
 
   kubectl config use-context default --kubeconfig=kubeconfig/kube-scheduler.kubeconfig
 }
+
+Results:
+
+kubeconfig/kube-scheduler.kubeconfig
+
+-----------------------------------------
+The admin Kubernetes Configuration File
+-----------------------------------------
+Generate a kubeconfig file for the admin user
+NOTE: Taken from hard-way document https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/05-kubernetes-configuration-files.md
+
+Script: kubeconfig-admin-gen.sh
+
+# admin user kubeconfig file generation
+# https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/05-kubernetes-configuration-files.md
+
+{
+  kubectl config set-cluster kubernetes \
+    --certificate-authority=certs/ca.pem \
+    --embed-certs=true \
+    --server=https://127.0.0.1:6443 \
+    --kubeconfig=kubeconfig/admin.kubeconfig
+
+  kubectl config set-credentials admin \
+    --client-certificate=certs/admin.pem \
+    --client-key=certs/admin-key.pem \
+    --embed-certs=true \
+    --kubeconfig=kubeconfig/admin.kubeconfig
+
+  kubectl config set-context default \
+    --cluster=kubernetes \
+    --user=admin \
+    --kubeconfig=kubeconfig/admin.kubeconfig
+
+  kubectl config use-context default --kubeconfig=kubeconfig/admin.kubeconfig
+}
+
+Results:
+
+kubeconfig/admin.kubeconfig
+
+----------------------------------------------
+Distribute the Kubernetes Configuration Files
+----------------------------------------------
+NOTE: From https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/05-kubernetes-configuration-files.md
+NOTE: Do as needed for your setup
+
+- Copy the appropriate kubelet and kube-proxy kubeconfig files to each worker instance:
+
+for instance in worker-0 worker-1 worker-2; do
+  gcloud compute scp ${instance}.kubeconfig kube-proxy.kubeconfig ${instance}:~/
+done
+
+- Copy the appropriate kube-controller-manager and kube-scheduler kubeconfig files to each controller instance:
+
+for instance in controller-0 controller-1 controller-2; do
+  gcloud compute scp admin.kubeconfig kube-controller-manager.kubeconfig kube-scheduler.kubeconfig ${instance}:~/
+done
+
+- IN MY CASE:
+I COPIED ALL KUBECONFIG FILES TO /etc/kubernetes and ~/.kube
 
 =====================================================
 SINGLE NODE - ETCD - WITH CERTS 
