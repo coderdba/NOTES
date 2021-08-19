@@ -110,6 +110,10 @@ Apiserver 8080 port, security:
 https://kubernetes.io/docs/concepts/security/controlling-access/
 https://www.stackrox.com/wiki/securing-the-kubernetes-api-server/
 
+ETCD 3 node cluster by Bitnami:
+- https://docs.bitnami.com/google/infrastructure/etcd/administration/create-cluster/
+- Troubleshooting timeout issue: https://community.bitnami.com/t/etcd-cluster-config/92641/14
+
 ETCD from binaries (just for reference):
 https://computingforgeeks.com/setup-etcd-cluster-on-centos-debian-ubuntu/
 
@@ -731,9 +735,12 @@ docker run --rm \
   --volume=${DATA_DIR}:/etcd-data \
   --name etcd ${ETCD_IMAGE} \
   /usr/local/bin/etcd \
-  --data-dir=/etcd-data --name node1 \
-  --initial-advertise-peer-urls http://${NODE1}:2380 --listen-peer-urls http://0.0.0.0:2380 \
-  --advertise-client-urls http://${NODE1}:2379 --listen-client-urls http://0.0.0.0:2379 \
+  --data-dir=/etcd-data \
+  --name node1 \ --> THIS 'node1' - better make it hostname itself (as in the with-certs steps further below)
+  --initial-advertise-peer-urls http://${NODE1}:2380 \
+  --listen-peer-urls http://0.0.0.0:2380 \
+  --advertise-client-urls http://${NODE1}:2379 \
+  --listen-client-urls http://0.0.0.0:2379 \
   --initial-cluster node1=http://${NODE1}:2380
 
 - MESSAGES (on screen)
@@ -856,9 +863,12 @@ ExecStart=/usr/bin/docker run --rm \
   --volume=${DATA_DIR}:/etcd-data \
   --name etcd ${REGISTRY}:${ETCD_VERSION} \
   /usr/local/bin/etcd \
-  --data-dir=/etcd-data --name ${THIS_NAME} \
-  --initial-advertise-peer-urls http://${THIS_IP}:2380 --listen-peer-urls http://0.0.0.0:2380 \
-  --advertise-client-urls http://${THIS_IP}:2379 --listen-client-urls http://0.0.0.0:2379 \
+  --data-dir=/etcd-data \
+  --name ${THIS_NAME} \
+  --initial-advertise-peer-urls http://${THIS_IP}:2380 \
+  --listen-peer-urls http://0.0.0.0:2380 \
+  --advertise-client-urls http://${THIS_IP}:2379 \
+  --listen-client-urls http://0.0.0.0:2379 \
   --initial-cluster ${CLUSTER} \
   --initial-cluster-state ${CLUSTER_STATE} --initial-cluster-token ${TOKEN}
 
@@ -888,7 +898,6 @@ Aug 13 14:53:19 ksn1 docker[21061]: 2021-08-13 09:23:19.913499 N | embed: servin
 -- Verify
 # docker exec etcd /bin/sh -c "export ETCDCTL_API=3 && /usr/local/bin/etcdctl member list"
 d5673e1f00b32e05, started, ksn1, http://192.168.99.101:2380, http://192.168.99.101:2379, false
-
 
 =====================================================
 GENERATE CERTIFICATES
@@ -1253,7 +1262,6 @@ kube-apiserver.pem - cert (public)
 kube-apiserver-key.pem - key (private)
 kube-apiserver.csr - cert signing request
 
-
 -------------------------------------
 ETCD CERTIFICATES
 -------------------------------------
@@ -1455,7 +1463,18 @@ raft2021/08/13 14:35:19 INFO: raft.node: d5673e1f00b32e05 elected leader d5673e1
 2021-08-13 14:35:19.105171 I | embed: ready to serve client requests
 2021-08-13 14:35:19.106576 I | embed: serving client requests on [::]:2379
 
-- VERIFY
+- VERIFY WITH CERTS
+https://mvallim.github.io/kubernetes-under-the-hood/documentation/etcd.html
+
+# docker exec etcd /bin/sh -c "export ETCDCTL_API=3 && etcdctl member list --cacert=/etc/kubernetes/pki/ca.pem --cert=/etc/kubernetes/pki/etcd-ksn1.pem --key=/etc/kubernetes/pki/etcd-ksn1-key.pem -w table"
+
++------------------+---------+------+----------------------------+-----------------------------+------------+
+|        ID        | STATUS  | NAME |         PEER ADDRS         |        CLIENT ADDRS         | IS LEARNER |
++------------------+---------+------+----------------------------+-----------------------------+------------+
+| d5673e1f00b32e05 | started | ksn1 | http://192.168.99.101:2380 | https://192.168.99.101:2379 |      false |
++------------------+---------+------+----------------------------+-----------------------------+------------+
+ 
+- VERIFY WITHOUT CERTS GIVES ERROR
 # docker exec etcd /bin/sh -c "export ETCDCTL_API=3 && /usr/local/bin/etcdctl member list"
 --> This failed with the following messages
 
@@ -1469,16 +1488,6 @@ raft2021/08/13 14:35:19 INFO: raft.node: d5673e1f00b32e05 elected leader d5673e1
 2021-08-13 14:35:29.641143 I | embed: rejected connection from "127.0.0.1:55732" (error "tls: first record does not look like a TLS handshake", ServerName "")
 2021-08-13 14:35:31.728138 I | embed: rejected connection from "127.0.0.1:55734" (error "tls: first record does not look like a TLS handshake", ServerName "")
 
-- VERIFY WITH CERTS
-https://mvallim.github.io/kubernetes-under-the-hood/documentation/etcd.html
-
-# docker exec etcd /bin/sh -c "export ETCDCTL_API=3 && etcdctl member list --cacert=/etc/kubernetes/pki/ca.pem --cert=/etc/kubernetes/pki/etcd-ksn1.pem --key=/etc/kubernetes/pki/etcd-ksn1-key.pem -w table"
-
-+------------------+---------+------+----------------------------+-----------------------------+------------+
-|        ID        | STATUS  | NAME |         PEER ADDRS         |        CLIENT ADDRS         | IS LEARNER |
-+------------------+---------+------+----------------------------+-----------------------------+------------+
-| d5673e1f00b32e05 | started | ksn1 | http://192.168.99.101:2380 | https://192.168.99.101:2379 |      false |
-+------------------+---------+------+----------------------------+-----------------------------+------------+
 
 -----------------------------------
 ETCD SERVICE
