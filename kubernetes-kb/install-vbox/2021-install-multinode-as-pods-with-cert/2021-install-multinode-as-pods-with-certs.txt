@@ -1350,6 +1350,50 @@ kube-apiserver-key.pem - key (private)
 kube-apiserver.csr - cert signing request
 
 -------------------------------------
+The Service Account Key Pair
+-------------------------------------
+The Kubernetes Controller Manager leverages a key pair to generate and sign service account tokens as described in the managing service accounts documentation.
+NOTE: This is from https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/04-certificate-authority.md
+
+Generate the service-account certificate and private key:
+
+File: service-account-csr.json
+
+NOTE: Except CN and O others can be arbitrary like ABC also
+
+{
+  "CN": "service-accounts",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "US",
+      "L": "Portland",
+      "O": "Kubernetes",
+      "OU": "Kubernetes The Hard Way",
+      "ST": "Oregon"
+    }
+  ]
+}
+
+
+Run command: service-accounts-gen.sh
+
+cfssl gencert \
+  -ca=ca.pem \
+  -ca-key=ca-key.pem \
+  -config=ca-config.json \
+  -profile=kubernetes \
+  service-account-csr.json | cfssljson -bare service-account
+
+Results:
+
+service-account-key.pem
+service-account.pem
+
+-------------------------------------
 ETCD CERTIFICATES
 -------------------------------------
 Based on: https://github.com/etcd-io/etcd/blob/main/hack/tls-setup
@@ -1474,16 +1518,6 @@ cfssljson -bare etcd-peer-ksn1
 websites. For more information see the Baseline Requirements for the Issuance and Management
 of Publicly-Trusted Certificates, v.1.1.6, from the CA/Browser Forum (https://cabforum.org);
 specifically, section 10.2.3 ("Information Requirements").
-2021/08/13 18:12:46 [INFO] generate received request
-2021/08/13 18:12:46 [INFO] received CSR
-2021/08/13 18:12:46 [INFO] generating key: rsa-2048
-2021/08/13 18:12:46 [INFO] encoded CSR
-2021/08/13 18:12:46 [INFO] signed certificate with serial number 588100363056942112025633808003647473103553087425
-2021/08/13 18:12:46 [WARNING] This certificate lacks a "hosts" field. This makes it unsuitable for
-websites. For more information see the Baseline Requirements for the Issuance and Management
-of Publicly-Trusted Certificates, v.1.1.6, from the CA/Browser Forum (https://cabforum.org);
-specifically, section 10.2.3 ("Information Requirements").
-
 
 - These files get created (for single node)
 etcd-ksn1.pem - cert for client (public)
@@ -1493,6 +1527,29 @@ etcd-ksn1.csr
 etcd-peer-ksn1.pem - cert for peer (public)
 etcd-peer-ksn1-key.pem - key for peer (public)
 etcd-peer-ksn1.csr
+
+-------------------------------------------------------
+Distribute the Client and Server Certificates
+-------------------------------------------------------
+NOTE: This is from the hard-way reference: https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/04-certificate-authority.md
+NOTE: Use this as reference - and do stuff appropriate to your needs
+
+- Copy the appropriate certificates and private keys to each worker instance:
+
+for instance in worker-0 worker-1 worker-2; do
+  gcloud compute scp ca.pem ${instance}-key.pem ${instance}.pem ${instance}:~/
+done
+
+- Copy the appropriate certificates and private keys to each controller instance:
+
+for instance in controller-0 controller-1 controller-2; do
+  gcloud compute scp ca.pem ca-key.pem kubernetes-key.pem kubernetes.pem \
+    service-account-key.pem service-account.pem ${instance}:~/
+done
+
+- Other certs
+The kube-proxy, kube-controller-manager, kube-scheduler, and kubelet client certificates 
+will be used to generate client authentication configuration files in the next lab.
 
 =====================================================
 SINGLE NODE - ETCD - WITH CERTS 
