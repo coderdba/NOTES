@@ -1492,7 +1492,6 @@ will be used to generate client authentication configuration files in the next l
 =====================================================
 KUBECONFIG FILES
 =====================================================
-
 ----------------------
 KUBELET KUBECONFIG 
 ----------------------
@@ -2071,6 +2070,7 @@ spec:
     - --etcd-keyfile=/etc/kubernetes/pki/etcd-ksn1-key.pem
     - --etcd-servers=https://127.0.0.1:2379
     - --insecure-port=0
+    - --kubelet-certificate-authority=/etc/kubernetes/pki/ca.pem
     - --kubelet-client-certificate=/etc/kubernetes/pki/kubelet-ksn1.pem
     - --kubelet-client-key=/etc/kubernetes/pki/kubelet-ksn1-key.pem
     - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
@@ -2331,6 +2331,11 @@ OLD NOTES - DUBIOUS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 - Create File: /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+NOTE: --authorization-mode=Webhook is added according to:
+- https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/08-bootstrapping-kubernetes-controllers.md
+- https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet-authentication-authorization/#kubelet-authentication
+
+
 # Note: This dropin only works with kubeadm and kubelet v1.11+
 [Service]
 #Environment="KUBELET_KUBECONFIG_ARGS=--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf"
@@ -2342,7 +2347,7 @@ Environment="KUBELET_CONFIG_ARGS=--config=/var/lib/kubelet/config.yaml --pod-man
 # the .NodeRegistration.KubeletExtraArgs object in the configuration files instead. KUBELET_EXTRA_ARGS should be sourced from this file.
 EnvironmentFile=-/etc/sysconfig/kubelet
 ExecStart=
-ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS
+ExecStart=/usr/bin/kubelet --authorization-mode=Webhook $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 - Create File: /var/lib/kubelet/config.yaml
@@ -2434,8 +2439,8 @@ Kubernetes control plane is running at https://127.0.0.1:6443
 # kubectl cluster-info --kubeconfig  kubelet-ksn1.kubeconfig
 Kubernetes control plane is running at https://192.168.99.101:6443
 
-
 -- ERROR - "KUBECTL LOGS" command ERRORS - with kubelet kubeconfig
+--> NEEDS RBAC TO FIX THIS (SEE RBAC SECTION)
 # cd ~/.kube
 # ln -s kubelet-ksn1.kubeconfig config
 
@@ -2480,6 +2485,77 @@ So, tried docker logs of the container of kube-controller-manager
 # docker logs 585e016ef966 -f
  Get "http://127.0.0.1:8080/apis/coordination.k8s.io/v1/namespaces/kube-system/leases/kube-controller-manager?timeout=5s": dial tcp 127.0.0.1:8080: connect: connection refused
 E0818 14:40:05.384906       1 leaderelection.go:325] error retrieving resource lock kube-system/kube-controller-manager: Get "http://127.0.0.1:8080/apis/coordination.k8s.io/v1/namespaces/kube-system/leases/kube-controller-manager?timeout=5s": dial tcp 127.0.0.1:8080: connect: connection refused
+
+------------------------------------------------
+KUBELET RBAC 
+------------------------------------------------
+Configure RBAC permissions to allow the Kubernetes API Server to access the Kubelet API on each worker node. 
+Access to the Kubelet API is required for retrieving metrics, logs, and executing commands in pods.
+
+https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet-authentication-authorization/#kubelet-authentication
+
+https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/08-bootstrapping-kubernetes-controllers.md
+https://github.com/kelseyhightower/kubernetes-the-hard-way/issues/612
+https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/08-bootstrapping-kubernetes-controllers.md#rbac-for-kubelet-authorization
+
+~~~~~~~~~~~~~
+CLUSTERROLE
+~~~~~~~~~~~~~
+
+Create the system:kube-apiserver-to-kubelet ClusterRole with permissions 
+to access the Kubelet API and perform most common tasks associated with managing pods:
+
+- File: kube-apiserver-to-kubelet.yaml
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  annotations:
+    rbac.authorization.kubernetes.io/autoupdate: "true"
+  labels:
+    kubernetes.io/bootstrapping: rbac-defaults
+  name: system:kube-apiserver-to-kubelet
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - nodes/proxy
+      - nodes/stats
+      - nodes/log
+      - nodes/spec
+      - nodes/metrics
+    verbs:
+      - "*"
+
+- Create Cluster Role
+kubectl apply --kubeconfig ~/.kube/admin.kubeconfig -f kube-apiserver-to-kubelet.yaml
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+CLUSTER ROLE BINDING
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The Kubernetes API Server authenticates to the Kubelet as the kubernetes user using the client certificate as defined by the --kubelet-client-certificate flag.
+
+Bind the system:kube-apiserver-to-kubelet ClusterRole to the kubernetes user:
+
+- File: kube-apiserver-to-kubelet-bind.yaml
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: system:kube-apiserver
+  namespace: ""
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:kube-apiserver-to-kubelet
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: User
+    name: kubernetes
+
+- Create Cluster Role Binding
+kubectl apply --kubeconfig ~/.kube/admin.kubeconfig -f kube-apiserver-to-kubelet-bind.yaml
 
 ------------------------------------------------
 KUBE-PROXY
