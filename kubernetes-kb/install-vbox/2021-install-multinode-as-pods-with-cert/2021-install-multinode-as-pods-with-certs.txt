@@ -535,153 +535,6 @@ NOTE: Do only if it is necessary - we can always use docker exec to run the etcd
 - With yum: yum install etcd - not sure which repo
 - Tar/zip: https://computingforgeeks.com/setup-etcd-cluster-on-centos-debian-ubuntu/
 
-==================================
-KUBECONFIG NOTES
-==================================
-https://kubernetes.io/docs/setup/best-practices/certificates/
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-USER TYPE in csr.json - CN and O etc
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-In the xyz-csr.json the "CN"s denote the purpose of the user - which is also real nature of the user in many cases:
-
-"CN": "admin" (or kubernetes-admin)--> administrator which can access kube-system as well to create pods and other objects
-"CN": "Kubernetes" --> CA and Apiserver
-"CN": "etcd"
-"CN": "system:node:192.168.99.101" (or node hostname instead of IP) --> Kubelet
-"CN": "system:kube-proxy" 
-
-- FROM: https://kubernetes.io/docs/setup/best-practices/certificates/
-
-Configure certificates for user accounts 
-You must manually configure these administrator account and service accounts:
-
-filename	            credential name	            Default CN	                        O (in Subject)
-admin.conf	            default-admin	            kubernetes-admin	                  system:masters
-kubelet.conf	      default-auth	            system:node:<nodeName> (see note)	system:nodes
-controller-manager.conf	default-controller-manager	system:kube-controller-manager	
-scheduler.conf	      default-scheduler	            system:kube-scheduler	
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-- CREATING CONFIG WITH EMBEDDED CERTS
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# CREATE A KUBECONFIG FILE FOR 'admin' USER
-kubectl config set-cluster kubernetes \
---certificate-authority=certs/ca.pem \
---server=https://ksn1:6443 \
---embed-certs=true \
---kubeconfig=kubeconfig/admin.kubeconfig
-
-kubectl config set-credentials admin \
---client-certificate=certs/admin.pem \
---client-key=certs/admin-key.pem \
---embed-certs=true \
---kubeconfig=kubeconfig/admin.kubeconfig
-
-kubectl config set-context kubernetes --cluster=kubernetes --user=admin --kubeconfig=kubeconfig/admin.kubeconfig
-kubectl config use-context kubernetes --kubeconfig=kubeconfig/admin.kubeconfig
-kubectl get nodes
-
--- THIS WILL CREATE A KUBECONFIG WITH CONTENTS OF PEM FILES IN BASE64 FORMAT EMBEDDED IN THE KUBECONFIG
-apiVersion: v1
-clusters:
-- cluster:
-    certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FU ....
-    ...
-    ...
-aQpSTlNubG5UMHNPUFJadz09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
-    server: https://ksn1:6443
-  name: kubernetes
-contexts:
-- context:
-    cluster: kubernetes
-    user: admin
-  name: kubernetes
-current-context: kubernetes
-kind: Config
-preferences: {}
-users:
-- name: admin
-  user:
-    client-certificate-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FU ....
-    ...
-    ...
-aQpSTlNubG5UMHNPUFJadz09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
-    client-key-data: LS0tLS1CRUdJTiBSU0EgUFJ ...
-    ...
-    ...
-CBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-- CREATING CONFIG WITH NO EMBEDDED CERTS - BUT REFERENCING THE PEM FILES
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# CREATE A KUBECONFIG FILE FOR 'admin' USER
-kubectl config set-cluster kubernetes \
---certificate-authority=/etc/kubernetes/pki/ca.pem \
---server=https://ksn1:6443 \
---kubeconfig=kubeconfig/admin.kubeconfig.noEmbedCerts
-
-kubectl config set-credentials admin \
---client-certificate=/etc/kubernetes/pki/admin.pem \
---client-key=/etc/kubernetes/pki/admin-key.pem \
---kubeconfig=kubeconfig/admin.kubeconfig.noEmbedCerts
-
-kubectl config set-context kubernetes --cluster=kubernetes --user=admin --kubeconfig=kubeconfig/admin.kubeconfig.noEmbedCerts
-kubectl config use-context kubernetes --kubeconfig=kubeconfig/admin.kubeconfig.noEmbedCerts
-kubectl get nodes
-
--- THIS WILL CREATE A KUBECONFIG WITH PEM FILE PATHS REFERENCED IN THE KUBECONFIG
-apiVersion: v1
-clusters:
-- cluster:
-    certificate-authority: /etc/kubernetes/pki/ca.pem
-    server: https://ksn1:6443
-  name: kubernetes
-contexts:
-- context:
-    cluster: kubernetes
-    user: admin
-  name: kubernetes
-current-context: kubernetes
-kind: Config
-preferences: {}
-users:
-- name: admin
-  user:
-    client-certificate: /etc/kubernetes/pki/admin.pem
-    client-key: /etc/kubernetes/pki/admin-key.pem
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-- USING A SPECIFIC KUBECONFIG
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# kubectl apply -f kube-proxy-rbac.yaml --kubeconfig /etc/kubernetes/admin.kubeconfig
-# kubectl get pods --all-namespaces --kubeconfig /etc/kubernetes/kubelet.conf
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-- VIEWING CURRENT CONFIG
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# kubectl config view
-apiVersion: v1
-clusters:
-- cluster:
-    certificate-authority-data: DATA+OMITTED
-    server: https://ksn1:6443
-  name: kubernetes
-contexts:
-- context:
-    cluster: kubernetes
-    user: system:node:ksn1
-  name: system:node:ksn1@kubernetes
-current-context: system:node:ksn1@kubernetes
-kind: Config
-preferences: {}
-users:
-- name: system:node:ksn1
-  user:
-    client-certificate: /etc/kubernetes/pki/kubelet-ksn1.pem
-    client-key: /etc/kubernetes/pki/kubelet-ksn1-key.pem
-
-
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 SINGLE NODE SETUP - TO TRY SINGLE NODE FIRST AND THEN MULTINODE
@@ -2900,9 +2753,155 @@ APPENDICES
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 APPENDIX - KUBELET CONFIGURATION FROM OLD NOTES - DID NOT WORK - used new steps mentioned in the documentation above
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
------------------------------------
+==================================
+KUBECONFIG NOTES
+==================================
+https://kubernetes.io/docs/setup/best-practices/certificates/
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+USER TYPE in csr.json - CN and O etc
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In the xyz-csr.json the "CN"s denote the purpose of the user - which is also real nature of the user in many cases:
+
+"CN": "admin" (or kubernetes-admin)--> administrator which can access kube-system as well to create pods and other objects
+"CN": "Kubernetes" --> CA and Apiserver
+"CN": "etcd"
+"CN": "system:node:192.168.99.101" (or node hostname instead of IP) --> Kubelet
+"CN": "system:kube-proxy" 
+
+- FROM: https://kubernetes.io/docs/setup/best-practices/certificates/
+
+Configure certificates for user accounts 
+You must manually configure these administrator account and service accounts:
+
+filename	            credential name	            Default CN	                        O (in Subject)
+admin.conf	            default-admin	            kubernetes-admin	                  system:masters
+kubelet.conf	      default-auth	            system:node:<nodeName> (see note)	system:nodes
+controller-manager.conf	default-controller-manager	system:kube-controller-manager	
+scheduler.conf	      default-scheduler	            system:kube-scheduler	
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- CREATING CONFIG WITH EMBEDDED CERTS
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# CREATE A KUBECONFIG FILE FOR 'admin' USER
+kubectl config set-cluster kubernetes \
+--certificate-authority=certs/ca.pem \
+--server=https://ksn1:6443 \
+--embed-certs=true \
+--kubeconfig=kubeconfig/admin.kubeconfig
+
+kubectl config set-credentials admin \
+--client-certificate=certs/admin.pem \
+--client-key=certs/admin-key.pem \
+--embed-certs=true \
+--kubeconfig=kubeconfig/admin.kubeconfig
+
+kubectl config set-context kubernetes --cluster=kubernetes --user=admin --kubeconfig=kubeconfig/admin.kubeconfig
+kubectl config use-context kubernetes --kubeconfig=kubeconfig/admin.kubeconfig
+kubectl get nodes
+
+-- THIS WILL CREATE A KUBECONFIG WITH CONTENTS OF PEM FILES IN BASE64 FORMAT EMBEDDED IN THE KUBECONFIG
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FU ....
+    ...
+    ...
+aQpSTlNubG5UMHNPUFJadz09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+    server: https://ksn1:6443
+  name: kubernetes
+contexts:
+- context:
+    cluster: kubernetes
+    user: admin
+  name: kubernetes
+current-context: kubernetes
+kind: Config
+preferences: {}
+users:
+- name: admin
+  user:
+    client-certificate-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FU ....
+    ...
+    ...
+aQpSTlNubG5UMHNPUFJadz09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+    client-key-data: LS0tLS1CRUdJTiBSU0EgUFJ ...
+    ...
+    ...
+CBSU0EgUFJJVkFURSBLRVktLS0tLQo=
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- CREATING CONFIG WITH NO EMBEDDED CERTS - BUT REFERENCING THE PEM FILES
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# CREATE A KUBECONFIG FILE FOR 'admin' USER
+kubectl config set-cluster kubernetes \
+--certificate-authority=/etc/kubernetes/pki/ca.pem \
+--server=https://ksn1:6443 \
+--kubeconfig=kubeconfig/admin.kubeconfig.noEmbedCerts
+
+kubectl config set-credentials admin \
+--client-certificate=/etc/kubernetes/pki/admin.pem \
+--client-key=/etc/kubernetes/pki/admin-key.pem \
+--kubeconfig=kubeconfig/admin.kubeconfig.noEmbedCerts
+
+kubectl config set-context kubernetes --cluster=kubernetes --user=admin --kubeconfig=kubeconfig/admin.kubeconfig.noEmbedCerts
+kubectl config use-context kubernetes --kubeconfig=kubeconfig/admin.kubeconfig.noEmbedCerts
+kubectl get nodes
+
+-- THIS WILL CREATE A KUBECONFIG WITH PEM FILE PATHS REFERENCED IN THE KUBECONFIG
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority: /etc/kubernetes/pki/ca.pem
+    server: https://ksn1:6443
+  name: kubernetes
+contexts:
+- context:
+    cluster: kubernetes
+    user: admin
+  name: kubernetes
+current-context: kubernetes
+kind: Config
+preferences: {}
+users:
+- name: admin
+  user:
+    client-certificate: /etc/kubernetes/pki/admin.pem
+    client-key: /etc/kubernetes/pki/admin-key.pem
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- USING A SPECIFIC KUBECONFIG
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# kubectl apply -f kube-proxy-rbac.yaml --kubeconfig /etc/kubernetes/admin.kubeconfig
+# kubectl get pods --all-namespaces --kubeconfig /etc/kubernetes/kubelet.conf
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- VIEWING CURRENT CONFIG
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# kubectl config view
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: DATA+OMITTED
+    server: https://ksn1:6443
+  name: kubernetes
+contexts:
+- context:
+    cluster: kubernetes
+    user: system:node:ksn1
+  name: system:node:ksn1@kubernetes
+current-context: system:node:ksn1@kubernetes
+kind: Config
+preferences: {}
+users:
+- name: system:node:ksn1
+  user:
+    client-certificate: /etc/kubernetes/pki/kubelet-ksn1.pem
+    client-key: /etc/kubernetes/pki/kubelet-ksn1-key.pem
+
+=====================================
 KUBECONFIG AND SECURITY FOR KUBELET
------------------------------------
+=====================================
 Reference: https://github.com/coderdba/NOTES/blob/master/kubernetes-kb/install-vbox/WIP-2019-single-node-pods-with-certs.txt
 
 - CREATE KUBECONFIG
