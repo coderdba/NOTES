@@ -2423,18 +2423,17 @@ kube-system   kube-apiserver-ksn1            1/1     Running   0          5m32s
 kube-system   kube-controller-manager-ksn1   1/1     Running   0          5m32s
 kube-system   kube-scheduler-ksn1            1/1     Running   0          5m27s
 
-- ERROR PERSISTS
-Kube Controller manager logs:
-# kubectl logs kube-controller-manager-ksn1 --kubeconfig /etc/kubernetes/admin.kubeconfig -n kube-system
-Error from server (Forbidden): Forbidden (user=system:node:ksn1, verb=get, resource=nodes, subresource=proxy) ( pods/log kube-controller-manager-ksn1)
+-- ERROR - KUBECTL LOGS ERRORS - with kubelet kubeconfig
+# cd ~/.kube
+# ln -s kubelet-ksn1.kubeconfig config
 
-So, tried docker logs of the container of kube-controller-manager
-# docker ps -a | grep control
-585e016ef966   ae24db9aa2cc               "kube-controller-man…"
+# kubectl logs kube-apiserver-ksn1 -n kube-system
+Error from server (Forbidden): pods "kube-apiserver-ksn1" is forbidden: User "system:node:ksn1" cannot get resource "pods/log" in API group "" in the namespace "kube-system"
 
-# docker logs 585e016ef966 -f
- Get "http://127.0.0.1:8080/apis/coordination.k8s.io/v1/namespaces/kube-system/leases/kube-controller-manager?timeout=5s": dial tcp 127.0.0.1:8080: connect: connection refused
-E0818 14:40:05.384906       1 leaderelection.go:325] error retrieving resource lock kube-system/kube-controller-manager: Get "http://127.0.0.1:8080/apis/coordination.k8s.io/v1/namespaces/kube-system/leases/kube-controller-manager?timeout=5s": dial tcp 127.0.0.1:8080: connect: connection refused
+-- ERROR - KUBECTL LOGS ERRORS - with admin kubeconfig
+# ln -s admin.kubeconfig config
+# kubectl logs kube-apiserver-ksn1 -n kube-system
+Error from server (Forbidden): Forbidden (user=system:node:ksn1, verb=get, resource=nodes, subresource=proxy) ( pods/log kube-apiserver-ksn1)
 
 ---------------------------------------------------------------------------------------
 -- PREVIOUS ERRORS - ALL RESOLVED NOW
@@ -2451,6 +2450,18 @@ Aug 15 13:44:55 ksn1 kubelet: E0815 13:44:55.994862   13706 eviction_manager.go:
 Aug 15 13:44:56 ksn1 kubelet: E0815 13:44:56.077359   13706 kubelet.go:2291] "Error getting node" err="node \"ksn1\" not found"
 Aug 15 13:44:56 ksn1 kubelet: E0815 13:44:56.178100   13706 kubelet.go:2291] "Error getting node" err="node \"ksn1\" not found"
 
+-- MORE ERRORS
+Kube Controller manager logs:
+# kubectl logs kube-controller-manager-ksn1 --kubeconfig /etc/kubernetes/admin.kubeconfig -n kube-system
+Error from server (Forbidden): Forbidden (user=system:node:ksn1, verb=get, resource=nodes, subresource=proxy) ( pods/log kube-controller-manager-ksn1)
+
+So, tried docker logs of the container of kube-controller-manager
+# docker ps -a | grep control
+585e016ef966   ae24db9aa2cc               "kube-controller-man…"
+
+# docker logs 585e016ef966 -f
+ Get "http://127.0.0.1:8080/apis/coordination.k8s.io/v1/namespaces/kube-system/leases/kube-controller-manager?timeout=5s": dial tcp 127.0.0.1:8080: connect: connection refused
+E0818 14:40:05.384906       1 leaderelection.go:325] error retrieving resource lock kube-system/kube-controller-manager: Get "http://127.0.0.1:8080/apis/coordination.k8s.io/v1/namespaces/kube-system/leases/kube-controller-manager?timeout=5s": dial tcp 127.0.0.1:8080: connect: connection refused
 ------------------------------------------------
 KUBE-PROXY
 ------------------------------------------------
