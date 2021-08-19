@@ -1552,6 +1552,215 @@ The kube-proxy, kube-controller-manager, kube-scheduler, and kubelet client cert
 will be used to generate client authentication configuration files in the next lab.
 
 =====================================================
+KUBECONFIG FILES
+=====================================================
+
+----------------------
+KUBELET KUBECONFIG 
+----------------------
+NOTE: This fine can be created by "kubectl config" command also - see "KUBECONFIG NOTES" section
+- somehow that did not work intially, and hence used this manual method
+- ALSO NOTE: see the appendix on kubeconfig for "kubeadm init config" method - modify those steps to match content in this section
+
+- PROPER METHOD
+NOTE: Taken from hard-way document https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/05-kubernetes-configuration-files.md
+
+Script: kubeconfig-kubelet-gen.sh
+
+# Kubelet kubeconfig file generation
+# https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/05-kubernetes-configuration-files.md
+
+# Set this
+export KUBERNETES_PUBLIC_ADDRESS=192.168.99.101
+
+# Multinode - use this line
+#for instance in worker-0 worker-1 worker-2; do
+# Single node - use this line
+#for instance in worker-0
+for instance in ksn1
+do
+
+kubectl config set-cluster kubernetes \
+--certificate-authority=certs/ca.pem \
+--embed-certs=true \
+--server=https://${KUBERNETES_PUBLIC_ADDRESS}:6443 \
+--kubeconfig=kubeconfig/kubelet-${instance}.kubeconfig
+
+kubectl config set-credentials system:node:${instance} \
+--client-certificate=certs/kubelet-${instance}.pem \
+--client-key=certs/kubelet-${instance}-key.pem \
+--embed-certs=true \
+--kubeconfig=kubeconfig/kubelet-${instance}.kubeconfig
+
+kubectl config set-context default \
+--cluster=kubernetes \
+--user=system:node:${instance} \
+--kubeconfig=kubeconfig/kubelet-${instance}.kubeconfig
+
+kubectl config use-context default --kubeconfig=kubeconfig/kubelet-${instance}.kubeconfig
+
+done
+
+Results:
+kubeconfig/kubelet-ksn1.kubeconfig
+
+
+- DUMB/ALTERNATIVE METHOD
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- GENERATE "certificate-authority-data" to enter in kubelet.conf
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Reference: https://insujang.github.io/2019-12-18/kubernetes-authentication/
+# base64 /etc/kubernetes/ca.pem 
+
+This will give a listing like the following:
+--> CONCATENATE all lines into one line - removing spaces in between --> AND, USE THAT IN kubelet.conf
+LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUR4akNDQXE2Z0F3SUJBZ0lVU2oveStjbTNZ
+KytDQVZ0RWY1R0Fhd0h6eitZd0RRWUpLb1pJaHZjTkFRRUwKQlFBd2FURU1NQW9HQTFVRUJoTURR
+VUpETVF3d0NnWURWUVFJRXdOQlFrTXhEREFLQmdOVkJBY1RBMEZDUXpFVApNQkVHQTFVRUNoTUtT
+M1ZpWlhKdVpYUmxjekVUTUJFR0ExVUVDeE1LUzNWaVpYSnVaWFJsY3pFVE1CRUdBMVVFCkF4TUtT
+M1ZpWlhKdVpYUmxjekFlRncweU1UQTRNVFV3TmpFNU1EQmFGdzB5TmpBNE1UUXdOakU1TURCYU1H
+a3gKRERBS0JnTlZCQVlUQTBGQ1F6RU1NQW9HQTFVRUNCTURRVUpETVF3d0NnWURWUVFIRXdOQlFr
+TXhFekFSQmdOVgpCQW9UQ2t0MVltVnlibVYwWlhNeEV6QVJCZ05WQkFzVENrdDFZbVZ5Ym1WMFpY
+TXhFekFSQmdOVkJBTVRDa3QxClltVnlibVYwWlhNd2dnRWlNQTBHQ1NxR1NJYjNEUUVCQVFVQUE0
+SUJEd0F3Z2dFS0FvSUJBUURHYWRCS2VEb0YKY1RzK1ZCUGVrd0ZYdEFCZndDTHZnZVdPL2hna3lP
+MWRFaGNZY1k5T3NiN1VLaWRYa2lqWExNTjFma3RaeXFjagoxYzB3djFlUEtnQS9Sa3lic2dsck1z
+N2lVdU1ySXhOZFo5RC8yTndOWUNiVDZtTjRodDZDR3lTSytteVAwTnhkCkpZWGp1WldoSXJYQnhJ
+VkdUTlhkVG1XUnFrNVlVTmRjVDFieURXWXJqUzlzR0l5UEQ2WW03NEYwaFdHT1h5KysKUVdETUFi
+OWlCWUg4SUU4Tm9FZDZBaS9sV1FRTXBTNjRPM1ByVG5udkVGY1ZsVm1idElhNW5lVW8wSWtZUkMz
+VgpLMVkvL1MzQWFubWIveURKSTNBVysvbGppdFBKN1dJZlYrU00xWmZydjBkaXdLYmJzUks5bWNj
+REk5TjZaT3NDCkNkSVY3SWs2WlhYL0FnTUJBQUdqWmpCa01BNEdBMVVkRHdFQi93UUVBd0lCQmpB
+U0JnTlZIUk1CQWY4RUNEQUcKQVFIL0FnRUNNQjBHQTFVZERnUVdCQlNyNVk3NUlFMW9nc1c1K3N6
+K2JXSXplalo5M2pBZkJnTlZIU01FR0RBVwpnQlNyNVk3NUlFMW9nc1c1K3N6K2JXSXplalo5M2pB
+TkJna3Foa2lHOXcwQkFRc0ZBQU9DQVFFQWdXR21ZYktoCittSXNEMkpZbFR0b1FGOHdOYXdmNEc3
+Mk1ERmJPc0liNWtDR3B0VVY1dDIwcS9MbDJ6VTVMS3l3UzIwM2kzMW8KOTB2TDlnYXNKT2NNV3FF
+SURJK3NaRmZIQVN6d21FTmVjZ3liOFBUWVhzU1A3cFlhYjhFM0hkaFNJTVNqeTU5cQo5QzBFd3B3
+SEtVTmtJaWlZN2Rad1BMTS92RUJsYjI0V2wyaFBkclYrbEthaVR1Snppck9WTnhwSjhmQldZNHA1
+CjRxWi9MdW92MzJNc09SS0pBbTdZc0s2emZjWTlZNnhLcFgzVTNWbkc1ck9NNnNic0xHY1NrdEVR
+c2lKTWFVMDIKbHc2VHVGSE11ODAyeVdrbzcvR1A1WEFYdEEzQStqT2loVStjUGpMYVcxRFJ3RUc2
+LzdGaXNKaXZQMWRqNTFXaQpSTlNubG5UMHNPUFJadz09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0t
+LS0K
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- Create File: /etc/kubernetes/kubelet.conf
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+NOTE: Taken from kubeadm init methond machine and modified key and cert files and certificate-authority-data
+NOTE: In certificate-authority-data copy the stuff from the CONCATENATED base64 data above
+
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUR4akNDQXE2Z0F3SUJBZ0lVU2oveStjbTNZKytDQVZ0RWY1R0Fhd0h6eitZd0RRWUpLb1pJaHZjTkFRRUwKQlFBd2FURU1NQW9HQTFVRUJoTURRVUpETVF3d0NnWURWUVFJRXdOQlFrTXhEREFLQmdOVkJBY1RBMEZDUXpFVApNQkVHQTFVRUNoTUtTM1ZpWlhKdVpYUmxjekVUTUJFR0ExVUVDeE1LUzNWaVpYSnVaWFJsY3pFVE1CRUdBMVVFCkF4TUtTM1ZpWlhKdVpYUmxjekFlRncweU1UQTRNVFV3TmpFNU1EQmFGdzB5TmpBNE1UUXdOakU1TURCYU1Ha3gKRERBS0JnTlZCQVlUQTBGQ1F6RU1NQW9HQTFVRUNCTURRVUpETVF3d0NnWURWUVFIRXdOQlFrTXhFekFSQmdOVgpCQW9UQ2t0MVltVnlibVYwWlhNeEV6QVJCZ05WQkFzVENrdDFZbVZ5Ym1WMFpYTXhFekFSQmdOVkJBTVRDa3QxClltVnlibVYwWlhNd2dnRWlNQTBHQ1NxR1NJYjNEUUVCQVFVQUE0SUJEd0F3Z2dFS0FvSUJBUURHYWRCS2VEb0YKY1RzK1ZCUGVrd0ZYdEFCZndDTHZnZVdPL2hna3lPMWRFaGNZY1k5T3NiN1VLaWRYa2lqWExNTjFma3RaeXFjagoxYzB3djFlUEtnQS9Sa3lic2dsck1zN2lVdU1ySXhOZFo5RC8yTndOWUNiVDZtTjRodDZDR3lTSytteVAwTnhkCkpZWGp1WldoSXJYQnhJVkdUTlhkVG1XUnFrNVlVTmRjVDFieURXWXJqUzlzR0l5UEQ2WW03NEYwaFdHT1h5KysKUVdETUFiOWlCWUg4SUU4Tm9FZDZBaS9sV1FRTXBTNjRPM1ByVG5udkVGY1ZsVm1idElhNW5lVW8wSWtZUkMzVgpLMVkvL1MzQWFubWIveURKSTNBVysvbGppdFBKN1dJZlYrU00xWmZydjBkaXdLYmJzUks5bWNjREk5TjZaT3NDCkNkSVY3SWs2WlhYL0FnTUJBQUdqWmpCa01BNEdBMVVkRHdFQi93UUVBd0lCQmpBU0JnTlZIUk1CQWY4RUNEQUcKQVFIL0FnRUNNQjBHQTFVZERnUVdCQlNyNVk3NUlFMW9nc1c1K3N6K2JXSXplalo5M2pBZkJnTlZIU01FR0RBVwpnQlNyNVk3NUlFMW9nc1c1K3N6K2JXSXplalo5M2pBTkJna3Foa2lHOXcwQkFRc0ZBQU9DQVFFQWdXR21ZYktoCittSXNEMkpZbFR0b1FGOHdOYXdmNEc3Mk1ERmJPc0liNWtDR3B0VVY1dDIwcS9MbDJ6VTVMS3l3UzIwM2kzMW8KOTB2TDlnYXNKT2NNV3FFSURJK3NaRmZIQVN6d21FTmVjZ3liOFBUWVhzU1A3cFlhYjhFM0hkaFNJTVNqeTU5cQo5QzBFd3B3SEtVTmtJaWlZN2Rad1BMTS92RUJsYjI0V2wyaFBkclYrbEthaVR1Snppck9WTnhwSjhmQldZNHA1CjRxWi9MdW92MzJNc09SS0pBbTdZc0s2emZjWTlZNnhLcFgzVTNWbkc1ck9NNnNic0xHY1NrdEVRc2lKTWFVMDIKbHc2VHVGSE11ODAyeVdrbzcvR1A1WEFYdEEzQStqT2loVStjUGpMYVcxRFJ3RUc2LzdGaXNKaXZQMWRqNTFXaQpSTlNubG5UMHNPUFJadz09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+    server: https://ksn1:6443
+  name: kubernetes
+contexts:
+- context:
+    cluster: kubernetes
+    user: system:node:ksn1
+  name: system:node:ksn1@kubernetes
+current-context: system:node:ksn1@kubernetes
+kind: Config
+preferences: {}
+users:
+- name: system:node:ksn1
+  user:
+    client-certificate: /etc/kubernetes/pki/kubelet-ksn1.pem
+    client-key: /etc/kubernetes/pki/kubelet-ksn1-key.pem
+
+-----------------------------------------------
+The kube-proxy Kubernetes Configuration File
+-----------------------------------------------
+Generate a kubeconfig file for the kube-proxy service.
+NOTE: Taken from hard-way document https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/05-kubernetes-configuration-files.md
+
+Script: kubeconfig-kube-proxy-gen.sh
+
+# Kube-proxy kubeconfig file generation
+# https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/05-kubernetes-configuration-files.md
+
+# Set this
+export KUBERNETES_PUBLIC_ADDRESS=192.168.99.101
+
+{
+  kubectl config set-cluster kubernetes \
+    --certificate-authority=certs/ca.pem \
+    --embed-certs=true \
+    --server=https://${KUBERNETES_PUBLIC_ADDRESS}:6443 \
+    --kubeconfig=kubeconfig/kube-proxy.kubeconfig
+
+  kubectl config set-credentials system:kube-proxy \
+    --client-certificate=certs/kube-proxy.pem \
+    --client-key=certs/kube-proxy-key.pem \
+    --embed-certs=true \
+    --kubeconfig=kubeconfig/kube-proxy.kubeconfig
+
+  kubectl config set-context default \
+    --cluster=kubernetes \
+    --user=system:kube-proxy \
+    --kubeconfig=kubeconfig/kube-proxy.kubeconfig
+
+  kubectl config use-context default --kubeconfig=kubeconfig/kube-proxy.kubeconfig
+}
+
+-----------------------------------------------------------
+The kube-controller-manager Kubernetes Configuration File
+-----------------------------------------------------------
+Generate a kubeconfig file for the kube-controller-manager service.
+NOTE: Taken from hard-way document https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/05-kubernetes-configuration-files.md
+
+Script: kubeconfig-kube-controller-manager-gen.sh
+
+# Kube-controller-manager kubeconfig file generation
+# https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/05-kubernetes-configuration-files.md
+
+{
+  kubectl config set-cluster kubernetes \
+    --certificate-authority=certs/ca.pem \
+    --embed-certs=true \
+    --server=https://127.0.0.1:6443 \
+    --kubeconfig=kubeconfig/kube-controller-manager.kubeconfig
+
+  kubectl config set-credentials system:kube-controller-manager \
+    --client-certificate=certs/kube-controller-manager.pem \
+    --client-key=certs/kube-controller-manager-key.pem \
+    --embed-certs=true \
+    --kubeconfig=kubeconfig/kube-controller-manager.kubeconfig
+
+  kubectl config set-context default \
+    --cluster=kubernetes \
+    --user=system:kube-controller-manager \
+    --kubeconfig=kubeconfig/kube-controller-manager.kubeconfig
+
+  kubectl config use-context default --kubeconfig=kubeconfig/kube-controller-manager.kubeconfig
+}
+
+-----------------------------------------------------------
+The kube-scheduler Kubernetes Configuration File
+-----------------------------------------------------------
+
+Script: kubeconfig-kube-scheduler-gen.sh
+
+{
+  kubectl config set-cluster kubernetes \
+    --certificate-authority=certs/ca.pem \
+    --embed-certs=true \
+    --server=https://127.0.0.1:6443 \
+    --kubeconfig=kubeconfig/kube-scheduler.kubeconfig
+
+  kubectl config set-credentials system:kube-scheduler \
+    --client-certificate=certs/kube-scheduler.pem \
+    --client-key=certs/kube-scheduler-key.pem \
+    --embed-certs=true \
+    --kubeconfig=kubeconfig/kube-scheduler.kubeconfig
+
+  kubectl config set-context default \
+    --cluster=kubernetes \
+    --user=system:kube-scheduler \
+    --kubeconfig=kubeconfig/kube-scheduler.kubeconfig
+
+  kubectl config use-context default --kubeconfig=kubeconfig/kube-scheduler.kubeconfig
+}
+
+=====================================================
 SINGLE NODE - ETCD - WITH CERTS 
 =====================================================
 
@@ -1631,7 +1840,6 @@ https://mvallim.github.io/kubernetes-under-the-hood/documentation/etcd.html
 2021-08-13 14:35:28.149266 I | embed: rejected connection from "127.0.0.1:55730" (error "tls: first record does not look like a TLS handshake", ServerName "")
 2021-08-13 14:35:29.641143 I | embed: rejected connection from "127.0.0.1:55732" (error "tls: first record does not look like a TLS handshake", ServerName "")
 2021-08-13 14:35:31.728138 I | embed: rejected connection from "127.0.0.1:55734" (error "tls: first record does not look like a TLS handshake", ServerName "")
-
 
 -----------------------------------
 ETCD SERVICE
@@ -1986,73 +2194,9 @@ spec:
     name: kubeconfig
 status: {}
 
-----------------------
+-------------------------------------
 KUBELET CONFIG FILES
-----------------------
-NOTE: This fine can be created by "kubectl config" command also - see "KUBECONFIG NOTES" section
-- somehow that did not work intially, and hence used this manual method
-- ALSO NOTE: see the appendix on kubeconfig for "kubeadm init config" method - modify those steps to match content in this section
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-- GENERATE "certificate-authority-data" to enter in kubelet.conf
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Reference: https://insujang.github.io/2019-12-18/kubernetes-authentication/
-# base64 /etc/kubernetes/ca.pem 
-
-This will give a listing like the following:
---> CONCATENATE all lines into one line - removing spaces in between --> AND, USE THAT IN kubelet.conf
-LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUR4akNDQXE2Z0F3SUJBZ0lVU2oveStjbTNZ
-KytDQVZ0RWY1R0Fhd0h6eitZd0RRWUpLb1pJaHZjTkFRRUwKQlFBd2FURU1NQW9HQTFVRUJoTURR
-VUpETVF3d0NnWURWUVFJRXdOQlFrTXhEREFLQmdOVkJBY1RBMEZDUXpFVApNQkVHQTFVRUNoTUtT
-M1ZpWlhKdVpYUmxjekVUTUJFR0ExVUVDeE1LUzNWaVpYSnVaWFJsY3pFVE1CRUdBMVVFCkF4TUtT
-M1ZpWlhKdVpYUmxjekFlRncweU1UQTRNVFV3TmpFNU1EQmFGdzB5TmpBNE1UUXdOakU1TURCYU1H
-a3gKRERBS0JnTlZCQVlUQTBGQ1F6RU1NQW9HQTFVRUNCTURRVUpETVF3d0NnWURWUVFIRXdOQlFr
-TXhFekFSQmdOVgpCQW9UQ2t0MVltVnlibVYwWlhNeEV6QVJCZ05WQkFzVENrdDFZbVZ5Ym1WMFpY
-TXhFekFSQmdOVkJBTVRDa3QxClltVnlibVYwWlhNd2dnRWlNQTBHQ1NxR1NJYjNEUUVCQVFVQUE0
-SUJEd0F3Z2dFS0FvSUJBUURHYWRCS2VEb0YKY1RzK1ZCUGVrd0ZYdEFCZndDTHZnZVdPL2hna3lP
-MWRFaGNZY1k5T3NiN1VLaWRYa2lqWExNTjFma3RaeXFjagoxYzB3djFlUEtnQS9Sa3lic2dsck1z
-N2lVdU1ySXhOZFo5RC8yTndOWUNiVDZtTjRodDZDR3lTSytteVAwTnhkCkpZWGp1WldoSXJYQnhJ
-VkdUTlhkVG1XUnFrNVlVTmRjVDFieURXWXJqUzlzR0l5UEQ2WW03NEYwaFdHT1h5KysKUVdETUFi
-OWlCWUg4SUU4Tm9FZDZBaS9sV1FRTXBTNjRPM1ByVG5udkVGY1ZsVm1idElhNW5lVW8wSWtZUkMz
-VgpLMVkvL1MzQWFubWIveURKSTNBVysvbGppdFBKN1dJZlYrU00xWmZydjBkaXdLYmJzUks5bWNj
-REk5TjZaT3NDCkNkSVY3SWs2WlhYL0FnTUJBQUdqWmpCa01BNEdBMVVkRHdFQi93UUVBd0lCQmpB
-U0JnTlZIUk1CQWY4RUNEQUcKQVFIL0FnRUNNQjBHQTFVZERnUVdCQlNyNVk3NUlFMW9nc1c1K3N6
-K2JXSXplalo5M2pBZkJnTlZIU01FR0RBVwpnQlNyNVk3NUlFMW9nc1c1K3N6K2JXSXplalo5M2pB
-TkJna3Foa2lHOXcwQkFRc0ZBQU9DQVFFQWdXR21ZYktoCittSXNEMkpZbFR0b1FGOHdOYXdmNEc3
-Mk1ERmJPc0liNWtDR3B0VVY1dDIwcS9MbDJ6VTVMS3l3UzIwM2kzMW8KOTB2TDlnYXNKT2NNV3FF
-SURJK3NaRmZIQVN6d21FTmVjZ3liOFBUWVhzU1A3cFlhYjhFM0hkaFNJTVNqeTU5cQo5QzBFd3B3
-SEtVTmtJaWlZN2Rad1BMTS92RUJsYjI0V2wyaFBkclYrbEthaVR1Snppck9WTnhwSjhmQldZNHA1
-CjRxWi9MdW92MzJNc09SS0pBbTdZc0s2emZjWTlZNnhLcFgzVTNWbkc1ck9NNnNic0xHY1NrdEVR
-c2lKTWFVMDIKbHc2VHVGSE11ODAyeVdrbzcvR1A1WEFYdEEzQStqT2loVStjUGpMYVcxRFJ3RUc2
-LzdGaXNKaXZQMWRqNTFXaQpSTlNubG5UMHNPUFJadz09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0t
-LS0K
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-- Create File: /etc/kubernetes/kubelet.conf
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-NOTE: Taken from kubeadm init methond machine and modified key and cert files and certificate-authority-data
-NOTE: In certificate-authority-data copy the stuff from the CONCATENATED base64 data above
-
-apiVersion: v1
-clusters:
-- cluster:
-    certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUR4akNDQXE2Z0F3SUJBZ0lVU2oveStjbTNZKytDQVZ0RWY1R0Fhd0h6eitZd0RRWUpLb1pJaHZjTkFRRUwKQlFBd2FURU1NQW9HQTFVRUJoTURRVUpETVF3d0NnWURWUVFJRXdOQlFrTXhEREFLQmdOVkJBY1RBMEZDUXpFVApNQkVHQTFVRUNoTUtTM1ZpWlhKdVpYUmxjekVUTUJFR0ExVUVDeE1LUzNWaVpYSnVaWFJsY3pFVE1CRUdBMVVFCkF4TUtTM1ZpWlhKdVpYUmxjekFlRncweU1UQTRNVFV3TmpFNU1EQmFGdzB5TmpBNE1UUXdOakU1TURCYU1Ha3gKRERBS0JnTlZCQVlUQTBGQ1F6RU1NQW9HQTFVRUNCTURRVUpETVF3d0NnWURWUVFIRXdOQlFrTXhFekFSQmdOVgpCQW9UQ2t0MVltVnlibVYwWlhNeEV6QVJCZ05WQkFzVENrdDFZbVZ5Ym1WMFpYTXhFekFSQmdOVkJBTVRDa3QxClltVnlibVYwWlhNd2dnRWlNQTBHQ1NxR1NJYjNEUUVCQVFVQUE0SUJEd0F3Z2dFS0FvSUJBUURHYWRCS2VEb0YKY1RzK1ZCUGVrd0ZYdEFCZndDTHZnZVdPL2hna3lPMWRFaGNZY1k5T3NiN1VLaWRYa2lqWExNTjFma3RaeXFjagoxYzB3djFlUEtnQS9Sa3lic2dsck1zN2lVdU1ySXhOZFo5RC8yTndOWUNiVDZtTjRodDZDR3lTSytteVAwTnhkCkpZWGp1WldoSXJYQnhJVkdUTlhkVG1XUnFrNVlVTmRjVDFieURXWXJqUzlzR0l5UEQ2WW03NEYwaFdHT1h5KysKUVdETUFiOWlCWUg4SUU4Tm9FZDZBaS9sV1FRTXBTNjRPM1ByVG5udkVGY1ZsVm1idElhNW5lVW8wSWtZUkMzVgpLMVkvL1MzQWFubWIveURKSTNBVysvbGppdFBKN1dJZlYrU00xWmZydjBkaXdLYmJzUks5bWNjREk5TjZaT3NDCkNkSVY3SWs2WlhYL0FnTUJBQUdqWmpCa01BNEdBMVVkRHdFQi93UUVBd0lCQmpBU0JnTlZIUk1CQWY4RUNEQUcKQVFIL0FnRUNNQjBHQTFVZERnUVdCQlNyNVk3NUlFMW9nc1c1K3N6K2JXSXplalo5M2pBZkJnTlZIU01FR0RBVwpnQlNyNVk3NUlFMW9nc1c1K3N6K2JXSXplalo5M2pBTkJna3Foa2lHOXcwQkFRc0ZBQU9DQVFFQWdXR21ZYktoCittSXNEMkpZbFR0b1FGOHdOYXdmNEc3Mk1ERmJPc0liNWtDR3B0VVY1dDIwcS9MbDJ6VTVMS3l3UzIwM2kzMW8KOTB2TDlnYXNKT2NNV3FFSURJK3NaRmZIQVN6d21FTmVjZ3liOFBUWVhzU1A3cFlhYjhFM0hkaFNJTVNqeTU5cQo5QzBFd3B3SEtVTmtJaWlZN2Rad1BMTS92RUJsYjI0V2wyaFBkclYrbEthaVR1Snppck9WTnhwSjhmQldZNHA1CjRxWi9MdW92MzJNc09SS0pBbTdZc0s2emZjWTlZNnhLcFgzVTNWbkc1ck9NNnNic0xHY1NrdEVRc2lKTWFVMDIKbHc2VHVGSE11ODAyeVdrbzcvR1A1WEFYdEEzQStqT2loVStjUGpMYVcxRFJ3RUc2LzdGaXNKaXZQMWRqNTFXaQpSTlNubG5UMHNPUFJadz09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
-    server: https://ksn1:6443
-  name: kubernetes
-contexts:
-- context:
-    cluster: kubernetes
-    user: system:node:ksn1
-  name: system:node:ksn1@kubernetes
-current-context: system:node:ksn1@kubernetes
-kind: Config
-preferences: {}
-users:
-- name: system:node:ksn1
-  user:
-    client-certificate: /etc/kubernetes/pki/kubelet-ksn1.pem
-    client-key: /etc/kubernetes/pki/kubelet-ksn1-key.pem
-    
+-------------------------------------
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 - Kubeconfig File for kubectl ~/.kube/config
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
