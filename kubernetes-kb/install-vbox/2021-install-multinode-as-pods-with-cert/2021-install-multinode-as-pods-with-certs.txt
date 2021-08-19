@@ -709,14 +709,8 @@ Running a single node etcd
 Use the host IP address when configuring etcd:
 
 ---------------------------
-RUN ETCD - FOREGROUND
+CREATE DOCKER VOLUME
 ---------------------------
-NOTE: This makes etcd docker command run in foreground - on command line - NOT AS A SERVICE
-      Keep an additional terminal/tab to do verifications
-      
-Modified steps from https://etcd.io/docs/v3.5/op-guide/container
---> Kept the steps and commands, changed IP and such
-
 - Configure a Docker volume to store etcd data:
 NOTE: The folder on host/node for this volume will be: /var/lib/docker/volumes/etcd-data
       And, in the etcd container it will be: /etcd-data 
@@ -727,6 +721,45 @@ NOTE: The folder on host/node for this volume will be: /var/lib/docker/volumes/e
 DRIVER    VOLUME NAME
 local     etcd-data
 
+---------------------------
+RUN ETCD - FOREGROUND
+---------------------------
+NOTE: This makes etcd docker command run in foreground - on command line - NOT AS A SERVICE
+      Keep an additional terminal/tab to do verifications
+     
+
+- NEW STEP - RUN ETCD
+NOTE: Based on https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/07-bootstrapping-etcd.md
+
+Script: etcd-start-manually-docker-run.sh
+
+export NODE1=192.168.99.101
+export DATA_DIR="etcd-data"
+export ETCD_IMAGE="k8s.gcr.io/etcd:3.4.13-0"
+
+docker run --rm \
+  -p 2379:2379 \
+  -p 2380:2380 \
+  --volume=${DATA_DIR}:/etcd-data \
+  --name etcd ${ETCD_IMAGE} \
+  /usr/local/bin/etcd \
+  --data-dir=/etcd-data \
+  --name node1 \ --> THIS 'node1' - better make it hostname itself (as in the with-certs steps further below)
+  --initial-advertise-peer-urls http://${NODE1}:2380 \
+  --listen-peer-urls http://${NODE1}:2380 \
+  --advertise-client-urls http://${NODE1}:2379 \
+  --listen-client-urls http://${NODE1}:2379 \
+  --initial-cluster node1=http://${NODE1}:2380
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+- OLD - DONT USE - run etcd - WITH 0.0.0.0 IP ADDRESSES
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+--> This may not be wrong. However, we are going to use actual IP address than 0.0.0.0 
+    - so, if you want to revert to 0.0.0.0 then use this
+
+Modified steps from https://etcd.io/docs/v3.5/op-guide/container
+--> Kept the steps and commands, changed IP and such
 
 - Run etcd:
 Note: Use "/usr/bin/docker run --rm" if you dont want the docker container to exist after you kill the running command
@@ -762,6 +795,9 @@ raft2021/08/13 05:44:24 INFO: raft.node: d5673e1f00b32e05 elected leader d5673e1
 2021-08-13 05:44:24.341438 N | etcdserver/membership: set the initial cluster version to 3.4
 2021-08-13 05:44:24.341481 I | etcdserver/api: enabled capabilities for version 3.4
 
+-------------
+VERIFICATION
+-------------
 - VERIFY
 # docker ps -a
 CONTAINER ID   IMAGE                      COMMAND                  CREATED          STATUS          PORTS                                                                               NAMES
@@ -846,6 +882,51 @@ THIS_IP=192.168.99.101
 ----
 File: /etc/systemd/system/etcd.service:
 ----
+[Unit]
+Description=etcd
+Documentation=https://github.com/coreos
+Wants=docker.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+IOSchedulingClass=2
+IOSchedulingPriority=0
+EnvironmentFile=/etc/environment
+
+# START ETCD
+ExecStart=/usr/bin/docker run --rm \
+  --net=host \
+  -p 2379:2379 \
+  -p 2380:2380 \
+  --volume=${DATA_DIR}:/etcd-data \
+  --name etcd ${REGISTRY}:${ETCD_VERSION} \
+  /usr/local/bin/etcd \
+  --data-dir=/etcd-data \
+  --name ${THIS_NAME} \
+  --initial-advertise-peer-urls http://${THIS_IP}:2380 \
+  --listen-peer-urls http://${THIS_IP}:2380 \
+  --advertise-client-urls http://${THIS_IP}:2379 \
+  --listen-client-urls http://${THIS_IP}:2379 \
+  --initial-cluster ${CLUSTER} \
+  --initial-cluster-state ${CLUSTER_STATE} --initial-cluster-token ${TOKEN}
+
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+OLD - DONT USE - etcd.service FILE WITH 0.0.0.0 IP
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+--> This may not be wrong. However, we are going to use actual IP address than 0.0.0.0 
+    - so, if you want to revert to 0.0.0.0 then use this
+
+----
+File: /etc/systemd/system/etcd.service:
+----
 Note: Use "/usr/bin/docker run --rm" if you dont want the docker container to exist after the service stops
 
 [Unit]
@@ -884,7 +965,9 @@ RestartSec=5
 [Install]
 WantedBy=multi-user.target
 
-- START ETCD SERVICE
+---------------------
+START ETCD SERVICE
+---------------------
 -- Reload the daemon configuration.
 # systemctl daemon-reload
 
@@ -1835,7 +1918,6 @@ SINGLE NODE - ETCD - WITH CERTS
 COPY CERTS TO /etc/kubernetes/pki
 -----------------------------------
 Copy all .pem files generated to /etc/kubernetes/pki
-
 
 -----------------------------------
 ENVIRONMENT FILE
