@@ -149,9 +149,11 @@ KUBE-PROXY:
       - https://gitlab.cncf.ci/kubernetes/kubernetes/tree/master/cluster/addons/kube-proxy
       - https://github.com/QingCloudAppcenter/kubernetes/blob/master/k8s/addons/kube-proxy
 
-
 App example and explanation of networking:
 - https://www.stackrox.com/post/2020/01/kubernetes-networking-demystified/
+
+Debugging:
+- Official docs: https://kubernetes.io/docs/tasks/debug-application-cluster/_print/
 
 Cert generation with cfssl:
 - https://rob-blackbourn.medium.com/how-to-use-cfssl-to-create-self-signed-certificates-d55f76ba5781
@@ -2423,20 +2425,36 @@ kube-system   kube-apiserver-ksn1            1/1     Running   0          5m32s
 kube-system   kube-controller-manager-ksn1   1/1     Running   0          5m32s
 kube-system   kube-scheduler-ksn1            1/1     Running   0          5m27s
 
--- ERROR - KUBECTL LOGS ERRORS - with kubelet kubeconfig
+- VERIFY cluster-info
+# cd ~/.kube
+
+# kubectl cluster-info --kubeconfig admin.kubeconfig
+Kubernetes control plane is running at https://127.0.0.1:6443
+
+# kubectl cluster-info --kubeconfig  kubelet-ksn1.kubeconfig
+Kubernetes control plane is running at https://192.168.99.101:6443
+
+
+-- ERROR - "KUBECTL LOGS" command ERRORS - with kubelet kubeconfig
 # cd ~/.kube
 # ln -s kubelet-ksn1.kubeconfig config
 
 # kubectl logs kube-apiserver-ksn1 -n kube-system
 Error from server (Forbidden): pods "kube-apiserver-ksn1" is forbidden: User "system:node:ksn1" cannot get resource "pods/log" in API group "" in the namespace "kube-system"
+- POTENTIAL FIX: https://github.com/kubernetes/kubernetes/issues/55872
+      --> https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet-authentication-authorization/#kubelet-authentication
+            --> RBAC step has to be done to make kubelet talk to apiserver
 
 -- ERROR - KUBECTL LOGS ERRORS - with admin kubeconfig
 # ln -s admin.kubeconfig config
 # kubectl logs kube-apiserver-ksn1 -n kube-system
 Error from server (Forbidden): Forbidden (user=system:node:ksn1, verb=get, resource=nodes, subresource=proxy) ( pods/log kube-apiserver-ksn1)
 
+- POTENTIAL FIX: https://github.com/kubernetes/kubernetes/issues/55872
+      --> https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet-authentication-authorization/#kubelet-authentication
+
 ---------------------------------------------------------------------------------------
--- PREVIOUS ERRORS - ALL RESOLVED NOW
+-- PREVIOUS ERRORS - SOME RESOLVED NOW
 ---------------------------------------------------------------------------------------
 [root@ksn1 manifests]# kubectl get namespaces
 Error from server (Forbidden): namespaces is forbidden: User "system:node:192.168.99.101" cannot list resource "namespaces" in API group "" at the cluster scope
@@ -2450,7 +2468,7 @@ Aug 15 13:44:55 ksn1 kubelet: E0815 13:44:55.994862   13706 eviction_manager.go:
 Aug 15 13:44:56 ksn1 kubelet: E0815 13:44:56.077359   13706 kubelet.go:2291] "Error getting node" err="node \"ksn1\" not found"
 Aug 15 13:44:56 ksn1 kubelet: E0815 13:44:56.178100   13706 kubelet.go:2291] "Error getting node" err="node \"ksn1\" not found"
 
--- MORE ERRORS
+-- MORE ERRORS (not sure if resolved)
 Kube Controller manager logs:
 # kubectl logs kube-controller-manager-ksn1 --kubeconfig /etc/kubernetes/admin.kubeconfig -n kube-system
 Error from server (Forbidden): Forbidden (user=system:node:ksn1, verb=get, resource=nodes, subresource=proxy) ( pods/log kube-controller-manager-ksn1)
@@ -2462,6 +2480,7 @@ So, tried docker logs of the container of kube-controller-manager
 # docker logs 585e016ef966 -f
  Get "http://127.0.0.1:8080/apis/coordination.k8s.io/v1/namespaces/kube-system/leases/kube-controller-manager?timeout=5s": dial tcp 127.0.0.1:8080: connect: connection refused
 E0818 14:40:05.384906       1 leaderelection.go:325] error retrieving resource lock kube-system/kube-controller-manager: Get "http://127.0.0.1:8080/apis/coordination.k8s.io/v1/namespaces/kube-system/leases/kube-controller-manager?timeout=5s": dial tcp 127.0.0.1:8080: connect: connection refused
+
 ------------------------------------------------
 KUBE-PROXY
 ------------------------------------------------
