@@ -5,7 +5,12 @@ DIT playground: https://labs.play-with-docker.com/
 
 https://docker.myproject.com/e3cb697e-ec12-411f-a687-25960add7415/index.html
 
-Using personal access token:
+
+=============================
+Using personal access token
+=============================
+
+https://docs.docker.com/docker-hub/access-tokens/
 
 Copy Access Token
 When logging in from your Docker CLI client, use this token as a password. Learn more
