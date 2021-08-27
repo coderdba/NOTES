@@ -3,7 +3,14 @@ coredns for kubernetes:
 - https://kubernetes.io/docs/tasks/administer-cluster/dns-custom-nameservers/#configuration-of-stub-domain-and-upstream-nameserver-using-coredns
 - https://kubernetes.io/docs/tasks/administer-cluster/dns-debugging-resolution/
 
+============
 ERROR
+============
+FINALLY, THIS HELPED: https://kubernetes.io/docs/tasks/administer-cluster/dns-debugging-resolution/
+
+Error:
+From within a pod 
+$ nslookup pod2
 [root@ksn3 goweb1-1]# kubectl logs --namespace=kube-system -l k8s-app=kube-dns -f
 [ERROR] plugin/errors: 2 goweb1-2.default.cluster.local.t.com. A: plugin/loop: no next plugin found
 [ERROR] plugin/errors: 2 goweb1-2.default.cluster.local.t.com. AAAA: plugin/loop: no next plugin found
@@ -19,3 +26,153 @@ https://github.com/kubernetes/kubernetes/issues/57558
 
 https://github.com/coredns/coredns/issues/2166
 - https://kubernetes.io/docs/tasks/administer-cluster/dns-custom-nameservers/#configuration-of-stub-domain-and-upstream-nameserver-using-coredns
+
+https://www.engineerbetter.com/blog/debugging-kubernetes-networking/
+- references the 'hard way' document
+- Setting 'forward' to detect external domains (like nslookup google.com from inside the pod)
+
+FINALLY, THIS HELPED: https://kubernetes.io/docs/tasks/administer-cluster/dns-debugging-resolution/
+
+- Create a dnsutils pod
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dnsutils
+  namespace: default
+spec:
+  containers:
+  - name: dnsutils
+    image: gcr.io/kubernetes-e2e-test-images/dnsutils:1.3
+    command:
+      - sleep
+      - "3600"
+    imagePullPolicy: IfNotPresent
+  restartPolicy: Always
+  
+# kubectl apply -f https://k8s.io/examples/admin/dns/dnsutils.yaml
+
+kubectl get pods dnsutils
+NAME      READY     STATUS    RESTARTS   AGE
+dnsutils   1/1       Running   0          <some-time>
+
+# kubectl exec -i -t dnsutils -- nslookup kubernetes.default
+
+Server:		10.96.0.10
+Address:	10.96.0.10#53
+
+Name:	kubernetes.default.svc.cluster.local
+Address: 10.96.0.1
+
+# kubectl get svc -n default -o wide --kubeconfig=/root/.kube/admin.kubeconfig
+NAME               TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE    SELECTOR
+goweb1-1-service   NodePort    10.97.125.13    <none>        8081:30036/TCP   28h    app=goweb1-1
+kubernetes         ClusterIP   10.96.0.1       <none>        443/TCP          6d9h   <none>
+web                NodePort    10.98.154.232   <none>        8080:32263/TCP   5d4h   app=web
+web2               NodePort    10.102.88.36    <none>        8080:31760/TCP   5d4h   app=web2
+
+# kubectl exec -i -t dnsutils -- nslookup web.default
+Server:		10.96.0.10
+Address:	10.96.0.10#53
+
+Name:	web.default.svc.cluster.local
+Address: 10.98.154.232
+
+# kubectl exec -i -t dnsutils -- nslookup web2.default
+Server:		10.96.0.10
+Address:	10.96.0.10#53
+
+Name:	web2.default.svc.cluster.local
+Address: 10.102.88.36
+
+- SO, WHY WERE OTHER PODS GIVING PROBLEMS IN NSLOOKUP?
+It could be busybox version
+Logon with sh to pod and check.
+
+In dnsutils pod:
+# kubectl exec -ti dnsutils /bin/sh
+/ # busybox | head -1
+BusyBox v1.26.2 (2018-05-30 13:51:20 GMT) multi-call binary.
+
+In a different pod:
+# kubectl exec -ti goweb1-1 /bin/sh
+/app # busybox | head -1
+BusyBox v1.33.1 () multi-call binary.
+
+--> Maybe 1.33 version of busybox has this problem
+
+================================================
+ALSO, YOU CAN NSLOOKUP SERVICES - NOT PODS
+================================================
+
+LIST PODS AND SERVICES
+
+[root@ksn3 utils]# kubectl get pods --all-namespaces -o wide --kubeconfig=/root/.kube/admin.kubeconfig
+NAMESPACE       NAME                                        READY   STATUS    RESTARTS   AGE     IP               NODE   NOMINATED NODE   READINESS GATES
+default         dnsutils                                    1/1     Running   0          25m     172.17.0.8       ksn3   <none>           <none>
+default         goweb1-1                                    1/1     Running   0          28h     172.17.0.6       ksn3   <none>           <none>
+default         goweb1-2                                    1/1     Running   0          3h27m   172.17.0.7       ksn3   <none>           <none>
+default         web-79d88c97d6-h5kqp                        1/1     Running   1          5d4h    172.17.0.2       ksn3   <none>           <none>
+default         web2-5d47994f45-44xqs                       1/1     Running   1          5d4h    172.17.0.3       ksn3   <none>           <none>
+ingress-nginx   ingress-nginx-controller-5b97d5cd4b-v75q5   1/1     Running   1          5d6h    172.17.0.5       ksn3   <none>           <none>
+kube-system     calico-kube-controllers-86475544f5-5fvks    1/1     Running   3          6d4h    192.168.99.103   ksn3   <none>           <none>
+kube-system     calico-node-mdv66                           1/1     Running   3          6d4h    192.168.99.103   ksn3   <none>           <none>
+kube-system     coredns-8494f9c688-vcxrj                    1/1     Running   3          6d4h    172.17.0.4       ksn3   <none>           <none>
+kube-system     kube-apiserver-ksn3                         1/1     Running   4          6d9h    192.168.99.103   ksn3   <none>           <none>
+kube-system     kube-controller-manager-ksn3                1/1     Running   4          6d9h    192.168.99.103   ksn3   <none>           <none>
+kube-system     kube-proxy-jv8pc                            1/1     Running   3          6d4h    192.168.99.103   ksn3   <none>           <none>
+kube-system     kube-scheduler-ksn3                         1/1     Running   4          6d9h    192.168.99.103   ksn3   <none>           <none>
+
+[root@ksn3 utils]# kubectl get svc -n default -o wide --kubeconfig=/root/.kube/admin.kubeconfig
+NAME               TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE    SELECTOR
+goweb1-1-service   NodePort    10.97.125.13    <none>        8081:30036/TCP   28h    app=goweb1-1
+kubernetes         ClusterIP   10.96.0.1       <none>        443/TCP          6d9h   <none>
+web                NodePort    10.98.154.232   <none>        8080:32263/TCP   5d4h   app=web
+web2               NodePort    10.102.88.36    <none>        8080:31760/TCP   5d4h   app=web2
+
+- LOOKUP BY POD NAMES
+/ # nslookup web-79d88c97d6-h5kqp
+Server:		10.96.0.10
+Address:	10.96.0.10#53
+
+** server can't find web-79d88c97d6-h5kqp: SERVFAIL
+
+- LOOKUP BY IP ADDRESS
+The IPs whose pods have a service get looked up 
+The IPs whose pods do not have a service fail
+
+/ # nslookup 172.17.0.3 --> this is for pod web2 --> which has a service web2 as well
+3.0.17.172.in-addr.arpa	name = 172-17-0-3.web2.default.svc.cluster.local.
+
+/ # nslookup 172.17.0.7 --> this is for pod goweb1-2 for which we dont have a service
+** server can't find 7.0.17.172.in-addr.arpa: SERVFAIL
+
+/ # nslookup 172.17.0.2
+2.0.17.172.in-addr.arpa	name = 172-17-0-2.web.default.svc.cluster.local.
+
+- LOOKUP BY SERVICE NAMES
+# kubectl exec -i -t dnsutils -- nslookup web.default
+Server:		10.96.0.10
+Address:	10.96.0.10#53
+
+Name:	web.default.svc.cluster.local
+Address: 10.98.154.232
+
+# kubectl exec -i -t dnsutils -- nslookup web2.default
+Server:		10.96.0.10
+Address:	10.96.0.10#53
+
+Name:	web2.default.svc.cluster.local
+Address: 10.102.88.36
+
+- LOOKUP BY SERVICE'S IP
+
+/ # nslookup 10.98.154.232
+232.154.98.10.in-addr.arpa	name = web.default.svc.cluster.local.
+
+
+
+
+
+
+
