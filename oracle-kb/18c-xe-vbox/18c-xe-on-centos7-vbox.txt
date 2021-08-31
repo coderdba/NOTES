@@ -21,11 +21,13 @@ PASSWORDS USED
 /etc/init.d/oracle-xe-18c configure
 --> PW Oracle123
 
-HR user --> PW hr123
+HR user --> PW hr1234
 
 =====================
-LOGFILE LOCATIONS
+FILE LOCATIONS
 =====================
+Init.ora File /opt/oracle/product/18c/dbhomeXE/dbs/init.ora
+Spfile /opt/oracle/product/18c/dbhomeXE/dbs/spfileXE.ora
 Listener Parameter File   /opt/oracle/product/18c/dbhomeXE/network/admin/listener.ora
 Listener Log File         /opt/oracle/diag/tnslsnr/oraclexe1/listener/alert/log.xml
 
@@ -478,3 +480,72 @@ SQL> grant create session to orders;
 
 Grant succeeded.
 
+================================
+AUDITING CREATE SESSION
+================================
+audit create session;
+audit create session whenever not successful;
+noaudit create session;
+
+Default audit_trail=DB
+- Change only if needed
+- Old version alter system set audit_trail=true scope=spfile;
+- New versions audit_trail = one of these: extended, xml, none, os, db
+
+Default audit_file_dest - /opt/oracle/admin/XE/adump
+- Change if really needed: audit_file_dest='/u01/app/oracle/mysid/mydir/'
+
+--------------------
+TEST AND VERIFY
+--------------------
+
+$ sqlplus orders/orders
+
+SQL*Plus: Release 18.0.0.0.0 - Production on Tue Aug 31 11:27:14 2021
+Version 18.4.0.0.0
+
+Copyright (c) 1982, 2018, Oracle.  All rights reserved.
+
+ERROR:
+ORA-01017: invalid username/password; logon denied
+
+
+$ sqlplus / as sysdba
+SQL> select
+   os_username,
+   username,
+   terminal,
+   to_char(timestamp,'MM-DD-YYYY HH24:MI:SS'),
+   returncode
+from
+   dba_audit_trail;
+
+SQL> /
+
+OS_USERNAME
+----------------------------------------------------------------------------------------------------
+USERNAME
+----------------------------------------------------------------------------------------------------
+TERMINAL
+----------------------------------------------------------------------------------------------------
+TO_CHAR(TIMESTAMP,' RETURNCODE
+------------------- ----------
+oracle
+ORDERS
+pts/0
+08-31-2021 11:10:26	  1017
+
+oracle
+ORDERS
+pts/0
+08-31-2021 11:10:54	  1017
+
+oracle
+HR
+pts/0
+08-31-2021 11:12:04	  1017
+
+oracle
+ORDERS
+pts/1
+08-31-2021 11:22:38	  1017
