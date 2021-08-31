@@ -1,0 +1,338 @@
+Auditing connection info
+610916
+610916 Member Posts: 256
+Jan 12, 2009 5:27PM edited Jan 12, 2009 5:53PM
+Hi. I am on 10.2.0.3.
+
+I would like to audit connection information (who, when, successful or not etc.).
+
+My audit_trais has been enable at the creation time:
+
+SQL> show parameter audit_trail
+
+NAME TYPE VALUE
+------------------------------------ ----------- ------------------------------
+audit_trail string TRUE
+
+
+But the views are empty (I was expecting data in dba_audit_session etc.):
+
+SQL> select * from dba_audit_session;
+
+no rows selected
+
+Am I missing some setup? TIA.
+Share on Twitter
+Share on Facebook
+Best Answer
+Anand...
+Anand... Member Posts: 3,590
+Jan 12, 2009 5:37PM edited Jan 12, 2009 5:53PM 
+I would like to audit connection information (who, when, successful or not etc.).
+TO audit connection to the database use
+
+audit create session whenever successful; -- This will give only whenever successful.
+
+otherwise, you can use audit create session;
+
+You can also use audit connect.
+04:08:45 ravan >sho parameter audit
+
+NAME                                 TYPE        VALUE
+------------------------------------ ----------- ------------------------------
+audit_sys_operations                 boolean     FALSE
+audit_trail                          string      NONE
+transaction_auditing                 boolean     TRUE
+04:09:02 ravan >
+04:09:03 ravan >
+04:10:20 ravan >
+04:10:21 ravan >alter system set audit_trail=true ;
+alter system set audit_trail=true
+                 *
+ERROR at line 1:
+ORA-02095: specified initialization parameter cannot be modified
+
+
+Elapsed: 00:00:00.00
+04:10:36 ravan >alter system set audit_trail=true  scope=spfile;
+
+System altered.
+
+Elapsed: 00:00:00.03
+04:10:43 ravan >
+04:10:44 ravan >
+04:10:44 ravan >startup force;
+ORACLE instance started.
+
+Total System Global Area  135340020 bytes
+Fixed Size                   454644 bytes
+Variable Size             109051904 bytes
+Database Buffers           25165824 bytes
+Redo Buffers                 667648 bytes
+Database mounted.
+Database opened.
+04:11:13 ravan >
+04:11:15 ravan >
+04:11:15 ravan >sho parameter audit
+
+NAME                                 TYPE        VALUE
+------------------------------------ ----------- ------------------------------
+audit_sys_operations                 boolean     FALSE
+audit_trail                          string      TRUE
+transaction_auditing                 boolean     TRUE
+04:11:20 ravan >select count(1) from dba_audit_session;
+
+  COUNT(1)
+----------
+         0
+
+Elapsed: 00:00:00.01
+04:12:00 ravan >
+04:12:00 ravan >
+04:12:01 ravan >audit connect;
+
+Audit succeeded.
+
+Elapsed: 00:00:00.00
+
+     ******************** THEN TRIED TO CONNECT TO DATABASE WITH USERNAME ANAND USING WRONG AND WRITE PASSWORDS********
+
+04:13:36 ravan >select count(1) from dba_audit_session;
+
+  COUNT(1)
+----------
+         3
+
+Elapsed: 00:00:00.00
+04:14:01 ravan >desc dba_audit_session;
+ Name
+ ------------------------------------------------------------------------------------------------------------------------------------------------------
+ OS_USERNAME
+ USERNAME
+ USERHOST
+ TERMINAL
+ TIMESTAMP
+ ACTION_NAME
+ LOGOFF_TIME
+ LOGOFF_LREAD
+ LOGOFF_PREAD
+ LOGOFF_LWRITE
+ LOGOFF_DLOCK
+ SESSIONID
+ RETURNCODE
+ CLIENT_ID
+ SESSION_CPU
+
+04:14:59 ravan >col OS_USERNAME for a20
+04:15:09 ravan >col TERMINAL for a20
+04:15:16 ravan >
+04:15:16 ravan >
+04:15:16 ravan >/
+
+OS_USERNAME          USERNAME                  TERMINAL             TIME               ACTION_NAME
+-------------------- ------------------------- -------------------- ------------------ ---------------------------
+db.admin             ANAND                     VIDC-DB01            13-JAN-09 04:13:50 LOGON
+db.admin             ANAND                     VIDC-DB01            13-JAN-09 04:13:53 LOGON
+db.admin             ANAND                     VIDC-DB01            13-JAN-09 04:13:56 LOGON
+
+Elapsed: 00:00:00.00
+
+04:16:45 ravan >noaudit  connect;
+
+Noaudit succeeded.
+
+Elapsed: 00:00:00.00
+04:17:08 ravan >
+04:17:09 ravan >truncate table sys.aud$;
+
+Table truncated.
+
+Elapsed: 00:00:00.07
+04:17:26 ravan >
+04:17:27 ravan >
+04:17:27 ravan >select count(1) from dba_audit_session;
+
+  COUNT(1)
+----------
+         0
+
+Elapsed: 00:00:00.00
+04:17:34 ravan >select OS_USERNAME,USERNAME,TERMINAL,to_char(TIMESTAMP,'DD-MON-YY HH24:MI:SS')time,ACTION_NAME from dba_audit_session;
+
+no rows selected
+
+Elapsed: 00:00:00.00
+04:17:59 ravan >
+04:18:14 ravan >audit create session whenever successful;
+
+Audit succeeded.
+
+Elapsed: 00:00:00.00
+04:18:26 ravan >
+04:18:27 ravan >
+04:18:27 ravan >select OS_USERNAME,USERNAME,TERMINAL,to_char(TIMESTAMP,'DD-MON-YY HH24:MI:SS')time,ACTION_NAME from dba_audit_session;
+
+OS_USERNAME          USERNAME                  TERMINAL             TIME               ACTION_NAME
+-------------------- ------------------------- -------------------- ------------------ ---------------------------
+db.admin             ANAND                     VIDC-DB01            13-JAN-09 04:18:40 LOGON
+
+Elapsed: 00:00:00.00
+04:18:49 ravan >
+HTH
+Anand
+Share on Twitter
+Share on Facebook
+Answers
+Anand...
+Anand... Member Posts: 3,590
+Jan 12, 2009 5:37PM edited Jan 12, 2009 5:53PM 
+I would like to audit connection information (who, when, successful or not etc.).
+TO audit connection to the database use
+
+audit create session whenever successful; -- This will give only whenever successful.
+
+otherwise, you can use audit create session;
+
+You can also use audit connect.
+04:08:45 ravan >sho parameter audit
+
+NAME                                 TYPE        VALUE
+------------------------------------ ----------- ------------------------------
+audit_sys_operations                 boolean     FALSE
+audit_trail                          string      NONE
+transaction_auditing                 boolean     TRUE
+04:09:02 ravan >
+04:09:03 ravan >
+04:10:20 ravan >
+04:10:21 ravan >alter system set audit_trail=true ;
+alter system set audit_trail=true
+                 *
+ERROR at line 1:
+ORA-02095: specified initialization parameter cannot be modified
+
+
+Elapsed: 00:00:00.00
+04:10:36 ravan >alter system set audit_trail=true  scope=spfile;
+
+System altered.
+
+Elapsed: 00:00:00.03
+04:10:43 ravan >
+04:10:44 ravan >
+04:10:44 ravan >startup force;
+ORACLE instance started.
+
+Total System Global Area  135340020 bytes
+Fixed Size                   454644 bytes
+Variable Size             109051904 bytes
+Database Buffers           25165824 bytes
+Redo Buffers                 667648 bytes
+Database mounted.
+Database opened.
+04:11:13 ravan >
+04:11:15 ravan >
+04:11:15 ravan >sho parameter audit
+
+NAME                                 TYPE        VALUE
+------------------------------------ ----------- ------------------------------
+audit_sys_operations                 boolean     FALSE
+audit_trail                          string      TRUE
+transaction_auditing                 boolean     TRUE
+04:11:20 ravan >select count(1) from dba_audit_session;
+
+  COUNT(1)
+----------
+         0
+
+Elapsed: 00:00:00.01
+04:12:00 ravan >
+04:12:00 ravan >
+04:12:01 ravan >audit connect;
+
+Audit succeeded.
+
+Elapsed: 00:00:00.00
+
+     ******************** THEN TRIED TO CONNECT TO DATABASE WITH USERNAME ANAND USING WRONG AND WRITE PASSWORDS********
+
+04:13:36 ravan >select count(1) from dba_audit_session;
+
+  COUNT(1)
+----------
+         3
+
+Elapsed: 00:00:00.00
+04:14:01 ravan >desc dba_audit_session;
+ Name
+ ------------------------------------------------------------------------------------------------------------------------------------------------------
+ OS_USERNAME
+ USERNAME
+ USERHOST
+ TERMINAL
+ TIMESTAMP
+ ACTION_NAME
+ LOGOFF_TIME
+ LOGOFF_LREAD
+ LOGOFF_PREAD
+ LOGOFF_LWRITE
+ LOGOFF_DLOCK
+ SESSIONID
+ RETURNCODE
+ CLIENT_ID
+ SESSION_CPU
+
+04:14:59 ravan >col OS_USERNAME for a20
+04:15:09 ravan >col TERMINAL for a20
+04:15:16 ravan >
+04:15:16 ravan >
+04:15:16 ravan >/
+
+OS_USERNAME          USERNAME                  TERMINAL             TIME               ACTION_NAME
+-------------------- ------------------------- -------------------- ------------------ ---------------------------
+db.admin             ANAND                     VIDC-DB01            13-JAN-09 04:13:50 LOGON
+db.admin             ANAND                     VIDC-DB01            13-JAN-09 04:13:53 LOGON
+db.admin             ANAND                     VIDC-DB01            13-JAN-09 04:13:56 LOGON
+
+Elapsed: 00:00:00.00
+
+04:16:45 ravan >noaudit  connect;
+
+Noaudit succeeded.
+
+Elapsed: 00:00:00.00
+04:17:08 ravan >
+04:17:09 ravan >truncate table sys.aud$;
+
+Table truncated.
+
+Elapsed: 00:00:00.07
+04:17:26 ravan >
+04:17:27 ravan >
+04:17:27 ravan >select count(1) from dba_audit_session;
+
+  COUNT(1)
+----------
+         0
+
+Elapsed: 00:00:00.00
+04:17:34 ravan >select OS_USERNAME,USERNAME,TERMINAL,to_char(TIMESTAMP,'DD-MON-YY HH24:MI:SS')time,ACTION_NAME from dba_audit_session;
+
+no rows selected
+
+Elapsed: 00:00:00.00
+04:17:59 ravan >
+04:18:14 ravan >audit create session whenever successful;
+
+Audit succeeded.
+
+Elapsed: 00:00:00.00
+04:18:26 ravan >
+04:18:27 ravan >
+04:18:27 ravan >select OS_USERNAME,USERNAME,TERMINAL,to_char(TIMESTAMP,'DD-MON-YY HH24:MI:SS')time,ACTION_NAME from dba_audit_session;
+
+OS_USERNAME          USERNAME                  TERMINAL             TIME               ACTION_NAME
+-------------------- ------------------------- -------------------- ------------------ ---------------------------
+db.admin             ANAND                     VIDC-DB01            13-JAN-09 04:18:40 LOGON
+
+Elapsed: 00:00:00.00
+04:18:49 ravan >
