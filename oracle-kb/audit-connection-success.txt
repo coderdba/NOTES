@@ -1,0 +1,46 @@
+=======================================
+AUDITING CONNETION SUCCESS/FAILURE
+=======================================
+
+http://www.dba-oracle.com/t_tracking_counting_failed_logon_signon_attempts.htm
+
+	
+Oracle:  Tracking failed logon attempts
+Oracle Database Tips by Donald BurlesonJune 9, 2015
+
+
+Question:  I'm doing an audit and I need to be able to track all failed login (logon) attempts.  Because the user never gets logged-on to Oracle, how can you track failed sign on attempts to Oracle?
+
+Answer:  Yes, it is difficult to audit failed sign-on attempts because the user never gets connected to Oracle, and a logon trigger would not be useful because it requires a valid login, not just an attempt.  For complete directions on auditing Oracle failed sign-on attempts, see my book "Oracle Privacy Security Auditing".
+
+The Oracle auditing utility has this command:
+
+audit create session whenever not successful;
+
+To enable auditing of failed sign-on attempts:
+
+1 - Add initialization parameters & bounce instance:
+
+audit_trail=true
+
+audit_file_dest='/u01/app/oracle/mysid/mydir/'
+
+2 - Enable auditing of failed logion attempts as SYSDBA:
+
+SQL> audit create session whenever not successful;
+
+3 - You can now view failed login attempts in dba_audit_trail:
+
+select
+   os_username,
+   username,
+   terminal,
+   to_char(timestamp,'MM-DD-YYYY HH24:MI:SS')
+from
+   dba_audit_trail;
+
+OS_USERNAME     USERNAME        TERMINAL        TO_CHAR(TIMESTAMP,'
+--------------- --------------- --------------- -------------------
+fred         SCOTT              app93           05-16-2009 16:21:13
+
+IMPORTANT NOTE:  Using Oracle auditing for failed sign-on's imposes system overhead and may slow-down other transactions.  For complete directions on auditing Oracle logins, see my book "Oracle Privacy Security Auditing".
