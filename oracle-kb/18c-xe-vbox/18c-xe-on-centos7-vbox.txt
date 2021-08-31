@@ -504,7 +504,22 @@ Default audit_file_dest - /opt/oracle/admin/XE/adump
 TEST AND VERIFY
 --------------------
 
+--------------------
+AT PDB LEVEL
+--------------------
+
+
+
 $ sqlplus / as sysdba
+
+SQL> alter session set container = XEPDB1;
+
+Then run:
+--audit create session;
+audit create session whenever successful;
+audit create session whenever not successful;
+
+
 SQL> SELECT * FROM DBA_PRIV_AUDIT_OPTS;
 
 USER_NAME
@@ -517,7 +532,74 @@ PRIVILEGE				 SUCCESS    FAILURE
 
 CREATE SESSION				 BY ACCESS  BY ACCESS
 
+
+
+Then do some logons and failed logons into the PDB:
+$ sqlplus hr/hr1234@oraclexe1:1521/xepdb1
+$ sqlplus hr/xyz@oraclexe1:1521/xepdb1
+
+
+
+SQL> select
+   os_username,
+   username,
+   terminal,
+   to_char(timestamp,'MM-DD-YYYY HH24:MI:SS'),
+   returncode
+from
+   dba_audit_trail;
+
+
+OS_USERNAME
+--------------------------------------------------------------------------------
+USERNAME
+--------------------------------------------------------------------------------
+TERMINAL
+--------------------------------------------------------------------------------
+TO_CHAR(TIMESTAMP,' RETURNCODE
+------------------- ----------
+oracle
+HR
+pts/1
+08-31-2021 12:13:40	     0
+
+oracle
+HR
+pts/1
+08-31-2021 12:13:30	  1017
+
+
+SQL> select OS_USERNAME,USERNAME,TERMINAL,to_char(TIMESTAMP,'DD-MON-YY HH24:MI:SS')time,ACTION_NAME, RETURNCODE
+from dba_audit_session;
+
+
+OS_USERNAME
+--------------------------------------------------------------------------------
+USERNAME
+--------------------------------------------------------------------------------
+TERMINAL
+--------------------------------------------------------------------------------
+TIME			    ACTION_NAME 		 RETURNCODE
+--------------------------- ---------------------------- ----------
+oracle
+HR
+pts/1
+31-AUG-21 12:13:40	    LOGON				  0
+
+oracle
+HR
+pts/1
+31-AUG-21 12:13:30	    LOGON			       1017
+
+
  
+- AT CDB LEVEL
+
+$ sqlplus / as sysdba
+Then run:
+--audit create session;
+audit create session whenever successful;
+audit create session whenever not successful;
 
 $ sqlplus orders/orders
 
