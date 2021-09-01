@@ -26,7 +26,44 @@ sudo /usr/pgsql-13/bin/postgresql-13-setup initdb
 sudo systemctl enable postgresql-13
 sudo systemctl start postgresql-13
 
- 
+============================
+OPEN THE PORTS
+============================
+# firewall-cmd --permanent --add-port 5432/tcp
+# firewall-cmd --reload
+# firewall-cmd --list-ports
+5432/tcp
+
+===============================
+OPEN POSTGRES TO OUTSIDE WORLD
+===============================
+https://www.bigbinary.com/blog/configure-postgresql-to-allow-remote-connection
+
+# cd /var/lib/pgsql/13/data
+
+Edit postgresql.conf: Change listen_address from 'localhost' to '*'
+listen_addresses = '*'		# what IP address(es) to listen on;
+
+Exit pg_hba.conf and add the following lines at the end of the file:
+
+host    all             all              0.0.0.0/0                       md5
+host    all             all              ::/0                            md5
+
+# systemctl restart postgresql-13.service
+
+- VERIFY FROM AN EXTERNAL MACHINE
+
+$ psql -U postgres -h lx1012.myco.com -p 5432
+Password for user postgres: 
+psql (13.2, server 13.3)
+Type "help" for help.
+
+postgres=# 
+
+NOTE: Without pg_hba.conf entries, you will get the error as follows
+$ psql -U postgres -h lx1012.myco.com -p 5432
+psql: error: FATAL:  no pg_hba.conf entry for host "101.211.171.137", user "postgres", database "postgres", SSL off
+
 ============================
 ADMININSTRATION
 ============================
