@@ -24,6 +24,72 @@ DESCRIBE TABLES
 
 psql> \d the_table_name
 
+=====================
+DICTIONARY QUERIES
+=====================
+https://www.postgresqltutorial.com/postgresql-database-indexes-table-size/
+
+-------------------------------------
+TABLE AND INDEX SIZES
+-------------------------------------
+Table size: 
+select pg_relation_size('table_name');
+
+Indexes size (all indexes of a table): 
+select pg_indexes_size('table_name');
+
+Table and its indexes together:
+select pg_total_relation_size('oracle_1');
+
+Top 5 biggest tables in the dvdrental database:
+SELECT
+    relname AS "relation",
+    pg_size_pretty (
+        pg_total_relation_size (C .oid)
+    ) AS "total_size"
+FROM
+    pg_class C
+LEFT JOIN pg_namespace N ON (N.oid = C .relnamespace)
+WHERE
+    nspname NOT IN (
+        'pg_catalog',
+        'information_schema'
+    )
+AND C .relkind <> 'i'
+AND nspname !~ '^pg_toast'
+ORDER BY
+    pg_total_relation_size (C .oid) DESC
+LIMIT 5;
+
+EXAMPLES:
+
+mydb=# select pg_indexes_size('oracle_1');
+
+ pg_indexes_size 
+-----------------
+          196608
+(1 row)
+
+mydb=# select pg_relation_size('oracle_1');
+ pg_relation_size 
+------------------
+           237568
+(1 row)
+
+mydb=# select pg_total_relation_size('oracle_1');
+ pg_total_relation_size 
+------------------------
+                 475136
+                 
+mydb=# select pg_size_pretty(pg_total_relation_size('oracle_1'));
+ pg_size_pretty 
+----------------
+ 464 kB
+(1 row)
+
+================
+FETCH DATA
+================
 psql> select * from metrics FETCH FIRST 5 ROW ONLY;
 
 ====================
