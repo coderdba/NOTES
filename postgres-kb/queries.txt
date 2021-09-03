@@ -341,4 +341,16 @@ FROM sr_ora_metric
 GROUP BY 1, db_service, metric_name
 ORDER BY 1,2
 
+=======================================
+AGGREGATION WITH SUQUERY
+=======================================
+NOTE: Decmial cast is required to get fraction - otherwise fraction less than zero gets rounded to zero and such
 
+select cast((m1b.slomet+m2b.slomet) as decimal)/cast((m1a.all+m2a.all) as decimal)
+from
+           (select 1 as id, count(latency) as all    from ora_wait_event where wait_event = 'log_sync') m1a,
+(select 1 as id, count(latency) as slomet from ora_wait_event where wait_event = 'log_sync' and latency <= 2) m1b,
+(select 1 as id, count(metric_value) as all    from ora_sysmetric where metric_name = 'Database_CPU_Ratio') m2a,
+(select 1 as id, count(metric_value) as slomet from ora_sysmetric where metric_name = 'Database_CPU_Ratio' and metric_value >= 60) m2b
+where m1a.id = m1b.id and m1a.id = m2a.id and m1a.id = m2b.id
+;
