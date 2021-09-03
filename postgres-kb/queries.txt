@@ -96,3 +96,22 @@ select pid as process_id,
        state,
        state_change
 from pg_stat_activity;
+
+====================
+INTERVAL QUERY
+====================
+https://gis.stackexchange.com/questions/57582/group-by-timestamp-interval-10-minutes-postgresql
+with five_min_intervals as (
+  select
+    (select min(time)::date from sre_oracle_sysmetric) + ( n    || ' minutes')::interval start_time,
+    (select min(time)::date from sre_oracle_sysmetric) + ((n+5) || ' minutes')::interval end_time
+  from generate_series(0, (24*60), 5) n
+)
+select m.metric_name, f.start_time, f.end_time, avg(m.metric_value) avg_val
+from sr_ora_metric m
+right join five_min_intervals f
+        on m.time >= f.start_time and m.time < f.end_time
+group by metric_name, f.start_time, f.end_time
+order by metric_name, f.start_time;
+
+
