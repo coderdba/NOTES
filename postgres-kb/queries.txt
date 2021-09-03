@@ -114,4 +114,29 @@ right join five_min_intervals f
 group by metric_name, f.start_time, f.end_time
 order by metric_name, f.start_time;
 
+=====================================
+FOR GRAFANA - MULTI-COLUMN GROUP BY
+=====================================
+https://stackoverflow.com/questions/65888943/groupby-issue-on-multiple-join-using-grafanas-timescaledb-sql-plugin
+
+- MULTI COLUMN WITH A MULTI-TABLE JOIN
+SELECT
+  time_bucket('21600s',"timestamp") AS "time",
+  avg(value),
+  CONCAT(locations.name, ' ', weather_data_types.name) AS "name"
+FROM weather_data
+JOIN locations ON weather_data.location_id = locations.id
+JOIN weather_data_types ON weather_data.type_id = weather_data_types.id
+GROUP BY 1, locations.name, weather_data_types.name
+ORDER BY 1
+
+- MULTI COLUMN WITH SINGLE TABLE
+SELECT
+  $__timeGroupAlias("time",$__interval),
+  avg(metric_value),
+  CONCAT(db_service, ' ', metric_name) AS "name"
+FROM sr_ora_metric
+GROUP BY 1, db_service, metric_name
+ORDER BY 1,2
+
 
