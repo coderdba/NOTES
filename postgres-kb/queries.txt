@@ -23,8 +23,92 @@ DESCRIBE TABLES
 
 psql> \d the_table_name
 
+=======================
+TABLESPACES
+=======================
+
+----------------------------------------
+SHORTCUTS
+----------------------------------------
+
+Blank location means pg_default tablespace.
+
+mydb=# \db
+       List of tablespaces
+    Name    |  Owner   | Location 
+------------+----------+----------
+ pg_default | postgres | 
+ pg_global  | postgres | 
+(2 rows)
+
+mydb=# \db+
+                                  List of tablespaces
+    Name    |  Owner   | Location | Access privileges | Options |  Size  | Description 
+------------+----------+----------+-------------------+---------+--------+-------------
+ pg_default | postgres |          |                   |         | 44 MB  | 
+ pg_global  | postgres |          |                   |         | 559 kB | 
+(2 rows)
+
+----------------------------------------
+LIST TABLESPACES, TABLES IN TABLESPACES
+----------------------------------------
+
+- Table list:
+select * from pg_tables ;
+NOTE: You can see that tablespace name is blank for many.  To get tablespace names, see the next query on 'Tables in a tablespace'
+     schemaname     |        tablename        | tableowner | tablespace | hasindexes | hasrules | hastriggers | rowsecurity 
+--------------------+-------------------------+------------+------------+------------+----------+-------------+-------------
+ public             | sre_oracle_sysmetric    | svsremgr   |            | t          | f        | f           | f
+ pg_catalog         | pg_statistic            | postgres   |            | t          | f        | f           | f
+ pg_catalog         | pg_type                 | postgres   |            | t          | f        | f           | f
+
+- Tables in a tablespace:
+https://stackoverflow.com/questions/4970966/how-can-i-tell-what-is-in-a-postgresql-tablespace
+
+select t.schemaname, t.tablename, 
+       coalesce(t.tablespace, ts.default_tablespace) as tablespace
+from pg_tables t
+  cross join (
+     select ts.spcname as default_tablespace
+     from pg_database d
+       join pg_tablespace ts on ts.oid = d.dattablespace
+      where d.datname = current_database()
+   ) ts
+where tablename = 'test1c'
+  and schemaname = 'public';
+
+--> The following two did not give any result
+SELECT 
+  c.relname, 
+  t.spcname 
+FROM 
+  pg_class c 
+    JOIN pg_tablespace t ON c.reltablespace = t.oid 
+WHERE 
+  t.spcname = 'indexes_old_tablespace';
+  
+- OR - 
+SELECT 
+  c.relname, 
+  t.spcname 
+FROM 
+  pg_class c 
+    JOIN pg_tablespace t ON c.reltablespace = t.oid 
+WHERE 
+  c.relname = 'my_table_name';
+  
+- Tablespace list:
+SELECT spcname FROM pg_tablespace;
+
+  spcname   
+------------
+ pg_default
+ pg_global
+  
+  
+
 =====================
-DICTIONARY QUERIES
+SIZE QUERIES
 =====================
 https://www.postgresqltutorial.com/postgresql-database-indexes-table-size/
 
@@ -90,13 +174,13 @@ mydb=# select pg_size_pretty(pg_total_relation_size('oracle_1'));
 DATABASE SIZE
 ----------------------------
 
-Size of one database 'dvdrental':
+- Size of one database 'dvdrental':
 SELECT
     pg_size_pretty (
         pg_database_size ('dvdrental')
     );
 
-Size of each database in the current database server, you use the following statement:
+- Size of each database in the current database server, you use the following statement:
 
 SELECT
     pg_database.datname,
