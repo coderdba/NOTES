@@ -1,0 +1,101 @@
+Docker Images: https://hub.docker.com/_/telegraf?tab=tags&page=1&ordering=last_updated
+
+Collect host metrics using Telegraf docker container: 
+- https://community.influxdata.com/t/how-can-we-collect-host-machine-metrics-while-telegraf-is-running-in-docker-container/12005/2
+
+How to Setup InfluxDB, Telegraf and Grafana on Docker: Part 1
+- https://thenewstack.io/how-to-setup-influxdb-telegraf-and-grafana-on-docker-part-1
+- https://thenewstack.io/how-to-setup-influxdb-telegraf-and-grafana-on-docker-part-2
+
+==================
+RUN DOCKER IMAGE
+==================
+Docker Images: https://hub.docker.com/_/telegraf?tab=tags&page=1&ordering=last_updated
+
+docker pull telegraf:1.20.0
+
+Using this image
+Exposed Ports
+8125 StatsD
+8092 UDP
+8094 TCP
+Using the default configuration
+The default configuration requires a running InfluxDB instance as an output plugin. Ensure that InfluxDB is running on port 8086 before starting the Telegraf container.
+
+Minimal example to start an InfluxDB container:
+
+$ docker run -d --name influxdb -p 8086:8086 influxdb
+Starting Telegraf using the default config, which connects to InfluxDB at http://localhost:8086/:
+
+$ docker run --net=container:influxdb telegraf
+Using a custom config file
+First, generate a sample configuration and save it as telegraf.conf on the host:
+
+$ docker run --rm telegraf telegraf config > telegraf.conf
+Once you've customized telegraf.conf, you can run the Telegraf container with it mounted in the expected location:
+
+$ docker run -v $PWD/telegraf.conf:/etc/telegraf/telegraf.conf:ro telegraf
+Modify $PWD to the directory where you want to store the configuration file.
+
+Read more about the Telegraf configuration here.
+
+Using the container with input plugins
+These examples assume you are using a custom configuration file that takes advantage of Docker's built-in service discovery capability. In order to do so, we'll first create a new network:
+
+$ docker network create influxdb
+Next, we'll start our InfluxDB container named influxdb:
+
+$ docker run -d --name=influxdb \
+      --net=influxdb \
+      influxdb
+The telegraf.conf configuration can now resolve the influxdb container by name:
+
+[[outputs.influxdb]]
+    urls = ["http://influxdb:8086"]
+Finally, we start our Telegraf container and verify functionality:
+
+$ docker run -d --name=telegraf \
+      --net=influxdb \
+      -v $PWD/telegraf.conf:/etc/telegraf/telegraf.conf:ro \
+      telegraf
+$ docker logs -f telegraf
+Aerospike
+Start an instance of aerospike:
+
+$ docker run -d --name aerospike \
+      --net=influxdb \
+      -p 3000-3003:3000-3003 \
+      aerospike
+Edit your Telegraf config file and set the correct connection parameter for Aerospike:
+
+[[inputs.aerospike]]
+    servers = ["aerospike:3000"]
+Restart your telegraf container to pick up the changes:
+
+$ docker restart telegraf
+Nginx
+Create an nginx_status.conf configuration file to expose metric data:
+
+server {
+    listen 8090;
+    location /nginx_status {
+        stub_status;
+        access_log off;
+    }
+}
+Start an Nginx container utilizing it:
+
+$ docker run -d --name=nginx \
+      --net=influxdb \
+      -p 8090:8090 -p 8080:80 \
+      -v $PWD/nginx_status.conf:/etc/nginx/conf.d/nginx_status.conf:ro \
+      nginx
+Verify the status page: http://localhost:8090/nginx_status.
+
+Configure the nginx input plugin in your Telegraf configuration file:
+
+[[inputs.nginx]]
+  urls = ["http://nginx:8090/nginx_status"]
+Restart your telegraf container to pick up the changes:
+
+$ docker restart telegraf
