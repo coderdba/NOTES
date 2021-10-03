@@ -2,5 +2,90 @@
 INFLUX ON DOCKER
 =========================
 
-https://thenewstack.io/how-to-setup-influxdb-telegraf-and-grafana-on-docker-part-1/
+Main Reference: https://thenewstack.io/how-to-setup-influxdb-telegraf-and-grafana-on-docker-part-1/
 - https://devconnected.com/how-to-install-influxdb-on-ubuntu-debian-in-2019/#Option_2_Adding_the_repositories_to_your_package_manager
+
+Influxdb docker image usage: https://hub.docker.com/_/influxdb
+
+# docker pull influxdb:1.8
+# docker images
+REPOSITORY   TAG       IMAGE ID       CREATED      SIZE
+influxdb     1.8       28fdc5b2db79   4 days ago   287MB
+
+- Create user for Influxdb
+# useradd -rs /bin/false influxdb
+# id influxdb
+uid=986(influxdb) gid=979(influxdb) groups=979(influxdb)
+
+- Generate default config file running the influxdb image itself
+# mkdir -p /etc/influxdb
+# docker run --rm influxdb:1.8 influxd config | tee /etc/influxdb/influxdb.conf > /dev/null
+# chown influxdb:influxdb /etc/influxdb/*
+
+- Create necessary directories
+# mkdir -p /var/lib/influxdb
+# chown influxdb:influxdb /var/lib/influxdb
+
+- Create initialization scripts
+# mkdir -p /etc/influxdb/scripts
+# vi /etc/influxdb/scripts/influxdb-init.iql
+
+CREATE DATABASE metrics;
+CREATE RETENTION POLICY one_week ON metrics DURATION 168h REPLICATION 1 DEFAULT;
+
+- Create/Update the InfluxDB Meta Database
+docker run --rm -e INFLUXDB_HTTP_AUTH_ENABLED=true \
+         -e INFLUXDB_ADMIN_USER=admin \
+         -e INFLUXDB_ADMIN_PASSWORD=admin123 \
+         -v /var/lib/influxdb:/var/lib/influxdb \
+         -v /etc/influxdb/scripts:/docker-entrypoint-initdb.d \
+         influxdb:1.8 /init-influxdb.sh
+
+ts=2021-10-03T14:54:03.671976Z lvl=info msg="InfluxDB starting" log_id=0WyfCmal000 version=1.8.9 branch=1.8 commit=d9b56321d579
+ts=2021-10-03T14:54:03.671994Z lvl=info msg="Go runtime" log_id=0WyfCmal000 version=go1.13.8 maxprocs=1
+influxdb init process in progress...
+ts=2021-10-03T14:54:03.777940Z lvl=info msg="Using data dir" log_id=0WyfCmal000 service=store path=/var/lib/influxdb/data
+ts=2021-10-03T14:54:03.778044Z lvl=info msg="Compaction settings" log_id=0WyfCmal000 service=store max_concurrent_compactions=1 throughput_bytes_per_second=50331648 throughput_bytes_per_second_burst=50331648
+ts=2021-10-03T14:54:03.778053Z lvl=info msg="Open store (start)" log_id=0WyfCmal000 service=store trace_id=0WyfCn0W000 op_name=tsdb_open op_event=start
+ts=2021-10-03T14:54:03.778088Z lvl=info msg="Open store (end)" log_id=0WyfCmal000 service=store trace_id=0WyfCn0W000 op_name=tsdb_open op_event=end op_elapsed=0.036ms
+ts=2021-10-03T14:54:03.778107Z lvl=info msg="Opened service" log_id=0WyfCmal000 service=subscriber
+ts=2021-10-03T14:54:03.778110Z lvl=info msg="Starting monitor service" log_id=0WyfCmal000 service=monitor
+ts=2021-10-03T14:54:03.778113Z lvl=info msg="Registered diagnostics client" log_id=0WyfCmal000 service=monitor name=build
+ts=2021-10-03T14:54:03.778116Z lvl=info msg="Registered diagnostics client" log_id=0WyfCmal000 service=monitor name=runtime
+ts=2021-10-03T14:54:03.778119Z lvl=info msg="Registered diagnostics client" log_id=0WyfCmal000 service=monitor name=network
+ts=2021-10-03T14:54:03.778124Z lvl=info msg="Registered diagnostics client" log_id=0WyfCmal000 service=monitor name=system
+ts=2021-10-03T14:54:03.778133Z lvl=info msg="Starting precreation service" log_id=0WyfCmal000 service=shard-precreation check_interval=10m advance_period=30m
+ts=2021-10-03T14:54:03.778138Z lvl=info msg="Starting snapshot service" log_id=0WyfCmal000 service=snapshot
+ts=2021-10-03T14:54:03.778142Z lvl=info msg="Starting continuous query service" log_id=0WyfCmal000 service=continuous_querier
+ts=2021-10-03T14:54:03.778148Z lvl=info msg="Starting HTTP service" log_id=0WyfCmal000 service=httpd authentication=true
+ts=2021-10-03T14:54:03.778151Z lvl=info msg="opened HTTP access log" log_id=0WyfCmal000 service=httpd path=stderr
+ts=2021-10-03T14:54:03.778154Z lvl=info msg="Auth is enabled but shared-secret is blank. BearerAuthentication is disabled." log_id=0WyfCmal000 service=httpd
+ts=2021-10-03T14:54:03.778181Z lvl=info msg="Listening on HTTP" log_id=0WyfCmal000 service=httpd addr=127.0.0.1:8086 https=false
+ts=2021-10-03T14:54:03.778189Z lvl=info msg="Starting retention policy enforcement service" log_id=0WyfCmal000 service=retention check_interval=30m
+ts=2021-10-03T14:54:03.778309Z lvl=info msg="Listening for signals" log_id=0WyfCmal000
+ts=2021-10-03T14:54:03.778478Z lvl=info msg="Storing statistics" log_id=0WyfCmal000 service=monitor db_instance=_internal db_rp=monitor interval=10s
+ts=2021-10-03T14:54:03.778595Z lvl=info msg="Sending usage statistics to usage.influxdata.com" log_id=0WyfCmal000
+[httpd] 127.0.0.1 - - [03/Oct/2021:14:54:04 +0000] "GET /ping HTTP/1.1" 204 0 "-" "InfluxDBShell/1.8.9" c0cb12a3-2459-11ec-8001-0242ac110002 179
+ts=2021-10-03T14:54:04.687229Z lvl=info msg="Executing query" log_id=0WyfCmal000 service=query query="CREATE USER admin WITH PASSWORD [REDACTED] WITH ALL PRIVILEGES"
+[httpd] 127.0.0.1 - - [03/Oct/2021:14:54:04 +0000] "POST /query?chunked=true&db=&epoch=ns&q=CREATE+USER+%22admin%22+WITH+PASSWORD+%5BREDACTED%5D+WITH+ALL+PRIVILEGES HTTP/1.1 " 200 57 "-" "InfluxDBShell/1.8.9" c0cb2260-2459-11ec-8002-0242ac110002 103450
+/init-influxdb.sh: running /docker-entrypoint-initdb.d/influxdb-init.iql
+[httpd] 127.0.0.1 - admin [03/Oct/2021:14:54:04 +0000] "GET /ping HTTP/1.1" 204 0 "-" "InfluxDBShell/1.8.9" c0ddb27e-2459-11ec-8003-0242ac110002 30
+ts=2021-10-03T14:54:04.895942Z lvl=info msg="Executing query" log_id=0WyfCmal000 service=query query="CREATE DATABASE metrics"
+[httpd] 127.0.0.1 - admin [03/Oct/2021:14:54:04 +0000] "POST /query?chunked=true&db=&epoch=ns&q=CREATE+DATABASE+metrics%3B HTTP/1.1 " 200 57 "-" "InfluxDBShell/1.8.9" c0ddb9ed-2459-11ec-8004-0242ac110002 93661
+ts=2021-10-03T14:54:04.904623Z lvl=info msg="Executing query" log_id=0WyfCmal000 service=query query="CREATE RETENTION POLICY one_week ON metrics DURATION 1w REPLICATION 1 DEFAULT"
+[httpd] 127.0.0.1 - admin [03/Oct/2021:14:54:04 +0000] "POST /query?chunked=true&db=&epoch=ns&q=CREATE+RETENTION+POLICY+one_week+ON+metrics+DURATION+168h+REPLICATION+1+DEFAULT%3B HTTP/1.1 " 200 57 "-" "InfluxDBShell/1.8.9" c0ec466d-2459-11ec-8005-0242ac110002 7096
+
+ts=2021-10-03T14:54:04.916117Z lvl=info msg="Signal received, initializing clean shutdown..." log_id=0WyfCmal000
+ts=2021-10-03T14:54:04.916137Z lvl=info msg="Waiting for clean shutdown..." log_id=0WyfCmal000
+[tcp] 2021/10/03 14:54:04 tcp.Mux: Listener at 127.0.0.1:8088 failed failed to accept a connection, closing all listeners - accept tcp 127.0.0.1:8088: use of closed network connection
+ts=2021-10-03T14:54:04.916242Z lvl=info msg="Listener closed" log_id=0WyfCmal000 service=snapshot
+ts=2021-10-03T14:54:04.916266Z lvl=info msg="Shutting down monitor service" log_id=0WyfCmal000 service=monitor
+ts=2021-10-03T14:54:04.916300Z lvl=info msg="Terminating precreation service" log_id=0WyfCmal000 service=shard-precreation
+ts=2021-10-03T14:54:04.916310Z lvl=info msg="Terminating continuous query service" log_id=0WyfCmal000 service=continuous_querier
+ts=2021-10-03T14:54:04.916393Z lvl=info msg="Closing retention policy enforcement service" log_id=0WyfCmal000 service=retention
+ts=2021-10-03T14:54:04.916438Z lvl=info msg="Closed service" log_id=0WyfCmal000 service=subscriber
+ts=2021-10-03T14:54:04.916462Z lvl=info msg="Server shutdown completed" log_id=0WyfCmal000
+
+
+         
+
