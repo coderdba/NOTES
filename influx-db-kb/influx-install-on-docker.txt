@@ -34,6 +34,19 @@ CREATE DATABASE metrics;
 CREATE RETENTION POLICY one_week ON metrics DURATION 168h REPLICATION 1 DEFAULT;
 
 - Create/Update the InfluxDB Meta Database
+This will initiate the metadata of a database - and then the docker container is removed as we have "--rm" flag.
+That created database will be used by the docker container we will start later.
+
+# ls -l /var/lib/influxdb/*/*
+-rw-r--r-- 1 root root 169 Oct  3 20:29 /var/lib/influxdb/meta/meta.db
+
+-- Verify by checking a setting that is there in the config file
+# cat /var/lib/influxdb/meta/meta.db | grep one_week
+Binary file (standard input) matches
+
+-- Note: 
+Setting the INFLUXDB_HTTP_AUTH_ENABLED to true does not mean that authentication is enabled on your InfluxDB server.
+
 docker run --rm -e INFLUXDB_HTTP_AUTH_ENABLED=true \
          -e INFLUXDB_ADMIN_USER=admin \
          -e INFLUXDB_ADMIN_PASSWORD=admin123 \
@@ -84,7 +97,57 @@ ts=2021-10-03T14:54:04.916300Z lvl=info msg="Terminating precreation service" lo
 ts=2021-10-03T14:54:04.916310Z lvl=info msg="Terminating continuous query service" log_id=0WyfCmal000 service=continuous_querier
 ts=2021-10-03T14:54:04.916393Z lvl=info msg="Closing retention policy enforcement service" log_id=0WyfCmal000 service=retention
 ts=2021-10-03T14:54:04.916438Z lvl=info msg="Closed service" log_id=0WyfCmal000 service=subscriber
-ts=2021-10-03T14:54:04.916462Z lvl=info msg="Server shutdown completed" log_id=0WyfCmal000
+ts=2021-10-03T14:54:04.916462Z lvl=info msg="Server shutdown completed" log_id=0WyfCmal000 
+
+- Check the ID and group of influxdb user
+# id influxdb
+uid=986(influxdb) gid=979(influxdb) groups=979(influxdb)
+
+# grep influxdb /etc/passwd
+influxdb:x:986:979::/home/influxdb:/bin/false
+
+- Start influxdb docker container as 'daemon'
+
+# docker run -d -p 8086:8086 --user 986:979 --name=influxdb \ 
+-v /etc/influxdb/influxdb.conf:/etc/influxdb/influxdb.conf \ 
+-v /var/lib/influxdb:/var/lib/influxdb \ 
+influxdb:1.8 \ 
+-config /etc/influxdb/influxdb.conf
+
+# docker ps -a
+CONTAINER ID   IMAGE          COMMAND                  CREATED         STATUS         PORTS                    NAMES
+374959b0c776   influxdb:1.8   "/entrypoint.sh -con…"   5 seconds ago   Up 3 seconds   0.0.0.0:8086->8086/tcp   influxdb
+
+# ps -ef |grep influx
+influxdb  3729  3711  0 09:13 ?        00:00:00 influxd -config /etc/influxdb/influxdb.conf
+
+# curl -G http://localhost:8086/query --data-urlencode "q=SHOW DATABASES"
+{"results":[{"statement_id":0,"series":[{"name":"databases","columns":["name"],"values":[["metrics"],["_internal"]]}]}]}
+--> Note: It is not showing the database created by running the .iql script as part of initialization done earlier
+--> But, it will show up if you logon to the DB and check (see steps further below)
+
+# netstat -tulpn | grep 8086
+tcp6       0      0 :::8086                 :::*                    LISTEN      3700/docker-proxy 
+
+# docker ps -a 
+CONTAINER ID   IMAGE          COMMAND                  CREATED         STATUS         PORTS                    NAMES
+374959b0c776   influxdb:1.8   "/entrypoint.sh -con…"   5 minutes ago   Up 5 minutes   0.0.0.0:8086->8086/tcp   influxdb
+
+# docker exec -ti influxdb /bin/sh
+$ influx
+Connected to http://localhost:8086 version 1.8.9
+InfluxDB shell version: 1.8.9
+> show databases
+name: databases
+name
+----
+metrics
+_internal
+
+
+
+
+
 
 
          
