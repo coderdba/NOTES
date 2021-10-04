@@ -198,28 +198,20 @@ $ curl -G -u admin:admin123 http://localhost:8086/query --data-urlencode "q=SHOW
 ===================================
 GRAFANA ON DOCKER
 ===================================
-Telegraf and Grafana on Docker:
-- https://thenewstack.io/how-to-setup-influxdb-telegraf-and-grafana-on-docker-part-2
+References:
+- Telegraf and Grafana on Docker:
+-- https://thenewstack.io/how-to-setup-influxdb-telegraf-and-grafana-on-docker-part-2
+- Also follow my other notes: 
+-- https://github.com/coderdba/NOTES/blob/master/sidecar-kb/sidecar1-influx-grafana-telegraf.txt
 
 - Pull the image
 # docker pull grafana/grafana:8.1.5
 
-- Create and run a startup script
-grafana-start.sh:
+- Create a local volume to persist grafana db - which holds dashboard definitions
+# docker volume create grafana-volume
 
-# https://stackoverflow.com/questions/58218153/if-youre-seeing-this-grafana-has-failed-to-load-its-application-files-error-w
-#If using docker, use following settings in environment to get this done.
-#GF_SERVER_ROOT_URL=https://myurl.ddns.net:443/grafana/
-#GF_SERVER_SERVE_FROM_SUB_PATH=true
-
-# This works
-docker run -d --name=grafana -p 3000:3000 grafana/grafana:8.1.5
-
-# This if necessary to have same container port mapped to host automatically
-#docker run --network host -d --name=grafana grafana/grafana:8.1.5
-
-# This if necessary to customize settings
-#docker run -d --name=grafana -p 3000:3000 -v /etc/grafana/grafana-defaults.ini:/usr/share/grafana/conf/defaults.ini grafana/grafana:8.1.5
+- Start grafana container with persistent local volume
+# docker run -d --name=grafana -v grafana-volume:/var/lib/grafana -p 3000:3000 grafana/grafana:8.1.5
 
 - VERIFY
 docker container ls | grep grafana
@@ -233,9 +225,31 @@ User: admin
 Password: admin
 --> it will ask to change password
 
-======================================================================
-GRAFANA NON-DOCKER USING RPM - GIVES COULD NOT LOAD FILE ERROR
-======================================================================
+-------------------------------------------
+- A start script with different options
+-------------------------------------------
+grafana-start.sh:
+
+# https://stackoverflow.com/questions/58218153/if-youre-seeing-this-grafana-has-failed-to-load-its-application-files-error-w
+#If using docker, use following settings in environment to get this done.
+#GF_SERVER_ROOT_URL=https://myurl.ddns.net:443/grafana/
+#GF_SERVER_SERVE_FROM_SUB_PATH=true
+
+# This works - with local volume - to persist grafana data when container is removed
+docker run -d --name=grafana -v grafana-volume:/var/lib/grafana -p 3000:3000 grafana/grafana:8.1.5
+
+# This works - without local volume - risking losing grafana data when container is removed
+# docker run -d --name=grafana -p 3000:3000 grafana/grafana:8.1.5
+
+# This if necessary to have same container port mapped to host automatically
+#docker run --network host -d --name=grafana grafana/grafana:8.1.5
+
+# This if necessary to customize settings
+#docker run -d --name=grafana -p 3000:3000 -v /etc/grafana/grafana-defaults.ini:/usr/share/grafana/conf/defaults.ini grafana/grafana:8.1.5
+
+===========================================================================
+DONT USE - GRAFANA NON-DOCKER USING RPM - GIVES COULD NOT LOAD FILE ERROR
+===========================================================================
 # yum install https://dl.grafana.com/enterprise/release/grafana-enterprise-8.1.5-1.x86_64.rpm
 # systemctl enable grafana-server
 # systemctl start grafana-server
