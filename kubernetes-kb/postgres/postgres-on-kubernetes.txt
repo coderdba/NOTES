@@ -330,6 +330,76 @@ Where does its data sit on host:
 # ls -l /data1
 drwxr-xr-x 3 root root 20 Oct  7 17:35 postgres
 
+================================
+CREATE SERVICE
+================================
+
+postgres-service.yaml:
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  labels:
+    app: postgres
+spec:
+  type: NodePort
+  ports:
+  - port: 5432
+  selector:
+    app: postgres
+    
+# kubectl apply -f postgres-service.yaml
+
+# kubectl get svc -o wide
+NAME                TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)          AGE     SELECTOR
+kubernetes          ClusterIP   10.96.0.1        <none>        443/TCP          6d19h   <none>
+postgres            NodePort    10.101.137.69    <none>        5432:32694/TCP   9s      app=postgres
+
+
+================================
+POSTGRES-CLIENT
+================================
+# docker pull tmaier/postgresql-client
+
+# docker run --rm tmaier/postgresql-client:latest -h 192.168.56.11 -p 32694 -U postgres
+Password for user postgres: 
+psql: error: fe_sendauth: no password supplied
+
+Another one: docker run -it --rm jbergknoff/postgresql-client postgresql://username:password@10.1.0.173:5432/db
+- Adapt that to this image: docker run -it --rm tmaier/postgresql-client postgresql://username:password@10.1.0.173:5432/db
+
+
+- DONT RUN THIS - THIS WILL ACTUALLY START A POSTGRES POD AS WELL
+# kubectl run postgres-client --rm --tty -i --restart='Never' --image postgres:11 --env="PGPASSWORD=$POSTGRES_PASSWORD" --command -- psql -h postgres -U postgres
+
+
+================================
+CONNECT TO DB FROM WITHIN POD
+================================
+
+# kubectl get pods -o wide
+NAME           READY   STATUS    RESTARTS   AGE    IP           NODE   NOMINATED NODE   READINESS GATES
+postgres1-0    1/1     Running   0          68m    172.17.0.4   ksn1   <none>           <none>
+
+# kubectl exec -ti postgres1-0 /bin/sh
+   
+--> Now, you are inside the pod and there, execute this:
+# psql -U postgres
+psql (14.0 (Debian 14.0-1.pgdg110+1))
+Type "help" for help.
+
+postgres=# \l
+                                 List of databases
+   Name    |  Owner   | Encoding |  Collate   |   Ctype    |   Access privileges   
+-----------+----------+----------+------------+------------+-----------------------
+ postgres  | postgres | UTF8     | en_US.utf8 | en_US.utf8 | 
+ template0 | postgres | UTF8     | en_US.utf8 | en_US.utf8 | =c/postgres          +
+           |          |          |            |            | postgres=CTc/postgres
+ template1 | postgres | UTF8     | en_US.utf8 | en_US.utf8 | =c/postgres          +
+           |          |          |            |            | postgres=CTc/postgres
+
+
 
 
 
