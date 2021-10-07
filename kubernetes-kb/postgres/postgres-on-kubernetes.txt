@@ -2,10 +2,15 @@
 POSTGRES ON KUBERNETES
 ===================================
 
+Basic deployment:
 https://www.sumologic.com/blog/kubernetes-deploy-postgres/
 https://www.bmc.com/blogs/kubernetes-postgresql/
 
 My Git that uses this: git/coderdba-coding-org/kubernetes/postgres/postgres1
+
+Advanced deployment:
+- https://bitnami.com/stack/postgresql/containers
+- https://github.com/zalando/postgres-operator --> With Patroni
 
 Postgres docker images:
 - https://hub.docker.com/_/postgres
@@ -15,6 +20,9 @@ Postgres docker images:
 PULL DOCKER IMAGE
 ===================================
 # docker pull postgres:14.0
+
+# docker images |grep postgres
+postgres                             14.0       6ce504119cc8   6 days ago      374MB
 
 ===================================
 MOUNT A DISK ON KUBERNETES NODE
@@ -213,6 +221,60 @@ Events:
   Type     Reason              Age               From                         Message
   ----     ------              ----              ----                         -------
   Warning  ProvisioningFailed  6s (x4 over 50s)  persistentvolume-controller  storageclass.storage.k8s.io "manual" not found
+
+=========================================
+CREATE SECRET FOR PASSWORD
+=========================================
+Let the password be just "password"
+
+# echo "password" | base64
+cGFzc3dvcmQK
+
+Then, create a secrets config file and apply it on the cluster:
+
+File: postgres-secrets.yml
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-secret-config
+type: Opaque
+data:
+  password: cG9zdGdyZXMK
+ 
+# kubectl apply -f postgres-secrets.yaml
+
+# kubectl describe secret postgres-secret-config
+Name:         postgres-secret-config
+Namespace:    default
+Labels:       <none>
+Annotations:  <none>
+
+Type:  Opaque
+
+Data
+====
+password:  9 bytes
+
+# kubectl edit secret postgres-secret-config
+apiVersion: v1
+data:
+  password: cG9zdGdyZXMK
+kind: Secret
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"v1","data":{"password":"cG9zdGdyZXMK"},"kind":"Secret","metadata":{"annotations":{},"name":"postgres-secret-config","namespace":"default"},"type":"Opaque"}
+  creationTimestamp: "2021-10-07T11:41:35Z"
+  name: postgres-secret-config
+  namespace: default
+  resourceVersion: "60867"
+  uid: f7402261-fbc9-4401-9fb7-8da2578a4c02
+type: Opaque
+
+=========================================
+CREATE POSTGRES DEPLOYMENT
+=========================================
 
 
 
