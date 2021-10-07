@@ -1,0 +1,135 @@
+===================================
+POSTGRES ON KUBERNETES
+===================================
+
+https://www.sumologic.com/blog/kubernetes-deploy-postgres/
+https://www.bmc.com/blogs/kubernetes-postgresql/
+
+===================================
+MOUNT A DISK ON KUBERNETES NODE
+===================================
+ NOTE: As this is a single node cluster - so direct mount is ok - otherwise, it should be nfs, S3 or other mount)
+
+Add a 20GB dynamically allocated virtual disk to the VM/host
+
+----------------------
+MOUNT THE DISK
+----------------------
+
+- OPTIONAL PARTITIONING
+# fdisk /dev/sdb
+Welcome to fdisk (util-linux 2.23.2).
+
+Changes will remain in memory only, until you decide to write them.
+Be careful before using the write command.
+
+Device does not contain a recognized partition table
+Building a new DOS disklabel with disk identifier 0x292d7605.
+
+Command (m for help): n
+Partition type:
+   p   primary (0 primary, 0 extended, 4 free)
+   e   extended
+Select (default p): p
+Partition number (1-4, default 1): 
+First sector (2048-41943039, default 2048): 
+Using default value 2048
+Last sector, +sectors or +size{K,M,G} (2048-41943039, default 41943039): 
+Using default value 41943039
+Partition 1 of type Linux and of size 20 GiB is set
+
+Command (m for help): w
+The partition table has been altered!
+
+Calling ioctl() to re-read partition table.
+Syncing disks.
+
+# lsblk
+NAME   MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
+sda      8:0    0   60G  0 disk 
+├─sda1   8:1    0  1.9G  0 part /boot
+├─sda2   8:2    0   54G  0 part /
+└─sda3   8:3    0    4G  0 part 
+sdb      8:16   0   20G  0 disk 
+└─sdb1   8:17   0   20G  0 part 
+sr0     11:0    1 58.3M  0 rom  /run/media/root/VBox_GAs_6.1.26
+
+- MAKE FILESYSTEM (here, without partition on /dev/sdb)
+# mkfs.xfs /dev/sdb
+mkfs.xfs: /dev/sdb appears to contain a partition table (dos).
+mkfs.xfs: Use the -f option to force overwrite.
+
+[root@ksn1 dev]# mkfs.xfs -f /dev/sdb
+meta-data=/dev/sdb               isize=512    agcount=4, agsize=1310720 blks
+         =                       sectsz=512   attr=2, projid32bit=1
+         =                       crc=1        finobt=0, sparse=0
+data     =                       bsize=4096   blocks=5242880, imaxpct=25
+         =                       sunit=0      swidth=0 blks
+naming   =version 2              bsize=4096   ascii-ci=0 ftype=1
+log      =internal log           bsize=4096   blocks=2560, version=2
+         =                       sectsz=512   sunit=0 blks, lazy-count=1
+realtime =none                   extsz=4096   blocks=0, rtextents=0
+
+- MOUNT
+# mount /dev/sdb /data1
+
+# df -k |grep data1
+/dev/sdb        20961280     32992  20928288   1% /data1
+
+- MAKE PERMANENT
+Enter the following in /etc/fstab
+
+============================
+CREATE PERSISTENT VOLUME
+============================
+https://www.sumologic.com/blog/kubernetes-deploy-postgres/
+
+File pv.yaml:
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: postgres1-pv-volume
+  labels:
+    type: local
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 5Gi
+  accessModes:
+  - ReadWriteOnce
+  hostPath:
+    path: "/data1/postgres1"
+
+# kubectl apply -f ./pv.yaml
+persistentvolume/postgres1-pv-volume created
+
+# kubectl get pv postgres1-pv-volume
+NAME                  CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM   STORAGECLASS   REASON   AGE
+postgres1-pv-volume   5Gi        RWO            Retain           Available           manual                  3m15s
+
+# kubectl describe pv postgres1-pv-volume
+Name:            postgres1-pv-volume
+Labels:          type=local
+Annotations:     <none>
+Finalizers:      [kubernetes.io/pv-protection]
+StorageClass:    manual
+Status:          Available
+Claim:           
+Reclaim Policy:  Retain
+Access Modes:    RWO
+VolumeMode:      Filesystem
+Capacity:        5Gi
+Node Affinity:   <none>
+Message:         
+Source:
+    Type:          HostPath (bare host directory volume)
+    Path:          /data1/postgres1
+    HostPathType:  
+Events:            <none>
+
+
+
+
+
+
