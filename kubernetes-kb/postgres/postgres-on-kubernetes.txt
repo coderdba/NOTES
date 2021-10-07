@@ -97,6 +97,7 @@ realtime =none                   extsz=4096   blocks=0, rtextents=0
 
 - MAKE PERMANENT
 Enter the following in /etc/fstab
+/dev/sdb        /data1        xfs        defaults        0        0
 
 =========================================
 CREATE PERSISTENT VOLUME AND VOLUME CLAIM
@@ -273,9 +274,59 @@ metadata:
 type: Opaque
 
 =========================================
-CREATE POSTGRES DEPLOYMENT
+CREATE POSTGRES STATEFULSET
 =========================================
 
+File: postgres-sts.yaml
+
+# PostgreSQL StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres1
+spec:
+  serviceName: postgres1-service
+  selector:
+    matchLabels:
+      app: postgres
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      volumes:
+        - name: postgres-db-disk
+          persistentVolumeClaim:
+            claimName: postgres-pv-claim-1
+      containers:
+        - name: postgres
+          image: postgres:14.0
+          volumeMounts:
+          - name: postgres-db-disk
+            mountPath: /var/lib/postgresql/data
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret-config
+                  key: password
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+
+# kubectl apply postgres-sts.yaml
+
+# kubectl get sts -o wide
+NAME        READY   AGE     CONTAINERS   IMAGES
+postgres1   1/1     4m42s   postgres     postgres:14.0
+
+# kubectl get pods --all-namespaces
+NAMESPACE     NAME                                       READY   STATUS    RESTARTS   AGE
+default       postgres1-0                                1/1     Running   0          2m51s
+
+Where does its data sit on host:
+# ls -l /data1
+drwxr-xr-x 3 root root 20 Oct  7 17:35 postgres
 
 
 
