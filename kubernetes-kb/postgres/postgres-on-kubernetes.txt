@@ -79,17 +79,23 @@ realtime =none                   extsz=4096   blocks=0, rtextents=0
 - MAKE PERMANENT
 Enter the following in /etc/fstab
 
-============================
-CREATE PERSISTENT VOLUME
-============================
+=========================================
+CREATE PERSISTENT VOLUME AND VOLUME CLAIM
+=========================================
 https://www.sumologic.com/blog/kubernetes-deploy-postgres/
+https://kubernetes.io/docs/tasks/configure-pod-container/configure-persistent-volume-storage/
+
+------------------
+PERSISTENT VOLUME
+------------------
+This reserves 5GB of read-write storage at /data1 on the cluster’s node
 
 File pv.yaml:
 
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: postgres1-pv-volume
+  name: postgres-pv-volume
   labels:
     type: local
 spec:
@@ -99,17 +105,17 @@ spec:
   accessModes:
   - ReadWriteOnce
   hostPath:
-    path: "/data1/postgres1"
+    path: "/data1/postgres"
 
 # kubectl apply -f ./pv.yaml
-persistentvolume/postgres1-pv-volume created
+persistentvolume/postgres-pv-volume created
 
-# kubectl get pv postgres1-pv-volume
-NAME                  CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM   STORAGECLASS   REASON   AGE
-postgres1-pv-volume   5Gi        RWO            Retain           Available           manual                  3m15s
+# kubectl get pv postgres-pv-volume -o wide
+NAME                 CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                         STORAGECLASS   REASON   AGE     VOLUMEMODE
+postgres-pv-volume   5Gi        RWO            Retain           Bound    default/postgres-pv-claim-1   manual                  2m52s   Filesystem
 
-# kubectl describe pv postgres1-pv-volume
-Name:            postgres1-pv-volume
+# kubectl describe pv postgres-pv-volume
+Name:            postgres-pv-volume
 Labels:          type=local
 Annotations:     <none>
 Finalizers:      [kubernetes.io/pv-protection]
@@ -124,9 +130,50 @@ Node Affinity:   <none>
 Message:         
 Source:
     Type:          HostPath (bare host directory volume)
-    Path:          /data1/postgres1
+    Path:          /data1/postgres
     HostPathType:  
 Events:            <none>
+
+------------------------
+PERSISTENT VOLUME CLAIM
+------------------------
+
+File: pv-claim-1.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pv-claim-1
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+# kubectl apply -f pv-claim-1.yaml
+persistentvolumeclaim/postgres-pv-claim-1 created
+ 
+# kubectl get pvc -o wide
+NAME                  STATUS   VOLUME               CAPACITY   ACCESS MODES   STORAGECLASS   AGE   VOLUMEMODE
+postgres-pv-claim-1   Bound    postgres-pv-volume   5Gi        RWO            manual         17s   Filesystem
+
+# kubectl describe pvc postgres-pv-claim-1
+Name:          postgres-pv-claim-1
+Namespace:     default
+StorageClass:  manual
+Status:        Bound
+Volume:        postgres-pv-volume
+Labels:        <none>
+Annotations:   pv.kubernetes.io/bind-completed: yes
+               pv.kubernetes.io/bound-by-controller: yes
+Finalizers:    [kubernetes.io/pvc-protection]
+Capacity:      5Gi
+Access Modes:  RWO
+VolumeMode:    Filesystem
+Used By:       <none>
+Events:        <none>
+
 
 
 
