@@ -111,8 +111,8 @@ spec:
 persistentvolume/postgres-pv-volume created
 
 # kubectl get pv postgres-pv-volume -o wide
-NAME                 CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                         STORAGECLASS   REASON   AGE     VOLUMEMODE
-postgres-pv-volume   5Gi        RWO            Retain           Bound    default/postgres-pv-claim-1   manual                  2m52s   Filesystem
+NAME                 CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM   STORAGECLASS   REASON   AGE   VOLUMEMODE
+postgres-pv-volume   5Gi        RWO            Retain           Available           manual                  3s    Filesystem
 
 # kubectl describe pv postgres-pv-volume
 Name:            postgres-pv-volume
@@ -173,6 +173,35 @@ Access Modes:  RWO
 VolumeMode:    Filesystem
 Used By:       <none>
 Events:        <none>
+
+# kubectl get pv -o wide
+NAME                 CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                         STORAGECLASS   REASON   AGE   VOLUMEMODE
+postgres-pv-volume   5Gi        RWO            Retain           Bound    default/postgres-pv-claim-1   manual                  54s   Filesystem
+
+~~~~~~~~~~~~
+NOTE
+~~~~~~~~~~~~
+If another claim is created with the same storageClass, it fails - see describe output below.
+That is apparently one storageClass 'manual" assigned to a volume cannot be used for more than one claim.
+Therefore, deleted the second pvc as it did not get created properly (kubectl delete -f pv-claim-2.yaml).
+
+# kubectl describe pvc postgres-pv-claim-2
+Name:          postgres-pv-claim-2
+Namespace:     default
+StorageClass:  manual
+Status:        Pending
+Volume:        
+Labels:        <none>
+Annotations:   <none>
+Finalizers:    [kubernetes.io/pvc-protection]
+Capacity:      
+Access Modes:  
+VolumeMode:    Filesystem
+Used By:       <none>
+Events:
+  Type     Reason              Age               From                         Message
+  ----     ------              ----              ----                         -------
+  Warning  ProvisioningFailed  6s (x4 over 50s)  persistentvolume-controller  storageclass.storage.k8s.io "manual" not found
 
 
 
