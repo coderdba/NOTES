@@ -436,7 +436,147 @@ Another one: docker run -it --rm jbergknoff/postgresql-client postgresql://usern
 ===================================
 TELEGRAF SIDECAR FOR POSTGRES
 ===================================
+Based on this: https://www.influxdata.com/blog/monitoring-kubernetes-nginx-ingress-nginx-influxdb-module/
 
+------------------
+SECRETS
+------------------
+kubectl create secret -n default generic telegraf \
+--from-literal=env=acc \
+--from-literal=monitor_retention_policy="threedays" \
+--from-literal=monitor_username="admin" \
+--from-literal=monitor_password="admin123" \
+--from-literal=monitor_host=http://192.168.56.41:8086 \
+--from-literal=monitor_database=metrics
+
+-------------------
+CONFIGMAP
+-------------------
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: telegraf
+  namespace: default
+  labels:
+    k8s-app: telegraf
+data:
+  telegraf.conf: |+
+    [global_tags]
+      env = "$ENV"
+    [agent]
+      interval = "60s"
+      round_interval = true
+      metric_batch_size = 1000
+      metric_buffer_limit = 10000
+      collection_jitter = "0s"
+      flush_interval = "10s"
+      flush_jitter = "0s"
+      precision = ""
+      debug = false
+      quiet = false
+      logfile = ""
+      hostname = "$HOSTNAME"
+      omit_hostname = false
+    [[outputs.influxdb]]
+      urls = ["$MONITOR_HOST"]
+      database = "$MONITOR_DATABASE"
+      retention_policy = "$MONITOR_RETENTION_POLICY"
+      write_consistency = "any"
+      timeout = "5s"
+      username = "$MONITOR_USERNAME"
+      password = "$MONITOR_PASSWORD"
+     [[inputs.socket_listener]]
+      service_address = "udp://:8094"
+
+---------------------------------------
+POSTGRES MANIFEST WITH TELEGRAF SIDECAR
+---------------------------------------
+postgres-sts-with-telegraf-sidecar.yaml
+
+# https://www.bmc.com/blogs/kubernetes-postgresql/
+# PostgreSQL StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres1
+spec:
+  serviceName: postgres1-service
+  selector:
+    matchLabels:
+      app: postgres
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      volumes:
+        - name: postgres-db-disk
+          persistentVolumeClaim:
+            claimName: postgres-pv-claim-1
+      containers:
+        - name: postgres
+          image: postgres:14.0
+          volumeMounts:
+          - name: postgres-db-disk
+            mountPath: /var/lib/postgresql/data
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret-config
+                  key: password
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+        - name: telegraf
+          image: docker.io/telegraf:1.5.2
+          ports:
+          - name: udp
+            containerPort: 8094
+          env:
+          - name: HOSTNAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: ENV
+            valueFrom:
+              secretKeyRef:
+                name: telegraf
+                key: env
+          - name: MONITOR_RETENTION_POLICY
+            valueFrom:
+              secretKeyRef:
+                name: telegraf
+                key: monitor_retention_policy
+          - name: MONITOR_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: telegraf
+                key: monitor_username
+          - name: MONITOR_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: telegraf
+                key: monitor_password
+          - name: MONITOR_HOST
+            valueFrom:
+              secretKeyRef:
+                name: telegraf
+                key: monitor_host
+          - name: MONITOR_DATABASE
+            valueFrom:
+              secretKeyRef:
+                name: telegraf
+                key: monitor_database
+          volumeMounts:
+          - name: config
+            mountPath: /etc/telegraf
+        volumes:
+        - name: config
+          configMap:
+            name: telegraf
 
 
 
