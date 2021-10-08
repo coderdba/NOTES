@@ -264,7 +264,6 @@ Events:
   ----    ------  ----               ----                      -------
   Normal  Sync    14m (x2 over 14m)  nginx-ingress-controller  Scheduled for sync
 
-
 - SERVICES AT THIS POINT (without ingress class)
 # kubectl get svc --all-namespaces -o wide
 NAMESPACE       NAME                                 TYPE           CLUSTER-IP       EXTERNAL-IP   PORT(S)                      AGE     SELECTOR
@@ -305,8 +304,22 @@ Hello, world!
 Version: 2.0.0
 Hostname: web2-5d47994f45-ttcsh
 
-- CURL THE INGRESS CONTROLLER
-No idea why it gives 404
+- ADD THE IP OF INGRESS (NOT INGRESS CONTROLLER) TO /etc/hosts
+NOTE: This is VERY IMPORTANT - ingress endpoints will not be resolved with just localhost or ip address
+NOTE: Also, there is some external site that has same hostname as "hello-world.info" 
+     - it is an additional confusion if you dont add the entry in /etc/hosts 
+     - because, otherwise that external site may get called with our curl/browser and we get confused
+     
+Before:
+192.168.56.11 ksn1
+
+After:
+192.168.56.11 ksn1 hello-world.info
+
+- CURL THE INGRESS CONTROLLER - WITH NODEPORT
+NOTE: No idea why it gives 404 --> THIS IS OK
+
+# curl 192.168.56.11:30967
 
 <html>
 <head><title>404 Not Found</title></head>
@@ -318,14 +331,17 @@ No idea why it gives 404
 
 - CURL INGRESS ENDPOINT
 # curl hello-world.info
-curl: (7) Failed connect to hello-world.info:80; Connection refused
+Hello, world!
+Version: 1.0.0
+Hostname: web-79d88c97d6-zvrbr
 
-# curl hello-world.info/v2
-curl: (7) Failed connect to hello-world.info:80; Connection refused
-
+# curl  http://hello-world.info/v2
+Hello, world!
+Version: 2.0.0
+Hostname: web2-5d47994f45-ttcsh
 
 ------------------------------------------
-CREATE INGRESS - WITH IngressClass
+CREATE INGRESS - WITH IngressClass ----- ALREADY DONE ABOVE
 ------------------------------------------
 https://kubernetes.github.io/ingress-nginx/user-guide/basic-usage/
 
