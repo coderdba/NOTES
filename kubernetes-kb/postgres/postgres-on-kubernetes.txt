@@ -491,16 +491,17 @@ data:
       timeout = "5s"
       username = "$MONITOR_USERNAME"
       password = "$MONITOR_PASSWORD"
-     [[inputs.socket_listener]]
-      service_address = "udp://:8094"
+     [[inputs.postgresql]]
+      address = "host=localhost user=postgres password=password dbname=test1 sslmode=disable"
+
 
 ---------------------------------------
 POSTGRES MANIFEST WITH TELEGRAF SIDECAR
 ---------------------------------------
 postgres-sts-with-telegraf-sidecar.yaml
 
-# https://www.bmc.com/blogs/kubernetes-postgresql/
-# PostgreSQL StatefulSet
+---
+
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -520,6 +521,9 @@ spec:
         - name: postgres-db-disk
           persistentVolumeClaim:
             claimName: postgres-pv-claim-1
+        - name: config
+          configMap:
+            name: telegraf
       containers:
         - name: postgres
           image: postgres:14.0
@@ -577,10 +581,130 @@ spec:
           volumeMounts:
           - name: config
             mountPath: /etc/telegraf
-        volumes:
-        - name: config
-          configMap:
-            name: telegraf
+
+------------------------------
+APPLY THE MANIFEST
+------------------------------
+# kubectl get sts 
+NAME        READY   AGE
+postgres1   1/1     16h
+
+# kubectl scale sts postgres1 --replicas=0
+statefulset.apps/postgres1 scaled
+
+# kubectl get sts 
+NAME        READY   AGE
+postgres1   0/0     16h
+
+# kubectl apply -f postgres-sts-with-telegraf-sidecar.yaml
+
+# kubectl get sts  -o wide
+NAME        READY   AGE   CONTAINERS          IMAGES
+postgres1   1/1     16h   postgres,telegraf   postgres:14.0,docker.io/telegraf:1.5.2
+
+# kubectl get pods --all-namespaces
+NAMESPACE     NAME                                       READY   STATUS    RESTARTS   AGE
+default       postgres1-0                                2/2     Running   2          2m26s
+
+# kubectl describe pod postgres1-0
+Name:         postgres1-0
+Namespace:    default
+Priority:     0
+Node:         ksn1/192.168.56.11
+Start Time:   Fri, 08 Oct 2021 09:51:25 +0530
+Labels:       app=postgres
+              controller-revision-hash=postgres1-799bc645d4
+              statefulset.kubernetes.io/pod-name=postgres1-0
+Annotations:  <none>
+Status:       Running
+IP:           172.17.0.4
+IPs:
+  IP:           172.17.0.4
+Controlled By:  StatefulSet/postgres1
+Containers:
+  postgres:
+    Container ID:   docker://b5608612d74d37c46ffdf4cfcae9d8ea9c8232ef27a1bc405ded34921cad1da1
+    Image:          postgres:14.0
+    Image ID:       docker-pullable://postgres@sha256:c731979fd21f34562e32f56fc367d8ba92e43685376cc7203c5c39fc81584807
+    Port:           <none>
+    Host Port:      <none>
+    State:          Running
+      Started:      Fri, 08 Oct 2021 09:51:27 +0530
+    Ready:          True
+    Restart Count:  0
+    Environment:
+      POSTGRES_PASSWORD:  <set to the key 'password' in secret 'postgres-secret-config'>  Optional: false
+      PGDATA:             /var/lib/postgresql/data/pgdata
+    Mounts:
+      /var/lib/postgresql/data from postgres-db-disk (rw)
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-zc92x (ro)
+  telegraf:
+    Container ID:   docker://487f16793d7babeae52e7fd9e3f996310532977c11df413d264bacc26ba35067
+    Image:          docker.io/telegraf:1.5.2
+    Image ID:       docker-pullable://telegraf@sha256:4b8b64e8384d0743d35f66bf95d824321e86270e55049555f98922e72533b0bf
+    Port:           8094/TCP
+    Host Port:      0/TCP
+    State:          Waiting
+      Reason:       CrashLoopBackOff
+    Last State:     Terminated
+      Reason:       Error
+      Exit Code:    2
+      Started:      Fri, 08 Oct 2021 09:53:11 +0530
+      Finished:     Fri, 08 Oct 2021 09:54:00 +0530
+    Ready:          False
+    Restart Count:  2
+    Environment:
+      HOSTNAME:                   (v1:spec.nodeName)
+      ENV:                       <set to the key 'env' in secret 'telegraf'>                       Optional: false
+      MONITOR_RETENTION_POLICY:  <set to the key 'monitor_retention_policy' in secret 'telegraf'>  Optional: false
+      MONITOR_USERNAME:          <set to the key 'monitor_username' in secret 'telegraf'>          Optional: false
+      MONITOR_PASSWORD:          <set to the key 'monitor_password' in secret 'telegraf'>          Optional: false
+      MONITOR_HOST:              <set to the key 'monitor_host' in secret 'telegraf'>              Optional: false
+      MONITOR_DATABASE:          <set to the key 'monitor_database' in secret 'telegraf'>          Optional: false
+    Mounts:
+      /etc/telegraf from config (rw)
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-zc92x (ro)
+Conditions:
+  Type              Status
+  Initialized       True 
+  Ready             False 
+  ContainersReady   False 
+  PodScheduled      True 
+Volumes:
+  postgres-db-disk:
+    Type:       PersistentVolumeClaim (a reference to a PersistentVolumeClaim in the same namespace)
+    ClaimName:  postgres-pv-claim-1
+    ReadOnly:   false
+  config:
+    Type:      ConfigMap (a volume populated by a ConfigMap)
+    Name:      telegraf
+    Optional:  false
+  kube-api-access-zc92x:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:  3607
+    ConfigMapName:           kube-root-ca.crt
+    ConfigMapOptional:       <nil>
+    DownwardAPI:             true
+QoS Class:                   BestEffort
+Node-Selectors:              <none>
+Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type     Reason     Age                  From               Message
+  ----     ------     ----                 ----               -------
+  Normal   Scheduled  2m54s                default-scheduler  Successfully assigned default/postgres1-0 to ksn1
+  Normal   Pulled     2m52s                kubelet            Container image "postgres:14.0" already present on machine
+  Normal   Created    2m52s                kubelet            Created container postgres
+  Normal   Started    2m52s                kubelet            Started container postgres
+  Normal   Pulled     69s (x3 over 2m52s)  kubelet            Container image "docker.io/telegraf:1.5.2" already present on machine
+  Normal   Created    68s (x3 over 2m51s)  kubelet            Created container telegraf
+  Normal   Started    68s (x3 over 2m51s)  kubelet            Started container telegraf
+  Warning  BackOff    6s (x3 over 79s)     kubelet            Back-off restarting failed container
+
+
+
+
+
 
 
 
