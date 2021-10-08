@@ -7,6 +7,7 @@ REFERENCES
 ==================
 https://kubernetes.io/docs/tasks/access-application-cluster/ingress-minikube/
 https://kubernetes.github.io/ingress-nginx/user-guide/basic-usage/
+https://kubernetes.github.io/ingress-nginx/deploy/
 
 https://kubernetes.io/docs/concepts/services-networking/ingress/
 https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/
@@ -25,6 +26,74 @@ STEPS
 ------------------------------
 INSTALL NGINX CONTROLLER
 ------------------------------
+https://kubernetes.github.io/ingress-nginx/deploy/
+
+NOTE: Needs more CPU - experienced 'insufficient cpu' during deployment
+
+- WARNINGS FROM THE WEBSITE https://kubernetes.github.io/ingress-nginx/deploy/
+Attention
+The default configuration watches Ingress object from all namespaces.
+To change this behavior use the flag --watch-namespace to limit the scope to a particular namespace.
+
+Warning
+If multiple Ingresses define paths for the same host, the ingress controller merges the definitions.
+
+Danger
+The admission webhook requires connectivity between Kubernetes API server and the ingress controller.
+In case Network policies or additional firewalls, please allow access to port 8443.
+
+Attention
+The first time the ingress controller starts, two Jobs create the SSL Certificate used by the admission webhook. 
+For this reason, there is an initial delay of up to two minutes until it is possible to create and validate Ingress definitions.
+
+- INSTALL
+-- CHECK WHAT IS THERE IN THE DEPLOYMENT MANIFEST
+# curl -O https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.0.3/deploy/static/provider/cloud/deploy.yaml
+# grep image dep*
+          image: k8s.gcr.io/ingress-nginx/controller:v1.0.3@sha256:4ade87838eb8256b094fbb5272d7dda9b6c7fa8b759e6af5383c1300996a7452
+          imagePullPolicy: IfNotPresent
+          image: k8s.gcr.io/ingress-nginx/kube-webhook-certgen:v1.0@sha256:f3b6b39a6062328c095337b4cadcefd1612348fdd5190b1dcbcb9b9e90bd8068
+          imagePullPolicy: IfNotPresent
+          image: k8s.gcr.io/ingress-nginx/kube-webhook-certgen:v1.0@sha256:f3b6b39a6062328c095337b4cadcefd1612348fdd5190b1dcbcb9b9e90bd8068
+          imagePullPolicy: IfNotPresent
+
+- RUN THE MANIFEST
+# kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.0.3/deploy/static/provider/cloud/deploy.yaml
+namespace/ingress-nginx created
+serviceaccount/ingress-nginx created
+configmap/ingress-nginx-controller created
+clusterrole.rbac.authorization.k8s.io/ingress-nginx created
+clusterrolebinding.rbac.authorization.k8s.io/ingress-nginx created
+role.rbac.authorization.k8s.io/ingress-nginx created
+rolebinding.rbac.authorization.k8s.io/ingress-nginx created
+service/ingress-nginx-controller-admission created
+service/ingress-nginx-controller created
+deployment.apps/ingress-nginx-controller created
+ingressclass.networking.k8s.io/nginx created
+validatingwebhookconfiguration.admissionregistration.k8s.io/ingress-nginx-admission created
+serviceaccount/ingress-nginx-admission created
+clusterrole.rbac.authorization.k8s.io/ingress-nginx-admission created
+clusterrolebinding.rbac.authorization.k8s.io/ingress-nginx-admission created
+role.rbac.authorization.k8s.io/ingress-nginx-admission created
+rolebinding.rbac.authorization.k8s.io/ingress-nginx-admission created
+job.batch/ingress-nginx-admission-create created
+job.batch/ingress-nginx-admission-patch created
+
+[root@ksn1 ingress02]# kubectl get pods --all-namespaces
+NAMESPACE       NAME                                        READY   STATUS      RESTARTS   AGE
+default         busybox-curl                                1/1     Running     25         7d2h
+ingress-nginx   ingress-nginx-admission-create-w7x7g        0/1     Completed   0          44s
+ingress-nginx   ingress-nginx-admission-patch-xkqgp         0/1     Completed   1          43s
+ingress-nginx   ingress-nginx-controller-5cc57bf6c7-tvt4b   0/1     Pending     0          44s
+kube-system     calico-kube-controllers-86475544f5-cbbg5    1/1     Running     8          7d4h
+kube-system     calico-node-4q4fm                           1/1     Running     13         7d4h
+kube-system     coredns-8494f9c688-s5hl6                    1/1     Running     11         7d4h
+kube-system     kube-apiserver-ksn1                         1/1     Running     9          7d16h
+kube-system     kube-controller-manager-ksn1                1/1     Running     11         7d16h
+kube-system     kube-proxy-rvbsn                            1/1     Running     10         7d4h
+kube-system     kube-scheduler-ksn1                         1/1     Running     10         7d16h
+[root@ksn1 ingress02]# 
+
 
 ------------------------------
 CREATE TWO APPS AS DEPLOYMENTS
