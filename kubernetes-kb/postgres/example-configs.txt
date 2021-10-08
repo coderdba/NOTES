@@ -1,0 +1,428 @@
+======================================
+TELEGRAF - MANY INPUTS, POSTGRES ALSO
+======================================
+https://github.com/influxdata/telegraf/issues/5386
+
+[agent]
+  interval = "1m"
+  metric_buffer_limit = 100000
+  collection_jitter = "5s"
+  flush_interval = "1m"
+  quiet = true
+  logfile = "/var/log/telegraf/telegraf.log"
+
+
+###############################################################################
+
+[[outputs.influxdb]]
+  urls = ["http://127.0.0.1:8086"]
+  database = "servers"
+  username = ""
+  password = ""
+
+###############################################################################
+
+[[inputs.exec]]
+  commands = [
+    "/usr/local/bin/fff",
+  ]
+  timeout = "300s"
+  data_format = "influx"
+
+
+[[inputs.exec]]
+  commands = [
+    "/usr/local/bin/aaa",
+    "/usr/local/bin/bbb",
+    "/usr/local/bin/ccc",
+    "/usr/local/bin/ddd",
+    "/usr/local/bin/eee",
+  ]
+  timeout = "300s"
+  data_format = "influx"
+  tagexclude = [
+    "host",
+  ]
+
+
+###############################################################################
+
+[[inputs.cpu]]
+  percpu = false
+
+  taginclude = [
+    "host",
+  ]
+  fieldpass = [
+    "usage_idle",
+    "usage_iowait",
+    "usage_irq",
+    "usage_nice",
+    "usage_softirq",
+    "usage_steal",
+    "usage_system",
+    "usage_user",
+  ]
+
+
+[[inputs.system]]
+  taginclude = [
+    "host",
+  ]
+  fieldpass = [
+    "load1",
+    "load15",
+    "load5",
+    "n_cpus",
+    "uptime",
+  ]
+
+
+[[inputs.kernel]]
+  taginclude = [
+    "host",
+  ]
+  fieldpass = [
+    "context_switches",
+    "interrupts",
+    "processes_forked",
+  ]
+
+
+[[inputs.mem]]
+  name_override="memory"
+
+  taginclude = [
+    "host",
+  ]
+  fieldpass = [
+    "active",
+    "buffered",
+    "cached",
+    "free",
+    "inactive",
+    "total",
+    "used",
+  ]
+
+
+[[inputs.swap]]
+  taginclude = [
+    "host",
+  ]
+  fieldpass = [
+    "total",
+    "used",
+  ]
+
+
+[[inputs.disk]]
+  name_override="mountpoints"
+
+  taginclude = [
+    "host",
+    "path",
+  ]
+  fieldpass = [
+    "free",
+    "inodes_free",
+    "inodes_used",
+    "used",
+  ]
+  [inputs.disk.tagpass]
+    path = [
+      "/",
+      "/home",
+      "/mnt/a",
+      "/mnt/b",
+      "/mnt/c",
+    ]
+
+
+[[inputs.diskio]]
+  skip_serial_number = false
+
+  taginclude = [
+    "host",
+    "name",
+    "serial",
+  ]
+  fieldpass = [
+    "io_time",
+    "iops_in_progress",
+    "read_bytes",
+    "read_time",
+    "reads",
+    "weighted_io_time",
+    "write_bytes",
+    "write_time",
+    "writes",
+  ]
+  [inputs.diskio.tagdrop]
+    name = [
+      "sd[a-z][0-9]",
+      "zd[0-9]",
+    ]
+
+
+[[inputs.processes]]
+  taginclude = [
+    "host",
+  ]
+  fieldpass = [
+    "blocked",
+    "dead",
+    "idle",
+    "paging",
+    "running",
+    "sleeping",
+    "stopped",
+    "total_threads",
+    "unknown",
+    "zombies",
+  ]
+
+
+[[inputs.net]]
+  taginclude = [
+    "host",
+    "interface",
+  ]
+  fieldpass = [
+    "bytes_recv",
+    "bytes_sent",
+    "drop_in",
+    "drop_out",
+    "err_in",
+    "err_out",
+    "packets_recv",
+    "packets_sent",
+  ]
+  [inputs.net.tagpass]
+    interface = [
+      "eth[0-9]",
+      "ppp[0-9]",
+      "tun[0-9]",
+    ]
+
+
+[[inputs.netstat]]
+  taginclude = [
+    "host",
+  ]
+  fieldpass = [
+    "tcp_close",
+    "tcp_close_wait",
+    "tcp_closing",
+    "tcp_established",
+    "tcp_fin_wait1",
+    "tcp_fin_wait2",
+    "tcp_last_ack",
+    "tcp_listen",
+    "tcp_none",
+    "tcp_syn_recv",
+    "tcp_syn_sent",
+    "tcp_time_wait",
+    "udp_socket",
+  ]
+
+
+[[inputs.smart]]
+  name_override = "smart"
+  use_sudo = true
+  attributes = true
+
+  taginclude = [
+    "host",
+    "device",
+    "id",
+    "name",
+    "serial_no",
+  ]
+  fieldpass = [
+    "exit_status",
+    "raw_value",
+    "threshold",
+    "value",
+    "worst",
+  ]
+  [inputs.smart.tagdrop]
+    enabled = ["Enabled"]
+
+
+[[inputs.redis]]
+  taginclude = [
+    "host",
+    "database",
+  ]
+  fieldpass = [
+    "blocked_clients",
+    "clients",
+    "evicted_keys",
+    "expired_keys",
+    "keyspace_hits",
+    "keyspace_misses",
+    "rdb_changes_since_last_save",
+    "rdb_last_bgsave_time_sec",
+    "rdb_last_save_time_elapsed",
+    "total_commands_processed",
+    "total_connections_received",
+    "total_net_input_bytes",
+    "total_net_output_bytes",
+    "used_memory",
+    "keys",
+    "expires",
+  ]
+
+
+# usermod -aG docker telegraf && reboot
+[[inputs.docker]]
+  perdevice = false
+  total = true
+
+  namepass = [
+    "docker_container_net",
+    "docker_container_cpu",
+    "docker_container_mem",
+  ]
+  taginclude = [
+    "host",
+    "container_name",
+  ]
+  fieldpass = [
+    "tx_*",
+    "rx_*",
+    "usage_percent",
+  ]
+
+
+[[inputs.http_response]]
+  address = "https://example.ru"
+  insecure_skip_verify = false
+
+  taginclude = [
+    "host",
+    "server",
+  ]
+  fieldpass = [
+    "response_time",
+    "http_response_code",
+  ]
+
+
+[[inputs.http_response]]
+  address = "http://example.center"
+
+  taginclude = [
+    "host",
+    "server",
+  ]
+  fieldpass = [
+    "response_time",
+    "http_response_code",
+  ]
+
+
+[[inputs.nginx]]
+  urls = ["http://localhost/server_status"]
+  taginclude = [
+    "host",
+  ]
+  fieldpass = [
+    "accepts",
+    "handled",
+    "reading",
+    "requests",
+    "waiting",
+    "writing",
+  ]
+
+
+[[inputs.phpfpm]]
+  urls = [
+    "/var/run/php/aaa.sock:server_status",
+    "/var/run/php/bbb.sock:server_status",
+    "/var/run/php/ccc.sock:server_status",
+  ]
+  taginclude = [
+    "host",
+    "pool",
+  ]
+  fieldpass = [
+    "accepted_conn",
+    "active_processes",
+    "idle_processes",
+    "listen_queue",
+    "listen_queue_len",
+    "max_active_processes",
+    "max_children_reached",
+    "max_listen_queue",
+    "slow_requests",
+  ]
+
+
+[[inputs.zfs]]
+  poolMetrics = true
+  kstatMetrics = ["arcstats"]
+  taginclude = [
+    "host",
+    "pool",
+  ]
+  fieldpass = [
+    "arcstats_c",
+    "arcstats_c_max",
+    "arcstats_c_min",
+    "arcstats_demand_data_hits",
+    "arcstats_demand_data_misses",
+    "arcstats_demand_metadata_hits",
+    "arcstats_demand_metadata_misses",
+    "arcstats_hits",
+    "arcstats_l2_hits",
+    "arcstats_l2_misses",
+    "arcstats_mfu_ghost_hits",
+    "arcstats_mfu_ghost_size",
+    "arcstats_mfu_hits",
+    "arcstats_mfu_size",
+    "arcstats_misses",
+    "arcstats_mru_ghost_hits",
+    "arcstats_mru_ghost_size",
+    "arcstats_mru_hits",
+    "arcstats_mru_size",
+    "arcstats_p",
+    "arcstats_prefetch_data_hits",
+    "arcstats_prefetch_data_misses",
+    "arcstats_prefetch_metadata_hits",
+    "arcstats_prefetch_metadata_misses",
+    "arcstats_size",
+
+    "nread",
+    "nwritten",
+    "rcnt",
+    "reads",
+    "rlentime",
+    "rtime",
+    "rupdate",
+    "wcnt",
+    "wlentime",
+    "writes",
+    "wtime",
+    "wupdate",   
+  ]
+
+
+[[inputs.ping]]
+  urls = ["111.111.111.1", "222.222.222.2", "333.333.333.3", "444.444.444.44"]
+  count = 5
+  interface = "eth0"
+  taginclude = [
+    "host",
+    "url",
+  ]
+  fieldpass = [
+    "packets_transmitted",
+    "packets_received",
+  ]
+
+
+[[inputs.postgresql]]
+  address = "host=localhost user=telegraf password=1234567890 sslmode=disable"
