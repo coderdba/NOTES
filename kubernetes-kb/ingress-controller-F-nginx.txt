@@ -79,21 +79,13 @@ rolebinding.rbac.authorization.k8s.io/ingress-nginx-admission created
 job.batch/ingress-nginx-admission-create created
 job.batch/ingress-nginx-admission-patch created
 
-[root@ksn1 ingress02]# kubectl get pods --all-namespaces
-NAMESPACE       NAME                                        READY   STATUS      RESTARTS   AGE
-default         busybox-curl                                1/1     Running     25         7d2h
-ingress-nginx   ingress-nginx-admission-create-w7x7g        0/1     Completed   0          44s
-ingress-nginx   ingress-nginx-admission-patch-xkqgp         0/1     Completed   1          43s
-ingress-nginx   ingress-nginx-controller-5cc57bf6c7-tvt4b   0/1     Pending     0          44s
-kube-system     calico-kube-controllers-86475544f5-cbbg5    1/1     Running     8          7d4h
-kube-system     calico-node-4q4fm                           1/1     Running     13         7d4h
-kube-system     coredns-8494f9c688-s5hl6                    1/1     Running     11         7d4h
-kube-system     kube-apiserver-ksn1                         1/1     Running     9          7d16h
-kube-system     kube-controller-manager-ksn1                1/1     Running     11         7d16h
-kube-system     kube-proxy-rvbsn                            1/1     Running     10         7d4h
-kube-system     kube-scheduler-ksn1                         1/1     Running     10         7d16h
-[root@ksn1 ingress02]# 
 
+# kubectl get pods -n ingress-nginx
+NOTE: The two create and patch pod status 'Completed' is normal
+NAME                                        READY   STATUS      RESTARTS   AGE
+ingress-nginx-admission-create-w7x7g        0/1     Completed   0          17m
+ingress-nginx-admission-patch-xkqgp         0/1     Completed   1          17m
+ingress-nginx-controller-5cc57bf6c7-tvt4b   1/1     Running     0          17m
 
 ------------------------------
 CREATE TWO APPS AS DEPLOYMENTS
@@ -117,6 +109,8 @@ CREATE INGRESS - without IngressClass
 NOTE: This does not use annotation ingressClassName: nginx
 NOTE: This is from te minikube example
 https://kubernetes.io/docs/tasks/access-application-cluster/ingress-minikube/
+
+File: ingress.yaml
 
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -144,6 +138,56 @@ spec:
                 port:
                   number: 8080
 
+# kubectl apply -f ingress.yaml
+
+# kubectl get ingress
+NOTE: Ingress has still not got an IP address: https://github.com/nginxinc/kubernetes-ingress/issues/587
+
+NAME              CLASS    HOSTS              ADDRESS   PORTS   AGE
+example-ingress   <none>   hello-world.info             80      13m
+
+# kubectl describe ingress example-ingress
+Name:             example-ingress
+Namespace:        default
+Address:          
+Default backend:  default-http-backend:80 (<error: endpoints "default-http-backend" not found>)
+Rules:
+  Host              Path  Backends
+  ----              ----  --------
+  hello-world.info  
+                    /     web:8080 (172.17.0.5:8080)
+                    /v2   web2:8080 (172.17.0.6:8080)
+Annotations:        nginx.ingress.kubernetes.io/rewrite-target: /$1
+Events:             <none>
+
+- SERVICES AT THIS POINT
+# kubectl get svc --all-namespaces -o wide
+NAMESPACE       NAME                                 TYPE           CLUSTER-IP       EXTERNAL-IP   PORT(S)                      AGE     SELECTOR
+default         goweb1-1-service                     NodePort       10.106.125.174   <none>        8081:30036/TCP               7d4h    app=goweb1-1
+default         goweb1-1-service2                    ClusterIP      10.109.20.193    <none>        8081/TCP                     7d4h    app=goweb1-1
+default         kubernetes                           ClusterIP      10.96.0.1        <none>        443/TCP                      7d16h   <none>
+default         postgres                             NodePort       10.101.137.69    <none>        5432:32694/TCP               21h     app=postgres
+default         web                                  NodePort       10.109.71.255    <none>        8080:31977/TCP               8m15s   app=web
+default         web2                                 NodePort       10.97.115.140    <none>        8080:30463/TCP               8m15s   app=web2
+ingress-nginx   ingress-nginx-controller             LoadBalancer   10.100.99.133    <pending>     80:30967/TCP,443:31802/TCP   28m     app.kubernetes.io/component=controller,app.kubernetes.io/instance=ingress-nginx,app.kubernetes.io/name=ingress-nginx
+ingress-nginx   ingress-nginx-controller-admission   ClusterIP      10.96.20.18      <none>        443/TCP                      28m     app.kubernetes.io/component=controller,app.kubernetes.io/instance=ingress-nginx,app.kubernetes.io/name=ingress-nginx
+kube-system     kube-dns                             ClusterIP      10.96.0.10       <none>        53/UDP,53/TCP,9153/TCP       7d5h    k8s-app=kube-dns
+[root@ksn1 ingress02]# curl localhost:80/hello-world.info/v2
+
+- CURL THE INDIVIDUAL APP SERVICES - with their services' nodeport
+-- Service/app 'web'
+# curl localhost:31977
+Hello, world!
+Version: 1.0.0
+Hostname: web-79d88c97d6-zvrbr
+
+-- Service/app 'web2'
+# curl localhost:30463
+Hello, world!
+Version: 2.0.0
+Hostname: web2-5d47994f45-ttcsh
+
+- CURL THE INGRESS CONTROLLER
 ------------------------------------------
 CREATE INGRESS - WITH IngressClass
 ------------------------------------------
