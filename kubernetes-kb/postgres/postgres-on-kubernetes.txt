@@ -2,11 +2,12 @@
 POSTGRES ON KUBERNETES
 ===================================
 
+My Git that uses this: git/coderdba-coding-org/kubernetes/postgres/postgres1
+My Influx-Grafana setup: https://github.com/coderdba/NOTES/blob/master/influx-db-kb/influx-grafana-install-on-docker.txt
+
 Basic deployment:
 https://www.sumologic.com/blog/kubernetes-deploy-postgres/ --> This creates it as 'deployment' while it has to be statefulset - refer to the bmc page
 https://www.bmc.com/blogs/kubernetes-postgresql/ --> Adapt the statefulset yaml from this and the volume-claim stuff from the sumologic page
-
-My Git that uses this: git/coderdba-coding-org/kubernetes/postgres/postgres1
 
 Advanced deployment:
 - https://bitnami.com/stack/postgresql/containers
@@ -20,7 +21,6 @@ Monitoring with Telegraf sidecar
 - https://www.influxdata.com/blog/monitoring-kubernetes-nginx-ingress-nginx-influxdb-module/ (this is for nginx - adapt it as needed)
 - https://www.influxdata.com/blog/monitoring-your-postgresql-database-with-telegraf-and-influxdb/
 
-My Influx-Grafana: https://github.com/coderdba/NOTES/blob/master/influx-db-kb/influx-grafana-install-on-docker.txt
 
 ===================================
 PULL DOCKER IMAGE
@@ -772,6 +772,50 @@ server
 
 > show field keys on metrics from postgresql;
 --> ERROR - THIS IS NOT SHOWING ANYTHING - SO, TELEGRAF IS NOT REALLY SENDING ANY METRICS
+--> FIX - prefix measurement-table name with retention period!!!
+
+> show field keys on metrics from threedays.postgresql;
+name: postgresql
+fieldKey                 fieldType
+--------                 ---------
+active_time              float
+blk_read_time            float
+blk_write_time           float
+blks_hit                 integer
+blks_read                integer
+buffers_alloc            integer
+buffers_backend          integer
+buffers_backend_fsync    integer
+buffers_checkpoint       integer
+buffers_clean            integer
+checkpoint_sync_time     float
+checkpoint_write_time    float
+checkpoints_req          integer
+checkpoints_timed        integer
+conflicts                integer
+datid                    integer
+datname                  string
+deadlocks                integer
+idle_in_transaction_time float
+maxwritten_clean         integer
+numbackends              integer
+session_time             float
+sessions                 integer
+sessions_abandoned       integer
+sessions_fatal           integer
+sessions_killed          integer
+temp_bytes               integer
+temp_files               integer
+tup_deleted              integer
+tup_fetched              integer
+tup_inserted             integer
+tup_returned             integer
+tup_updated              integer
+xact_commit              integer
+xact_rollback            integer
+
+> select * from metrics.threedays.postgresql;
+
 
 
 
