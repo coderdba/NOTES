@@ -42,6 +42,7 @@ SETUP METRICS COLLECTION
 ---------------------------
 https://www.datadoghq.com/blog/how-to-collect-and-graph-kubernetes-metrics/
 https://devopscube.com/setup-prometheus-monitoring-on-kubernetes/
+https://sysdig.com/blog/monitor-kubernetes-api-server/
 
 ==============
 BOOT SEQUENCE
@@ -167,7 +168,9 @@ you cannot have container B inside the same pod that uses port 80. Only containe
 - Official doc - says Calico is needed - https://kubernetes.io/docs/concepts/cluster-administration/networking/#kubernetes-model
 - https://blog.neuvector.com/article/advanced-kubernetes-networking
 
----------
+==============
+WORKLOADS
+==============
 Pod
 DaemonSet
 ReplicaSet
@@ -198,16 +201,34 @@ Pod
         - -cpus
         - "2"
         
+==============
+METRICS
+==============
 Kubernetes Metrics
 - https://v1-18.docs.kubernetes.io/docs/concepts/cluster-administration/monitoring/
 - https://kubernetes.io/docs/concepts/cluster-administration/system-metrics/
 - Prometheus Server or some other metrics scraper to periodically gather these metrics and make them available in some kind of time series database.
 - Kubelet also exposes metrics in /metrics/cadvisor, /metrics/resource and /metrics/probes endpoints. Those metrics do not have same lifecycle.
 
+- If your cluster uses RBAC, reading metrics requires authorization via a user, group or ServiceAccount with a ClusterRole that allows accessing /metrics
+-- and, bind that to a service-account used by the entity like Prometheus that collects metrics 
+---- (we can have prometheus use the 'default' service account of a dedicated namespace like 'monitoring'
+-- also see for using serviceaccount, cluster role and cluster role binding here: https://devopscube.com/setup-prometheus-monitoring-on-kubernetes/
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus
+rules:
+  - nonResourceURLs:
+      - "/metrics"
+    verbs:
+      - get
+
 - curl --cacert ./ca.pem https://ksn1:6443/healthz
 ok
 
-- curl --cacert ./ca.pem https://ksn1:6443/metrics
+- Querying metrics endpoint gives error (see below) - to avoid that use a service-account bearer token as in: https://sysdig.com/blog/monitor-kubernetes-api-server/
+-- curl --cacert ./ca.pem https://ksn1:6443/metrics
 {
   "kind": "Status",
   "apiVersion": "v1",
@@ -223,17 +244,31 @@ ok
   "code": 403
 }
 
-- If your cluster uses RBAC, reading metrics requires authorization via a user, group or ServiceAccount with a ClusterRole that allows accessing /metrics. For example:
--- also see for using serviceaccount, cluster role and cluster role binding here: https://devopscube.com/setup-prometheus-monitoring-on-kubernetes/
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: prometheus
-rules:
-  - nonResourceURLs:
-      - "/metrics"
-    verbs:
-      - get
+ curl -k 'https://localhost:6443/readyz?verbose&exclude=etcd'
+[+]ping ok
+[+]log ok
+[+]etcd excluded: ok
+[+]informer-sync ok
+[+]poststarthook/start-kube-apiserver-admission-initializer ok
+[+]poststarthook/generic-apiserver-start-informers ok
+[+]poststarthook/priority-and-fairness-config-consumer ok
+[+]poststarthook/priority-and-fairness-filter ok
+[+]poststarthook/start-apiextensions-informers ok
+[+]poststarthook/start-apiextensions-controllers ok
+[+]poststarthook/crd-informer-synced ok
+[+]poststarthook/bootstrap-controller ok
+[+]poststarthook/rbac/bootstrap-roles ok
+[+]poststarthook/scheduling/bootstrap-system-priority-classes ok
+[+]poststarthook/priority-and-fairness-config-producer ok
+[+]poststarthook/start-cluster-authentication-info-controller ok
+[+]poststarthook/start-kube-aggregator-informers ok
+[+]poststarthook/apiservice-registration-controller ok
+[+]poststarthook/apiservice-status-available-controller ok
+[+]poststarthook/kube-apiserver-autoregistration ok
+[+]autoregister-completion ok
+[+]poststarthook/apiservice-openapi-controller ok
+[+]shutdown ok
+readyz check passed
 
 Prometheus
 - https://devopscube.com/setup-prometheus-monitoring-on-kubernetes/
