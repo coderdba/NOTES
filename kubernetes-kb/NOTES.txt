@@ -37,6 +37,12 @@ And, a something something ...
 - CALICO STUFF
 TBD research
 
+---------------------------
+SETUP METRICS COLLECTION
+---------------------------
+https://www.datadoghq.com/blog/how-to-collect-and-graph-kubernetes-metrics/
+https://devopscube.com/setup-prometheus-monitoring-on-kubernetes/
+
 ==============
 BOOT SEQUENCE
 ==============
@@ -160,3 +166,80 @@ Note: All containers in a single pod share the port space. If container A uses p
 you cannot have container B inside the same pod that uses port 80. Only containers that are on different pods can use the same port number.
 - Official doc - says Calico is needed - https://kubernetes.io/docs/concepts/cluster-administration/networking/#kubernetes-model
 - https://blog.neuvector.com/article/advanced-kubernetes-networking
+
+---------
+Pod
+DaemonSet
+ReplicaSet
+Deployment
+Horizontal Pod Autoscaler
+Endpoints
+
+Kubernetes metrics, health and other endpoints
+
+---------
+Pod
+- Can have multiple containers
+- Each container can have resource limits
+- Containers in a pod see their host as localhost and pod's name - and their ports should be therefore unique within the pod
+- 'Privileged' pods - run on host directly and can be used to do administration of hosts
+- Pod resource limits: 
+-- https://kubernetes.io/docs/tasks/configure-pod-container/assign-memory-resource/
+-- https://kubernetes.io/docs/tasks/configure-pod-container/assign-cpu-resource/
+-- Args tell the container to use 2 cpus duing startup
+    resources:
+      limits:
+        memory: "200Mi"
+        cpu: "1"
+      requests:
+        memory: "100Mi"
+        cpu: "0.5"
+      args:
+        - -cpus
+        - "2"
+        
+Kubernetes Metrics
+- https://v1-18.docs.kubernetes.io/docs/concepts/cluster-administration/monitoring/
+- https://kubernetes.io/docs/concepts/cluster-administration/system-metrics/
+- Prometheus Server or some other metrics scraper to periodically gather these metrics and make them available in some kind of time series database.
+- Kubelet also exposes metrics in /metrics/cadvisor, /metrics/resource and /metrics/probes endpoints. Those metrics do not have same lifecycle.
+
+- curl --cacert ./ca.pem https://ksn1:6443/healthz
+ok
+
+- curl --cacert ./ca.pem https://ksn1:6443/metrics
+{
+  "kind": "Status",
+  "apiVersion": "v1",
+  "metadata": {
+    
+  },
+  "status": "Failure",
+  "message": "forbidden: User \"system:anonymous\" cannot get path \"/metrics\"",
+  "reason": "Forbidden",
+  "details": {
+    
+  },
+  "code": 403
+}
+
+- If your cluster uses RBAC, reading metrics requires authorization via a user, group or ServiceAccount with a ClusterRole that allows accessing /metrics. For example:
+-- also see for using serviceaccount, cluster role and cluster role binding here: https://devopscube.com/setup-prometheus-monitoring-on-kubernetes/
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus
+rules:
+  - nonResourceURLs:
+      - "/metrics"
+    verbs:
+      - get
+
+Prometheus
+- https://devopscube.com/setup-prometheus-monitoring-on-kubernetes/
+- Prometheus
+- Federated prometheus to gather from edge Prometheus
+- PushGateway - for use cases where Prometheus cannot Scrape the metrics. One such example is collecting custom metrics from short-lived kubernetes jobs & Cronjobs
+- NodeExporter - to collect node metrics
+- BlackBoxExporter - to collect remote endpoints metrics (like ping, /health and such)
+- Create a namespace monitoring - and to its 'default' service-account give a cluster-role-binding to a cluster-role that can scrape metrics
