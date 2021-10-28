@@ -3,6 +3,37 @@ CLUSTER WITH ONE MACHINE ITSELF
 =================================================
 
 https://zoltanaltfatter.com/2018/12/06/running-multi-node-elasticsearch-cluster-locally/
+also, https://www.elastic.co/guide/en/elasticsearch/reference/current/zip-windows.html - for command
 https://discuss.elastic.co/t/can-i-run-multiple-elasticsearch-nodes-on-the-same-machine/67
 
+split-brain and master quorum: https://opster.com/elasticsearch-glossary/elasticsearch-split-brain/
 
+====================
+STEPS
+====================
+
+Modify config/elasticsearch.yml adding the following lines: (for 3 nodes)
+node.max_local_storage_nodes: 3
+discovery.zen.minimum_master_nodes: 2
+
+Start elastic three times: (this is to start them in foreground)
+elasticsearch.bat -Ecluster.name=my_cluster -Enode.name=node_1
+elasticsearch.bat -Ecluster.name=my_cluster -Enode.name=node_2
+elasticsearch.bat -Ecluster.name=my_cluster -Enode.name=node_3
+
+Verify:
+- three nodes have three different ports
+- to access via one port - use a load balancer to cover all three urls
+http://localhost:9200 
+http://localhost:9201
+http://localhost:9202
+
+Verify:
+http://localhost:9202/_cat/nodes/?v
+ip        heap.percent ram.percent cpu load_1m load_5m load_15m node.role   master name
+127.0.0.1           10          75   7                          cdfhilmrstw *      node_1
+127.0.0.1            4          75   4                          cdfhilmrstw -      node_3
+127.0.0.1           12          75   5                          cdfhilmrstw -      node_2
+
+NOTES:
+Node1 will be the master node
