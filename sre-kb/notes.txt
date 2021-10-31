@@ -338,8 +338,9 @@ Blackbox monitoring
 Synthetic monitoring
 Real-user monitoring
 
-Pushed changes
+Pushed changes (CONFIGURATION CHANGES)
 - recent changes
+- release implementations
 - sql plan changes
 
 Use
@@ -362,4 +363,71 @@ Ranges of thresholds
 PITFALLS
 - means/averages hide spikes and worst-performing P99's and such
 - too much forced noise becomes too time consuming and distraction from many other problems
-- 
+
+----------------------------------
+PRACTICAL ALERTING
+----------------------------------
+https://sre.google/sre-book/practical-alerting/
+
+SYNTHETIC MONITORING
+Borgmon also records "synthetic" variables for each target in order to identify:
+  If the name was resolved to a host and port
+  If the target responded to a collection
+  If the target responded to a health check
+  What time the collection finished
+
+Borgmon rules, consists of simple algebraic expressions that compute time-series from other time-series
+
+Counters
+Guages
+Timers
+
+Practical thresholds
+- Example: alert when the error ratio over 10 minutes exceeds 1% and the total number of errors exceeds 1 per second
+- Example: if failure persists for N minutes/seconds
+
+--------------------------------------------
+EFFECTIVE TROUBLESHOOTING (TBD - read the chapter once again)
+--------------------------------------------
+https://sre.google/sre-book/effective-troubleshooting/
+
+Your first response in a major outage may be to start troubleshooting and try to find a root cause as quickly as possible. 
+- Ignore that instinct!
+
+Instead, your course of action should be:
+- to make the system work as well as it can under the circumstances. 
+- emergency options, such as 
+-- diverting traffic from a broken cluster to others that are still working, 
+-- dropping traffic wholesale to prevent a cascading failure, 
+-- disabling subsystems to lighten the load. 
+-- Stopping the bleeding should be your first priority; 
+-- NOTE: you aren’t helping your users if the system dies while you’re root-causing.
+-- HOWEVER, an emphasis on rapid triage doesn’t preclude taking steps to preserve evidence of what’s going wrong, such as logs, to help with subsequent root-cause analysis.
+
+Making Troubleshooting Easier
+There are many ways to simplify and speed troubleshooting. Perhaps the most fundamental are:
+- Building observability—with both white-box metrics and structured logs—into each component from the ground up
+- Designing systems with well-understood and observable interfaces between components.
+
+Case Study
+App Engine,73 part of Google’s Cloud Platform, is a platform-as-a-service product that allows developers to build services atop Google’s infrastructure. One of our internal customers filed a problem report indicating that they’d recently seen a dramatic increase in latency, CPU usage, and number of running processes needed to serve traffic for their app, a content-management system used to build documentation for developers.74 The customer couldn’t find any recent changes to their code that correlated with the increase in resources, and there hadn’t been an increase in traffic to their app (see Figure 12-3), so they were wondering if a change in the App Engine service was responsible.
+
+Our investigation discovered that latency had indeed increased by nearly an order of magnitude (as shown in Figure 12-4). Simultaneously, the amount of CPU time (Figure 12-5) and number of serving processes (Figure 12-6) had nearly quadrupled. Clearly something was wrong. It was time to start troubleshooting.
+
+Typically a sudden increase in latency and resource usage indicates either an increase in traffic sent to the system or a change in system configuration. However, we could easily rule out both of these possible causes: while a spike in traffic to the app around 20:45 could explain a brief surge in resource usage, we’d expect traffic to return to baseline fairly soon after request volume normalized. This spike certainly shouldn’t have continued for multiple days, beginning when the app’s developers filed the report and we started looking into the problem. Second, the change in performance happened on Saturday, when neither changes to the app nor the production environment were in flight. The service’s most recent code pushes and configuration pushes had completed days before. Furthermore, if the problem originated with the service, we’d expect to see similar effects on other apps using the same infrastructure. However, no other apps were experiencing similar effects.
+
+We referred the problem report to our counterparts, App Engine’s developers, to investigate whether the customer was encountering any idiosyncrasies in the serving infrastructure. The developers weren’t able to find any oddities, either. However, a developer did notice a correlation between the latency increase and the increase of a specific data storage API call, merge_join, which often indicates suboptimal indexing when reading from the datastore. Adding a composite index on the properties the app uses to select objects from the datastore would speed those requests, and in principle, speed the application as a whole—but we’d need to figure out which properties needed indexing. A quick look at the application’s code didn’t reveal any obvious suspects.
+
+It was time to pull out the heavy machinery in our toolkit: using Dapper [Sig10], we traced the steps individual HTTP requests took—from their receipt by a frontend reverse proxy through to the point where the app’s code returned a response—and looked at the RPCs issued by each server involved in handling that request. Doing so would allow us to see which properties were included in requests to the datastore, then create the appropriate indices.
+
+While investigating, we discovered that requests for static content such as images, which weren’t served from the datastore, were also much slower than expected. Looking at graphs with file-level granularity, we saw their responses had been much faster only a few days before. This implied that the observed correlation between merge_join and the latency increase was spurious and that our suboptimal-indexing theory was fatally flawed.
+
+Examining the unexpectedly slow requests for static content, most of the RPCs sent from the application were to a memcache service, so the requests should have been very fast—on the order of a few milliseconds. These requests did turn out to be very fast, so the problem didn’t seem to originate there. However, between the time the app started working on a request and when it made the first RPCs, there was about a 250 ms period where the app was doing…well, something. Because App Engine runs code provided by users, its SRE team does not profile or inspect app code, so we couldn’t tell what the app was doing in that interval; similarly, Dapper couldn’t help track down what was going on since it can only trace RPC calls, and none were made during that period.
+
+Faced with what was, by this point, quite a mystery, we decided not to solve it…yet. The customer had a public launch scheduled for the following week, and we weren’t sure how soon we’d be able to identify the problem and fix it. Instead, we recommended that the customer increase the resources allocated to their app to the most CPU-rich instance type available. Doing so reduced the app’s latency to acceptable levels, though not as low as we’d prefer. We concluded that the latency mitigation was good enough that the team could conduct their launch successfully, then investigate at leisure.75
+
+At this point, we suspected that the app was a victim of yet another common cause of sudden increases in latency and resource usage: a change in the type of work. We’d seen an increase in writes to the datastore from the app, just before its latency increased, but because this increase wasn’t very large—nor was it sustained—we’d written it off as coincidental. However, this behavior did resemble a common pattern: an instance of the app is initialized by reading objects from the datastore, then storing them in the instance’s memory. By doing so, the instance avoids reading rarely changing configuration from the datastore on each request, and instead checks the in-memory objects. Then, the time it takes to handle requests will often scale with the amount of configuration data.76 We couldn’t prove that this behavior was the root of the problem, but it’s a common antipattern.
+
+The app developers added instrumentation to understand where the app was spending its time. They identified a method that was called on every request, that checked whether a user had whitelisted access to a given path. The method used a caching layer that sought to minimize accesses to both the datastore and the memcache service, by holding whitelist objects in instances’ memory. As one of the app’s developers noted in the investigation, “I don’t know where the fire is yet, but I’m blinded by smoke coming from this whitelist cache.”
+
+Some time later, the root cause was found: due to a long-standing bug in the app’s access control system, whenever one specific path was accessed, a whitelist object would be created and stored in the datastore. In the run-up to launch, an automated security scanner had been testing the app for vulnerabilities, and as a side effect, its scan produced thousands of whitelist objects over the course of half an hour. These superfluous whitelist objects then had to be checked on every request to the app, which led to pathologically slow responses—without causing any RPC calls from the app to other services. Fixing the bug and removing those objects returned the app’s performance to expected levels.
