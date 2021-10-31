@@ -2,6 +2,23 @@ Good ones
 https://victorops.com/site-reliability-engineering/guide-to-sre-and-the-four-golden-signals-of-monitoring/
 https://thenewstack.io/a-site-reliability-engineers-advice-on-what-breaks-our-systems/
 
+Google books
+SRE google's: 
+- SRE Book: https://sre.google/workbook/table-of-contents/
+- SRE Workbook: https://sre.google/workbook/table-of-contents/
+Oreilly etc: https://sre.google/books/
+- https://static.googleusercontent.com/media/sre.google/en//static/pdf/building_secure_and_reliable_systems.pdf
+
+================
+Key things
+================
+
+SLO
+SLI
+Error budget
+Risk - cost vs benefit of improving reliability, 'as much as needed only' - maybe exceed a bit, not by too much (to reduce unnecessary cost and opportunity cost)
+Tech debt
+Reduce operational costs
 
 ================
 Observability
@@ -132,6 +149,33 @@ RISK
 -----------------------------------
 https://sre.google/sre-book/embracing-risk/
 
+AVAILABILITY
+- service availability vs system availability
+- in the case of single unclustered system system availability can be same as service availability
+- however, in distributed clusters with shards, redundancy and load balancing + retries, individual nodes/elements may not result in service being down
+- system availability = uptime / (uptime + downtime)
+- servie availability = successful requests / (successful + failed requests)
+
+COST-BENEFIT
+Improvement from 3 9's to 4 9's: 99.9% to 99.99%
+- improvement = .09% = 0.0009
+- if the system is worth 1 million, this will be 900 dollars
+- if improvement saves more than 900 dollars then it may be worthwhile doing it
+
+COST OF DOING IMPROVEMENT
+- additional equipment, coding and manpower to improve reliability
+- opportunity cost - the same resources could have been used to develop something new that could generate revenue
+
+MANAGING COSTS
+- tiered hardware 
+-- low latency, high availability for online/real-time requests
+-- high throughput, lower availability for offline/batch requests which can wait or take much time
+
+- tiered service
+-- quicker expert response for realtime systems
+-- slower tiered response for low-priority systems
+
+RISK TOLERANCE
 What level of availability is required?
 Do different types of failures have different effects on the service?
 How can we use the service cost to help locate a service on the risk continuum?
@@ -142,3 +186,27 @@ Does this service tie directly to revenue (either our revenue, or our customersâ
 Is this a paid service, or is it free?
 If there are competitors in the marketplace, what level of service do those competitors provide?
 Is this service targeted at consumers, or at enterprises?
+
+TYPES OF FAILURES
+- one big outage vs several small outages/issues 
+-- both may result in same total SLO, but effect may be different
+- issue that results in profile-pics missing - vs - issue that exposes confidential personal info
+-- number of events may be same - but, effects are different
+
+METRICS AND SERVICE EXPECTATIONS
+- a peculiar case could be main-page vs inserted-ad's
+-- main page is more important for user-experience than inserted-ad's
+-- the main page component should take higher precedence with low latecy
+-- inserted-ad's can render a bit later than main content of the page
+
+- in a batch system like orders management
+-- individual steps may not so much affect the final delivery of the order much
+-- but, each step should not be let pile-up as well carelessly - as such pile up may cascade latency and delay at some point
+
+ERROR BUDGET
+- define error budget of uptime, queries failed, requests served etc
+- failures consume the budget 
+- new releases are risky - so dev teams may then reduce releases, increase testing so that error budget is not exceeded
+- when necessary SLOs/error-budgets may be loosened per needs of business (cost vs lost opportunity, client service ...)
+
+
