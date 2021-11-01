@@ -3,8 +3,42 @@ https://stackify.com/what-is-java-garbage-collection/ --> very good
 https://www.oracle.com/webfolder/technetwork/tutorials/obe/java/gc01/index.html
 
 ====================
-HEAP - GENERATIONS
+TUNING
 ====================
+https://www.oracle.com/webfolder/technetwork/tutorials/obe/java/gc01/index.html
+https://www.oracle.com/java/technologies/tuning-garbage-collection-v50-java-virtual-machine.html
+More details: https://docs.oracle.com/javase/9/gctuning/garbage-collector-implementation.htm#JSGCT-GUID-23844E39-7499-400C-A579-032B68E53073
+
+APPLICATION TYPES
+Responsiveness 
+- how quickly an application responds - web page, db query output ...
+
+- Large pause times are NOT acceptable 
+
+Throughput:
+- amount of work by an application in a specific period of time
+- records processed, queries exeuted, batch runs completed ...
+
+- Large pause times are acceptable 
+
+HEAP GENERATIONS
+Younger generation
+- new objects are allocated and aged
+- when aged, 'minor' garbage collection
+- This GC is 'stop the world' event - threads are paused until GC is done
+
+Older generation
+- surviving objects of minor GC move here
+- they are also garbage collected eventually - 'major' GC
+- this GC is also 'stop the world' event - so minimize major GC for high response-time apps
+
+Permanent generation
+- metadata required by the JVM to describe the classes and methods 
+- J2SE library classes
+
+====================================
+HEAP - GENERATIONS AND MANAGEMENT
+====================================
 The heap is divided into three sections:
 
 - Young Generation: Newly created objects start in the Young Generation. The Young Generation is further subdivided into an Eden space, 
@@ -16,6 +50,42 @@ The heap is divided into three sections:
 
 - Permanent Generation: Metadata such as classes and methods are stored in the Permanent Generation. Classes that are no longer 
 in use may be garbage collected from the Permanent Generation.
+
+SETTINGS
+Common Heap Related Switches
+There are many different command line switches that can be used with Java. 
+
+Switch	Description
+-Xms	Sets the initial heap size for when the JVM starts.
+-Xmx	Sets the maximum heap size.
+-Xmn	Sets the size of the Young Generation.
+-XX:PermSize	Sets the starting size of the Permanent Generation.
+-XX:MaxPermSize	Sets the maximum size of the Permanent Generation
+
+GARBAGE COLLECTION METHODS
+
+Serial
+- one thread
+- mark and compact
+- major and minor GC
+- worst calse 2 sec pause
+- good for a few hundred mb heap
+- good for hosts running many jvms - so that making it serial do not overload or step on toes
+
+Parallel
+- uses available multiple CPU cores
+- more CPUs reduce pause times for young generation
+- but can cause long pause times also
+- use for batch programs
+
+CMS
+- concurrent mark and sweep
+- works concurrently with java threads - minimizing pauses
+- good for low-latency apps
+
+G1 - 'garbage first'
+- like parallel
+- works under the hood differently
 
 =========================
 GARBAGE COLLECTOR TYPES
