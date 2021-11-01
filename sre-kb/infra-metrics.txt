@@ -1,0 +1,112 @@
+===================
+ELASTICSEARCH
+===================
+
+https://www.datadoghq.com/blog/elasticsearch-performance-scaling-problems/ 
+	- Cluster yellow, red
+	
+https://blogs.manageengine.com/application-performance-2/appmanager/2018/10/04/key-metrics-elasticsearch-performance-monitoring.html
+	- Cluster health and node availability
+	- Index performance metric --> Indexing time
+	- Search performance metric
+		○ Query latency and request rate
+		○ Filter cache
+			§ While executing a query with a filter, Elasticsearch will find documents matching the filter and build a structure called a bitset using that information. If subsequent query executions have the same filter, then the information stored in the bitset will be reused, making the query execution faster by saving I/O operations and CPU cycles.
+	- Network and thread pool monitoring
+		○  Important thread pools to monitor include: search, index, merge, and bulk. Thread pool issues can be caused by a large number of pending requests or a single slow node as well as a thread pool rejection. A drastic change in memory usage or long garbage collection may indicate a critical situation.
+		
+		
+https://sematext.com/blog/top-10-elasticsearch-metrics-to-watch/
+Summary
+	So there you have it — the top Elasticsearch metrics to monitor:
+	1. Cluster Health – Nodes and Shards
+	2. Search Performance – Request Latency and
+	3. Search Performance – Request Rate
+	4. Indexing Performance – Refresh Times - 1sec interval to insert, index and make it ready to queries
+	5. Indexing Performance – Merge Times
+	6. Node Utilization – Thread Pools
+	7. Caching – Field Data, Node Query and Shard Query Cache
+	8. Node Health – Memory Usage
+	9. Node Health – Disk I/O
+	10. Node Health – CPU
+	11. JVM Health – Heap Usage and Garbage Collection
+	12. JVM health – JVM Pool Size
+
+	- Cluster Health: Shards and Node Availability
+		○ Dropping nodes and relocation of shards (and also maybe unavailable shards/replicas)
+	- Search Query Performance Metrics: Request Rate and Latency
+		Please refer to the table below for metrics which are available from the index endpoint which is found at /index_name/_stats where index_name is the name of the index. Performance specific metrics have been highlighted in light blue.
+		
+    Important Metrics for Request Performance	
+		Query load	- Total number of queries currently in progress, being processed by the cluster.
+		Number of fetches currently in progress -	Count of fetches in progress within the cluster.
+		Total number of queries	- Aggregated number of all queries processed by the cluster
+		Total time spent on queries	- Total time consumed by all queries in milliseconds.
+		Total number of fetches	- Aggregated number of all fetches processed by the cluster.
+		Total time spent on fetches	- Total time consumed by all fetches in milliseconds.
+		
+	- Index operations
+		○ Index Refresh time
+		○ Index Merge time
+	- Disk read time
+	- Disk write time
+
+===================
+CASSANDRA
+===================
+Example cluster architecture:
+Cluster
+	- Simple cluster - all nodes part of cluster
+	- No master, ingest and such
+	- Clustered across data center
+
+Replication Factor
+	- 3
+	- 3 copies total across 3 nodes
+	- Across data center
+	- Factor set at keyspace level (keyspace is like schema)
+
+Table, Keyspace
+	- Tables are called tables (not indexes like in Elastic)
+	- Keyspace - like schema
+	- Replication factor set at keyspace level
+
+Sharding
+	- No sharding
+
+Consistency level
+	- Set to 2 (means, two replicas should be available for query to succeed)
+	- If set to 2 local quorum
+	- If set to 1, it will read from 1 node only
+	- Set to 2 - needs two nodes to be available for query to succeed - if only 1 node, the query fails
+
+Metric collection
+	- Jolokia extension for Telegraf
+	- Gathers sql execution time stats also
+
+Thresholds
+	- 10 sec for read
+10 sec for write
+
+==========================
+PG-BOUNCER
+==========================
+App-to-DB connection establish time
+App-to-PGBouncer connection establish time
+
+==========================
+MONGO
+==========================
+
+To collect if connections are successful or rejected:
+
+	commands = ["/etc/telegraf/sli.sh"]
+	data_format = "influx"
+	
+	-- SLI script /etc/telegraf/sli.sh
+	#!/bin/sh
+	hostname=$(hostname -s)
+	successful=$(docker logs --since 10s tgtmngo | grep -i "connection accepted" -o | wc -l)
+	failed=$(docker logs --since 10s tgtmngo | grep -i "failed to connect" -o | wc -l)
+echo "sli_basic_draft_v0,host=$hostname successful=$successful,failed=$failed"
+
