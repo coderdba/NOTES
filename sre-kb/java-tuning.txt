@@ -1,0 +1,63 @@
+https://stackify.com/what-is-java-garbage-collection/ --> very good
+
+https://www.oracle.com/webfolder/technetwork/tutorials/obe/java/gc01/index.html
+
+====================
+HEAP - GENERATIONS
+====================
+The heap is divided into three sections:
+
+- Young Generation: Newly created objects start in the Young Generation. The Young Generation is further subdivided into an Eden space, 
+  where all new objects start, and two Survivor spaces, where objects are moved from Eden after surviving one garbage collection cycle. 
+  When objects are garbage collected from the Young Generation, it is a minor garbage collection event.
+
+- Old Generation: Objects that are long-lived are eventually moved from the Young Generation to the Old Generation. 
+  When objects are garbage collected from the Old Generation,it is a major garbage collection event.
+
+- Permanent Generation: Metadata such as classes and methods are stored in the Permanent Generation. Classes that are no longer 
+in use may be garbage collected from the Permanent Generation.
+
+=========================
+GARBAGE COLLECTOR TYPES
+=========================
+Set using JVM parameters.
+
+Oracle JVM HotSpot has four garbage collectors:
+
+- Serial: All garbage collection events are conducted serially in one thread. Compaction is executed after each garbage collection.
+
+- Parallel: Multiple threads are used for minor garbage collection. A single thread is used for major garbage collection and Old Generation compaction. 
+Alternatively, the Parallel Old variant uses multiple threads for major garbage collection and Old Generation compaction.
+
+- CMS (Concurrent Mark Sweep): Multiple threads are used for minor garbage collection using the same algorithm as Parallel. 
+  Major garbage collection is multi-threaded, like Parallel Old, but CMS runs concurrently alongside application processes 
+  to minimize “stop the world” events (i.e. when the garbage collector running stops the application).
+  No compaction is performed.
+
+- G1 (Garbage First): The newest garbage collector is intended as a replacement for CMS. It is parallel and concurrent like CMS,
+but it works quite differently under the hood compared to the older garbage collectors.
+
+NOTES:
+- Parallel - can cause 'stop the world' events
+- We may clean up in the code itself by releasing objects/variables
+-- however, JVMs take care of GCs - but cannot know when they do
+
+==================
+PROFILER
+==================
+Try Stackify’s free code profiler, Prefix, to write better code on your workstation. Prefix works with .NET, Java, PHP, Node.js, Ruby, and Python
+
+==================
+JVM METRICS/TUNING
+==================
+	• JVM Metrics - plot them - https://dzone.com/articles/understanding-java-buffer-pool
+	• JVM GC tuning: https://docs.oracle.com/javase/9/gctuning/garbage-first-garbage-collector.htm#JSGCT-GUID-ED3AB6D3-FD9B-4447-9EDF-983ED2F7A573
+	
+	• VM mem/cpu metrics - plot them
+	• JVM bootstrap settings - initial reserve memory etc - https://sematext.com/blog/jvm-performance-tuning/
+  	§ Current JVM options: export JAVA_OPTS="-Djava.net.preferIPv4Stack=true -Duser.timezone=America/Chicago -Xms5120m -Xmx5120m -XX:+UseG1GC -XX:+UseStringDeduplication"
+		§ Min and max heap size set same already
+		§ Add: You may also want to pre-touch all the pages if you are using larger heap by setting the -XX:+AlwaysPreTouch flag to the startup options.
+		§ Add: -XX:+UseG1GC is only for "Old generation" heap space
+		§ Should we use -XX:+UseSerialGC or -XX:+UseParallelGC for "Young Generation" 
+CPU usage seems to have steadily increased
