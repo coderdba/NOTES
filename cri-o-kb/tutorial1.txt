@@ -95,3 +95,184 @@ RuntimeName:  cri-o
 RuntimeVersion:  1.22.1
 RuntimeApiVersion:  v1alpha2
 
+==================================
+CREATE A POD
+==================================
+
+------------------------------
+CREATE THE POD (to put containers in it in the next steps)
+------------------------------
+CREATE MANIFEST FOR A POD
+Copy a pod-spec from file: https://github.com/cri-o/cri-o/blob/main/test/testdata/sandbox_config.json
+
+Modify the CPU and memory settings per your machine's capacities.
+- created a file sandbox_config_my.json as follows:
+
+{
+	"metadata": {
+		"name": "podsandbox1",
+		"uid": "redhat-test-crio",
+		"namespace": "redhat.test.crio",
+		"attempt": 1
+	},
+	"hostname": "crictl_host",
+	"log_directory": "",
+	"dns_config": {
+		"searches": [
+			"8.8.8.8"
+		]
+	},
+	"port_mappings": [],
+	"resources": {
+		"cpu": {
+			"limits": 3,
+			"requests": 1
+		},
+		"memory": {
+			"limits": 50000000,
+			"requests": 1000000
+		}
+	},
+	"labels": {
+		"group": "test"
+	},
+	"annotations": {
+		"owner": "hmeng",
+		"security.alpha.kubernetes.io/seccomp/pod": "unconfined",
+		"com.example.test": "sandbox annotation"
+	},
+	"linux": {
+		"cgroup_parent": "pod_123-456.slice",
+		"security_context": {
+			"namespace_options": {
+				"network": 0,
+				"pid": 1,
+				"ipc": 0
+			},
+			"selinux_options": {
+				"user": "system_u",
+				"role": "system_r",
+				"type": "svirt_lxc_net_t",
+				"level": "s0:c4,c5"
+			}
+		}
+	}
+}
+
+
+CREATE THE POD
+# crictl runp ./sandbox_config_my.json
+ff6b90c35f7584a5571585912bce962f35608857f5d80deffa82af65c9522d02
+
+EXPORT POD ID FOR CONVENIENCE
+export POD_ID=ff6b90c35f7584a5571585912bce962f35608857f5d80deffa82af65c9522d02
+
+GET POD STATUS/DETAILS
+# crictl inspectp --output table ff6b90c35f7584a5571585912bce962f35608857f5d80deffa82af65c9522d02
+
+ID: ff6b90c35f7584a5571585912bce962f35608857f5d80deffa82af65c9522d02
+Name: podsandbox1
+UID: redhat-test-crio
+Namespace: redhat.test.crio
+Attempt: 1
+Status: SANDBOX_READY
+Created: 2021-12-02 20:40:51.875970108 +0530 IST
+IP Addresses: 10.85.0.2
+Additional IP: 1100:200::2
+Labels:
+        group -> test
+        io.kubernetes.container.name -> POD
+Annotations:
+        com.example.test -> sandbox annotation
+        owner -> hmeng
+        security.alpha.kubernetes.io/seccomp/pod -> unconfined
+...
+...
+...
+
+---------------------------------
+ADD REDIS CONTAINER
+---------------------------------
+
+CREATE THE REDIS CONTAINER MANIFEST
+
+Get the manifest file: https://github.com/cri-o/cri-o/blob/main/test/testdata/container_redis.json
+
+{
+	"metadata": {
+		"name": "podsandbox1-redis"
+	},
+	"image": {
+		"image": "quay.io/crio/redis:alpine"
+	},
+	"args": [
+                "docker-entrypoint.sh",
+                "redis-server"
+	],
+	"working_dir": "/data",
+	"envs": [
+		{
+			"key": "PATH",
+			"value": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+		},
+		{
+			"key": "TERM",
+			"value": "xterm"
+		},
+		{
+			"key": "REDIS_VERSION",
+			"value": "3.2.3"
+		},
+		{
+			"key": "REDIS_DOWNLOAD_URL",
+			"value": "http://download.redis.io/releases/redis-3.2.3.tar.gz"
+		},
+		{
+			"key": "REDIS_DOWNLOAD_SHA1",
+			"value": "92d6d93ef2efc91e595c8bf578bf72baff397507"
+		}
+	],
+	"labels": {
+		"tier": "backend"
+	},
+	"annotations": {
+		"pod": "podsandbox1"
+	},
+	"log_path": "",
+	"stdin": false,
+	"stdin_once": false,
+	"tty": false,
+	"linux": {
+		"resources": {
+			"memory_limit_in_bytes": 209715200,
+			"cpu_period": 10000,
+			"cpu_quota": 20000,
+			"cpu_shares": 512,
+			"oom_score_adj": 30,
+			"cpuset_cpus": "0",
+			"cpuset_mems": "0"
+		},
+		"security_context": {
+			"namespace_options": {
+				"pid": 1
+			},
+			"readonly_rootfs": false,
+			"capabilities": {
+				"add_capabilities": [
+					"sys_admin"
+				]
+			}
+		}
+	}
+}
+
+CREATE THE CONTAINER INSIDE THE POD
+
+# export POD_ID=ff6b90c35f7584a5571585912bce962f35608857f5d80deffa82af65c9522d02
+# export CONTAINER_ID=$(crictl create $POD_ID ./container_redis.json ./sandbox_config_my.json)
+FATA[0000] creating container: rpc error: code = Unknown desc = image not known 
+
+# echo $CONTAINER_ID
+
+
+
