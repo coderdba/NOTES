@@ -167,6 +167,11 @@ ff6b90c35f7584a5571585912bce962f35608857f5d80deffa82af65c9522d02
 EXPORT POD ID FOR CONVENIENCE
 export POD_ID=ff6b90c35f7584a5571585912bce962f35608857f5d80deffa82af65c9522d02
 
+LIST THE PODS
+# crictl pods
+POD ID              CREATED             STATE               NAME                NAMESPACE           ATTEMPT             RUNTIME
+ff6b90c35f758       22 minutes ago      Ready               podsandbox1         redhat.test.crio    1                   (default)
+
 GET POD STATUS/DETAILS
 # crictl inspectp --output table ff6b90c35f7584a5571585912bce962f35608857f5d80deffa82af65c9522d02
 
@@ -266,6 +271,15 @@ Get the manifest file: https://github.com/cri-o/cri-o/blob/main/test/testdata/co
 	}
 }
 
+PULL THE REDIS IMAGE
+# crictl pull quay.io/crio/redis:alpine
+
+# crictl images
+IMAGE                TAG                 IMAGE ID            SIZE
+k8s.gcr.io/pause     3.5                 ed210e3e4a5ba       690kB
+quay.io/crio/redis   alpine              98bd7cfc43b8e       28.1MB
+
+
 CREATE THE CONTAINER INSIDE THE POD
 
 # export POD_ID=ff6b90c35f7584a5571585912bce962f35608857f5d80deffa82af65c9522d02
@@ -273,6 +287,85 @@ CREATE THE CONTAINER INSIDE THE POD
 FATA[0000] creating container: rpc error: code = Unknown desc = image not known 
 
 # echo $CONTAINER_ID
+bd479fa3548ca3cdfd26e1c3c54408220a3ce68941122e302e52d63f7ff93f38
 
+START THE CONTAINER
+# crictl start $CONTAINER_ID
+bd479fa3548ca3cdfd26e1c3c54408220a3ce68941122e302e52d63f7ff93f38
 
+LIST THE CONTAINER
+# crictl ps -a
+CONTAINER           IMAGE                       CREATED             STATE               NAME                ATTEMPT             POD ID
+bd479fa3548ca       quay.io/crio/redis:alpine   3 minutes ago       Running             podsandbox1-redis   0                   ff6b90c35f758
 
+INSPECT THE CONTAINER
+# crictl inspect $CONTAINER_ID
+
+{
+  "status": {
+    "id": "bd479fa3548ca3cdfd26e1c3c54408220a3ce68941122e302e52d63f7ff93f38",
+    "metadata": {
+      "attempt": 0,
+      "name": "podsandbox1-redis"
+    },
+    "state": "CONTAINER_RUNNING",
+    "createdAt": "2021-12-02T20:55:15.828596319+05:30",
+    "startedAt": "2021-12-02T20:56:56.748863502+05:30",
+    "finishedAt": "0001-01-01T00:00:00Z",
+    "exitCode": 0,
+    "image": {
+      "annotations": {},
+      "image": "quay.io/crio/redis:alpine"
+    },
+    "imageRef": "quay.io/crio/redis@sha256:1780b5a5496189974b94eb2595d86731d7a0820e4beb8ea770974298a943ed55",
+    "reason": "",
+    "message": "",
+    "labels": {
+      "tier": "backend"
+    },
+    "annotations": {
+      "pod": "podsandbox1"
+    },
+    "mounts": [],
+    "logPath": "/var/log/crio/pods/ff6b90c35f7584a5571585912bce962f35608857f5d80deffa82af65c9522d02/bd479fa3548ca3cdfd26e1c3c54408220a3ce68941122e302e52d63f7ff93f38.log"
+  },
+  "info": {
+    "sandboxID": "ff6b90c35f7584a5571585912bce962f35608857f5d80deffa82af65c9522d02",
+    "pid": 27283,
+    "runtimeSpec": {
+      "ociVersion": "1.0.2-dev",
+...
+...
+...
+
+GET THE POD IP
+# POD_IP=$(crictl inspectp --output go-template --template '{{.status.network.ip}}' $POD_ID)
+# echo $POD_IP
+10.85.0.2
+
+VERIFY
+Verify the Redis server is responding to MONITOR commands:
+echo MONITOR | ncat $POD_IP 6379
+
+Output:
++OK
+
+Viewing the Redis logs
+The Redis logs are logged to the stderr of the crio service, which can be viewed using journalctl:
+
+sudo journalctl -u crio --no-pager
+
+STOP THE POD AND REMOVE IT
+Stop and delete the Redis container
+sudo crictl stop $CONTAINER_ID
+sudo crictl rm $CONTAINER_ID
+
+Verify the container is gone via:
+sudo crictl ps
+
+Stop and delete the Pod
+sudo crictl stopp $POD_ID
+sudo crictl rmp $POD_ID
+
+Verify the pod is gone via:
+sudo crictl pods
