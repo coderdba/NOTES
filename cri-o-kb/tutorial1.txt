@@ -22,23 +22,56 @@ curl -L -o /etc/yum.repos.d/devel:kubic:libcontainers:stable.repo https://downlo
 curl -L -o /etc/yum.repos.d/devel:kubic:libcontainers:stable:cri-o:1.22.1.repo https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/1.22:/1.22.1/CentOS_7/devel:kubic:libcontainers:stable:cri-o:1.22:1.22.1.repo
 yum install cri-o
 
+VERIFY
+# ps -ef |grep crio
+avahi      598     1  0 19:17 ?        00:00:00 avahi-daemon: running [crio1.local]
+root      4135  2770  0 19:35 pts/0    00:00:00 grep --color=auto crio
+
 ==============================================
 INSTALL GOLANG
 ==============================================
+https://linuxize.com/post/how-to-install-go-on-centos-7/
+
+INSTALL
+wget https://go.dev/dl/go1.17.3.linux-amd64.tar.gz
+sha256sum go1.17.3.linux-amd64.tar.gz
+tar -C /usr/local -xzf go1.17.3.linux-amd64.tar.gz
+vi ~/.bash_profile
+export PATH=$PATH:/usr/local/go/bin
+source ~/.bash_profile
+
+VERIFY
+# go version
+go version go1.17.3 linux/amd64
 
 ==============================================
 PODS AND CONTAINERS USING CRICTL COMMAND
 ==============================================
-
-https://github.com/cri-o/cri-o/blob/main/tutorials/crictl.md
-
 ------------------------------
 INSTALL CRICTL
 ------------------------------
+https://kubernetes.io/docs/tasks/debug-application-cluster/crictl/
+--> https://github.com/kubernetes-sigs/cri-tools/releases
+
+wget https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.22.0/crictl-v1.22.0-linux-amd64.tar.gz
+tar -C /usr/local/bin -xzf crictl-v1.22.0-linux-amd64.tar.gz
+chown root:root /usr/local/bin/crictl
+chmod 755 /usr/local/bin/crictl
+
+------------------------------------
+INSTALL CRICTL - THIS DID NOT WORK
+------------------------------------
+https://github.com/cri-o/cri-o/blob/main/tutorials/crictl.md
 INSTALL
 go get github.com/kubernetes-sigs/cri-tools/cmd/crictl
 
+------------------------------------
 VERIFY
+------------------------------------
+
+-- Not working yet - the socket file is not there
+
+which crictl
 sudo crictl --runtime-endpoint unix:///var/run/crio/crio.sock version
 
 Version:  0.1.0
