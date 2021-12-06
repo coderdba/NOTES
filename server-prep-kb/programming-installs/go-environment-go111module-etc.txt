@@ -1,0 +1,89 @@
+===============================
+GOLANG ENVIRONMENT VARIABLES
+===============================
+
+https://stackoverflow.com/questions/30295146/how-can-i-install-a-package-with-go-get
+
+GOARCH="amd64"
+GOBIN=""
+GOCHAR="6"
+GOEXE=""
+GOHOSTARCH="amd64"
+GOHOSTOS="linux"
+GOOS="linux"
+GOPATH="/home/elpsstu/gocode"
+GORACE=""
+GOROOT="/home/pravin/go"
+GOTOOLDIR="/home/pravin/go/pkg/tool/linux_amd64"
+CC="gcc"
+GOGCCFLAGS="-fPIC -m64 -pthread -fmessage-length=0"
+CXX="g++"
+CGO_ENABLED="1"
+
+=====================================
+GOPATH
+=====================================
+Create a folder to contain pulled packages - and own project source code under 'gopath/src' folder if using GO111MODULE=off
+Set environment GOPATH pointing to that folder
+Optionally create three subdirectories: src, pkg, bin
+'go install' command creates executable in 'bin'
+For pkg and src see the next sections
+
+=====================================
+GOPATH and GO111MODULE BEHAVIOR 
+=====================================
+https://maelvls.dev/go111module-everywhere/
+https://stackoverflow.com/questions/66284870/go-get-not-downloading-to-src-folder
+https://insujang.github.io/2020-04-04/go-modules/
+
+GO111MODULE=on
+- Lets your project be anywhere - DOES NOT HAVE TO BE UNDER <GOPATH>/src
+- go get command pulls the code into <GOPATH>/pkg/mod
+- Needs a <project>.mod file be created 
+-- using command 'go mod init' (if the code still is under <GOPATH>/src) - or - 'go mod init project-name' if code is not under <GOPATH>/src
+-- after that, run 'go mod tidy' to pull/update package-code that are present in the 'import' commands in the project code
+
+GO111MODULE=off
+- Requires your project folder to be under <GOPATH>/src
+- go get command pulls the code into <GOPATH>/src
+- Does not require a module to be initiated
+- run 'go get package-name' for every package to pull/update package-code that are present in the 'import' commands in the project code
+
+------------------------------------------------------
+DEPENDENCY MANAGEMENT (with GO111MODULE=on BEHAVIOR)
+------------------------------------------------------
+To pull and code your own projects that are pushed to github etc, it can be tricky 
+- particularly when one of your projects needs another one that is in git, which itself is actively being coded
+
+In such cases, create source code in some place for both projects - say project1, project2 - with project1 depends on project2
+then, push latest to git for project2
+then, to get project2 code as dependency for project1 - pull latest project2 git (or other version of project2) using go-get or go-tidy commands
+      
+---------------------------
+In Go 1.17 onwards
+---------------------------
+https://maelvls.dev/go111module-everywhere
+GO111MODULE=on is the default behavior
+
+------------------------------------------------------
+EXAMPLE with GO 1.17 WITH GO111MODULE=on BEHAVIOR
+------------------------------------------------------
+set GOPATH to some folder where you want to keep the pulled packages
+do not set, or unset GO111MODULE (effectively, make GO111MODULE=on by default)
+
+- PROJECT DIRECTORY OUTSIDE OF <GOPATH>
+Go to a directory outside of gopath and create a project folder
+- then, run 'go mod init a-project-name' (project name could be same as the project-folder name or different)
+- it creates a go.mod file
+- write your code
+- run 'go mod tidy' - to pull all code for imports (gets pulled to pkg directory)
+- run go build or go install or go run (this will use the pulled packages and the project code)
+
+- PROJECT DIRECTORY INSIDE OF <GOPATH>/src
+Go to a directory inside of gopath/src and create a project folder
+- then, run 'go mod init' (initializes with same name as the project-folder name) - OR -
+  'go mod init a-project-name' (project name could be same as the project-folder name or different)
+- it creates a go.mod file
+- write your code
+- run 'go mod tidy' - to pull all code for imports (gets pulled to pkg directory)
+- run go build or go install or go run (this will use the pulled packages and the project code)
