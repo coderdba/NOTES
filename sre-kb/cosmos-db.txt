@@ -1,1 +1,52 @@
+========================================
+COSMOS DATABASE
+========================================
 https://docs.microsoft.com/en-us/azure/cosmos-db/
+https://en.wikipedia.org/wiki/Cosmos_DB
+
+
+========================================
+DESIGN
+========================================
+NoSQL database
+Containers - table, Item - row
+Partitions - a container can be partitioned on a partition key
+
+Multi-region
+- container level
+- whole data in container gets replicated across regions
+- single master / multi master
+-- single master - single "write region" - one region only for write, all others are read-only
+-- multi master - multiple write-regions - conflicting writes can be resolved by either the default Last Write Wins policy, or a custom JavaScript function.
+
+Change feed
+- clients can subscribe to in order to get notified of new items being added or updated in the container
+- item deletions are currently not exposed by the change feed
+- changes are persisted by Cosmos DB, which makes it possible to request changes from any point in time since the creation of the container.
+
+Time to Live 
+- for item to be deleted after last update
+
+Stored Procedure - executed on a partition - so, must supply partition key when invoking
+Triggers
+User Defined Functions (UDFs)
+
+========================================
+PERFORMANCE
+========================================
+TUNABLE THROUGHPUT
+- Throughput at Performance (10ms)
+- RU - Request Unit - The cost to read a 1 KB item is 1 Request Unit (or 1 RU)
+- Cost per RU - about 0.008 per hour - The minimum billing is per hour
+- Cost is for one region - for additional regions multiply the cost by number of regions
+- Cost example: 1,000,000 records of 1k each in 5s requires 1,000,000 RUs At $0.008/hour, which would equal $800. 
+-- Two regions double the cost
+
+RU CONSIDERATIONS
+- Select by 'id' operations consume lower number of RUs compared to Delete, Update, and Insert operations for the same document. 
+- Large queries (e.g. aggregations like count) and stored procedure executions can consume hundreds to thousands of RUs depending on the complexity of the operations needed.
+
+COSMOS DB PROFILER
+The Cosmos DB Profiler cloud cost optimization tool detects inefficient data queries in the interactions between an application and its Cosmos DB database. 
+The profiler alerts users to wasted performance and excessive cloud expenditures. 
+It also recommends how to resolve them by isolating and analyzing the code and directing its users to the exact location.
