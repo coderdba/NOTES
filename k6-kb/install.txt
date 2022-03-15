@@ -84,3 +84,39 @@ default ✓ [ 100% ] 1 VUs  00m03.5s/10m0s  1/1 iters, 1 per VUz
      iterations.....................: 1     0.286221/s
      vus............................: 1     min=1      max=1
      vus_max........................: 1     min=1      max=1
+
+------------------------
+SCRIPT1
+------------------------
+import http from 'k6/http';
+import { sleep } from 'k6';
+
+export default function () {
+  http.get('https://test.k6.io');
+  sleep(1);
+}
+
+- RUN
+docker run --rm -i grafana/k6 run - <script1.js
+
+rem add more VUs - virtual users
+docker run --rm -i grafana/k6 run --vus 10 --duration 30s - <script1.js
+
+------------------------
+SCRIPT2
+------------------------
+import http from 'k6/http';
+import { sleep } from 'k6';
+export const options = {
+  vus: 10,
+  duration: '30s',
+};
+export default function () {
+  http.get('http://test.k6.io');
+  sleep(1);
+}
+
+- RUN
+docker run --rm -i grafana/k6 run - <script2.js
+
+
