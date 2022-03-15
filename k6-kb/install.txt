@@ -1,0 +1,84 @@
+==========================================
+K6 INSTALLATION AND METRICS CONFIGURATION
+==========================================
+https://k6.io/open-source/
+https://k6.io/docs/getting-started/installation/
+https://k6.io/docs/getting-started/running-k6/
+
+=======
+DOCKER
+=======
+
+-------------
+PULL IMAGE
+-------------
+docker pull grafana/k6
+
+--------------------------
+CREATE script.js
+--------------------------
+
+import http from 'k6/http';
+import { sleep } from 'k6';
+
+export default function () {
+  http.get('https://test.k6.io');
+  sleep(1);
+}
+
+-------------
+RUN TEST
+-------------
+
+# When using the `k6` docker image, you can't just give the script name since
+# the script file will not be available to the container as it runs. Instead
+# you must tell k6 to read `stdin` by passing the file name as `-`. Then you
+# pipe the actual file into the container with `<` or equivalent. This will
+# cause the file to be redirected into the container and be read by k6.
+
+docker run --rm -i grafana/k6 run - <script.js
+
+>docker run --rm -i grafana/k6 run -  0<script1.js
+
+          /\      |‾‾| /‾‾/   /‾‾/
+     /\  /  \     |  |/  /   /  /
+    /  \/    \    |     (   /   ‾‾\
+   /          \   |  |\  \ |  (‾)  |
+  / __________ \  |__| \__\ \_____/ .io
+
+  execution: local
+     script: -
+     output: -
+
+  scenarios: (100.00%) 1 scenario, 1 max VUs, 10m30s max duration (incl. graceful stop):
+           * default: 1 iterations for each of 1 VUs (maxDuration: 10m0s, gracefulStop: 30s)
+
+
+running (00m01.0s), 1/1 VUs, 0 complete and 0 interrupted iterations
+default   [   0% ] 1 VUs  00m01.0s/10m0s  0/1 iters, 1 per VU
+
+running (00m02.0s), 1/1 VUs, 0 complete and 0 interrupted iterations
+default   [   0% ] 1 VUs  00m02.0s/10m0s  0/1 iters, 1 per VU
+
+running (00m03.0s), 1/1 VUs, 0 complete and 0 interrupted iterations
+default   [   0% ] 1 VUs  00m03.0s/10m0s  0/1 iters, 1 per VU
+
+running (00m03.5s), 0/1 VUs, 1 complete and 0 interrupted iterations
+default ✓ [ 100% ] 1 VUs  00m03.5s/10m0s  1/1 iters, 1 per VUz
+
+     data_received..................: 17 kB 4.8 kB/s
+     data_sent......................: 511 B 146 B/s
+     http_req_blocked...............: avg=2.26s    min=2.26s    med=2.26s    max=2.26s    p(90)=2.26s    p(95)=2.26s
+     http_req_connecting............: avg=263.27ms min=263.27ms med=263.27ms max=263.27ms p(90)=263.27ms p(95)=263.27ms
+     http_req_duration..............: avg=225.08ms min=225.08ms med=225.08ms max=225.08ms p(90)=225.08ms p(95)=225.08ms
+       { expected_response:true }...: avg=225.08ms min=225.08ms med=225.08ms max=225.08ms p(90)=225.08ms p(95)=225.08ms
+     http_req_failed................: 0.00% ✓ 0        ✗ 1
+     http_req_receiving.............: avg=1.19ms   min=1.19ms   med=1.19ms   max=1.19ms   p(90)=1.19ms   p(95)=1.19ms
+     http_req_sending...............: avg=94.84µs  min=94.84µs  med=94.84µs  max=94.84µs  p(90)=94.84µs  p(95)=94.84µs
+     http_req_tls_handshaking.......: avg=470.29ms min=470.29ms med=470.29ms max=470.29ms p(90)=470.29ms p(95)=470.29ms
+     http_req_waiting...............: avg=223.79ms min=223.79ms med=223.79ms max=223.79ms p(90)=223.79ms p(95)=223.79ms
+     http_reqs......................: 1     0.286221/s
+     iteration_duration.............: avg=3.49s    min=3.49s    med=3.49s    max=3.49s    p(90)=3.49s    p(95)=3.49s
+     iterations.....................: 1     0.286221/s
+     vus............................: 1     min=1      max=1
+     vus_max........................: 1     min=1      max=1
