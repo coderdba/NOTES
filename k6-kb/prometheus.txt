@@ -3,6 +3,7 @@ ENABLE DATA PUSH TO PROMETHEUS
 ==============================
 https://k6.io/docs/results-visualization/prometheus
 https://github.com/grafana/xk6-output-prometheus-remote
+https://www.itix.fr/blog/how-to-run-performance-tests-with-k6-prometheus-grafana/ --> tutorial with statsd, prometheus, grafana
 
 ================================================
 CREATE A NEW K6 IMAGE WITH PROMETHEUS EXTENSION
@@ -64,7 +65,9 @@ docker pull prom/prometheus:v2.34.0
 docker run -d -p 9090:9090 --name prometheus prom/prometheus:v2.34.0
 Access it in http://localhost:9090
 
-- FROM SGR
+----------------
+FROM SGR
+----------------
 docker run -p 9090:9090 --name prometheus \
   -v "/tmp/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml" prom/prometheus:v2.34.0 \
   --config.file=/etc/prometheus/prometheus.yml \
@@ -89,6 +92,8 @@ static_configs:
 
 remote_write:
 - url: http://localhost:9009/api/v1/push
+
+
   
 ========================
 SEND TO PROMETHEUS
@@ -96,7 +101,11 @@ SEND TO PROMETHEUS
 K6_PROMETHEUS_REMOTE_URL=http://host.docker.internal:9090/api/v1/write 
 ./k6 run script.js -o output-prometheus-remote
 
-
+K6_PROMETHEUS_REMOTE_URL=https://localhost:9090/api/v1/write \
+    K6_PROMETHEUS_INSECURE_SKIP_TLS_VERIFY=false K6_CA_CERT_FILE=tls.crt \
+    K6_PROMETHEUS_USER=foo K6_PROMETHEUS_PASSWORD=bar \
+    ./k6 run script.js -o output-prometheus-remote
+    
 ===============================================
 REFERENCE - DOCKER-COMPOSE.YAML
 ===============================================
@@ -145,3 +154,67 @@ services:
     environment:
       - K6_PROMETHEUS_REMOTE_URL=http://prometheus:9090/api/v1/write
       - K6_OUT=output-prometheus-remote
+
+=============================================
+REFERENCE - DEFAULT PROMETHEUS.YML
+=============================================
+
+>docker exec -ti prometheus /bin/sh
+
+/prometheus $ cd /etc
+
+/etc $ ls -l
+total 64
+-rw-rw-r--    1 root     root           306 Mar  8 22:08 group
+-rw-r--r--    1 root     root            13 Mar 17 05:32 hostname
+-rw-r--r--    1 root     root           174 Mar 17 05:32 hosts
+-rw-r--r--    1 root     root           118 Oct 25 17:14 localtime
+lrwxrwxrwx    1 root     root            12 Mar 17 05:32 mtab -> /proc/mounts
+drwxr-xr-x    6 root     root          4096 Mar 10 23:59 network
+-rw-r--r--    1 root     root           494 Feb 10  2019 nsswitch.conf
+-rw-r--r--    1 root     root           340 Mar  8 22:08 passwd
+drwxr-xr-x    1 nobody   nobody        4096 Mar 15 15:40 prometheus
+-rw-r--r--    1 root     root            97 Mar 17 05:32 resolv.conf
+-rw-r--r--    1 root     root         18774 Feb 10  2019 services
+-rw-------    1 root     root           136 Mar 10 23:59 shadow
+drwxr-xr-x    3 root     root          4096 Mar 15 10:54 ssl
+
+/etc $ cd prometheus
+
+/etc/prometheus $ ls -l
+total 4
+lrwxrwxrwx    1 nobody   nobody          39 Mar 15 15:40 console_libraries -> /usr/share/prometheus/console_libraries
+lrwxrwxrwx    1 nobody   nobody          31 Mar 15 15:40 consoles -> /usr/share/prometheus/consoles/
+-rw-r--r--    1 nobody   nobody         934 Mar 15 15:30 prometheus.yml
+
+/etc/prometheus $ cat prometheus.yml
+
+# my global config
+global:
+  scrape_interval: 15s # Set the scrape interval to every 15 seconds. Default is every 1 minute.
+  evaluation_interval: 15s # Evaluate rules every 15 seconds. The default is every 1 minute.
+  # scrape_timeout is set to the global default (10s).
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+# Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+# A scrape configuration containing exactly one endpoint to scrape:
+# Here it's Prometheus itself.
+scrape_configs:
+  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+  - job_name: "prometheus"
+
+    # metrics_path defaults to '/metrics'
+    # scheme defaults to 'http'.
+
+    static_configs:
+      - targets: ["localhost:9090"]
