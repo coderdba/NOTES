@@ -1,13 +1,18 @@
 ==============================
 ENABLE DATA PUSH TO PROMETHEUS
 ==============================
+
+MY GIT REPO WITH ALL SCRITPS: https://github.com/coderdba-coding-org/k6/tree/main/prometheus
+
+REFERENCES:
 https://k6.io/docs/results-visualization/prometheus
 https://github.com/grafana/xk6-output-prometheus-remote
 
 https://www.itix.fr/blog/how-to-run-performance-tests-with-k6-prometheus-grafana/ --> tutorial with statsd, prometheus, grafana
 https://k6.io/blog/k6-loves-prometheus/#the-mechanics-behind-metrics-crunching
 
-https://k6.io/docs/using-k6/options/
+Options (like tags etc): https://k6.io/docs/using-k6/options/
+Sample URLs to load test with: https://test.k6.io/
 
 ================================================
 CAUTIONS, PECULIAR STUFF
@@ -121,8 +126,15 @@ remote_write:
 =======================================
 RUN XK6 TO SEND RESULTS TO PROMETHEUS
 =======================================
-K6_PROMETHEUS_REMOTE_URL=http://host.docker.internal:9090/api/v1/write 
-./k6 run script.js -o output-prometheus-remote
+- Running from within the K6 container
+K6_PROMETHEUS_REMOTE_URL=http://host.docker.internal:9090/api/v1/write k6 run -<script.js -o output-prometheus-remote
+
+- Running the docker container from laptop
+Create an environment file: env.prom.docker
+K6_PROMETHEUS_REMOTE_URL=http://host.docker.internal:9090/api/v1/write
+
+Run the command:
+docker run --env-file env.prom.docker --rm -i xk6 run -<script2.js -o output-prometheus-remote
 
 K6_PROMETHEUS_REMOTE_URL=https://localhost:9090/api/v1/write \
     K6_PROMETHEUS_INSECURE_SKIP_TLS_VERIFY=false K6_CA_CERT_FILE=tls.crt \
