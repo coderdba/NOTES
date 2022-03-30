@@ -6,7 +6,7 @@ const config = {
   auth: {
     authority: 'https://login.microsoftonline.com/0473845-fa1a-42e7-9cf1-eb416c396f2d',  // --> Directory (tenant) ID of the Azure app registration
     clientId: '453c58ff-1854-41fb-b2e3-05779f34d581/.default',  // --> APPLICATION (CLIENT) ID of the Azure app registration
-    postLogoutRedirectUri: window.location.origin,
+    postLogoutRedirectUri: window.location.origin, // use windows.location.origin to redirect back to the calling page 
     redirectUri: window.location.origin,
     validateAuthority: true,
     // After being redirected to the "redirectUri" page, should user
