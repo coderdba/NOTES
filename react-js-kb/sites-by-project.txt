@@ -1,0 +1,63 @@
+=========================
+MSAL-REACT FOR SSO, TOKEN
+=========================
+
+========================================
+REFERENCES
+========================================
+Main reference: Quickstart - https://docs.microsoft.com/en-us/azure/active-directory/develop/single-page-app-quickstart?pivots=devlang-react
+Other reference: Tutorial - https://docs.microsoft.com/en-us/azure/active-directory/develop/tutorial-v2-react
+
+Other reference (with just "msal" package) - https://adrianhall.github.io/javascript/react/2020/03/06/msal-react-redux/
+
+Decoding JWT - https://www.codegrepper.com/code-examples/javascript/react+decode+jwt
+
+React prod build with Docker:
+https://medium.com/thepeaklab/how-to-deploy-a-react-application-to-production-with-docker-multi-stage-builds-4da347f2d681
+https://dev.to/aws-builders/containerize-react-app-with-docker-for-production-572b
+https://www.freecodecamp.org/news/how-to-deploy-react-apps-to-production/
+
+========================================
+NOTES
+========================================
+For printing and decoding JWT - see App.jsx
+For printing user info - see ProfileData.jsx
+For auth-config 'graph' URL - see authConfig.js
+
+Graph Rest API doc - https://docs.microsoft.com/en-us/graph/api/overview?view=graph-rest-1.
+- looks like there is only v1.0 and beta
+
+========================================
+SETUP - MSAL CONFIG??
+========================================
+https://docs.microsoft.com/en-us/azure/developer/javascript/how-to/with-authentication/static-web-app-with-api/introduction
+https://docs.microsoft.com/en-us/azure/developer/javascript/how-to/with-authentication/static-web-app-with-api/register-application-with-identity
+
+========================================
+ISSUE - CORS ISSUE WITH GRAPH
+========================================
+To avoid cors issue with microsoft graph, in authConfig.js,
+use v1.0/me endpoint (which is the original one) --> as in the quickstart - https://docs.microsoft.com/en-us/azure/active-directory/develop/single-page-app-quickstart?pivots=devlang-react)
+do not use just "https://graph.microsoft.com" --> as suggested in the other tutorial (https://docs.microsoft.com/en-us/azure/active-directory/develop/tutorial-v2-react)
+
+export const graphConfig = {
+    //graphMeEndpoint: "https://graph.microsoft.com" // this gave CORS error
+    graphMeEndpoint: "https://graph.microsoft.com/v1.0/me" // this did NOT give CORS error
+};
+
+TRY THIS:
+https://docs.microsoft.com/en-us/azure/active-directory/develop/migrate-spa-implicit-to-auth-code
+(from https://stackoverflow.com/questions/66999005/cors-error-while-authorize-application-to-call-api-azure-ad)
+
+https://www.telerik.com/blogs/dealing-with-cors-in-create-react-app
+
+
+=========================================
+ISSUE -  ERR_OSSL_EVP_UNSUPPORTED
+=========================================
+What worked - downgrading node version to 16.x worked
+
+This did not work - https://roytuts.com/how-to-fix-err_ossl_evp_unsupported-in-react-js-application/
+-->  in Package.json --> "start": "react-scripts --openssl-legacy-provider start",
+Try this - https://stackoverflow.com/questions/69394632/webpack-build-failing-with-err-ossl-evp-unsupported
+--> downgrade node version (see dockerfile)
