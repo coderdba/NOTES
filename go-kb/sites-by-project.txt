@@ -1,4 +1,56 @@
 ===============================================
+AZURE KEY VAULT READER
+===============================================
+
+NOTE: Needs golang version 18+
+### Needs Golang 18.x - to avoid errors like the following:  
+```
+imports github.com/Azure/azure-sdk-for-go/sdk/azidentity: build constraints exclude all Go files in C:\Users\GSM078\go\pkg\mod\github.com\!azure\azure-sdk-for-go\sdk\azidentity@v1.0.0
+```
+
+From mrk trial:
+
+DOCKERFILE:
+# https://www.bacancytechnology.com/blog/dockerize-golang-application
+
+# First pull Golang image
+#FROM golang:1.17.6 as build-env
+FROM golang:1.18.2-alpine3.15 as build-env
+
+# Set environment variable
+ENV APP_NAME kvreader
+ENV CMD_PATH main.go
+
+# Copy application data into image
+COPY . $GOPATH/src/$APP_NAME
+WORKDIR $GOPATH/src/$APP_NAME
+
+#go mod tidy
+
+# Build application
+RUN CGO_ENABLED=0 go build -v -o /$APP_NAME $GOPATH/src/$APP_NAME/$CMD_PATH
+
+# Run Stage
+FROM alpine:3.15
+
+
+    REFERENCES
+    https://thecodeblogger.com/2020/06/03/azure-web-app-and-managed-identity-to-access-key-vault/
+    https://docs.microsoft.com/en-us/azure/app-service/app-service-key-vault-references?tabs=azure-cli
+    --> Do not configure the "authorized application" or applicationId settings, as this is not compatible with a managed identity.
+    https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/howto-assign-access-portal
+
+    ERROR
+    --> this error went away once managed-identity was assigned to azure-app and access was provided to it in keyvault access policy
+    /home/LogFiles/2022_06_06_lw1sdlwk00001A_default_docker.log  (https://my-kvreader.scm.azurewebsites.net/api/vfs/LogFiles/2022_06_06_lw1sdlwk00001A_default_docker.log)
+    2022-06-06T11:33:42.715332365Z 2022/06/06 11:33:42 INFO - showdbname(): Endpoint Hit: showdbname
+    2022-06-06T11:33:43.881987308Z 2022/06/06 11:33:43 ERR - showdbname(): Failed to obtain PG-DBNAME from keyvault: %v DefaultAzureCredential: failed to acquire a token.
+    2022-06-06T11:33:43.882035208Z Attempted credentials:
+    2022-06-06T11:33:43.882042108Z 	EnvironmentCredential: missing environment variable AZURE_TENANT_ID
+    2022-06-06T11:33:43.882047408Z 	ManagedIdentityCredential: IMDS token request timed out
+    2022-06-06T11:33:43.882052008Z 	AzureCLICredential: Azure CLI not found on path
+
+===============================================
 WRAPPER API TO OBTAIN JWT AND CALL BACKEND API
 ===============================================
 Using github.com/dgrijalva/jwt-go:
