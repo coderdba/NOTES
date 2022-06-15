@@ -19,14 +19,18 @@ SELECT session_auth_id,
        SUBSTR(stmt_text,1,200)
 FROM sysibmadm.mon_current_sql
 ORDER BY elapsed_time_sec DESC
-FETCH FIRST 5 ROWS ONLY
+FETCH FIRST 5 ROWS ONLY;
 
 db2top
 data server manager
 data management console
 db2pd
 
+===============
 Using db2pd
+===============
+Main reference: https://www.youtube.com/watch?app=desktop&v=86I8m7r8iTI
+
 - 2 commands that show which ones are using high cpu
 - To pose artificial load - do a cartesian join - select count(*) from syscat.tables, syscat.tables, syscat.tables
 - Top command now shows command "db2sysc" is taking high cpu
@@ -53,3 +57,152 @@ AIX COMMANDS
 =================
 List threads of a process:
 procstack -F <pid> 
+
+
+==============================
+CONNECT TO DB AND RUN AN SQL
+==============================
+Connect to db: https://www.db2tutorial.com/getting-started/db2-connect-to-database/
+
+On the DB2 server, as DB2 installation user:
+
+- Connect to DB
+$ db2 connect to RLMX1
+
+   Database Connection Information
+
+ Database server        = DB2/AIX64 11.5.5.1
+ SQL authorization ID   = RLMPXYZ
+ Local database alias   = RLMX1
+
+- Run a SQL - give full path
+$ db2 -vtf C:\path\to\test.sql
+
+
+===============
+COMMON COMMANDS
+===============
+List Tables
+select tabname, tabschema, tbspace from syscat.tables;
+
+Describe table
+describe table professional.employee;
+
+Tables owned by current user
+SELECT tabschema, TABNAME, tbspace FROM SYSCAT.TABLES 
+WHERE TABSCHEMA = CURRENT USER AND TYPE = 'T';
+
+Tables owned by sysibmadm
+SELECT viewschema, viewNAME, owner FROM SYSCAT.VIEWS 
+WHERE VIEWSCHEMA = 'SYSIBMADM';
+
+
+=========================
+SYSTEM VIEWS AND TABLES
+=========================
+https://www.ibm.com/docs/en/db2/11.1?topic=views-syscatviews
+https://www.ibm.com/docs/en/db2/11.1?topic=views-syscattables
+
+db2 => select viewname from syscat.views where viewschema='SYSIBMADM';
+
+VIEWNAME                                                                                                               
+--------------------------------------------------------------------------------------------------------------------------------
+ADMINTABCOMPRESSINFO                                                                                                   
+ADMINTABINFO                                                                                                           
+ADMINTEMPCOLUMNS                                                                                                       
+ADMINTEMPTABLES                                                                                                        
+APPL_PERFORMANCE                                                                                                       
+APPLICATIONS                                                                                                           
+AUTHORIZATIONIDS                                                                                                       
+BP_HITRATIO                                                                                                            
+BP_READ_IO                                                                                                             
+BP_WRITE_IO                                                                                                            
+CONTACTGROUPS                                                                                                          
+CONTACTS                                                                                                               
+CONTAINER_UTILIZATION                                                                                                  
+DB_HISTORY                                                                                                             
+DB2_CF                                                                                                                 
+DB2_CLUSTER_HOST_STATE                                                                                                 
+DB2_INSTANCE_ALERTS                                                                                                    
+DB2_MEMBER                                                                                                             
+DBCFG                                                                                                                  
+DBMCFG                                                                                                                 
+DBPATHS                                                                                                                
+ENV_CF_SYS_RESOURCES                                                                                                   
+ENV_FEATURE_INFO                                                                                                       
+ENV_INST_INFO                                                                                                          
+ENV_PROD_INFO                                                                                                          
+ENV_SYS_INFO                                                                                                           
+ENV_SYS_RESOURCES                                                                                                      
+INGEST_USER_CONNECTIONS                                                                                                
+LOCKS_HELD                                                                                                             
+LOCKWAITS                                                                                                              
+LOG_UTILIZATION                                                                                                        
+LONG_RUNNING_SQL                                                                                                       
+MON_BP_UTILIZATION                                                                                                     
+MON_CONNECTION_SUMMARY                                                                                                 
+MON_CURRENT_SQL                                                                                                        
+MON_CURRENT_UOW                                                                                                        
+MON_DB_SUMMARY                                                                                                         
+MON_LOCKWAITS                                                                                                          
+MON_PKG_CACHE_SUMMARY                                                                                                  
+MON_SERVICE_SUBCLASS_SUMMARY                                                                                           
+MON_TBSP_UTILIZATION                                                                                                   
+MON_TRANSACTION_LOG_UTILIZATION                                                                                        
+MON_WORKLOAD_SUMMARY                                                                                                   
+NOTIFICATIONLIST                                                                                                       
+OBJECTOWNERS                                                                                                           
+PDLOGMSGS_LAST24HOURS                                                                                                  
+PRIVILEGES                                                                                                             
+QUERY_PREP_COST                                                                                                        
+REG_VARIABLES                                                                                                          
+SNAPAGENT                                                                                                              
+SNAPAGENT_MEMORY_POOL                                                                                                  
+SNAPAPPL                                                                                                               
+SNAPAPPL_INFO                                                                                                          
+SNAPBP                                                                                                                 
+SNAPBP_PART                                                                                                            
+SNAPCONTAINER                                                                                                          
+SNAPDB                                                                                                                 
+SNAPDB_MEMORY_POOL                                                                                                     
+SNAPDBM                                                                                                                
+SNAPDBM_MEMORY_POOL                                                                                                    
+SNAPDETAILLOG                                                                                                          
+SNAPDYN_SQL                                                                                                            
+SNAPFCM                                                                                                                
+SNAPFCM_PART                                                                                                           
+SNAPHADR                                                                                                               
+SNAPLOCK                                                                                                               
+SNAPLOCKWAIT                                                                                                           
+SNAPSTMT                                                                                                               
+SNAPSTORAGE_PATHS                                                                                                      
+SNAPSUBSECTION                                                                                                         
+SNAPSWITCHES                                                                                                           
+SNAPTAB                                                                                                                
+SNAPTAB_REORG                                                                                                          
+SNAPTBSP                                                                                                               
+SNAPTBSP_PART                                                                                                          
+SNAPTBSP_QUIESCER                                                                                                      
+SNAPTBSP_RANGE                                                                                                         
+SNAPUTIL                                                                                                               
+SNAPUTIL_PROGRESS                                                                                                      
+TBSP_UTILIZATION                                                                                                       
+TOP_DYNAMIC_SQL                                                                                                        
+
+  81 record(s) selected.
+
+db2 =>
+
+============================
+DB2TOP
+============================
+
+db2top -d dbname to get the overview
+then select l for sessions
+s is statement, q to quit
+and if you go U for locks you may get out of memory error, especially in prod
+
+============================
+TOP DYNAMIC SQLS
+============================
+https://www.toolbox.com/tech/data-management/blogs/sql-to-view-top-dynamic-sql-statements-011707/#:~:text=The%20view%20is%20called%20SYSIBMADM.TOP_DYNAMIC_SQL.%20This%20view%20shows,see%20the%20statement%20that%20is%20executed%20most%20frequently
