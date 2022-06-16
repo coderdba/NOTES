@@ -224,14 +224,24 @@ FETCH FIRST 10 ROWS ONLY;
 =========================
 INDEXES
 =========================
+
+- INDEX COLUMNS
+https://stackoverflow.com/questions/21927497/get-columns-of-index-on-db2
 List index columns
 SELECT IX.tbname, 
-       KEY.ixname, 
-       KEY.colname 
-FROM   sysibm.syskeys KEY 
+       KY.ixname, 
+       KY.colname 
+FROM   sysibm.syskeys KY 
        JOIN sysibm.sysindexes IX 
-         ON KEY.ixname = IX.name 
+         ON KY.ixname = IX.name 
 WHERE  IX.tbname IN ( 'SOMETABLE', 'ANOTHERTABLE' ) 
 ORDER  BY IX.tbname, 
-          KEY.ixname, 
-          KEY.colname; 
+          KY.ixname, 
+          KY.colname; 
+          
+SELECT IX.TABLE_SCHEMA, IX.TABLE_NAME, IX.INDEX_NAME, KY.ORDINAL_POSITION, KY.COLUMN_NAME
+  FROM SYSKEYS KY 
+  JOIN SYSINDEXES IX ON (KY.INDEX_NAME = IX.INDEX_NAME AND KY.INDEX_SCHEMA = IX.INDEX_SCHEMA)
+ WHERE IX.TBNAME = 'table-name' AND IX.TABLE_SCHEMA = 'table-schema'
+ ORDER BY IX.TABLE_SCHEMA, IX.TABLE_NAME, IX.INDEX_NAME, KY.ORDINAL_POSITION
+   FOR READ ONLY WITH UR;
