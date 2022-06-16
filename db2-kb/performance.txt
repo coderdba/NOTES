@@ -206,6 +206,32 @@ and if you go U for locks you may get out of memory error, especially in prod
 TOP DYNAMIC SQLS
 ============================
 https://www.toolbox.com/tech/data-management/blogs/sql-to-view-top-dynamic-sql-statements-011707
+https://www.ibm.com/docs/en/db2/11.5?topic=views-top-dynamic-sql-top-dynamic-sql-statements
 
 SELECT SUBSTR(STMT_TEXT,1,50), NUM_EXECUTIONS  FROM SYSIBMADM.TOP_DYNAMIC_SQL ORDER BY NUM_EXECUTIONS DESC FETCH FIRST ROW ONLY;
 SELECT SUBSTR(STMT_TEXT,1,50), AVERAGE_EXECUTION_TIME_S  FROM SYSIBMADM.TOP_DYNAMIC_SQL ORDER BY AVERAGE_EXECUTION_TIME_S DESC FETCH FIRST 10 ROWS ONLY;
+
+SELECT
+SNAPSHOT_TIMESTAMP,
+AVERAGE_EXECUTION_TIME_S,
+NUM_EXECUTIONS,
+SORTS_PER_EXECUTION,
+SUBSTR(STMT_TEXT,1,700)
+FROM SYSIBMADM.TOP_DYNAMIC_SQL
+ORDER BY AVERAGE_EXECUTION_TIME_S DESC
+FETCH FIRST 10 ROWS ONLY;
+
+=========================
+INDEXES
+=========================
+List index columns
+SELECT IX.tbname, 
+       KEY.ixname, 
+       KEY.colname 
+FROM   sysibm.syskeys KEY 
+       JOIN sysibm.sysindexes IX 
+         ON KEY.ixname = IX.name 
+WHERE  IX.tbname IN ( 'SOMETABLE', 'ANOTHERTABLE' ) 
+ORDER  BY IX.tbname, 
+          KEY.ixname, 
+          KEY.colname; 
