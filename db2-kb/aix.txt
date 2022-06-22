@@ -1,0 +1,42 @@
+==================
+PERFPMR REPORT
+==================
+perfpmr.sh -b -T -I -n
+
+Basic AIX Tracing Commands
+		
+### Collect logs           "./perfpmr.sh 600"  OR "PERFPMR.sh -x trace.sh 5"
+### Gather logs           ./perfpmr.sh –r
+### Generate trace reports
+trcrpt -C all -r trace.raw > trace.tr
+trcrpt -C all -t trace.fmt -n trace.nm -O timestamp=1,exec=on,tid=on,cpuid=on,PURR=on trace.tr > trace.int
+### CPU analysis	
+curt -i trace.tr -n trace.syms -t -p -est -r PURR -o curt.out
+### Lock analysis	
+trcrpt –C all -r trace.raw.lock > trace.tr.lock
+splat -i trace.tr.lock -n trace.syms -d a -o splat.out
+### CPU usage time analysis
+tprof -skjeR -r trace	
+tprof -ujeskzl -A -I -N -r default -x sleep 60
+### IO Analysis	
+trcrpt -r trace.raw > trace.rpt
+filemon -i trace.rpt -n gennames.out -O all
+filemon –O vm	Show reads and writes
+filemon –O lf	Shows logical io seek.
+filemon –O lv	Shows physical io seek
+filemon –O pr	Shows process based read/write/seek
+filemon –O abbreviated	Shows Random or Sequential IO with letters R and S.
+### Network analysis               netpmon -i trace.tr -n gennames.out -O all > trace.netpmon
+### Process profiling              pprof -i trace.tr
+### Memory analysis               svmon -O filename=on -P=PID
+### Swap analysis                   svmon –P | more OR ps gv | head -n 1; ps gv | egrep -v "RSS" | sort +6b -7 -n –r
+### Process-based network analysis
+netpmon -o /tmp/netpmon.log -O all
+trcstop		
+### All process threads           ps -efklmo THREAD  > /tmp/ps
+### Process debugging           Use PROCSTACK and PDUMP UTILITY.
+
+
+==================
+DBX DEBUGGER
+==================
