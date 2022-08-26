@@ -1,3 +1,5 @@
+// https://www.sqlshack.com/how-to-identify-and-resolve-sql-server-index-fragmentation/
+
 SELECT S.name as 'Schema',
 T.name as 'Table',
 I.name as 'Index',
