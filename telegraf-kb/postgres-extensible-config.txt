@@ -1,0 +1,465 @@
+===============================
+PLUGIN - POSTGRES EXTENSIBLE
+===============================
+
+======================================
+SUMOLOGIC SAMPLE - SINGLE DATABASE
+======================================
+https://help.sumologic.com/07Sumo-Logic-Apps/12Databases/PostgreSQL/Collect_logs_and_metrics_from_PostgreSQL/Collect_PostgreSQL_Logs_and_Metrics_for_Non-Kubernetes_environments#step-1-configure-metrics-collection
+- https://sumologic-app-data.s3.amazonaws.com/dashboards/PostgreSQL/sample_postgresql_onprem_telegraf.conf
+
+# Global tags can be specified here in key="value" format.
+[global_tags]
+  # dc = "us-east-1" # will tag all metrics with dc=us-east-1
+
+  ## Environment variables can be used as tags, and throughout the config file
+  # user = "$USER"
+
+# Configuration for telegraf agent
+[agent]
+  ## Default data collection interval for all inputs
+  interval = "10s"
+  ## Rounds collection interval to 'interval'
+  ## ie, if interval="10s" then always collect on :00, :10, :20, etc.
+  round_interval = true
+
+  ## Telegraf will send metrics to outputs in batches of at most
+  ## metric_batch_size metrics.
+  ## This controls the size of writes that Telegraf sends to output plugins.
+  metric_batch_size = 10000
+
+  ## Maximum number of unwritten metrics per output.  Increasing this value
+  ## allows for longer periods of output downtime without dropping metrics at the
+  ## cost of higher maximum memory usage.
+  metric_buffer_limit = 10000
+
+  ## Collection jitter is used to jitter the collection by a random amount.
+  ## Each plugin will sleep for a random time within jitter before collecting.
+  ## This can be used to avoid many plugins querying things like sysfs at the
+  ## same time, which can have a measurable effect on the system.
+  collection_jitter = "0s"
+
+  ## Default flushing interval for all outputs. Maximum flush_interval will be
+  ## flush_interval + flush_jitter
+  flush_interval = "10s"
+  ## Jitter the flush interval by a random amount. This is primarily to avoid
+  ## large write spikes for users running a large number of telegraf instances.
+  ## ie, a jitter of 5s and interval 10s means flushes will happen every 10-15s
+  flush_jitter = "5s"
+
+  ## By default or when set to "0s", precision will be set to the same
+  ## timestamp order as the collection interval, with the maximum being 1s.
+  ##   ie, when interval = "10s", precision will be "1s"
+  ##       when interval = "250ms", precision will be "1ms"
+  ## Precision will NOT be used for service inputs. It is up to each individual
+  ## service input to set the timestamp at the appropriate precision.
+  ## Valid time units are "ns", "us" (or "µs"), "ms", "s".
+  precision = ""
+
+  ## Log at debug level.
+  # debug = false
+  ## Log only error level messages.
+  # quiet = false
+
+  ## Log target controls the destination for logs and can be one of "file",
+  ## "stderr" or, on Windows, "eventlog".  When set to "file", the output file
+  ## is determined by the "logfile" setting.
+  # logtarget = "file"
+
+  ## Name of the file to be logged to when using the "file" logtarget.  If set to
+  ## the empty string then logs are written to stderr.
+  # logfile = ""
+
+  ## The logfile will be rotated after the time interval specified.  When set
+  ## to 0 no time based rotation is performed.  Logs are rotated only when
+  ## written to, if there is no log activity rotation may be delayed.
+  # logfile_rotation_interval = "0d"
+
+  ## The logfile will be rotated when it becomes larger than the specified
+  ## size.  When set to 0 no size based rotation is performed.
+  # logfile_rotation_max_size = "0MB"
+
+  ## Maximum number of rotated archives to keep, any older logs are deleted.
+  ## If set to -1, no archives are removed.
+  # logfile_rotation_max_archives = 5
+
+  ## Override default hostname, if empty use os.Hostname()
+  hostname = ""
+  ## If set to true, do no set the "host" tag in the telegraf agent.
+  omit_hostname = false
+
+
+[[inputs.postgresql_extensible]]
+
+  address = "host=localhost user=postgres dbname=postgres password=mypassword sslmode=disable"
+
+  ## COMMON_METRICS
+  [[inputs.postgresql_extensible.query]]
+    sqlquery="SELECT datname as db,numbackends,xact_commit,xact_rollback,blks_read,blks_hit,tup_inserted,tup_updated,tup_deleted,deadlocks,tup_fetched,tup_returned FROM pg_stat_database"
+    version=901
+    withdbname=false
+    tagvalue="db"
+    measurement=""
+
+  ## COMMON_BGW_METRICS
+  [[inputs.postgresql_extensible.query]]
+    sqlquery="SELECT checkpoints_timed,checkpoints_req,buffers_checkpoint,buffers_clean,buffers_backend FROM pg_stat_bgwriter"
+    version=901
+    withdbname=false
+    tagvalue=""
+
+  ## COMPRESSION METRICS
+  [[inputs.postgresql_extensible.query]]
+    sqlquery="SELECT count(*) as stat_ssl_compression_count FROM pg_stat_ssl where compression = TRUE"
+    version=901
+    withdbname=false
+    tagvalue=""
+    measurement=""
+
+  ## REPLICATION_STATS_METRICS works in version >= 10
+  [[inputs.postgresql_extensible.query]]
+    sqlquery="SELECT CASE WHEN pg_last_wal_receive_lsn() = pg_last_wal_replay_lsn() THEN 0 ELSE GREATEST (0, EXTRACT (EPOCH FROM now() - pg_last_xact_replay_timestamp())) END AS replication_delay WHERE (SELECT pg_is_in_recovery())"
+    version=901
+    withdbname=false
+    tagvalue=""
+    measurement=""
+
+  [[inputs.postgresql_extensible.query]]
+    sqlquery="SELECT abs(pg_wal_lsn_diff(pg_last_wal_receive_lsn(), pg_last_wal_replay_lsn())) AS replication_lag WHERE (SELECT pg_is_in_recovery())"
+    version=901
+    withdbname=false
+    tagvalue=""
+    measurement=""
+
+  [[inputs.postgresql_extensible.query]]
+    sqlquery="SELECT application_name,state,sync_state,GREATEST (0, EXTRACT(epoch from flush_lag)) AS flush_lag,GREATEST (0, EXTRACT(epoch from write_lag)) as write_lag,GREATEST (0, EXTRACT(epoch from replay_lag)) AS replay_lag FROM pg_stat_replication"
+    version=901
+    withdbname=false
+    tagvalue="application_name,state,sync_state"
+    measurement=""
+
+  ## DATABASE_SIZE_METRICS
+  [[inputs.postgresql_extensible.query]]
+    sqlquery="select t1.datname AS db,pg_database_size(t1.datname) as db_size from pg_database t1 order by pg_database_size(t1.datname) desc"
+    version=901
+    withdbname=false
+    tagvalue="db"
+    measurement=""
+
+  ## LOCK_METRICS
+  [[inputs.postgresql_extensible.query]]
+    sqlquery="SELECT pg_database.datname as db,tmp.mode as mode,COALESCE(count,0) as num_locks FROM (VALUES ('accesssharelock'), ('rowsharelock'), ('rowexclusivelock'), ('shareupdateexclusivelock'), ('sharelock'), ('sharerowexclusivelock'), ('exclusivelock'), ('accessexclusivelock'), ('sireadlock') ) AS tmp(mode) CROSS JOIN pg_database LEFT JOIN (SELECT database, lower(mode) AS mode,count(*) AS count FROM pg_locks WHERE database IS NOT NULL GROUP BY database, lower(mode) ) AS tmp2 ON tmp.mode=tmp2.mode and pg_database.oid = tmp2.database ORDER BY 1"
+    version=901
+    withdbname=false
+    tagvalue="db,mode"
+    measurement=""
+
+  ## TABLE SPECIFIC METRICS
+
+  ## RELATION_METRICS
+  [[inputs.postgresql_extensible.query]]
+    sqlquery="SELECT current_database() AS db,schemaname,relname,seq_scan,seq_tup_read,idx_scan,idx_tup_fetch,n_tup_ins,n_tup_upd,n_tup_del,n_tup_hot_upd,n_live_tup,n_dead_tup FROM pg_stat_user_tables"
+    version=901
+    withdbname=false
+    tagvalue="db,schemaname,relname"
+    measurement=""
+
+  ## INDEX_METRICS
+  [[inputs.postgresql_extensible.query]]
+    sqlquery="SELECT current_database() AS db,schemaname, relname, indexrelname, idx_scan, idx_tup_read, idx_tup_fetch FROM pg_stat_user_indexes"
+    version=901
+    withdbname=false
+    tagvalue="db,schemaname,relname,indexrelname"
+    measurement=""
+
+  ## STATIO_METRICS
+  [[inputs.postgresql_extensible.query]]
+    sqlquery="SELECT current_database() AS db,schemaname,relname,indexrelname,idx_blks_read,idx_blks_hit FROM pg_statio_user_indexes"
+    version=901
+    withdbname=false
+    tagvalue="db,schemaname,relname,indexrelname"
+    measurement=""
+
+  [[inputs.postgresql_extensible.query]]
+    sqlquery="SELECT current_database() AS db, schemaname,relname,heap_blks_read,heap_blks_hit,idx_blks_read,idx_blks_hit,toast_blks_read,toast_blks_hit,tidx_blks_read,tidx_blks_hit FROM pg_statio_user_tables"
+    version=901
+    withdbname=false
+    tagvalue="db,schemaname,relname"
+    measurement=""
+
+  ## TABLE SIZE_METRICS
+  [[inputs.postgresql_extensible.query]]
+    sqlquery="SELECT current_database() AS db,nspname as schemaname, relname, pg_total_relation_size(C.oid) AS table_size, pg_indexes_size(C.oid) AS index_size FROM pg_class C LEFT JOIN pg_namespace N ON (N.oid = C.relnamespace) WHERE nspname NOT IN ('pg_catalog', 'information_schema') AND C.relkind <> 'i' AND nspname !~ '^pg_toast' ORDER BY pg_total_relation_size(C.oid) DESC"
+    version=901
+    withdbname=false
+    tagvalue="db,schemaname,relname"
+    measurement=""
+
+  [inputs.postgresql_extensible.tags]
+    environment = "dev"
+    db_cluster = "analytics_cluster"
+    db_system = "postgresql"
+    component = "database"
+
+
+[[outputs.sumologic]]
+  url = "https://collectors.sumologic.com/receiver/v1/http/<token>"
+  data_format = "prometheus"
+  
+======================================
+SUMOLOGIC SAMPLE - MULTIPLE DATABASES
+======================================
+https://help.sumologic.com/07Sumo-Logic-Apps/12Databases/PostgreSQL/Collect_logs_and_metrics_from_PostgreSQL/Collect_PostgreSQL_Logs_and_Metrics_for_Non-Kubernetes_environments#step-1-configure-metrics-collection
+- https://sumologic-app-data.s3.amazonaws.com/dashboards/PostgreSQL/sample_postgresql_onprem_telegraf_multiple_db.conf
+
+# Global tags can be specified here in key="value" format.
+[global_tags]
+  # dc = "us-east-1" # will tag all metrics with dc=us-east-1
+
+  ## Environment variables can be used as tags, and throughout the config file
+  # user = "$USER"
+
+# Configuration for telegraf agent
+[agent]
+  ## Default data collection interval for all inputs
+  interval = "10s"
+  ## Rounds collection interval to 'interval'
+  ## ie, if interval="10s" then always collect on :00, :10, :20, etc.
+  round_interval = true
+
+  ## Telegraf will send metrics to outputs in batches of at most
+  ## metric_batch_size metrics.
+  ## This controls the size of writes that Telegraf sends to output plugins.
+  metric_batch_size = 10000
+
+  ## Maximum number of unwritten metrics per output.  Increasing this value
+  ## allows for longer periods of output downtime without dropping metrics at the
+  ## cost of higher maximum memory usage.
+  metric_buffer_limit = 10000
+
+  ## Collection jitter is used to jitter the collection by a random amount.
+  ## Each plugin will sleep for a random time within jitter before collecting.
+  ## This can be used to avoid many plugins querying things like sysfs at the
+  ## same time, which can have a measurable effect on the system.
+  collection_jitter = "0s"
+
+  ## Default flushing interval for all outputs. Maximum flush_interval will be
+  ## flush_interval + flush_jitter
+  flush_interval = "10s"
+  ## Jitter the flush interval by a random amount. This is primarily to avoid
+  ## large write spikes for users running a large number of telegraf instances.
+  ## ie, a jitter of 5s and interval 10s means flushes will happen every 10-15s
+  flush_jitter = "5s"
+
+  ## By default or when set to "0s", precision will be set to the same
+  ## timestamp order as the collection interval, with the maximum being 1s.
+  ##   ie, when interval = "10s", precision will be "1s"
+  ##       when interval = "250ms", precision will be "1ms"
+  ## Precision will NOT be used for service inputs. It is up to each individual
+  ## service input to set the timestamp at the appropriate precision.
+  ## Valid time units are "ns", "us" (or "µs"), "ms", "s".
+  precision = ""
+
+  ## Log at debug level.
+  # debug = false
+  ## Log only error level messages.
+  # quiet = false
+
+  ## Log target controls the destination for logs and can be one of "file",
+  ## "stderr" or, on Windows, "eventlog".  When set to "file", the output file
+  ## is determined by the "logfile" setting.
+  # logtarget = "file"
+
+  ## Name of the file to be logged to when using the "file" logtarget.  If set to
+  ## the empty string then logs are written to stderr.
+  # logfile = ""
+
+  ## The logfile will be rotated after the time interval specified.  When set
+  ## to 0 no time based rotation is performed.  Logs are rotated only when
+  ## written to, if there is no log activity rotation may be delayed.
+  # logfile_rotation_interval = "0d"
+
+  ## The logfile will be rotated when it becomes larger than the specified
+  ## size.  When set to 0 no size based rotation is performed.
+  # logfile_rotation_max_size = "0MB"
+
+  ## Maximum number of rotated archives to keep, any older logs are deleted.
+  ## If set to -1, no archives are removed.
+  # logfile_rotation_max_archives = 5
+
+  ## Override default hostname, if empty use os.Hostname()
+  hostname = ""
+  ## If set to true, do no set the "host" tag in the telegraf agent.
+  omit_hostname = false
+
+# Only table specific metrics are collected for 2nd database
+[[inputs.postgresql_extensible]]
+
+  address = "host=localhost user=postgres dbname=mydatabase2 password=mypassword sslmode=disable"
+
+  ## TABLE SPECIFIC METRICS
+
+  ## RELATION_METRICS
+  [[inputs.postgresql_extensible.query]]
+    sqlquery="SELECT current_database() AS db,schemaname,relname,seq_scan,seq_tup_read,idx_scan,idx_tup_fetch,n_tup_ins,n_tup_upd,n_tup_del,n_tup_hot_upd,n_live_tup,n_dead_tup FROM pg_stat_user_tables"
+    version=901
+    withdbname=false
+    tagvalue="db,schemaname,relname"
+    measurement=""
+
+  ## INDEX_METRICS
+  [[inputs.postgresql_extensible.query]]
+    sqlquery="SELECT current_database() AS db,schemaname, relname, indexrelname, idx_scan, idx_tup_read, idx_tup_fetch FROM pg_stat_user_indexes"
+    version=901
+    withdbname=false
+    tagvalue="db,schemaname,relname,indexrelname"
+    measurement=""
+
+  ## STATIO_METRICS
+  [[inputs.postgresql_extensible.query]]
+    sqlquery="SELECT current_database() AS db,schemaname,relname,indexrelname,idx_blks_read,idx_blks_hit FROM pg_statio_user_indexes"
+    version=901
+    withdbname=false
+    tagvalue="db,schemaname,relname,indexrelname"
+    measurement=""
+
+  [[inputs.postgresql_extensible.query]]
+    sqlquery="SELECT current_database() AS db,schemaname,relname,heap_blks_read,heap_blks_hit,idx_blks_read,idx_blks_hit,toast_blks_read,toast_blks_hit,tidx_blks_read,tidx_blks_hit FROM pg_statio_user_tables"
+    version=901
+    withdbname=false
+    tagvalue="db,schemaname,relname"
+    measurement=""
+
+  ## TABLE SIZE_METRICS
+  [[inputs.postgresql_extensible.query]]
+    sqlquery="SELECT current_database() AS db, nspname as schemaname, relname, pg_total_relation_size(C.oid) AS table_size, pg_indexes_size(C.oid) AS index_size FROM pg_class C LEFT JOIN pg_namespace N ON (N.oid = C.relnamespace) WHERE nspname NOT IN ('pg_catalog', 'information_schema') AND C.relkind <> 'i' AND nspname !~ '^pg_toast' ORDER BY pg_total_relation_size(C.oid) DESC"
+    version=901
+    withdbname=false
+    tagvalue="db,schemaname,relname"
+    measurement=""
+
+  [inputs.postgresql_extensible.tags]
+    environment = "dev"
+    db_cluster = "analytics_cluster"
+    db_system = "postgresql"
+    component = "database"
+
+
+# Both common and table specific metrics are collected for 1st database
+[[inputs.postgresql_extensible]]
+
+  address = "host=localhost user=postgres dbname=mydatabase1 password=mypassword sslmode=disable"
+
+  ## COMMON_METRICS
+  [[inputs.postgresql_extensible.query]]
+    sqlquery="SELECT datname as db,numbackends,xact_commit,xact_rollback,blks_read,blks_hit,tup_inserted,tup_updated,tup_deleted,deadlocks,tup_fetched,tup_returned  FROM pg_stat_database"
+    version=901
+    withdbname=false
+    tagvalue="db"
+    measurement=""
+
+  ## COMMON_BGW_METRICS
+  [[inputs.postgresql_extensible.query]]
+    sqlquery="SELECT checkpoints_timed,checkpoints_req, buffers_checkpoint,buffers_clean,buffers_backend FROM pg_stat_bgwriter"
+    version=901
+    withdbname=false
+    tagvalue=""
+
+  ## COMPRESSION METRICS
+  [[inputs.postgresql_extensible.query]]
+    sqlquery="SELECT count(*) as stat_ssl_compression_count FROM pg_stat_ssl where compression = TRUE"
+    version=901
+    withdbname=false
+    tagvalue=""
+    measurement=""
+
+  ## REPLICATION_STATS_METRICS
+  [[inputs.postgresql_extensible.query]]
+    sqlquery="SELECT CASE WHEN pg_last_wal_receive_lsn() = pg_last_wal_replay_lsn() THEN 0 ELSE GREATEST (0, EXTRACT (EPOCH FROM now() - pg_last_xact_replay_timestamp())) END AS replication_delay WHERE (SELECT pg_is_in_recovery())"
+    version=901
+    withdbname=false
+    tagvalue=""
+    measurement=""
+
+  [[inputs.postgresql_extensible.query]]
+    sqlquery="SELECT abs(pg_wal_lsn_diff(pg_last_wal_receive_lsn(), pg_last_wal_replay_lsn())) AS replication_lag WHERE (SELECT pg_is_in_recovery())"
+    version=901
+    withdbname=false
+    tagvalue=""
+    measurement=""
+
+  [[inputs.postgresql_extensible.query]]
+    sqlquery="SELECT application_name,state,sync_state,GREATEST (0, EXTRACT(epoch from flush_lag)) AS flush_lag,GREATEST (0, EXTRACT(epoch from write_lag)) as write_lag,GREATEST (0, EXTRACT(epoch from replay_lag)) AS replay_lag FROM pg_stat_replication"
+    version=901
+    withdbname=false
+    tagvalue="application_name,state,sync_state"
+    measurement=""
+
+  ## DATABASE_SIZE_METRICS
+  [[inputs.postgresql_extensible.query]]
+    sqlquery="select t1.datname AS db,pg_database_size(t1.datname) as db_size from pg_database t1 order by pg_database_size(t1.datname) desc"
+    version=901
+    withdbname=false
+    tagvalue="db"
+    measurement=""
+
+  ## LOCK_METRICS
+  [[inputs.postgresql_extensible.query]]
+    sqlquery="SELECT pg_database.datname as db,tmp.mode as mode,COALESCE(count,0) as num_locks FROM (VALUES ('accesssharelock'), ('rowsharelock'), ('rowexclusivelock'), ('shareupdateexclusivelock'), ('sharelock'), ('sharerowexclusivelock'), ('exclusivelock'), ('accessexclusivelock'), ('sireadlock') ) AS tmp(mode) CROSS JOIN pg_database LEFT JOIN (SELECT database, lower(mode) AS mode,count(*) AS count FROM pg_locks WHERE database IS NOT NULL GROUP BY database, lower(mode) ) AS tmp2 ON tmp.mode=tmp2.mode and pg_database.oid = tmp2.database ORDER BY 1"
+    version=901
+    withdbname=false
+    tagvalue="db,mode"
+    measurement=""
+
+  ## TABLE SPECIFIC METRICS
+
+  ## RELATION_METRICS
+  [[inputs.postgresql_extensible.query]]
+    sqlquery="SELECT current_database() AS db,schemaname,relname,seq_scan,seq_tup_read,idx_scan,idx_tup_fetch,n_tup_ins,n_tup_upd,n_tup_del,n_tup_hot_upd,n_live_tup,n_dead_tup FROM pg_stat_user_tables"
+    version=901
+    withdbname=false
+    tagvalue="db,schemaname,relname"
+    measurement=""
+
+  ## INDEX_METRICS
+  [[inputs.postgresql_extensible.query]]
+    sqlquery="SELECT current_database() AS db,schemaname, relname, indexrelname, idx_scan, idx_tup_read, idx_tup_fetch FROM pg_stat_user_indexes"
+    version=901
+    withdbname=false
+    tagvalue="db,schemaname,relname,indexrelname"
+    measurement=""
+
+  ## STATIO_METRICS
+  [[inputs.postgresql_extensible.query]]
+    sqlquery="SELECT current_database() AS db,schemaname,relname,indexrelname,idx_blks_read,idx_blks_hit FROM pg_statio_user_indexes"
+    version=901
+    withdbname=false
+    tagvalue="db,schemaname,relname,indexrelname"
+    measurement=""
+
+  [[inputs.postgresql_extensible.query]]
+    sqlquery="SELECT current_database() AS db, schemaname,relname,heap_blks_read,heap_blks_hit,idx_blks_read,idx_blks_hit,toast_blks_read,toast_blks_hit,tidx_blks_read,tidx_blks_hit FROM pg_statio_user_tables"
+    version=901
+    withdbname=false
+    tagvalue="db,schemaname,relname"
+    measurement=""
+
+  ## TABLE SIZE_METRICS
+  [[inputs.postgresql_extensible.query]]
+    sqlquery="SELECT current_database() AS db,nspname as schemaname, relname, pg_total_relation_size(C.oid) AS table_size, pg_indexes_size(C.oid) AS index_size FROM pg_class C LEFT JOIN pg_namespace N ON (N.oid = C.relnamespace) WHERE nspname NOT IN ('pg_catalog', 'information_schema') AND C.relkind <> 'i' AND nspname !~ '^pg_toast' ORDER BY pg_total_relation_size(C.oid) DESC"
+    version=901
+    withdbname=false
+    tagvalue="db,schemaname,relname"
+    measurement=""
+
+  [inputs.postgresql_extensible.tags]
+    environment = "dev"
+    db_cluster = "analytics_cluster"
+    db_system = "postgresql"
+    component = "database"
+
+
+[[outputs.sumologic]]
+  url = "https://collectors.sumologic.com/receiver/v1/http/<token>"
+  data_format = "prometheus"
+
