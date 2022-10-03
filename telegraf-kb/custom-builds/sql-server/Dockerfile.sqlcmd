@@ -1,0 +1,41 @@
+FROM telegraf:1.22.3
+
+# MSSQL_VERSION can be changed, by passing `--build-arg MSSQL_VERSION=<new version>` during docker build
+ARG MSSQL_VERSION=17.5.2.1-1
+ENV MSSQL_VERSION=${MSSQL_VERSION}
+
+# Labels
+LABEL maintainer="abc.pqe@mycompany.com"
+LABEL org.label-schema.schema-version="1.0"
+LABEL org.label-schema.name="telegraf-with-mssql-tools"
+LABEL org.label-schema.description="Telegraf image with added mssql-tools"
+#LABEL org.label-schema.url="http://dbamastery.com"
+
+WORKDIR /tmp
+
+#RUN apt install curl
+#RUN mkdir -p /etc/apt/sources.list.d
+#RUN touch /etc/apt/sources.list.d/msprod.list
+
+#RUN wget https://packages.microsoft.com/config/ubuntu/22.10/prod.list | tee /etc/apt/sources.list.d/msprod.list
+#RUN apt install mssql-tools
+
+#RUN apt install https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb
+#RUN apt-get https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb
+#RUN dpkg -i https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb
+
+RUN wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb
+RUN dpkg -i /tmp/packages-microsoft-prod.deb
+RUN apt update
+RUN apt install --yes --force-yes mssql-tools
+RUN apt install --yes --force-yes unixODBC-devel
+
+WORKDIR /
+# Adding SQL Server tools to $PATH
+ENV PATH=$PATH:/opt/mssql-tools/bin
+
+#CMD ["/bin/sh"]
+
+USER 1001
+ENTRYPOINT [ "telegraf" ]
+#CMD [ "--help" ]
