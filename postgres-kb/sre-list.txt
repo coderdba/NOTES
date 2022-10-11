@@ -1,7 +1,47 @@
+CACHE HIT RATIO, DISK, MEM IO
+Cache-Hit-Ratio:  server level (all DB together)
 
+SELECT   round(100 * sum(blks_hit) / sum(blks_hit + blks_read), 3) as cache_hit_ratioFROM pg_stat_database;
+
+Cache-Hit-Ratio:  by database
+
+SELECTcoalesce(datname, '-') as DbName,coalesce(numbackends, 0) as BackendConnections,Round((blks_hit::decimal/(blks_hit::decimal + blks_read::decimal))::decimal, 4) AS CacheHitRatio,coalesce(blks_read, 0) as BlksRead,coalesce(blks_hit, 0) as BlksHit,coalesce(blk_read_time, 0) as BlkReadTime,coalesce(blk_write_time, 0) as BlkWriteTime,coalesce(deadlocks, 0) as Deadlocks,coalesce(temp_bytes, 0) as TempBytes,coalesce(xact_commit, 0) as Commits,coalesce(xact_rollback, 0) as RollbacksFROM pg_stat_databaseWHERE (blks_hit + blks_read) > 0ORDER BY DbName;
+
+DATABASE DISK IO
+Use same queries as cache-hit-ratio - multiply blocks count by block-size
+
+TOP SQL BY MEAN EXEC TIME
+Version 13:
+
+SELECTd.datname as db, r.rolname AS username, queryid, Substring(query, 1, 80)  AS query_partial,  coalesce(calls, 0) as calls,  total_exec_time AS total_exec_time, mean_exec_time AS mean_exec_time,  coalesce(shared_blks_hit, 0) as shared_blks_hit,  coalesce(shared_blks_read, 0) as shared_blks_read,  coalesce(shared_blks_dirtied, 0) as shared_blks_dirtied, coalesce(shared_blks_written, 0) as shared_blks_written,  coalesce(local_blks_hit, 0) as local_blks_hit,  coalesce(local_blks_read, 0) as local_blks_read, coalesce(local_blks_dirtied, 0) as local_blks_dirtied, coalesce(local_blks_written, 0) as local_blks_written, coalesce(temp_blks_read, 0) as temp_blks_read, coalesce(temp_blks_written, 0) as temp_blks_written FROM pg_stat_statements,   pg_roles r,   pg_database d   WHERE r.oid = userid  AND   mean_exec_time > 0 AND d.oid = dbid ORDER BY mean_exec_time DESC limit 20
+
+Version 11:
+
+SELECT d.datname as DbName,r.rolname AS UserName,Round((100 * total_time / Sum(total_time::numeric) OVER ())::numeric, 2) AS CpuPercent,coalesce(calls, 0) AS Calls,Round(total_time::numeric, 2) AS TotalTime,Round(mean_time::numeric, 2) AS MeanTime,coalesce(shared_blks_hit, 0) AS SharedBlksHit,coalesce(shared_blks_read, 0) AS SharedBlksRead,coalesce(shared_blks_read, 0) AS SharedBlksWritten,coalesce(local_blks_hit, 0) AS LocalBlksHit,coalesce(local_blks_read, 0) AS LocalBlksRead,coalesce(local_blks_read, 0) AS LocalBlksWritten,Substring(query, 1, 800)     AS PartialQueryFROM pg_stat_statements,pg_roles r,pg_database dWHERE r.oid = useridAND d.oid = dbidORDER BY mean_time DESC limit 20;
+
+TOP SQLS BY NUMBER OF EXECUTIONS
+SELECTd.datname as db, r.rolname AS username, queryid, Substring(query, 1, 80)  AS query_partial,  coalesce(calls, 0) as calls,  total_exec_time AS total_exec_time, mean_exec_time AS mean_exec_time,  coalesce(shared_blks_hit, 0) as shared_blks_hit,  coalesce(shared_blks_read, 0) as shared_blks_read,  coalesce(shared_blks_dirtied, 0) as shared_blks_dirtied, coalesce(shared_blks_written, 0) as shared_blks_written,  coalesce(local_blks_hit, 0) as local_blks_hit,  coalesce(local_blks_read, 0) as local_blks_read, coalesce(local_blks_dirtied, 0) as local_blks_dirtied, coalesce(local_blks_written, 0) as local_blks_written, coalesce(temp_blks_read, 0) as temp_blks_read, coalesce(temp_blks_written, 0) as temp_blks_written FROM pg_stat_statements,   pg_roles r,   pg_database d   WHERE r.oid = userid  AND   calls > 0 AND d.oid = dbid ORDER BY calls DESC limit 20
+
+Version 11:
+
+SELECT d.datname as DbName,r.rolname AS UserName,Round((100 * total_time / Sum(total_time::numeric) OVER ())::numeric, 2) AS CpuPercent,coalesce(calls, 0) AS Calls,Round(total_time::numeric, 2) AS TotalTime,Round(mean_time::numeric, 2) AS MeanTime,coalesce(shared_blks_hit, 0) AS SharedBlksHit,coalesce(shared_blks_read, 0) AS SharedBlksRead,coalesce(shared_blks_read, 0) AS SharedBlksWritten,coalesce(local_blks_hit, 0) AS LocalBlksHit,coalesce(local_blks_read, 0) AS LocalBlksRead,coalesce(local_blks_read, 0) AS LocalBlksWritten,Substring(query, 1, 800)     AS PartialQueryFROM pg_stat_statements,pg_roles r,pg_database dWHERE r.oid = useridAND d.oid = dbid
+WHERE calls > 0ORDER BY calls DESC limit 20
 
 DATABASE SIZE
 https://dbtut.com/index.php/2018/06/03/how-to-find-the-size-of-all-databases-in-postgresql/
+
+  One Database:
+
+  SELECT pg_database.datname as "databasename", pg_database_size(pg_database.datname)/1024/1024 AS sizemb
+  FROM pg_database ORDER by pg_database_size(pg_database.datname) DESC;
+  
+  All databaes total:
+  - NOTE: In the query below, 'as' clause is necessary for the subquery to denote as a pseudo-table
+  select sum(sizemb) 
+  from (SELECT pg_database.datname as "databasename", pg_database_size(pg_database.datname)/1024/1024 AS sizemb  FROM pg_database) as per_db_size;
+ 
+
+All Databases total:
 
 TABLE SIZE
 https://dbtut.com/index.php/2018/10/07/postgresql-list-of-table-sizes/
@@ -56,6 +96,51 @@ https://dbtut.com/index.php/2018/10/07/postgresql-list-of-table-sizes/
   pg_total_relation_size('"' || t.schemaname || '"."' || t.tablename || '"') DESC
   LIMIT 10;
 
+TABLE-WISE SEQUENTIAL SCANS TOP TABLES
+SELECT coalesce(schemaname, '-'), 
+relname, coalesce(idx_scan, 0), 
+coalesce(idx_tup_fetch, 0),
+coalesce(seq_scan, 0),
+coalesce(seq_tup_read, 0),
+last_vacuum,
+last_autovacuum,
+last_analyze,
+last_autoanalyze
+FROM pg_stat_user_tables
+WHERE seq_scan > 0
+ORDER BY seq_scan desc limit 20;
+
+TABLES - STALE STATISTICS
+SELECT coalesce(schemaname, '-') as schemaname,	
+relname,
+coalesce(idx_scan, 0),
+coalesce(idx_tup_fetch, 0),
+coalesce(seq_scan, 0),
+coalesce(seq_tup_read, 0),
+last_vacuum,
+last_autovacuum,
+last_analyze,
+last_autoanalyze
+FROM pg_stat_user_tables
+WHERE (last_analyze <= current_date - interval '15' day) or
+(last_autoanalyze <= current_date - interval '15' day) or
+last_analyze is null or last_autoanalyze is null
+ORDER BY schemaname, relname;
+
 INDEX SIZE
 https://dbtut.com/index.php/2018/10/07/postgresql-list-of-table-sizes/
 Similar to listing of table-sizes 
+
+TABLESPACE SIZE (total, used)
+- one tablespace size - bytes
+ select  pg_tablespace_size ('pg_default'); 
+ 
+- one tablespace size - mb
+ SELECT pg_size_pretty (pg_tablespace_size ('pg_default'));
+
+- Tablespace used space:
+Postgres does not seem to have a query that gives it
+Try this: https://stackoverflow.com/questions/29806332/how-to-get-the-current-free-disk-space-in-postgres
+
+ 
+ 
