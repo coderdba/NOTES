@@ -1,0 +1,61 @@
+
+
+DATABASE SIZE
+https://dbtut.com/index.php/2018/06/03/how-to-find-the-size-of-all-databases-in-postgresql/
+
+TABLE SIZE
+https://dbtut.com/index.php/2018/10/07/postgresql-list-of-table-sizes/
+
+  Table sizes - listing by schema and table name:
+  WITH tbl_spc AS (
+  SELECT ts.spcname AS spcname
+  FROM pg_tablespace ts 
+  JOIN pg_database db ON db.dattablespace = ts.oid
+  WHERE db.datname = current_database()
+  )
+  (
+  SELECT
+  t.schemaname,
+  t.tablename,
+  pg_table_size('"' || t.schemaname || '"."' || t.tablename || '"') AS table_disc_size,
+  NULL as index,
+  0 as index_disc_size,
+  COALESCE(t.tablespace, ts.spcname) AS tablespace
+  FROM pg_tables t, tbl_spc ts
+
+  UNION ALL
+
+  SELECT
+  i.schemaname,
+  i.tablename,
+  0,
+  i.indexname,
+  pg_relation_size('"' || i.schemaname || '"."' || i.indexname || '"'),
+  COALESCE(i.tablespace, ts.spcname)
+  FROM pg_indexes i, tbl_spc ts
+  )
+  ORDER BY table_disc_size DESC,index_disc_size DESC;
+
+  Table+Index size:
+  SELECT pg_size_pretty(pg_total_relation_size('size_test_table'));
+  
+  Table and index size and total size:
+  SELECT pg_table_size('size_test_table') AS data_size,
+  pg_relation_size('size_test_table_pkey') AS index_size,
+  pg_table_size('size_test_table') + pg_relation_size('size_test_table_pkey') AS total_size1,
+  pg_total_relation_size('size_test_table') AS total_size2;
+  
+  Largest table listing:
+  SELECT
+  t.tablename,
+  pg_size_pretty(pg_total_relation_size('"' || t.schemaname || '"."' || t.tablename || '"')) AS table_total_disc_size
+  FROM pg_tables t
+  WHERE
+   t.schemaname = 'public'
+  ORDER BY
+  pg_total_relation_size('"' || t.schemaname || '"."' || t.tablename || '"') DESC
+  LIMIT 10;
+
+INDEX SIZE
+https://dbtut.com/index.php/2018/10/07/postgresql-list-of-table-sizes/
+Similar to listing of table-sizes 
