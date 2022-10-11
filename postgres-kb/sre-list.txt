@@ -1,3 +1,38 @@
+================
+REFERENCES
+================
+------------------
+OFFICIAL DOCS
+------------------
+https://www.postgresql.org/docs/current/monitoring-stats.html
+
+------------------
+OTHER REFERENCES
+------------------
+more of pg_stat_database - maybe all columns like we fetched from pg_stat_all_tables
+- https://www.datadoghq.com/blog/postgresql-monitoring/#write-query-throughput-and-performance
+
+- combine pg_stat_activity and pg_stat_statements - using queryid and see if it can give sesssion-io
+
+resource utilization as in
+- https://www.datadoghq.com/blog/postgresql-monitoring/#resource-utilization
+
+activity monitoring,  idle sessions etc, pg_stat_activity
+- https://www.enterprisedb.com/postgres-tutorials/how-monitor-postgresql-connections
+- https://lumochift.org/posts/pg-stats-statements-in-action/ (here is where that cpu time came up)
+
+actual io of a query
+- https://stackoverflow.com/questions/6217643/is-there-a-way-to-get-postgres-show-actual-i-o-for-query
+
+
+block read / write time from pg_stat_statements
+- https://stackoverflow.com/questions/58094505/how-to-find-postgresql-query-which-is-consuming-the-most-i-o
+
+
+================
+STATISTICS
+================
+
 CACHE HIT RATIO, DISK, MEM IO
 Cache-Hit-Ratio:  server level (all DB together)
 
@@ -26,6 +61,29 @@ Version 11:
 
 SELECT d.datname as DbName,r.rolname AS UserName,Round((100 * total_time / Sum(total_time::numeric) OVER ())::numeric, 2) AS CpuPercent,coalesce(calls, 0) AS Calls,Round(total_time::numeric, 2) AS TotalTime,Round(mean_time::numeric, 2) AS MeanTime,coalesce(shared_blks_hit, 0) AS SharedBlksHit,coalesce(shared_blks_read, 0) AS SharedBlksRead,coalesce(shared_blks_read, 0) AS SharedBlksWritten,coalesce(local_blks_hit, 0) AS LocalBlksHit,coalesce(local_blks_read, 0) AS LocalBlksRead,coalesce(local_blks_read, 0) AS LocalBlksWritten,Substring(query, 1, 800)     AS PartialQueryFROM pg_stat_statements,pg_roles r,pg_database dWHERE r.oid = useridAND d.oid = dbid
 WHERE calls > 0ORDER BY calls DESC limit 20
+
+TABLE THROUGHPUT - TOP TABLES TOTAL ROWS INSERTED, UPDATED, DELETED BY TABLE
+SELECT coalesce(schemaname, '-'),
+relname,
+coalesce(n_tup_ins, 0),	
+coalesce(n_tup_upd, 0),	
+coalesce(n_tup_del, 0),	
+coalesce(n_tup_hot_upd, 0),
+(n_tup_ins + n_tup_upd + n_tup_del + n_tup_hot_upd) AS TotThroughPut					
+FROM pg_stat_user_tables										
+WHERE (n_tup_ins + n_tup_upd + n_tup_del + n_tup_hot_upd) > 0						
+ORDER BY TotThroughPut desc limit 20;
+
+DATABASE THROUGHPUT IN ROWS READ/WRITTEN
+select datname, tup_returned, tup_fetched, tup_inserted, tup_updated, tup_deleted
+(tup_returned + tup_fetched + tup_inserted + tup_updated + tup_deleted) tot_tup_throughput
+from pg_stat_database
+order by tot_tup_throughput desc;
+
+DATABAE READ AND WRITE TIME
+select datname, blks_read, blks_hit, blk_read_time, blk_write_time 
+from pg_stat_database
+order by datname; 
 
 DATABASE SIZE
 https://dbtut.com/index.php/2018/06/03/how-to-find-the-size-of-all-databases-in-postgresql/
@@ -95,6 +153,13 @@ https://dbtut.com/index.php/2018/10/07/postgresql-list-of-table-sizes/
   ORDER BY
   pg_total_relation_size('"' || t.schemaname || '"."' || t.tablename || '"') DESC
   LIMIT 10;
+
+LONG RUNNING QUERIES
+select datname, query, query_start 
+from pg_stat_activity
+where query_start is not null
+and query_start < now()- interval '15 minutes'
+order by query_start, datname;
 
 TABLE-WISE SEQUENTIAL SCANS TOP TABLES
 SELECT coalesce(schemaname, '-'), 
