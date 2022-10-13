@@ -184,7 +184,7 @@ java version - 17
 dependencies - spring web, rest repositories 
 
 ----------------------------
-ADD DB DEPENDENCIES
+ADD POSTGRES DEPENDENCIES
 ----------------------------
 Add:
 - JPA - implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
@@ -197,4 +197,44 @@ dependencies {
 	implementation 'org.postgresql:postgresql:42.5.0'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }
+
+----------------------------
+application.properties
+----------------------------
+Set spring.jpa.hibernate.ddl-auto = none so that Hibernate does not automatically create tables.
+
+spring.datasource.url=jdbc:postgresql://localhost:5432/mydb
+spring.datasource.username=sreplatform
+spring.datasource.password=postgres
+spring.jpa.show-sql=true
+
+## Hibernate Properties
+# The SQL dialect makes Hibernate generate better SQL for the chosen database
+spring.jpa.properties.hibernate.dialect = org.hibernate.dialect.PostgreSQLDialect
+
+# Hibernate ddl auto (create, create-drop, validate, update)
+spring.jpa.hibernate.ddl-auto = none
+
+------------------------------
+CREATE DATABASE, USER, TABLES
+------------------------------
+Logon as postgres
+create database mydb;
+create role myuser with password 'postgres';
+alter role myuser with logon;
+grant all privileges on database mydb to myuser;
+
+Logon as myuser into mydb database
+create schema sp;
+create table sp.x (id int primary key, name text not null, create_date date not null);
+
+mydb=> \d sp.x
+                      Table "sp.x"
+   Column    |  Type   | Collation | Nullable | Default
+-------------+---------+-----------+----------+---------
+ id          | integer |           | not null |
+ name        | text    |           | not null |
+ create_date | date    |           | not null |
+Indexes:
+    "x_pkey" PRIMARY KEY, btree (id)
 
