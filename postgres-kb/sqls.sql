@@ -1,0 +1,7 @@
+Modify column datatype:
+-  alter table sp.employees0 alter column created_datetime type timestamp with time zone using created_datetime at time zone 'UTC';
+-  alter table sp.employees0 set data type varchar(100);
+
+Drop/remove column:
+alter table sp.employees0 drop column abc;
+ 
