@@ -54,3 +54,15 @@ WHERE metric_name = 'cpu'
 GROUP BY interval_alias
 HAVING avg(metric_value) > 45
 ORDER BY interval_alias;
+
+select count(*) metric_count,
+avg(metric_value) metric_value_avg,
+max(metric_value) metric_value_max,
+min(metric_value) metric_value_min,
+to_timestamp(floor((extract('epoch' from date_time) / 600 )) * 600)
+AT TIME ZONE 'UTC' as interval_alias
+FROM ai1.metric_table0
+WHERE metric_name = 'cpu'
+GROUP BY interval_alias
+HAVING avg(metric_value) > 45
+ORDER BY interval_alias;
