@@ -25,3 +25,32 @@ mydb=> \d ai1.metric_table0
 Indexes:
     "metric_table0_pk" PRIMARY KEY, btree (date_time, metric_name)
 ******/
+
+select count(*),
+to_timestamp(floor((extract('epoch' from date_time) / 600 )) * 600)
+AT TIME ZONE 'UTC' as interval_alias
+FROM ai1.metric_table0 GROUP BY interval_alias;
+
+select count(*), avg(metric_value),
+to_timestamp(floor((extract('epoch' from date_time) / 600 )) * 600)
+AT TIME ZONE 'UTC' as interval_alias
+FROM ai1.metric_table0
+GROUP BY interval_alias
+ORDER BY interval_alias;
+
+select count(*), avg(metric_value),
+to_timestamp(floor((extract('epoch' from date_time) / 600 )) * 600)
+AT TIME ZONE 'UTC' as interval_alias
+FROM ai1.metric_table0
+WHERE metric_name = 'cpu'
+GROUP BY interval_alias
+ORDER BY interval_alias;
+
+select count(*) metric_count, avg(metric_value) metric_value_avg,
+to_timestamp(floor((extract('epoch' from date_time) / 600 )) * 600)
+AT TIME ZONE 'UTC' as interval_alias
+FROM ai1.metric_table0
+WHERE metric_name = 'cpu'
+GROUP BY interval_alias
+HAVING avg(metric_value) > 45
+ORDER BY interval_alias;
