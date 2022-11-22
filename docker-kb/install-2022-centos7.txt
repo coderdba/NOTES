@@ -1,0 +1,96 @@
+========================================
+INSTALL DOCKER ON CENTOS 7
+========================================
+
+https://docs.docker.com/engine/install/centos/
+
+========================================
+Uninstall old versions
+========================================
+Older versions of Docker were called docker or docker-engine. If these are installed, uninstall them, along with associated dependencies.
+
+ sudo yum remove docker \
+                  docker-client \
+                  docker-client-latest \
+                  docker-common \
+                  docker-latest \
+                  docker-latest-logrotate \
+                  docker-logrotate \
+                  docker-engine
+It’s OK if yum reports that none of these packages are installed.
+The contents of /var/lib/docker/, including images, containers, volumes, and networks, are preserved. 
+The Docker Engine package is now called docker-ce.
+
+========================================
+Setup the Repository
+========================================
+Install the yum-utils package (which provides the yum-config-manager utility) and set up the repository.
+
+ sudo yum install -y yum-utils
+ sudo yum-config-manager \
+    --add-repo \
+    https://download.docker.com/linux/centos/docker-ce.repo
+ 
+========================================
+INSTALL
+========================================
+sudo yum install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+If prompted to accept the GPG key, verify that the fingerprint matches 060A 61C5 1B55 8A7F 742B 77AA C52F EB6B 621E 9F35, and if so, accept it.
+
+This command installs Docker, but it doesn’t start Docker. It also creates a docker group, however, it doesn’t add any users to the group by default.
+
+=======================================
+START DOCKER
+=======================================
+Start Docker.
+sudo systemctl start docker
+ 
+Verify that Docker Engine is installed correctly by running the hello-world image.
+sudo docker run hello-world
+
+
+=======================================
+NOTE: INSTALLING SPECIFIC VERSION
+=======================================
+To install a specific version of Docker Engine, list the available versions in the repo, then select and install:
+
+a. List and sort the versions available in your repo. This example sorts results by version number, highest to lowest, and is truncated:
+
+sudo yum list docker-ce --showduplicates | sort -r
+The list returned depends on which repositories are enabled, and is specific to your version of CentOS (indicated by the .el7 suffix in this example).
+
+
+b. Install a specific version by its fully qualified package name, which is the package name (docker-ce) plus the version string (2nd column) 
+starting at the first colon (:), up to the first hyphen, separated by a hyphen (-). For example, docker-ce-18.09.1.
+
+sudo yum install docker-ce-<VERSION_STRING> docker-ce-cli-<VERSION_STRING> containerd.io docker-compose-plugin
+This command installs Docker, but it doesn’t start Docker. It also creates a docker group, however, it doesn’t add any users to the group by default
+
+==========================================
+NOTE: INSTALLING USING CONVENIENCE SCRIPT
+==========================================
+Install using the convenience script
+Docker provides a convenience script at https://get.docker.com/ to install Docker into development environments non-interactively. The convenience script isn’t recommended for production environments, but it’s useful for creating a provisioning script tailored to your needs. Also refer to the install using the repository steps to learn about installation steps to install using the package repository. The source code for the script is open source, and can be found in the docker-install repository on GitHub.
+
+Always examine scripts downloaded from the internet before running them locally. Before installing, make yourself familiar with potential risks and limitations of the convenience script:
+
+The script requires root or sudo privileges to run.
+The script attempts to detect your Linux distribution and version and configure your package management system for you.
+The script doesn’t allow you to customize most installation parameters.
+The script installs dependencies and recommendations without asking for confirmation. This may install a large number of packages, depending on the current configuration of your host machine.
+By default, the script installs the latest stable release of Docker, containerd, and runc. When using this script to provision a machine, this may result in unexpected major version upgrades of Docker. Always test upgrades in a test environment before deploying to your production systems.
+The script isn’t designed to upgrade an existing Docker installation. When using the script to update an existing installation, dependencies may not be updated to the expected version, resulting in outdated versions.
+Tip: preview script steps before running
+
+You can run the script with the DRY_RUN=1 option to learn what steps the script will run when invoked:
+
+
+ curl -fsSL https://get.docker.com -o get-docker.sh
+ DRY_RUN=1 sudo sh ./get-docker.sh
+This example downloads the script from https://get.docker.com/ and runs it to install the latest stable release of Docker on Linux:
+
+
+ curl -fsSL https://get.docker.com -o get-docker.sh
+ sudo sh get-docker.sh
+You have now successfully installed and started Docker Engine. The docker service starts automatically on Debian based distributions. On RPM based distributions, such as CentOS, Fedora, RHEL or SLES, you need to start it manually using the appropriate systemctl or service command. As the message indicates, non-root users can’t run Docker commands by default.
