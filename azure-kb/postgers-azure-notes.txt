@@ -1,0 +1,42 @@
+====================
+POSTGRES ON AZURE
+====================
+
+===============
+SQL STATISTICS
+===============
+
+--------------------
+PG_STAT_STATEMENTS
+--------------------
+pg_stat_statements is automatically enabled in Single Server (and possibly Flexible server also)
+However, enable (dynamic) pg_stat_statements.track to TOP or ALL instead of default NONE - in "Server Parameters".
+
+--------------------------
+Query Performance Insight (Query Store)
+--------------------------
+Query Performance Insight blade menu item often may not show anything.
+To show - enable (dynamic) query store in server parameters:
+- Mainly pg_qs.query_capture_mode - set this to TOP, ALL instead of default NONE.
+- pg_qs.replace_parameter_placeholders -  keep it "off" - to hide query parameters (bind variable values)
+
+Commands to set:
+https://learn.microsoft.com/en-us/azure/postgresql/single-server/concepts-query-store
+az postgres server configuration set --name pg_qs.query_capture_mode --resource-group myresourcegroup --server mydemoserver --value TOP
+az postgres server configuration set --name pgms_wait_sampling.query_capture_mode --resource-group myresourcegroup --server mydemoserver --value ALL
+
+To run manually:
+Connect to azure_sys database.
+Run commands like:
+- Query store contents
+SELECT * FROM query_store.qs_view;
+- Wait statistics
+SELECT * FROM query_store.pgms_wait_sampling_view;
+- many others ... find out
+
+----------------------------
+Performance Recommendations
+----------------------------
+
+
+
