@@ -547,6 +547,8 @@ In Eclipse:  Window --> Preferences --> Java --> Installed JREs --> Add --> Then
 ----------------------
 SPRING INITIALIZER
 ----------------------
+
+- CREATE THE PROJECT
 https://start.spring.io/
 Gradle-Groovy, Java, Springboot 3.0.0, com.gm.postgresjpa, jar, java 17
 
@@ -559,6 +561,54 @@ Dependencies:
 	- (if this is not included, Spring errors saying Unable to create a Configuration, because no Jakarta Bean Validation provider could be found
 - Azure Key Vault (if using Azure keyvault to fetch user/pass etc)
 
+- BUILD.GRADLE WILL BE AS FOLLOWS
+
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.0.0'
+	id 'io.spring.dependency-management' version '1.1.0'
+}
+
+group = 'com.gm'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '17'
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+ext {
+	set('springCloudAzureVersion', "6.0.0-beta.4")
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'com.azure.spring:spring-cloud-azure-starter-keyvault'
+	compileOnly 'org.projectlombok:lombok'
+	runtimeOnly 'org.postgresql:postgresql'
+	annotationProcessor 'org.projectlombok:lombok'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+dependencyManagement {
+	imports {
+		mavenBom "com.azure.spring:spring-cloud-azure-dependencies:${springCloudAzureVersion}"
+	}
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
+
+- DOWNLOAD THE PROJECT AND DISCOVER IT IN ECLIPSE
 Download the zip file - click "generate" to download.
 Unzip the file to a folder - and copy the "postgresjpa" (or postgresjpa under postgresjpa) folder 
 - into the project folder (which could be a git repo folder under eclipse workspace folder).  
@@ -567,6 +617,8 @@ Unzip the file to a folder - and copy the "postgresjpa" (or postgresjpa under po
 
 Import the 'gradle' project from that folder in Eclipse
 - File --> Import --> Gradle --> Existing Gradle Project --> then choose the project folder
+
+
 
 ----------------------------
 POSTGRES CREDENTIALS
