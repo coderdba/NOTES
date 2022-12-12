@@ -568,11 +568,12 @@ Import the 'gradle' project from that folder in Eclipse
 ----------------------------
 POSTGRES CREDENTIALS
 ----------------------------
-Add the following to application.properties
+Add the following to application.properties.
+--> Otherwise, running spring app in Eclipse gives error that credentials are not found
 
 spring.datasource.driver-class-name=org.postgresql.Driver
-spring.datasource.url=jdbc:postgresql://localhost:5432/mydb
-spring.datasource.username=myuser
+spring.datasource.url=jdbc:postgresql://localhost:5432/postgres
+spring.datasource.username=postgres
 spring.datasource.password=postgres
 spring.jpa.show-sql=true
 #spring.jpa.properties.hibernate.default_schema=sp
@@ -586,3 +587,22 @@ spring.jpa.properties.hibernate.dialect = org.hibernate.dialect.PostgreSQLDialec
 
 # Hibernate ddl auto (create, create-drop, validate, update)
 spring.jpa.hibernate.ddl-auto = none
+
+--------------------------------------------------------------------------
+POSTGRES CREDENTIALS SHOULD BE CORRECT - OTHERWISE YOU WILL GET ERROR!
+--------------------------------------------------------------------------
+NOTE: This happens even if the code really does not have any Postgres calls
+Hikari tries to create a connection pool. 
+If the credentilas are incorrect then it will error out.
+
+[2m2022-12-12T18:29:49.608+05:30[0;39m [32m INFO[0;39m [35m18808[0;39m [2m---[0;39m [2m[           main][0;39m [36m.s.d.r.c.RepositoryConfigurationDelegate[0;39m [2m:[0;39m Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+[2m2022-12-12T18:29:49.627+05:30[0;39m [32m INFO[0;39m [35m18808[0;39m [2m---[0;39m [2m[           main][0;39m [36m.s.d.r.c.RepositoryConfigurationDelegate[0;39m [2m:[0;39m Finished Spring Data repository scanning in 11 ms. Found 0 JPA repository interfaces.
+[2m2022-12-12T18:29:49.984+05:30[0;39m [32m INFO[0;39m [35m18808[0;39m [2m---[0;39m [2m[           main][0;39m [36mo.hibernate.jpa.internal.util.LogHelper [0;39m [2m:[0;39m HHH000204: Processing PersistenceUnitInfo [name: default]
+[2m2022-12-12T18:29:50.035+05:30[0;39m [32m INFO[0;39m [35m18808[0;39m [2m---[0;39m [2m[           main][0;39m [36morg.hibernate.Version                   [0;39m [2m:[0;39m HHH000412: Hibernate ORM core version 6.1.5.Final
+[2m2022-12-12T18:29:50.191+05:30[0;39m [33m WARN[0;39m [35m18808[0;39m [2m---[0;39m [2m[           main][0;39m [36morg.hibernate.orm.deprecation           [0;39m [2m:[0;39m HHH90000021: Encountered deprecated setting [javax.persistence.sharedCache.mode], use [jakarta.persistence.sharedCache.mode] instead
+
+[2m2022-12-12T18:29:50.305+05:30[0;39m [32m INFO[0;39m [35m18808[0;39m [2m---[0;39m [2m[           main][0;39m [36mcom.zaxxer.hikari.HikariDataSource      [0;39m [2m:[0;39m HikariPool-1 - Starting...
+[2m2022-12-12T18:29:51.459+05:30[0;39m [31mERROR[0;39m [35m18808[0;39m [2m---[0;39m [2m[           main][0;39m [36mcom.zaxxer.hikari.pool.HikariPool       [0;39m [2m:[0;39m HikariPool-1 - Exception during pool initialization.
+
+org.postgresql.util.PSQLException: FATAL: password authentication failed for user "myuser"
+	at org.postgresql.core.v3.ConnectionFactoryImpl.doAuthentication(ConnectionFactoryImpl.java:659) ~[postgresql-42.5.1.jar:42.5.1]
