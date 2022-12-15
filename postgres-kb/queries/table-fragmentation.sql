@@ -1,4 +1,6 @@
-
+-- https://dataedo.com/kb/query/postgresql/list-of-tables-by-their-size
+-- https://www.ktexperts.com/data-fregmentation-in-postgresql
+-- https://www.a2hosting.com/kb/developer-corner/postgresql/determining-the-size-of-postgresql-databases-and-tables
 
 select schemaname as table_schema,
        relname as table_name,
