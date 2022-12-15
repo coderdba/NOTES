@@ -1,3 +1,7 @@
+-- https://dataedo.com/kb/query/postgresql/list-of-tables-by-their-size
+-- https://www.ktexperts.com/data-fregmentation-in-postgresql
+-- https://www.a2hosting.com/kb/developer-corner/postgresql/determining-the-size-of-postgresql-databases-and-tables
+
 SELECT pg_size_pretty(pg_total_relation_size('sp.date1'))
 from sp.date1;
 
