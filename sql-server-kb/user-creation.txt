@@ -1,0 +1,65 @@
+=====================================
+CREATE USERS IN SQL SERVER
+=====================================
+References:
+https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/create-a-login?view=sql-server-ver16
+https://learn.microsoft.com/en-us/sql/t-sql/statements/create-user-transact-sql?view=sql-server-ver16
+https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/create-a-database-user?view=sql-server-ver16
+
+=============================
+MONITORING USER
+=============================
+Like with pg_monitor privilege in Postgres.
+
+- Dynamic Management Views (Transact-SQL) - SQL Server | Microsoft Docs
+https://docs.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/system-dynamic-management-views?view=sql-server-ver16
+To query a dynamic management view or function requires SELECT permission on object and VIEW SERVER STATE or VIEW DATABASE STATE permission. 
+This lets you selectively restrict access of a user or login to dynamic management views and functions. 
+To do this, first create the user in master and then deny the user SELECT permission on the dynamic management views or functions that you do not want them to access.
+After this, the user cannot select from these dynamic management views or functions, regardless of database context of the user.
+
+- Monitor performance using DMVs - Azure SQL Database | Microsoft Learn
+https://learn.microsoft.com/en-us/azure/azure-sql/database/monitoring-with-dmvs?view=azuresql
+In Azure SQL Database, depending on the compute size and deployment option, querying a DMV may require either VIEW DATABASE STATE or VIEW SERVER STATE permission. 
+The latter permission may be granted via membership in the ##MS_ServerStateReader## server role.
+To grant the VIEW DATABASE STATE permission to a specific database user, run the following query as an example:
+GRANT VIEW DATABASE STATE TO database_user;
+
+- Server-level roles - SQL Server | Microsoft Learn
+https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/server-level-roles?view=sql-server-ver16
+To grant membership to the ##MS_ServerStateReader## , ##MS_ServerPerformanceStateReader##  server roles to a login for the logical server in Azure, 
+connect to the master database then run the following query as an example:
+ALTER SERVER ROLE [##MS_ServerStateReader##] ADD MEMBER [login];
+ALTER SERVER ROLE [##MS_ServerPerformanceStateReader##] ADD MEMBER [login];
+
+In an instance of SQL Server and in Azure SQL Managed Instance, dynamic management views return server state information. 
+In Azure SQL Database, they return information regarding your current logical database only.
+
+-----------------------------------------------
+CREATE MONITOR USER IN AZURE DB
+-----------------------------------------------
+Actually, multiple sermon users are necessary.
+Logon as the admin or other superuser in SSMS (sql server management studio).
+
+Create the “LOGIN”
+Go to ‘security’ menu – outside of any database
+CREATE LOGIN sremon WITH PASSWORD = 'abcd';
+
+Create the user in “master” database
+Go to ‘master’ database
+CREATE USER sremon FOR LOGIN sremon;
+Create the user in other databases
+Go to another database and create a user there again – this is necessary otherwise it wont allow logon to that database
+CREATE USER sremon FOR LOGIN sremon;
+
+GRANT PRIVILEGE TO QUERY PERF VIEWS – to SREMON LOGIN
+
+GRANT VIEW DATABASE STATE to sremon;
+-	THIS WONT WORK IN AZURE SQL server
+GRANT VIEW SERVER STATE to sremon; 
+-	THIS WONT WORK IN AZURE SQL server
+ALTER SERVER ROLE [##MS_ServerStateReader##] ADD MEMBER [sremon];
+-	This should work in Azure SQL server
+
+
+
