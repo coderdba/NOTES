@@ -39,26 +39,30 @@ In Azure SQL Database, they return information regarding your current logical da
 CREATE MONITOR USER IN AZURE DB
 -----------------------------------------------
 Actually, multiple sermon users are necessary.
+
 Logon as the admin or other superuser in SSMS (sql server management studio).
 
 Create the “LOGIN”
 Go to ‘security’ menu – outside of any database
-CREATE LOGIN sremon WITH PASSWORD = 'abcd';
+CREATE LOGIN monitoruserlogin WITH PASSWORD = 'abcd';
 
 Create the user in “master” database
 Go to ‘master’ database
-CREATE USER sremon FOR LOGIN sremon;
+CREATE USER monitoruser FOR LOGIN monitoruserlogin;
+
 Create the user in other databases
 Go to another database and create a user there again – this is necessary otherwise it wont allow logon to that database
-CREATE USER sremon FOR LOGIN sremon;
+CREATE USER monitoruser FOR LOGIN monitoruserlogin;
 
 GRANT PRIVILEGE TO QUERY PERF VIEWS – to SREMON LOGIN
 
-GRANT VIEW DATABASE STATE to sremon;
+GRANT VIEW DATABASE STATE to monitoruserlogin;
 -	THIS WONT WORK IN AZURE SQL server
-GRANT VIEW SERVER STATE to sremon; 
+
+GRANT VIEW SERVER STATE to monitoruserlogin; 
 -	THIS WONT WORK IN AZURE SQL server
-ALTER SERVER ROLE [##MS_ServerStateReader##] ADD MEMBER [sremon];
+
+ALTER SERVER ROLE [##MS_ServerStateReader##] ADD MEMBER [monitoruserlogin];
 -	This should work in Azure SQL server
 
 
