@@ -783,6 +783,28 @@ Actually, I set it like this in persistence.xml
     "message": "org.hibernate.hql.internal.ast.QuerySyntaxException: sp.employees0 is not mapped [update sp.employees0 set active_status = 2]: class java.lang.IllegalArgumentException: org.hibernate.hql.internal.ast.QuerySyntaxException: sp.employees0 is not mapped [update sp.employees0 set active_status = 2]"
 }
 
+Fix: 
+1. Provide 'Entity' also in the SQL
+// Mention "Employee empolyees0" where Employee is the JPA Entity defined, and employees 0 is the actual table
+String SQL = "update Employee employees0 set active_status = 0";
 
+2. Import the necessary entity also
+import myco.com.sbpgcrudjpa1.domains.Employee; 
 
+- ANOTHER ERROR ENUM RELATED
+{
+    "timestamp": "2022-12-30T08:25:21.076+00:00",
+    "message": "null: class java.lang.ArrayIndexOutOfBoundsException: Index 2 out of bounds for length 2"
+}
+
+Fix this by setting correct value to the 'enum' defined field in the table.
+
+Original SQL:
+String SQL = "update Employee employees0 set active_status = 2";
+--> 2 is not a valid enum index as we have only two enums for active_status - ACTIVE, INACTIVE (that is, 0, 1)
+
+Fixed SQL:
+String SQL = "update Employee employees0 set active_status = 0"; 
+or
+String SQL = "update Employee employees0 set active_status = 1";
 
