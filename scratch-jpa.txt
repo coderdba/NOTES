@@ -97,3 +97,46 @@ public class ExecCustomSQL {
 }
 }
 */
+
+====================
+PERSISTENCE.XML
+
+<persistence xmlns="http://xmlns.jcp.org/xml/ns/persistence"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/persistence
+  http://xmlns.jcp.org/xml/ns/persistence/persistence_2_1.xsd"
+  version="2.1">
+  
+    <persistence-unit name="exec-custom-sql">
+    	<properties>  
+			<property name="javax.persistence.jdbc.driver" value="org.postgresql.Driver"/>  
+			<property name="javax.persistence.jdbc.url" value="jdbc:postgresql://localhost:5432/mydb"/>  
+			<property name="javax.persistence.jdbc.user" value="myuser"/>  
+			<property name="javax.persistence.jdbc.password" value="postgres"/>  
+		</properties>  
+    </persistence-unit>
+       
+</persistence>
+
+====================
+
+RUNNING A CUSTOM SQL FROM CONTROLLER ENDPOINT
+
+	// test updating employee with entity manager update sql
+	@PutMapping("/service/employee/testupdatesql")
+	public ResponseEntity<String> testUpdate() throws Exception {
+		
+		try {
+			
+			 // Mention "Employee empolyees0" where Employee is the JPA Entity defined, and employees 0 is the actual table
+			 String SQL = "update Employee employees0 set active_status = 0";
+			 execCustomSQL.execUpdateSQL(SQL);
+			 return new ResponseEntity<String>("Update done...", HttpStatus.OK);
+			 
+		} catch(Exception ex) {
+			logger.error("ERR - Caught exception in EmployeeController:testUpdate(): "+ ex.getMessage());
+			throw ex;
+		}
+	}
+
+
