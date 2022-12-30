@@ -1,0 +1,99 @@
+-- Table: sp.employees0
+
+-- DROP TABLE IF EXISTS sp.employees0;
+
+CREATE TABLE IF NOT EXISTS sp.employees0
+(
+    id integer NOT NULL,
+    name character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    active_status integer NOT NULL,
+    created_datetime timestamp with time zone NOT NULL,
+    updated_datetime timestamp with time zone,
+    created_by character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    updated_by character varying(100) COLLATE pg_catalog."default",
+    CONSTRAINT employees_pkey PRIMARY KEY (id)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS sp.employees0
+    OWNER to myuser;
+================
+
+CUSTOM SQL RUNNER
+
+package myco.com.sbpgcrudjpa1.services;
+
+import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.Persistence;
+
+import java.util.Iterator;
+import java.util.List;
+import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.EntityTransaction;
+import javax.persistence.Persistence;
+import javax.persistence.Query;
+
+import org.springframework.stereotype.Component; // needed to make this class a bean
+
+// Import entities
+import myco.com.sbpgcrudjpa1.domains.Employee; 
+
+@Component
+public class ExecCustomSQL {
+	
+	public void execUpdateSQL(String SQL)throws Exception {
+	
+		EntityManagerFactory entityManagerFactory = Persistence.createEntityManagerFactory("exec-custom-sql");
+		EntityManager entityManager = entityManagerFactory.createEntityManager();
+		EntityTransaction entityTransaction;
+	
+		if (entityManager != null) {
+			
+			entityTransaction = entityManager.getTransaction();	
+			entityTransaction.begin();
+			
+			Query query = entityManager.createQuery(SQL);
+			int updateCount = query.executeUpdate();
+			
+			if (updateCount > 0) {
+				System.out.println("Done...");
+			}
+				
+			entityTransaction.commit();
+			
+		} else {
+			throw new Exception("ERR - In ExecCustomSQL:ExecUpdateSQL(): Error executing update");
+		}
+	}
+}
+
+/*
+	
+	EntityManagerFactory entityManagerFactory = Persistence.createEntityManagerFactory("OpenJPASample");
+	EntityManager entityManager = entityManagerFactory.createEntityManager();
+			
+	if (null != entityManager) {
+			
+		EntityTransaction updateTransaction = entityManager.getTransaction();
+			
+		updateTransaction.begin();
+			
+		Query query = entityManager
+			.createQuery("UPDATE Student student SET student.level = 'L' "
+			+ "WHERE student.id= :id");
+			query.setParameter("id", 1);
+			
+		int updateCount = query.executeUpdate();
+			
+		if (updateCount > 0) {
+			System.out.println("Done...");
+		}
+			
+		updateTransaction.commit();
+
+}
+}
+*/
