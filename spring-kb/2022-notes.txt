@@ -834,3 +834,31 @@ String SQL = "update Employee employees0 set active_status = 0";
 or
 String SQL = "update Employee employees0 set active_status = 1";
 
+======================================================
+TEST REST API ENDPOINTS USING MOCKITO AND @WebMvcTest
+======================================================
+https://www.springboottutorial.com/unit-testing-for-spring-boot-rest-services
+
+-------------------------------
+NOTES FROM WEBSITE
+-------------------------------
+
+- Unit Testing Http Get Operation
+
+When we are unit testing a rest service, we would want to launch only the specific controller and the related MVC Components. WebMvcTest annotation is used for unit testing Spring MVC application. This can be used when a test focuses only Spring MVC components. Using this annotation will disable full auto-configuration and only apply configuration relevant to MVC tests.
+
+@ExtendWith(SpringExtension.class) : @ExtendWith is a repeatable annotation that is used to register extensions for the annotated test class, test interface/method/parameter/field. Annotated parameters are supported in test class constructors, in test methods, and in @BeforeAll, @BeforeEach, @AfterAll, and @AfterEach. SpringExtension integrates the Spring TestContext Framework into JUnit 5’s Jupiter programming model.
+@WebMvcTest(value = StudentController.class): WebMvcTest annotation is used for unit testing Spring MVC application. This can be used when a test focuses only Spring MVC components. In this test, we want to launch only StudentController. All other controllers and mappings will not be launched when this unit test is executed.
+@Autowired private MockMvc mockMvc: MockMvc is the main entry point for server-side Spring MVC test support. It allows us to execute requests against the test context.
+@MockBean private StudentService studentService: MockBean is used to add mocks to a Spring ApplicationContext. A mock of studentService is created and auto-wired into the StudentController.
+Mockito.when(studentService.retrieveCourse(Mockito.anyString(),Mockito.anyString())).thenReturn(mockCourse): Mocking the method retrieveCourse to return the specific mockCourse when invoked.
+MockMvcRequestBuilders.get("/students/Student1/courses/Course1").accept(MediaType.APPLICATION_JSON): Creating a Request builder to be able to execute a get request to uri “/students/Student1/courses/Course1” with accept header as “application/json”
+mockMvc.perform(requestBuilder).andReturn(): mockMvc is used to perform the request and return the response back.
+JSONAssert.assertEquals(expected, result.getResponse().getContentAsString(), false): We are using org.skyscreamer.jsonassert.JSONAssert. This allows us to do partial asserts against a JSON String. We are passing strict as false since we do not want to check for all fields in the response.
+
+
+- Adding Http POST Operation
+
+A Http POST Operation should return a status of created (201) when the resource creation is successful.
+
+@PostMapping("/students/{studentId}/courses"): Mapping a url for the POST Request @RequestBody Course newCourse: Using Binding to bind the body of the request to Course object. ResponseEntity.created(location).build(): Return a status of created. Also return the location of created resource as a Response Header.
