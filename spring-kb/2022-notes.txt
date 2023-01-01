@@ -843,12 +843,47 @@ Docs: Testing: https://docs.spring.io/spring-boot/docs/2.7.x/reference/html/feat
 
 To include JUnit in Classpath - otherwise eclipse says org.junit.test cannot be resolved: https://www.toddlahman.com/import-org-junit-cannot-resolved-eclipse/
 
+To fix repository bean not found - Reference: https://stackoverflow.com/questions/52101936/consider-defining-a-bean-of-type-com-repository-userrepository-in-your-configu
+
 -------------------------------
 ADD JUNIT TO CLASSPATH
 -------------------------------
 To include JUnit in Classpath - otherwise eclipse says org.junit.test cannot be resolved: https://www.toddlahman.com/import-org-junit-cannot-resolved-eclipse/
 
 Project --> right click --> Build Path --> configure build path --> Java Build Path --> Libraries --> Classpath --> Add Library --> Junit --> JUnit5
+
+
+-------------------------------
+FIX REPOSITORY NOT FOUND ERROR
+-------------------------------
+
+- ERROR:
+***************************
+APPLICATION FAILED TO START
+***************************
+
+Description:
+
+Field employeeRepository in com.gm.postgresjpa2.controllers.EmployeeController required a bean of type 'com.gm.postgresjpa2.repository.EmployeeRepository' that could not be found.
+
+The injection point has the following annotations:
+	- @org.springframework.beans.factory.annotation.Autowired(required=true)
+
+Action:
+Consider defining a bean of type 'com.gm.postgresjpa2.repository.EmployeeRepository' in your configuration.
+
+- FIX
+Reference: https://stackoverflow.com/questions/52101936/consider-defining-a-bean-of-type-com-repository-userrepository-in-your-configu
+
+1. Add the following in the main SpringBootApplication:
+@ComponentScan("com.gm.postgresjpa2.repository") // Added as JUnit test was not recognizing repository when invoking controller like EmployeeController as MockMVC
+//@EnableAutoConfiguration // Added initially (later commented) as JUnit test was not recognizing repository when invoking controller like EmployeeController as MockMVC
+
+2. Add @Service not @Component in service-implementation java file
+--> THIS MAY NOT BE REQUIRED
+//@Component  // can instead use @Service also
+@Service
+public class EmployeeServiceImpl implements EmployeeService {
 
 -------------------------------
 NOTES FROM WEBSITE
