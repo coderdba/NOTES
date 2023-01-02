@@ -203,7 +203,7 @@ class HelloBootTest {
 }
 
 ===================================
-Employees Rest Get All Endpoint Test
+Employees Rest Get All Endpoint Test (with @SpringBootTest - to test end to end from API endpoint to service, JPA and DB Repo etc)
 
 package myco.com.sbpgcrudjpa1;
 
@@ -233,3 +233,94 @@ public class EmployeesRestGetAllEndpointTest {
             .andDo(print());
     }
  }
+
+=======================================================================
+Employees Rest Get All Endpoint Test (with @WebMvcTest - to test just web-part, that is whether the endpoints exist/respond or not, not really go to DB and fetch)
+
+
+package myco.com.sbpgcrudjpa1;
+
+// mock testing endpoints - https://www.springboottutorial.com/unit-testing-for-spring-boot-rest-services
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.util.Arrays;
+
+//import org.junit.Test;
+//import org.junit.runner.RunWith;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mockito;
+import org.skyscreamer.jsonassert.JSONAssert;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.RequestBuilder;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+
+import myco.com.sbpgcrudjpa1.domains.Employee;
+import myco.com.sbpgcrudjpa1.services.EmployeeServiceImpl;
+import myco.com.sbpgcrudjpa1.controllers.EmployeeController;
+import myco.com.sbpgcrudjpa1.repository.EmployeeRepository;
+import myco.com.sbpgcrudjpa1.services.ExecCustomSQL;
+
+@ExtendWith(SpringExtension.class)
+@WebMvcTest(value = EmployeeController.class)
+//@WithMockUser
+public class EmployeesRestWebOnlyGetAllEndpointTest {
+	
+	@Autowired
+	private MockMvc mockMvc;
+
+	// Mock bean as we are not really calling this service (as we test only endpoint)
+	@MockBean
+	private EmployeeServiceImpl employeeService;	
+	
+	// Mock bean Mock bean for classes used in service or repository or elsewhere 
+	// as we are not really calling this repo from the mock service (as we test only endpoint)
+	@MockBean
+	private EmployeeRepository employeeRepository;
+	
+	// Mock bean for classes used in service or repository or elsewhere
+	// as we are not really calling this repo from the mock service (as we test only endpoint)
+	@MockBean
+	private ExecCustomSQL execCustomSQL;
+	
+	// Mock-Employee to return by mock-service and rest call
+	Employee mockEmployee = new Employee(); // to make mock-service return an employee object
+	String mockEmployeeJson = "{}"; // to test mock-return value of REST call 
+	
+	@Test
+	public void getOneEmployee() throws Exception {
+		
+		// First, Set up what the mock-service should return
+		// to return an employee object
+		Mockito.when(employeeService.findById(Mockito.anyInt())).thenReturn(mockEmployee);
+		// to return null (which is ok also)
+		//Mockito.when(employeeService.findById(Mockito.anyInt())).thenReturn(mockEmployee);
+		
+		// Build the REST request
+		RequestBuilder requestBuilder = MockMvcRequestBuilders.get("/api/v1/service/employees/id/1");
+
+		// Run the request
+		MvcResult result = mockMvc.perform(requestBuilder).andReturn();
+		
+		// Evaluate the result
+		System.out.println("INFO - Test result response: " + result.getResponse());
+		System.out.println("INFO - Test result response as string: " + result.getResponse().getContentAsString());
+
+		System.out.println("INFO - Test result status: " + result.getResponse().getStatus()); // should be 200
+		
+		String expected = "{}";
+		JSONAssert.assertEquals(expected, result.getResponse().getContentAsString(), false);
+		
+		System.out.println("INFO - Test result check assert value: "); 
+	}
+	
+}
