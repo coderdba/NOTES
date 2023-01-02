@@ -50,7 +50,9 @@ WHICH ANNOTATION TO USE - @SpringBootTest or @WebMvcTest
 ======================================================================================
 Notes from: https://examples.javacodegeeks.com/spring-boot-mockmvc-tutorial
 
-OPTIONS:
+-------------
+OPTIONS
+-------------
 Bootstrap the entire application context. This option adds all beans that have been configured in your application.
 - @SpringBootTest
 
@@ -59,3 +61,39 @@ Bootstrap the web layer. This option adds only MVC components to the application
 
 Bootstrap the minimum infrastructure to run your tests. This option gives the developer more control in configuring the MockMvc object.
 
+----------------------------------------------------------------------------------------------------------------------------------
+@SpringBootTest - Bootstrap the entire application context. This option adds all beans that have been configured in your application.
+----------------------------------------------------------------------------------------------------------------------------------
+Main info:
+When you use @SpringBootTest, all beans configured in your application are added to the context.
+- Therefore, Repository and other beans also get loaded and not error out (my notes)
+
+More info:
+@SpringBootTest annotation uses the SpringBootTestContextBootstrapper class to create the application context. 
+The @AutoConfigureMockMvc annotation will automatically configure the MockMvc object when used in combination with @SpringBootTest.
+
+When to use: (my notes)
+Test without fear of some beans not loaded and breaking head over such errors
+
+----------------------------------------------------------------------------------------------------------------------------------
+@WebMvcTest - Bootstrap the web layer. This option adds only MVC components to the application context.
+----------------------------------------------------------------------------------------------------------------------------------
+In some cases, you may want to limit your tests to the web layer only. 
+The web layer consists of MVC components like @Controller, @ControllerAdvice, and @JsonComponent beans. 
+The web layer does not include @Component, @Service, or @Repository beans. You can use the @WebMvcTest annotation for this purpose.
+- This means, Repositories do not get loaded
+-- BUT, the example seems to have a repository also (in the zipped code) - then, how did that get loaded?
+
+----------------------------------------------------------------------------------------------------------------------------------
+Bootstrap the minimum infrastructure to run your tests. 
+----------------------------------------------------------------------------------------------------------------------------------
+In some cases, you may not even want to test with the entire web layer but only want to use the bare minimum infrastructure required by the TestDispatcherServlet. 
+You can use the MockMvcBuilders class for this purpose.
+
+MockMvcBuilders.standaloneSetup(Object… controllers).build();
+
+This creates a StandaloneMockMvcBuilder, which allows for full customization of your web controllers. 
+For instance, you can register ControllerAdvice beans, ViewResolver beans, and add interceptors for incoming requests.
+
+With this option, a MockServletContext is used to initialize the TestServletDispatcher.  
+The MockServletContext has a smaller footprint than the ApplicationContext
