@@ -1,9 +1,18 @@
 ===================================
 ENABLE SWAGGER IN SPRINGBOOT
 ===================================
-https://www.tutorialspoint.com/spring_boot/spring_boot_enabling_swagger2.htm
+Integrate swagger into springboot: 
+- Using Swagger 2.7.0 - got many errors: https://www.tutorialspoint.com/spring_boot/spring_boot_enabling_swagger2.htm
+- Instead, use Swagger 3.0.0 per this article: https://stackoverflow.com/questions/70059018/swagger-2-issue-spring-boot
 
-https://stackoverflow.com/questions/70059018/swagger-2-issue-spring-boot
+More adding documentation-tags for Entity attributes, rest endpoints etc:  
+- *** Spring Boot RESTful API Documentation with Swagger 2:  https://springframework.guru/spring-boot-restful-api-documentation-with-swagger-2/
+
+
+===================================
+CODE
+===================================
+https://github.com/coderdba-coding-org/sb-postgres-jpa1/tree/main/postgresjpa2
 
 ===================================
 CONFIGURE PACKAGES
@@ -27,7 +36,6 @@ implementation 'io.springfox:springfox-swagger-ui:2.7.0'
 compile group: 'io.springfox', name: 'springfox-swagger2', version: '2.7.0'
 compile group: 'io.springfox', name: 'springfox-swagger-ui', version: '2.7.0'
 
-
 ----------------------
 application.properties
 ----------------------
@@ -39,10 +47,70 @@ spring.mvc.pathmatch.matching-strategy=ANT_PATH_MATCHER
 ----------------------
 CODE
 ----------------------
-https://github.com/coderdba-coding-org/sb-postgres-jpa1
+https://github.com/coderdba-coding-org/sb-postgres-jpa1/tree/main/postgresjpa2
+
+------------------------------------------------
+- In the main application
+------------------------------------------------
+Add imports
+import springfox.documentation.builders.ApiInfoBuilder;
+import springfox.documentation.builders.PathSelectors;
+import springfox.documentation.builders.RequestHandlerSelectors;
+import springfox.documentation.service.ApiInfo;
+import springfox.documentation.service.Contact;
+import springfox.documentation.spi.DocumentationType;
+import springfox.documentation.spring.web.plugins.Docket;
+
+
+Add the following code 
+- NOTE: ENSURE CORRECT PACKAGE IS MENTIONED in the Docket code
+
+	// Swagger "docket" bean
+    @Bean
+    public Docket api() {
+        return new Docket(DocumentationType.SWAGGER_2).select()
+                .apis(RequestHandlerSelectors.basePackage("com.gm.postgresjpa2"))
+                .paths(PathSelectors.regex("/.*"))
+                //.build();
+                .build().apiInfo(apiInfoMetaData());
+    }
+    
+    private ApiInfo apiInfoMetaData() {
+
+        return new ApiInfoBuilder().title("Onboarding Service")
+                .description("API Endpoint Decoration")
+                .contact(new Contact("Dev-Team", "https://www.dev-team.com/", "dev-team@gmail.com"))
+                .license("Apache 2.0")
+                .licenseUrl("http://www.apache.org/licenses/LICENSE-2.0.html")
+                .version("1.0.0")
+                .build();
+    }
+
+------------------------------------------------
+IN JPA ENTITY 
+------------------------------------------------
+Add  @ApiModelProperty(notes = "The database generated product ID") to describe fields
+
+// Swagger
+import io.swagger.annotations.ApiModelProperty;
+
+/**
+ * Class which is responsible to define the test template
+ */
+@Getter
+@Setter
+@NoArgsConstructor
+@Entity
+@Table(name = "employees0", schema = "sp") // sp is the schema, employees is the table
+//public class Employee {
+public class Employee {
+ @Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+ @ApiModelProperty(notes = "The database generated product ID")
+ private int id;
 
 ----------------------
-VIEW SWAGGER DOCS
+TO VIEW SWAGGER DOCS
 ----------------------
 JSON: http://localhost:8080/v2/api-docs
 UI: http://localhost:8080/swagger-ui/index.html
