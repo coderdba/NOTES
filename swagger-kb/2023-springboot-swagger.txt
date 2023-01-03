@@ -1,0 +1,88 @@
+===================================
+ENABLE SWAGGER IN SPRINGBOOT
+===================================
+https://www.tutorialspoint.com/spring_boot/spring_boot_enabling_swagger2.htm
+
+https://stackoverflow.com/questions/70059018/swagger-2-issue-spring-boot
+
+===================================
+CONFIGURE PACKAGES
+===================================
+
+-----------------------------------
+IN BUILD.GRADLE
+-----------------------------------
+Add the following lines
+Refresh gradle project so that these are downloaded and kept on disk
+
+Try "Implementation" group (per Maven repository) instead of compile group which errors out:
+implementation 'io.springfox:springfox-swagger2:2.7.0'
+implementation 'io.springfox:springfox-swagger-ui:2.7.0'
+
+"compile group" errors out:
+compile group: 'io.springfox', name: 'springfox-swagger2', version: '2.7.0'
+compile group: 'io.springfox', name: 'springfox-swagger-ui', version: '2.7.0'
+
+
+===================================
+ERRORS AND TROUBLESHOOTING
+===================================
+
+--------------------------------------
+IT DOES NOT WORK AND GIVES ERROR
+--------------------------------------
+https://stackoverflow.com/questions/70059018/swagger-2-issue-spring-boot
+
+Cannot invoke "org.springframework.web.servlet.mvc.condition.PatternsRequestCondition.toString()
+
+Fix: 
+USE SWAGGER 3.0.0 - https://stackoverflow.com/questions/70059018/swagger-2-issue-spring-boot
+Set ANT_PATH_MATCHER in application.properties: https://www.springcloud.io/post/2022-05/springboot-swagger/#gsc.tab=0   https://mp.weixin.qq.com/s/wlhTFJFBgT1YgIk0jB1Yug
+
+Fix 1:  USE SWAGGER 3.0.0 - https://stackoverflow.com/questions/70059018/swagger-2-issue-spring-boot
+1. Add the following to build.gradle
+// https://mvnrepository.com/artifact/io.springfox/springfox-boot-starter
+implementation 'io.springfox:springfox-boot-starter:3.0.0'
+
+2. Change the Docket bean code as below:
+The code below is for a Swagger configuration class.
+However, I embedded the Docket code in the main Spring application class itself.
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import springfox.documentation.builders.ApiInfoBuilder;
+import springfox.documentation.builders.PathSelectors;
+import springfox.documentation.builders.RequestHandlerSelectors;
+import springfox.documentation.service.ApiInfo;
+import springfox.documentation.service.Contact;
+import springfox.documentation.spi.DocumentationType;
+import springfox.documentation.spring.web.plugins.Docket;
+
+@Configuration
+@EnableWebMvc
+public class SwaggerConfig implements WebMvcConfigurer {
+
+    @Bean
+    public Docket api() {
+        return new Docket(DocumentationType.SWAGGER_2).select()
+                .apis(RequestHandlerSelectors.basePackage("com.companyname.app"))
+                .paths(PathSelectors.regex("/.*"))
+                .build().apiInfo(apiInfoMetaData());
+    }
+
+    private ApiInfo apiInfoMetaData() {
+
+        return new ApiInfoBuilder().title("NAME OF SERVICE")
+                .description("API Endpoint Decoration")
+                .contact(new Contact("Dev-Team", "https://www.dev-team.com/", "dev-team@gmail.com"))
+                .license("Apache 2.0")
+                .licenseUrl("http://www.apache.org/licenses/LICENSE-2.0.html")
+                .version("1.0.0")
+                .build();
+    }
+
+}
+
+
