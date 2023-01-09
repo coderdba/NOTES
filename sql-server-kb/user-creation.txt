@@ -14,6 +14,33 @@ MONITORING USER
 =============================
 Like with pg_monitor privilege in Postgres.
 
+
+-----------------------------
+SHORT STORY
+-----------------------------
+
+~~~~~~~~~~~~~~~~~~~~~
+SUMMARY
+~~~~~~~~~~~~~~~~~~~~~
+VIEW SERVER STATE;
+VIEW ANY DEFINITION;
+
+
+~~~~~~~~~~~~~~~~~~~~~
+ACTIVITY MONITOR USER
+~~~~~~~~~~~~~~~~~~~~~
+https://learn.microsoft.com/en-us/sql/relational-databases/performance-monitor/open-activity-monitor-sql-server-management-studio?view=sql-server-ver16
+To view actual activity, you must have VIEW SERVER STATE permission. 
+To view the Data File I/O section of Activity Monitor, you must have CREATE DATABASE, ALTER ANY DATABASE, or VIEW ANY DEFINITION permission 
+in addition to VIEW SERVER STATE.
+
+To KILL a process, a user must be a member of the sysadmin or processadmin fixed server roles.
+
+
+-----------------------------
+LONG STORY
+-----------------------------
+
 - Dynamic Management Views (Transact-SQL) - SQL Server | Microsoft Docs
 https://docs.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/system-dynamic-management-views?view=sql-server-ver16
 To query a dynamic management view or function requires SELECT permission on object and VIEW SERVER STATE or VIEW DATABASE STATE permission. 
@@ -62,28 +89,28 @@ CREATE USER monitoruser FOR LOGIN monitoruserlogin;
 --- GRANT PRIVILEGE TO QUERY METADATA AND DYNAMIC MANAGEMENT VIEWS
 Metadata (like sys.tables) and Dynamic Management Views (like sys.dm_...) are different
 
-GRANT VIEW SERVER STATE to sremon;  - to SREMON Login (not user)
+GRANT VIEW SERVER STATE to monitoruserlogin;  - to Login (not user)
 -	To access dynamic management views
 -	Do on master database only
 -	Connect as superuser to give it to login
 - WORKED WHEN I CONNECTED AS SUPERUSER, into master database
 -	(THIS WONT WORK IN AZURE SQL server??)
 
-GRANT VIEW DATABASE STATE to sremon; – to SREMON USER (not login)
+GRANT VIEW DATABASE STATE to monitoruser; – to USER (not login)
 -	To access dynamic management view
 -	Do for each database (except master?? When did this to master db, got error: Grantor does not have GRANT permission.)
 -	Connect as superuser to give it to user
 -	WORKED WHEN I CONNECTED AS SUPERUSER, THEN SWITCH TO THE SPECIFIC DATABASE, AND RUN THIS COMMAND
 -	(THIS WONT WORK IN AZURE SQL server??)
 
-GRANT VIEW DEFINITION to sremon; – to SREMON USER (not login)
+GRANT VIEW DEFINITION to monitoruser; – to USER (not login)
 -	To access metadata (like sys.tables)
 -	Do for each database (except master??)
 -	Connect as superuser to give it to user
 -	WORKED WHEN I CONNECTED AS SUPERUSER, THEN SWITCH TO THE SPECIFIC DATABASE, AND RUN THIS COMMAND
 -	(THIS WONT WORK IN AZURE SQL server??)
 
-ALTER SERVER ROLE [##MS_ServerStateReader##] ADD MEMBER [sremon]; - to SREMON Login (not user)
+ALTER SERVER ROLE [##MS_ServerStateReader##] ADD MEMBER [monitoruserlogin]; - to Login (not user)
 -	This should work in Azure SQL server
 -	Equivalent of GRANT VIEW SERVER STATE I think
 -	To access dynamic management views
@@ -91,5 +118,5 @@ ALTER SERVER ROLE [##MS_ServerStateReader##] ADD MEMBER [sremon]; - to SREMON Lo
 -	Connect as superuser to give it to login
 - WORKED WHEN I CONNECTED AS SUPERUSER, into master database
 
-ALTER SERVER ROLE [##MS_ServerPerformanceStateReader##] ADD MEMBER [sremon];
--	Cannot add the server principal 'sremon', because it does not exist or you do not have permission.
+ALTER SERVER ROLE [##MS_ServerPerformanceStateReader##] ADD MEMBER [monitoruser];
+-	Cannot add the server principal 'monitoruser', because it does not exist or you do not have permission.
