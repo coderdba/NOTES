@@ -1,4 +1,4 @@
-// https://dataginger.com/2015/06/04/sql-server-capture-execution-plan-of-a-currently-running-queryprocess-spid/
+-- https://dataginger.com/2015/06/04/sql-server-capture-execution-plan-of-a-currently-running-queryprocess-spid/
 
 SELECT CONVERT(XML, c.query_plan) AS ExecutionPlan
 FROM sys.dm_exec_requests a with (nolock)
