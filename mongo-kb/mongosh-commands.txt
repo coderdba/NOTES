@@ -88,8 +88,41 @@ db.cpuUsage.update( { _id: "101" }, { $set: { Server: "Server2" }, $setOnInsert:
   upsertedCount: 1
 }
 
+
+UPDATE
+db.cpuUsage.update( { _id: "101" }, { $set: { Server: "Server2" }, $set: { TimeStamp: new Date() }, $set: { busyPercent: 95 } } );
+
+{
+  acknowledged: true,
+  insertedId: null,
+  matchedCount: 1,
+  modifiedCount: 1,
+  upsertedCount: 0
+}
+
+db.cpuUsage.update( { _id: "101" }, { $set: { Server: "Server2" }, $set: { TimeStamp: new Date() }, $set: { busyPercent: 93 } } );
+
+db.cpuUsage.update( { _id: 101 }, { $set: { Server: "Server2" }, $set: { TimeStamp: new Date() }, $set: { busyPercent: 93 } } );
+
+UPSERT = FALSE
+This will not find a record, so fails
+db.cpuUsage.update( { _id: "102" }, { $set: { Server: "Server2" }, $set: { TimeStamp: new Date() }, $set: { busyPercent: 95 } }, { upsert: false } );
+{
+  acknowledged: true,
+  insertedId: null,
+  matchedCount: 0,
+  modifiedCount: 0,
+  upsertedCount: 0
+}
+
+db.cpuUsage.insertOne( { _id: 92,  Server: "Server2", TimeStamp: new Date(), busyPercent: 95 } );
+db.cpuUsage.update( { _id: 92,  Server: "Server3", TimeStamp: new Date(), busyPercent: 94 } );
+db.cpuUsage.update( { {_id: 92},  $set: {Server: "Server3"}, $set: {TimeStamp: new Date()}, $set: {busyPercent: 44} } );
+
+
+
 QUERY
-osquery1> db.cpuUsage.find().pretty();
+db.cpuUsage.find().pretty();
 [
   {
     _id: ObjectId("63db7d0f94e4374b2ba7fbe6"),
