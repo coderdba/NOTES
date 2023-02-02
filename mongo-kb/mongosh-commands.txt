@@ -39,7 +39,7 @@ osquery1> db.cpuUsage.findOne()
 null
 
 INSERT WITH TIMESTAMP FIELD
-Example: 
+Example: With Upsert:
 db.addCurrentDateTimeDemo.update( { _id: 1 }, { $set: { StudentName: "Robert" }, $setOnInsert: { StudentAdmissiondate: new Date() } }, { upsert: true } );
 
 NOTE: This $setOnInsert is not for "insert" statements - it is more for upsert statements
@@ -58,7 +58,60 @@ osquery1> db.cpuUsage.findOne();
   busyPercent: 80
 }
 
-This is an insert statement
-osquery1> db.cpuUsage.insertOne({Server: "server1", TimeStamp: new Date(), busyPercent: 80});
+INSERT
+Insert without providing ID:
+db.cpuUsage.insertOne({Server: "server1", TimeStamp: new Date(), busyPercent: 80});
 
+Insert providing ID:
+db.cpuUsage.insertOne({_id: 101, Server: "server1", TimeStamp: new Date(), busyPercent: 80});
 
+UPSERT
+- update already inserted record
+db.cpuUsage.update( { _id: ObjectId("63db7d0f94e4374b2ba7fbe6") }, { $set: { Server: "Server2" }, $setOnInsert: { TimeStamp: new Date() }, $set: { busyPercent: 90 } }, { upsert: true } );
+
+- upsert / add new record with ID (though ID of existing record was mentioned, it inserted as a new record - because we did not mention ObjectId("63db7d0f94e4374b2ba7fbe6"))
+db.cpuUsage.update( { _id: "63db7d0f94e4374b2ba7fbe6" }, { $set: { Server: "Server2" }, $setOnInsert: { TimeStamp: new Date() }, $set: { busyPercent: 90 } }, { upsert: true } );
+
+- add new record without id
+db.cpuUsage.update( { $set: { Server: "Server2" }, $setOnInsert: { TimeStamp: new Date() }, $set: { busyPercent: 90 } }, { upsert: true } );
+This fails because there is no ID provided
+   osquery1> db.cpuUsage.update( { $set: { Server: "Server2" }, $setOnInsert: { TimeStamp: new Date() }, $set: { busyPercent: 90 } }, { upsert: true } );
+   MongoInvalidArgumentError: Update document requires atomic operators
+
+- upsert / add new record with ID
+db.cpuUsage.update( { _id: "101" }, { $set: { Server: "Server2" }, $setOnInsert: { TimeStamp: new Date() }, $set: { busyPercent: 90 } }, { upsert: true } );
+{
+  acknowledged: true,
+  insertedId: '101',
+  matchedCount: 0,
+  modifiedCount: 0,
+  upsertedCount: 1
+}
+
+QUERY
+osquery1> db.cpuUsage.find().pretty();
+[
+  {
+    _id: ObjectId("63db7d0f94e4374b2ba7fbe6"),
+    Server: 'server1',
+    '$setOnInsert': { TimeStamp: ISODate("2023-02-02T09:06:23.954Z") },
+    busyPercent: 90
+  },
+  {
+    _id: ObjectId("63db7e4d94e4374b2ba7fbe7"),
+    Server: 'server1',
+    TimeStamp: ISODate("2023-02-02T09:11:41.170Z"),
+    busyPercent: 80
+  },
+  {
+    _id: '63db7d0f94e4374b2ba7fbe6',
+    TimeStamp: ISODate("2023-02-02T09:19:03.041Z"),
+    busyPercent: 90
+  },
+  {
+    _id: 101,
+    Server: 'server1',
+    TimeStamp: ISODate("2023-02-02T09:23:41.829Z"),
+    busyPercent: 80
+  }
+]
