@@ -42,5 +42,23 @@ INSERT WITH TIMESTAMP FIELD
 Example: 
 db.addCurrentDateTimeDemo.update( { _id: 1 }, { $set: { StudentName: "Robert" }, $setOnInsert: { StudentAdmissiondate: new Date() } }, { upsert: true } );
 
-db.cpuUsage.insertOne({Server: "server1", $setOnInsert: {TimeStamp: new Date()}, busyPercent: 80}
+NOTE: This $setOnInsert is not for "insert" statements - it is more for upsert statements
+      So, this will insert a field $setOnInsert rather than setting TimeStamp upon insert
+osquery1> db.cpuUsage.insertOne({Server: "server1", $setOnInsert: {TimeStamp: new Date()}, busyPercent: 80});
+{
+  acknowledged: true,
+  insertedId: ObjectId("63db7d0f94e4374b2ba7fbe6")
+}
+
+osquery1> db.cpuUsage.findOne();
+{
+  _id: ObjectId("63db7d0f94e4374b2ba7fbe6"),
+  Server: 'server1',
+  '$setOnInsert': { TimeStamp: ISODate("2023-02-02T09:06:23.954Z") },
+  busyPercent: 80
+}
+
+This is an insert statement
+osquery1> db.cpuUsage.insertOne({Server: "server1", TimeStamp: new Date(), busyPercent: 80});
+
 
