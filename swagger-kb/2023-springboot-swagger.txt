@@ -20,7 +20,128 @@ CODE
 https://github.com/coderdba-coding-org/sb-postgres-jpa1/tree/main/postgresjpa2
 
 ===================================
-CONFIGURE PACKAGES
+SPRINGDOC
+===================================
+--------------------
+GRADLE DEPENDENCIES
+--------------------
+implementation 'org.springdoc:springdoc-openapi-ui:1.6.14'
+
+-------------------------------
+CODE - MAIN PROGRAM 
+-------------------------------
+package myco.com.sbpgcrudjpa1;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
+import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+
+// SPRINGFOX
+/*
+import springfox.documentation.service.ApiInfo; // for api metadata
+import springfox.documentation.service.Contact; // for api metadata
+import springfox.documentation.builders.ApiInfoBuilder; // for api metadata
+import springfox.documentation.builders.PathSelectors;
+import springfox.documentation.builders.RequestHandlerSelectors;
+import springfox.documentation.spi.DocumentationType;
+import springfox.documentation.spring.web.plugins.Docket;
+*/
+/* for swagger springfox 2.7.0 */
+/*
+import springfox.documentation.builders.RequestHandlerSelectors; // swagger springfox 2.7.0
+import springfox.documentation.spi.DocumentationType; // swagger springfox 2.7.0
+import springfox.documentation.spring.web.plugins.Docket; // swagger springfox 2.7.0
+import springfox.documentation.swagger2.annotations.EnableSwagger2; // swagger springfox 2.7.0
+*/
+
+// SPRINGDOC
+/* for swagger springdoc */
+import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.security.SecurityRequirement;
+import org.springdoc.core.GroupedOpenApi;
+import org.springdoc.core.customizers.OpenApiCustomiser;
+import org.springdoc.core.customizers.OperationCustomizer;
+
+@SpringBootApplication
+//@EnableSwagger2 // swagger springfox 2.7.0
+//@EnableWebMvc // swagger springfox 2.7.0 (maybe this enablewebmvc is required)
+public class Sbpgcrudjpa1Application {
+
+	public static void main(String[] args) {
+		SpringApplication.run(Sbpgcrudjpa1Application.class, args);
+	}
+	
+	// Swagger "docket" bean - with Springdoc
+	  @Bean
+	  public GroupedOpenApi productApi() {
+	      return GroupedOpenApi.builder()
+	              .group("database-crud-api")
+	              .pathsToMatch("/**")
+	              .build();
+	  }
+
+	// Swagger "docket" bean - with springfox 2.7.0
+	/*
+	@Bean
+	public Docket productApi() {
+		return new Docket(DocumentationType.SWAGGER_2).select()
+				.apis(RequestHandlerSelectors.basePackage("myco.com.sbpgcrudjpa1"))
+				//.build() // initial line
+				.build().apiInfo(apiInfoMetaData())
+				;
+	}
+	*/
+	
+	// Swagger "docket" bean - with springfox 3.0.0
+	/*
+    @Bean
+    public Docket api() {
+        return new Docket(DocumentationType.SWAGGER_2).select()
+                .apis(RequestHandlerSelectors.basePackage("myco.com.sbpgcrudjpa1"))
+                .paths(PathSelectors.regex("/.*"))
+                //.build();
+                .build().apiInfo(apiInfoMetaData());
+    }
+    */
+    
+	// Swagger springfox related
+	/*
+    private ApiInfo apiInfoMetaData() {
+
+        return new ApiInfoBuilder().title("Onboarding Service")
+                .description("API Endpoint Decoration")
+                .contact(new Contact("Dev-Team", "https://www.dev-team.com/", "dev-team@gmail.com"))
+                .license("Apache 2.0")
+                .licenseUrl("http://www.apache.org/licenses/LICENSE-2.0.html")
+                .version("1.0.0")
+                .build();
+    }
+    */
+	
+}
+
+
+-------------------------------
+CODE - ENTITY DEFINITION
+-------------------------------
+NOTE: Remove or comment out @ApiModelProperty - which is for SpringFox
+
+    // Updated time - UTC datetime
+    @Column(name = "updated_datetime")
+    @Nullable
+    //@ApiModelProperty(notes = "Provided value will be ignored, API will generate and populate") // swagger springfox only
+    public LocalDateTime updatedDateTime;
+
+
+--------------------
+ACCESS SWAGGER
+--------------------
+http://localhost:8080/swagger-ui/index.html#
+http://localhost:8080/v3/api-docs/database-crud-api --> this last part is as per the Docket definition
+
+===================================
+SPRINGFOX 
 ===================================
 
 -----------------------------------
