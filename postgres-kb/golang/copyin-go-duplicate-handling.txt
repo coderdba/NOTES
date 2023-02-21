@@ -1,0 +1,54 @@
+https://stackoverflow.com/questions/68663587/unique-constraint-violation-on-a-row-causes-entire-pq-copyin-postgresql-import-t
+
+I'm trying to use pq.CopyIn to do bulk imports as described here:
+
+https://godoc.org/github.com/lib/pq
+
+The import is much faster than other methods I've tried but I am finding that a unique constraint violation in just one record will cause the entire import to fail.
+Is there any way to set ON CONFLICT DO NOTHING using pq.CopyIn.
+
+var users = []User{
+    {Name: "John Doe", Email: "jdoe@example.com"},
+    {Name: "Joe Blow", Email: "jblow@example.com"},
+    {Name: "Jane Doe", Email: "jdoe@example.com"}, // duplicate email!
+    {Name: "Foo Bar", Email: "fbar@example.com"},
+}
+With that you can do the following:
+
+_, err = txn.Exec(`
+CREATE TEMP TABLE users_temp
+ON COMMIT DROP
+AS SELECT * FROM users
+WITH NO DATA`)
+if err != nil {
+    panic(err)
+}
+
+stmt, err := txn.Prepare(pq.CopyIn("users_temp", "name", "email"))
+if err != nil {
+    panic(err)
+}
+
+for _, u := range users {
+    if _, err := stmt.Exec(u.Name, u.Email); err != nil {
+        panic(err)
+    }
+}
+if _, err := stmt.Exec(); err != nil {
+    panic(err)
+}
+if err := stmt.Close(); err != nil {
+    panic(err)
+}
+
+_, err = txn.Exec(`
+INSERT INTO users (name, email)
+SELECT name, email FROM users_temp
+ON CONFLICT DO NOTHING`)
+if err != nil {
+    panic(err)
+}
+
+if err := txn.Commit(); err != nil {
+    panic(err)
+}
