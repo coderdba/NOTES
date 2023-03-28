@@ -1,0 +1,47 @@
+https://stackoverflow.com/questions/16321455/what-is-the-difference-between-the-oauth-authorization-code-and-implicit-workflo
+https://learn.microsoft.com/en-us/azure/active-directory/develop/tutorial-v2-react
+
+https://stackoverflow.com/questions/16321455/what-is-the-difference-between-the-oauth-authorization-code-and-implicit-workflo
+OAuth 2.0 has multiple workflows. I have a few questions regarding the two.
+
+Authorization code flow - User logs in from client app, authorization server returns an authorization code to the app. The app then exchanges the authorization code for access token.
+Implicit grant flow - User logs in from client app, authorization server issues an access token to the client app directly.
+
+The access_token is what you need to call a protected resource (an API). In the Authorization Code flow there are 2 steps to get it:
+
+User must authenticate and returns a code to the API consumer (called the "Client").
+The "client" of the API (usually your web server) exchanges the code obtained in #1 for an access_token, authenticating itself with a client_id and client_secret
+It then can call the API with the access_token.
+So, there's a double check: the user that owns the resources surfaced through an API and the client using the API (e.g. a web app). Both are validated for access to be granted. Notice the "authorization" nature of OAuth here: user grants access to his resource (through the code returned after authentication) to an app, the app get's an access_token, and calls on the user's behalf.
+
+In the implicit flow, step 2 is omitted. So after user authentication, an access_token is returned directly, that you can use to access the resource. The API doesn't know who is calling that API. Anyone with the access_token can, whereas in the previous example only the web app would (it's internals not normally accessible to anyone).
+
+The implicit flow is usually used in scenarios where storing client id and client secret is not recommended (a device for example, although many do it anyway). That's what the the disclaimer means. People have access to the client code and therefore could get the credentials and pretend to become resource clients. In the implicit flow all data is volatile and there's nothing stored in the app.
+
+-->
+The Authorization-Code-Flow allows for the final access-token to never reach and never be stored on the machine with the browser/app. The temporary authorization-code is given to the machine with the browser/app, which is then sent to a server. The server can then exchange it with a full access token and have access to APIs etc. The user with the browser gets access to the API only through the server with the token.
+Implicit flow can only involve two parties, and the final access token is stored on the client with the browser/app. If this browser/app is compromised so is their auth-token which could be dangerous.
+tl;dr don't use implicit flow if you don't trust the users machine to hold tokens but you do trust your own servers.
+
+-->
+The difference between both is that:
+
+In Implicit flow,the token is returned directly via redirect URL with "#" sign and this used mostly in javascript clients or mobile applications that do not have server side at its own, and the client does not need to provide its secret in some implementations.
+
+In Authorization code flow, code is returned with "?" to be readable by server side then server side is have to provide client secret this time to token url to get token as json object from authorization server. It is used in case you have application server that can handle this and store user token with his/her profile on his own system, and mostly used for common mobile applications.
+
+so it is depends on the nature of your client application, which one more secure "Authorization code" as it is request the secret on client and the token can be sent between authorization server and client application on very secured connection, and the authorization provider can restrict some clients to use only "Authorization code" and disallow Implicit
+
+-->
+Authorization Code Flow!!!
+If you have a web application server that act as OAuth client
+If you want to have long lived access
+If you want to have offline access to data
+when you are accountable for api calls that your app makes
+If you do not want to leak your OAuth token
+If you don't want you application to run through authorization flow every time it needs access to data. NOTE: The Implicit Grant flow does not entertain refresh token so if authorization server expires access tokens regularly, your application will need to run through the authorization flow whenever it needs access.
+
+Implicit Grant Flow!!!
+When you don't have Web Application Server to act as OAuth Client
+If you don't need long lived access i.e only temporary access to data is required.
+If you trust the browser where your app runs and there is limited concern that the access token will leak to untrusted users.
