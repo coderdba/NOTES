@@ -83,6 +83,35 @@ where df.file_id = vfs.file_id and
       ds.data_space_id = df.data_space_id
 ORDER BY [Average Write Latency] DESC
 
+-- at database level (however group by lists multiple lines for same db somehow)
+SELECT  (vfs.database_id), DB_NAME(vfs.database_id) AS database_name,
+		avg(CAST(io_stall_write_ms/(1.0 + num_of_writes) AS NUMERIC(10,1))) AS [Average Write latency] ,
+        avg(CAST(io_stall_read_ms/(1.0 + num_of_reads) AS NUMERIC(10,1))) AS [Average Read latency] ,
+        avg(CAST((io_stall_read_ms + io_stall_write_ms)
+/(1.0 + num_of_reads + num_of_writes) 
+AS NUMERIC(10,1))) AS [Average Total Latency],
+        avg(num_of_bytes_read / NULLIF(num_of_reads, 0)) AS    [Average Bytes Per Read],
+        avg(num_of_bytes_written / NULLIF(num_of_writes, 0)) AS   [Average Bytes Per Write]
+FROM    sys.dm_io_virtual_file_stats(NULL, NULL) AS vfs
+group by vfs.database_id
+
+-- at data-space level
+SELECT  (vfs.database_id), DB_NAME(vfs.database_id) AS database_name,
+        ds.name as [Data Space Name],
+		avg(CAST(io_stall_write_ms/(1.0 + num_of_writes) AS NUMERIC(10,1))) AS [Average Write latency] ,
+        avg(CAST(io_stall_read_ms/(1.0 + num_of_reads) AS NUMERIC(10,1))) AS [Average Read latency] ,
+        avg(CAST((io_stall_read_ms + io_stall_write_ms)
+/(1.0 + num_of_reads + num_of_writes) 
+AS NUMERIC(10,1))) AS [Average Total Latency],
+        avg(num_of_bytes_read / NULLIF(num_of_reads, 0)) AS    [Average Bytes Per Read],
+        avg(num_of_bytes_written / NULLIF(num_of_writes, 0)) AS   [Average Bytes Per Write]
+FROM    sys.dm_io_virtual_file_stats(NULL, NULL) AS vfs,
+        sys.database_files df,
+		sys.data_spaces ds
+where df.file_id = vfs.file_id and
+      ds.data_space_id = df.data_space_id
+group by vfs.database_id, (vfs.database_id), ds.name
+
 
 ===================================
 Info from the site
