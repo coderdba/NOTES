@@ -19,6 +19,8 @@ select Db.name ,vfs.* from
   
   
 -- Combined query
+NOTE: SYS.MASTER_FILES is not in azure sql db.  For such, you can determine that by taking snapshots of sys.dm_io_virtual_file_stats() and looking at the diffs of io_stall_queued_read_ms and io_stall_queued_write_ms (https://github.com/dimitri-furman/managed-instance/issues/4)
+
 SELECT  DB_NAME(vfs.database_id) AS database_name ,physical_name AS [Physical Name],
         size_on_disk_bytes / 1024 / 1024. AS [Size of Disk] ,
         CAST(io_stall_read_ms/(1.0 + num_of_reads) AS NUMERIC(10,1)) AS [Average Read latency] ,
@@ -32,6 +34,55 @@ FROM    sys.dm_io_virtual_file_stats(NULL, NULL) AS vfs
   JOIN sys.master_files AS mf 
     ON vfs.database_id = mf.database_id AND vfs.file_id = mf.file_id
 ORDER BY [Average Total Latency] DESC
+
+- Without sys.master_files
+SELECT  DB_NAME(vfs.database_id) AS database_name, file_id,
+        CAST(io_stall_write_ms/(1.0 + num_of_writes) AS NUMERIC(10,1)) AS [Average Write latency] ,
+        CAST(io_stall_read_ms/(1.0 + num_of_reads) AS NUMERIC(10,1)) AS [Average Read latency] ,
+        CAST((io_stall_read_ms + io_stall_write_ms)
+/(1.0 + num_of_reads + num_of_writes) 
+AS NUMERIC(10,1)) AS [Average Total Latency],
+        num_of_bytes_read / NULLIF(num_of_reads, 0) AS    [Average Bytes Per Read],
+        num_of_bytes_written / NULLIF(num_of_writes, 0) AS   [Average Bytes Per Write],
+        size_on_disk_bytes / 1024 / 1024. AS [Size of Disk]
+FROM    sys.dm_io_virtual_file_stats(NULL, NULL) AS vfs
+ORDER BY [Average Write Latency] DESC
+
+- Without sys.master_files - Adding file names also
+SELECT  DB_NAME(vfs.database_id) AS database_name, vfs.file_id, 
+		df.name as [File Name], df.physical_name as [Physical File Name],
+        CAST(io_stall_write_ms/(1.0 + num_of_writes) AS NUMERIC(10,1)) AS [Average Write latency] ,
+        CAST(io_stall_read_ms/(1.0 + num_of_reads) AS NUMERIC(10,1)) AS [Average Read latency] ,
+        CAST((io_stall_read_ms + io_stall_write_ms)
+/(1.0 + num_of_reads + num_of_writes) 
+AS NUMERIC(10,1)) AS [Average Total Latency],
+        num_of_bytes_read / NULLIF(num_of_reads, 0) AS    [Average Bytes Per Read],
+        num_of_bytes_written / NULLIF(num_of_writes, 0) AS   [Average Bytes Per Write],
+        size_on_disk_bytes / 1024 / 1024. AS [Size of Disk]
+FROM    sys.dm_io_virtual_file_stats(NULL, NULL) AS vfs,
+        sys.database_files df
+where df.file_id = vfs.file_id
+ORDER BY [Average Write Latency] DESC
+
+- Without sys.master_files - Adding file names, data space names also
+SELECT  DB_NAME(vfs.database_id) AS database_name, vfs.file_id, 
+        ds.name as [Data Space Name],
+		df.name as [File Name], df.physical_name as [Physical File Name],
+        CAST(io_stall_write_ms/(1.0 + num_of_writes) AS NUMERIC(10,1)) AS [Average Write latency] ,
+        CAST(io_stall_read_ms/(1.0 + num_of_reads) AS NUMERIC(10,1)) AS [Average Read latency] ,
+        CAST((io_stall_read_ms + io_stall_write_ms)
+/(1.0 + num_of_reads + num_of_writes) 
+AS NUMERIC(10,1)) AS [Average Total Latency],
+        num_of_bytes_read / NULLIF(num_of_reads, 0) AS    [Average Bytes Per Read],
+        num_of_bytes_written / NULLIF(num_of_writes, 0) AS   [Average Bytes Per Write],
+        size_on_disk_bytes / 1024 / 1024. AS [Size of Disk]
+FROM    sys.dm_io_virtual_file_stats(NULL, NULL) AS vfs,
+        sys.database_files df,
+		sys.data_spaces ds
+where df.file_id = vfs.file_id and
+      ds.data_space_id = df.data_space_id
+ORDER BY [Average Write Latency] DESC
+
 
 ===================================
 Info from the site
