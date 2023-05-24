@@ -1,8 +1,34 @@
 For an ansible user to 'become' root, in /etc/sudoers add these lines (or equivalent):
 
-Cmnd_Alias 	ANSIBLE = /bin/su 
-sudouser1 ALL=ANSIBLE
+Here, 'ansible' user's setting works correctly.
+
+## This worked
+Cmnd_Alias 	ANSIBLE = /bin/sh
+ansible   ALL=ANSIBLE
+
+## This did not work
+Cmnd_Alias 	ISITANSIBLE = /bin/su 
+sudouser1 ALL=ISITANSIBLE
 
 Test it in unix prompt:
 $ sudo su - root -c 'whoami'
 root
+
+=================
+run.yml
+=================
+  - name: Playbook
+    hosts: localhost
+    become: yes
+    become_user: root
+    tasks:
+      - name: create username apacheadm
+        user:
+          name: test1
+          shell: /bin/bash
+
+=================
+run.sh
+=================
+ansible-playbook run.yml --user=ansible --ask-pass --ask-become-pass
+
