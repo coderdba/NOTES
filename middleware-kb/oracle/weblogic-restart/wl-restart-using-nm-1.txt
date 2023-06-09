@@ -1,0 +1,72 @@
+https://stackoverflow.com/questions/44516181/script-to-start-weblogic-servers-and-managed-servers
+
+Script to start Weblogic servers and Managed servers
+Asked 5 years, 11 months ago
+Modified 5 years, 11 months ago
+Viewed 9k times
+1
+
+Can someone help me to write script to perform below steps in weblogic.
+
+1.Stop Managed Servers 2.Stop Node Manager 3.Stop Admin Server 4.Delete the tmp,cache folders.
+
+The steps you mentioned can be done with WLST and Node Manager. However, you need to make the following adjustments:
+
+Configure Node Manager/WebLogic Domain to stop using the demo SSL certificate when accessing/starting Node Manager.
+
+Configure Node Manager
+
+Edit nodemanager.properties and set the following:
+SecureListener to false
+QuitEnabled to true
+Restart Node Manager
+Configure WebLogic Domain
+
+Login to WebLogic Domain
+Under Environment, Machines: click the Machine name configured
+Under Configuration, Node Manager: set Type to Plain and save
+Restart WebLogic Domain (Admin Server + Managed Servers)
+Configure WebLogic Domain's Node Manager Credentials. The default is usually the username/password you entered when creating the WebLogic Domain. However, it is also a good idea to set different credentials for the Node Manager. This is totally optional, especially when working in a development environment.
+
+Login to WebLogic Domain
+Under Domain Structure, click the Weblogic Domain name
+Under Security, General: click Advanced
+Set the NodeManager Username and NodeManager Password/Confirm NodeManager Password and click Save
+For this answer, I will use nodemanager/nodemanager_pwd as sample values.
+Assuming you have one Admin Server and one Managed Server, both on the same machine, write the following commands in a Python script:
+
+# Connect to the Node Manager running on localhost with port 5556.
+# Change the DOMAIN_NAME and the DOMAIN_HOME as appropriate
+nmConnect('nodemanager','nodemanager_pwd','localhost','5556','DOMAIN_NAME','DOMAIN_HOME','PLAIN')
+
+# Start the Admin Server. 
+# The following command assumes that the 
+# name of the Admin Server is AdminServer
+nmServerStart('AdminServer')
+
+# Start the Managed Server. Again, change the Managed Server name as appropriate
+nmServerStart('Managed_Server_01')
+To stop the Managed Server and Admin Server, it's the opposite direction with the sequence, and now you need to use the nmKill command. The stopNodeManager() is possible if the QuitEnabled property was set to true in the nodemanager.properties file.
+
+nmConnect('nodemanager','nodemanager_pwd','localhost','5556','DOMAIN_NAME','DOMAIN_HOME','PLAIN')
+nmKill('Managed_Server_01')
+nmKill('AdminServer')
+stopNodeManager()
+When invoking the Python script that contains the commands above, execute the following command:
+
+$MW_HOME/oracle_common/common/bin/wlst.sh startup.py
+$MW_HOME/oracle_common/common/bin/wlst.sh shutdown.py
+As for the clearing of the tmp/cache folders, these can all be done via shell script (assuming you're running on Linux)
+
+Share
+Follow
+answered Jun 14, 2017 at 9:05
+Derek Carlos's user avatar
+Derek Carlos
+3844 bronze badges
+Thanks for response...But if i want to use script for "SecureListener to false". Then how i can do? – 
+Siva
+ Jun 21, 2017 at 20:06
+The above is if SecureListener is set to false. If you mean to say that your SecureListener was set to true, then just use SSL instead of Plain. That applies on nmConnect() and on Machine configuration. Then again, if you're just using the demo WebLogic SSL certificate instead of your own, it might be better to use Plain instead of SSL. – 
+Derek Carlos
+ Jun 23, 2017 at 0:41 
