@@ -45,6 +45,72 @@ myuserid ALL=(otherUser) NOPASSWD: /bin/sh -c *  → for Ansible to “become”
 These entries to allow logon (with sudo su - otherUser) to otherUser on a terminal will be required if using “/bin/sh -c *” option:
 - Cmnd_Alias      SUDOWITHSHELL = /bin/su - otherUser →  to be able to logon to otherUser user with a shell
 
+============================================================================================
+Sudoers with Commands Run as a Specific User Only (not “become”)
+============================================================================================
+With everything allowed (for a specific user) - PREFERRED
+myuserid ALL=(otherUser) NOPASSWD: /bin/sh  → for Ansible to “become”  a specific user
+
+To logon as otherUser on terminal:  Do “sudo -u otherUser /bin/sh” to logon to otherUser on a terminal
+
+This does not work: “sudo su - otherUser” with this on a terminal and logon to otherUser
+
+With specific command allowed (for a specific user) - NOT PREFERRED
+myuserid ALL=(otherUser) NOPASSWD: /bin/sh -c *  → for Ansible to “become”  a specific user
+
+Does not allow to logon to otherUser on a terminal
+
+These entries to allow logon (with sudo su - otherUser) to otherUser on a terminal will be required if using “/bin/sh -c *” option:
+
+Cmnd_Alias      SUDOWITHSHELL = /bin/su - otherUser →  to be able to logon to otherUser user with a shell
+myuserid ALL = SUDOWITHSHELL → for a user to logon as the other user
+
+======================================================================
+Sudoers with Commands Run as a Specific User Only (not “become”)
+======================================================================
+
+----------------------------
+Preferred Sudoers Entries
+----------------------------
+myuserid ALL = NOPASSWD: /bin/su - otherUser -c * → to execute commands as a specific user
+
+Use (otherUser) NOPASSWD instead of just NOPASSWD if you face errors like “cannot run as root” → confirm from Kyndril/Jegan if required
+
+Cmnd_Alias      SUDOWITHSHELL = /bin/su - otherUser →  to be able to logon to otherUser user with a shell (with sudo su - otherUser) 
+myuserid ALL = SUDOWITHSHELL → for a user to logon as the other user
+
+ 
+--------------------------------------------------------
+Manual operations on terminal
+--------------------------------------------------------
+
+To logon as otherUser on terminal:  “sudo su - otherUser” 
+
+To run a command as otherUser, while being your user in a terminal:
+- sudo su - otherUser -c "whoami"
+
+To execute a sudo command which is enabled for otherUser - so, the first sudo is for my user to execute a command as otherUser, and the second sudo is for otherUser user to execute its permitted elevated command
+- sudo su - otherUser -c "sudo cat /etc/sudoers"  --> when the other user has more specific sudo privilege on some commands
+
+Another sudo command from otherUser’s sudo privilege 
+- sudo su - otherUser  -c "sudo /usr/bin/systemctl start aService"
+
+--------------------------------------------------------
+Possible Sudoers File Entries (for reference)
+--------------------------------------------------------
+Cmnd_Alias      ANSIBLEROOT = /bin/sh --> this is for ansible like users to remotely become any user and run any command
+
+Cmnd_Alias      SUDOWITHSHELL = /bin/su - gsmora --> to be able to logon to gsmora
+gsm1 ALL=SUDOWITHSHELL --> for a user to logon as the other user
+gsm1 ALL= NOPASSWD: SUDOWITHSHELL --> This is to do the same logon without password also
+
+gsm1 ALL = (root) NOPASSWD: /bin/sh - gsmora *
+  --> to be able to execute any command under gsmora (does not need the other line of "to be able to logon to gsmora")
+  --> Also this allows login to that user as well because there is no -c before *
+
+gsm2 ALL = (root) NOPASSWD: /bin/sh - gsmora -c *
+  --> to be able to execute any command under gsmora (does not need the other line of "to be able to logon to gsmora")
+  --> Also this DOES NOT ALLOW TO login to that user because there is -c before *
 
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
