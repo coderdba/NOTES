@@ -1,0 +1,60 @@
+=========================================================
+RUN CONTAINERS AS NON-ROOT USER
+=========================================================
+
+https://www.geeksforgeeks.org/running-docker-containers-as-non-root-user/
+
+====================
+GROUP
+====================
+Group "docker" is created when Docker is installed using yum.
+
+====================
+USER
+====================
+# useradd app1
+# usermod -G docker app1
+# id app1
+uid=1004(app1) gid=1004(app1) groups=1004(app1),979(docker)
+
+========================================
+Restart the Docker service
+========================================
+# systemctl restart docker
+
+========================================
+TEST
+========================================
+Dockerfile:
+FROM alpine:3.18.2
+
+RUN echo 'ping localhost &' > /bootstrap.sh
+RUN echo 'sleep infinity' >> /bootstrap.sh
+RUN chmod +x /bootstrap.sh
+
+CMD /bootstrap.sh
+
+As 'app1' user:
+
+$ docker build . -t infinite1
+
+$ docker images
+REPOSITORY                      TAG           IMAGE ID       CREATED              SIZE
+infinite1                       latest        b247bac790eb   About a minute ago   7.33MB
+
+$ docker run infinite1:latest
+PING localhost (127.0.0.1): 56 data bytes
+64 bytes from 127.0.0.1: seq=0 ttl=64 time=0.078 ms
+64 bytes from 127.0.0.1: seq=1 ttl=64 time=0.072 ms
+64 bytes from 127.0.0.1: seq=2 ttl=64 time=0.089 ms
+64 bytes from 127.0.0.1: seq=3 ttl=64 tim
+...
+...
+
+$ docker ps -a
+CONTAINER ID   IMAGE              COMMAND                  CREATED          STATUS          PORTS     NAMES
+e59b0c6a9b17   infinite1:latest   "/bin/sh -c /bootstr…"   16 seconds ago   Up 15 seconds             nice_borg
+
+# docker ps -a
+CONTAINER ID   IMAGE              COMMAND                  CREATED          STATUS          PORTS     NAMES
+e59b0c6a9b17   infinite1:latest   "/bin/sh -c /bootstr…"   22 seconds ago   Up 21 seconds             nice_borg
