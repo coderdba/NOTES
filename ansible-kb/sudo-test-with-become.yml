@@ -1,0 +1,103 @@
+---
+- name: Test with become
+  hosts: all
+  vars:
+    ansible_remote_tmp: /tmp
+  gather_facts: false
+
+  tasks:
+    - name: Whoami
+      ansible.builtin.shell: whoami
+      become: true
+      become_user: grafana
+      register: result
+      changed_when: false
+
+    - name: Output
+      ansible.builtin.debug:
+        var: result
+
+    - name: Create directory
+      ansible.builtin.file:
+        path: /home/grafana/ansibletest1
+        state: directory
+      become: true
+      become_user: grafana
+
+    - name: Restart With elevated privileges of Grafana user
+      ansible.builtin.shell: sudo /usr/bin/systemctl start pensieve-grafana-agent.service
+      become: true
+      become_user: grafana
+      register: result
+      changed_when: true
+      ignore_errors: true
+
+    - name: Output
+      ansible.builtin.debug:
+        var: result
+
+    - name: Command With elevated privileges of Grafana user
+      ansible.builtin.shell: sudo cat /etc/sudoers | wc
+      become: true
+      become_user: grafana
+      register: result
+      changed_when: true
+      ignore_errors: true
+
+    - name: Output
+      ansible.builtin.debug:
+        var: result
+
+    - name: Commands
+      ansible.builtin.shell: |
+        whoami
+        mkdir /home/grafana/ansibletest2
+        sudo /usr/bin/systemctl start pensieve-grafana-agent.service
+      become: true
+      become_user: grafana
+      register: result
+      changed_when: true
+      ignore_errors: true
+
+    - name: Output
+      ansible.builtin.debug:
+        var: result
+
+    - name: "Copying test file to /home/grafana"
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/test.cfg'
+        dest: /home/grafana/
+        owner: grafana
+        group: grafana
+        mode: u=rwx,g=rx,o=rx
+      become: true
+      become_user: grafana
+
+    - name: Commands
+      ansible.builtin.shell: |
+        whoami
+        sudo cat /etc/secure
+        sudo cat /etc/sudoers
+      become: true
+      become_user: root
+      register: result
+      changed_when: false
+      ignore_errors: true
+
+    - name: Output
+      ansible.builtin.debug:
+        var: result
+
+    - name: Commands
+      ansible.builtin.shell: |
+        whoami
+        ls -lrt /home/gsm078/
+      become: true
+      become_user: gsm078
+      register: result
+      changed_when: false
+      ignore_errors: true
+
+    - name: Output
+      ansible.builtin.debug:
+        var: result
