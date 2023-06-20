@@ -1,0 +1,107 @@
+---
+- name: test without become
+  hosts: all
+  vars:
+    ansible_remote_tmp: /tmp
+  gather_facts: false
+
+  tasks:
+    - name: Whoami
+      ansible.builtin.shell: sudo su - grafana -c "whoami"
+      register: result
+      changed_when: false
+
+    - name: Output
+      ansible.builtin.debug:
+        var: result
+
+    - name: Create directory
+      ansible.builtin.shell: sudo su - grafana -c "mkdir /home/grafana/ansibletest1"
+      register: result
+      changed_when: true
+
+    - name: Output
+      ansible.builtin.debug:
+        var: result
+
+    - name: Restart
+      ansible.builtin.shell: sudo su - grafana -c "sudo /usr/bin/systemctl start pensieve-grafana-agent.service"
+      register: result
+      changed_when: true
+      ignore_errors: true
+
+    - name: Output
+      ansible.builtin.debug:
+        var: result
+
+    - name: Command With elevated privileges of Grafana user
+      ansible.builtin.shell: sudo su - grafana -c "sudo cat /etc/sudoers | wc"
+      register: result
+      changed_when: true
+      ignore_errors: true
+
+    - name: Output
+      ansible.builtin.debug:
+        var: result
+    
+    - name: Commands
+      ansible.builtin.shell: |
+        sudo su - grafana -c "
+          whoami
+          mkdir /home/grafana/ansibletest2
+          sudo /usr/bin/systemctl start pensieve-grafana-agent.service
+        "
+      register: result
+      changed_when: true
+      ignore_errors: true
+    
+    - name: Output
+      ansible.builtin.debug:
+        var: result
+
+    - name: Copying test file to /tmp/
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/test.cfg'
+        dest: /tmp/
+        mode: u=rw,g=r,o=r
+    
+    - name: Copy file to grafana home directory from /tmp/
+      ansible.builtin.shell: sudo su - grafana -c "cp /tmp/test.cfg /home/grafana/test.cfg"
+      register: result
+      changed_when: true
+
+    - name: Delete file
+      ansible.builtin.file:
+        path: /tmp/test.cfg
+        state: absent
+
+    - name: Commands
+      ansible.builtin.shell: |
+        sudo su - root -c "
+          whoami
+          cat /etc/secure
+          cat /etc/sudoers | wc -l
+        "
+      register: result
+      changed_when: false
+      ignore_errors: true
+      timeout: 5
+
+    - name: Output
+      ansible.builtin.debug:
+        var: result
+
+    - name: Commands
+      ansible.builtin.shell: |
+        sudo su - gsm078 -c "
+          whoami
+          ls -lrt /home/gsm078/
+        "
+      register: result
+      changed_when: false
+      ignore_errors: true
+      timeout: 5
+
+    - name: Output
+      ansible.builtin.debug:
+        var: result
