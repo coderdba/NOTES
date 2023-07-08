@@ -54,6 +54,23 @@ curl -H "Content-Type: application/json" -XPOST "http://localhost:9200/indexname
 ------------------------------------------
 NEW INDEX WITH DATA of TYPE _doc
 ------------------------------------------
+NOTE: Use of types like _doc is deprecated: https://stackoverflow.com/questions/35747862/what-does-doc-represents-in-elasticsearch
+However, if _doc is not used in the URL, got error - TO OVERCOME, REMOVE _doc from the BODY
+{
+    "error": {
+        "root_cause": [
+            {
+                "type": "illegal_argument_exception",
+                "reason": "The mapping definition cannot be nested under a type [_doc] unless include_type_name is set to true."
+            }
+        ],
+        "type": "illegal_argument_exception",
+        "reason": "The mapping definition cannot be nested under a type [_doc] unless include_type_name is set to true."
+    },
+    "status": 400
+}
+
+
 Used example from here: https://kb.objectrocket.com/elasticsearch/guide-how-to-add-documents-to-an-index-in-elasticsearch
 
 POST https://localhost:9200/car/_doc
@@ -94,6 +111,84 @@ green  open .internal.alerts-observability.metrics.alerts-default-000001 gjPOSbk
 green  open .internal.alerts-observability.logs.alerts-default-000001    -TobPedKTbSKDTTRYQSW5A 1 0 0 0  247b  247b
 yellow open my1                                                          bUp-tbkWThu5S2WwFhVX0w 1 1 0 0  247b  247b
 yellow open car                                                          ENRUVxZUSIai0PS9EEnfMw 1 1 1 0 6.8kb 6.8kb
+green  open .internal.alerts-observability.uptime.alerts-default-000001  ECu_dbgeQ3iGsQq1o-Ti_Q 1 0 0 0  247b  247b
+green  open .fleet-file-data-agent-000001                                7AK6FRBiSteiyQ90EBHaJg 1 0 0 0  247b  247b
+green  open .fleet-files-agent-000001                                    2_7IscO1TcGX15vgHC7yDg 1 0 0 0  247b  247b
+green  open .internal.alerts-security.alerts-default-000001              Hsw68VSsR92IlYLlUUkpOA 1 0 0 0  247b  247b
+green  open .internal.alerts-observability.slo.alerts-default-000001     53b80geUTbuiFPaFMu_PgQ 1 0 0 0  247b  247b
+green  open .internal.alerts-observability.apm.alerts-default-000001     CY1LJOhySO-7LKi8CZ1vmA 1 0 0 0  247b  247b
+
+------------------------------------------
+NEW INDEX WITH DATA without TYPE _doc
+------------------------------------------
+NOTE: Use of types like _doc is deprecated: https://stackoverflow.com/questions/35747862/what-does-doc-represents-in-elasticsearch
+However, if _doc is not used in the URL, got error - TO OVERCOME, REMOVE _doc from the BODY
+{
+    "error": {
+        "root_cause": [
+            {
+                "type": "illegal_argument_exception",
+                "reason": "The mapping definition cannot be nested under a type [_doc] unless include_type_name is set to true."
+            }
+        ],
+        "type": "illegal_argument_exception",
+        "reason": "The mapping definition cannot be nested under a type [_doc] unless include_type_name is set to true."
+    },
+    "status": 400
+}
+
+
+Used example from here: https://kb.objectrocket.com/elasticsearch/guide-how-to-add-documents-to-an-index-in-elasticsearch
+
+PUT https://localhost:9200/bus
+Disable ssl in settings
+Choose Basic Auth in Authorization and enter username and password
+Body: Raw --> JSON
+{
+"mappings":{
+"properties": {
+"busModel" : { "type" : "text" },
+"year": {"type" : "integer"},
+"engine": {"type": "text"},
+"star": {"type": "text"}
+}
+}
+}
+
+Response:
+{
+    "acknowledged": true,
+    "shards_acknowledged": true,
+    "index": "bus"
+}
+
+Rerunning PUT causes error:
+{
+    "error": {
+        "root_cause": [
+            {
+                "type": "resource_already_exists_exception",
+                "reason": "index [bus/ywDq3aqRS2uzRfPj4D5Skw] already exists",
+                "index_uuid": "ywDq3aqRS2uzRfPj4D5Skw",
+                "index": "bus"
+            }
+        ],
+        "type": "resource_already_exists_exception",
+        "reason": "index [bus/ywDq3aqRS2uzRfPj4D5Skw] already exists",
+        "index_uuid": "ywDq3aqRS2uzRfPj4D5Skw",
+        "index": "bus"
+    },
+    "status": 400
+}
+
+- VERIFY
+https://localhost:9200/_cat/indices
+
+yellow open bus                                                          ywDq3aqRS2uzRfPj4D5Skw 1 1 0 0  225b  225b
+green  open .internal.alerts-observability.metrics.alerts-default-000001 gjPOSbkfT2On56ESZODaWw 1 0 0 0  247b  247b
+green  open .internal.alerts-observability.logs.alerts-default-000001    -TobPedKTbSKDTTRYQSW5A 1 0 0 0  247b  247b
+yellow open my1                                                          bUp-tbkWThu5S2WwFhVX0w 1 1 0 0  247b  247b
+yellow open car                                                          ENRUVxZUSIai0PS9EEnfMw 1 1 1 0 6.9kb 6.9kb
 green  open .internal.alerts-observability.uptime.alerts-default-000001  ECu_dbgeQ3iGsQq1o-Ti_Q 1 0 0 0  247b  247b
 green  open .fleet-file-data-agent-000001                                7AK6FRBiSteiyQ90EBHaJg 1 0 0 0  247b  247b
 green  open .fleet-files-agent-000001                                    2_7IscO1TcGX15vgHC7yDg 1 0 0 0  247b  247b
