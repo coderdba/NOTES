@@ -370,7 +370,9 @@ https://localhost:9200/car/_search
 ---------------------------
 THE INDEX WITHOUT _doc
 ---------------------------
-PUT https://localhost:9200/bus
+PUT https://localhost:9200/bus --> This fails
+POST https://localhost:9200/bus/_doc/1 --> This works (POST and adding an id)
+POST https://localhost:9200/bus/_doc --> This works (POST and without adding an id --> gives a system generated ID)
 Body:
 {
 "busmodel": "mini bus",
@@ -379,7 +381,7 @@ Body:
 "star": "3"
 }
 
-Response:
+Response: with PUT
 {
     "error": {
         "root_cause": [
@@ -392,6 +394,54 @@ Response:
         "reason": "unknown key [busmodel] for create index"
     },
     "status": 400
+}
+
+Response: with POST, _doc and added ID 
+{
+    "_index": "bus",
+    "_id": "1",
+    "_version": 1,
+    "result": "created",
+    "_shards": {
+        "total": 2,
+        "successful": 1,
+        "failed": 0
+    },
+    "_seq_no": 0,
+    "_primary_term": 1
+}
+
+Response: with POST, _doc and NO added ID 
+{
+    "_index": "bus",
+    "_id": "_syzNYkBd5krLIuUE_O_",
+    "_version": 1,
+    "result": "created",
+    "_shards": {
+        "total": 2,
+        "successful": 1,
+        "failed": 0
+    },
+    "_seq_no": 6,
+    "_primary_term": 1
+}
+
+- UPDATE A RECORD
+PUT https://localhost:9200/bus/_doc/1 --> where 1 is the ID
+
+Response:
+{
+    "_index": "bus",
+    "_id": "1",
+    "_version": 3,
+    "result": "updated",
+    "_shards": {
+        "total": 2,
+        "successful": 1,
+        "failed": 0
+    },
+    "_seq_no": 7,
+    "_primary_term": 1
 }
 
 ===================================
