@@ -733,6 +733,88 @@ Body:
 }
 }
 
+==========================================
+ADD DATA TO INDEX WITH MULTIPLE INDEX-ID'S
+==========================================
+
+-------------------------------
+WITHOUT SPECIFYING INDEX ID
+-------------------------------
+POST https://localhost:9200/car/_doc
+Body:
+{
+    "_index": "car",
+    "_id": "BcztNYkBd5krLIuUR_Ss",
+    "_version": 1,
+    "result": "created",
+    "_shards": {
+        "total": 2,
+        "successful": 1,
+        "failed": 0
+    },
+    "_seq_no": 15,
+    "_primary_term": 1
+}
+
+Result: 
+- It will find the index-id with the correct fields and insert there
+
+Verify:
+            {
+                "_index": "car",
+                "_id": "BMzoNYkBd5krLIuU6_TR",
+                "_score": 1.0,
+                "_source": {
+                    "mappings": {
+                        "_doc": {
+                            "properties": {
+                                "model": {
+                                    "type": "text"
+                                },
+                                "year": {
+                                    "type": "integer"
+                                },
+                                "engine": {
+                                    "type": "text"
+                                },
+                                "star": {
+                                    "type": "text"
+                                },
+                                "something": {
+                                    "type": "text"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                "_index": "car",
+                "_id": "BcztNYkBd5krLIuUR_Ss",
+                "_score": 1.0,
+                "_source": {
+                    "model": "sedan",
+                    "year": 3000,
+                    "engine": "3200CC",
+                    "star": "4",
+                    "something": "abc"
+                }
+            }
+
+
+
+=======================================
+PECULIAR CASES
+=======================================
+If a 'car' is created again with POST with mappings, with the same mappings as an existing mapping
+- It creates another index-id (_id)
+- It shows up in  GET car/_search (but, it sometimes did not seem to show up)
+- GET on https://localhost:9200/car does not show the individual _IDs but will show various fields in different _ID's together
+
+- You can add data to specific _ID - but only one record gets created
+- Subsequent POST/PUT will only update that record and not add new records under that ID
+- However, it will not accept child records - any more PUT/POST will only update that one record
+
 
 
 
