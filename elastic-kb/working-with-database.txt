@@ -207,21 +207,25 @@ ADD DATA TO A DOCUMENT USING POSTMAN
 ================================================
 https://kb.objectrocket.com/elasticsearch/guide-how-to-add-documents-to-an-index-in-elasticsearch
 
+---------------------------
+THE INDEX WITH _doc
+---------------------------
+
 POST https://localhost:9200/car/_doc
 Authorization - basic, with user/pass
 Settings - disable ssl to avoid self signed cert exception
 Body - raw-->json
 {
-"model" : { "type" : "sedan" },
-"year": {"type" : "2000"},
-"engine": {"type": "1200cc"},
-"star": {"type": "4"}
+"model": "sedan",
+"year": 2000,
+"engine": "1200CC",
+"star": "4"
 }
 
 Response:
 {
     "_index": "car",
-    "_id": "8cyCNYkBd5krLIuUy_Oj",
+    "_id": "9cyXNYkBd5krLIuUJPNr",
     "_version": 1,
     "result": "created",
     "_shards": {
@@ -248,3 +252,35 @@ NOTE: Without _doc NEEDS PUT and not POST, and also gives this error:
     "status": 400
 }
 
+---------------------------
+THE INDEX WITHOUT _doc
+---------------------------
+PUT https://localhost:9200/bus
+Body:
+{
+"busmodel": "mini bus",
+"year": 1980,
+"engine": "4200cc",
+"star": "3"
+}
+
+Response:
+{
+    "error": {
+        "root_cause": [
+            {
+                "type": "parse_exception",
+                "reason": "unknown key [busmodel] for create index"
+            }
+        ],
+        "type": "parse_exception",
+        "reason": "unknown key [busmodel] for create index"
+    },
+    "status": 400
+}
+
+===================================
+DELETE AN INDEX WITH POSTMAN
+===================================
+DELETE https://localhost:9200/car
+DELETE https://localhost:9200/bus
