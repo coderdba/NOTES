@@ -33,7 +33,10 @@ postgresjpa4
 ===============
 Git: Folder "postgresjpa4" inside git repo: coderdba-coding-org/sb-postgres-jpa1.git
 
-For Eclipse etc setup, see postgresjpa3 section
+-----------------------------
+STARTER PROJECT AND ECLIPSE
+-----------------------------
+For Eclipse etc setup after starter project is generated, see postgresjpa3 section
 
 - STARTER PROJECT CREATION
 https://start.spring.io/
@@ -58,9 +61,17 @@ Dependencies:
 
 More Dependencies (not available in spring starter):
 - javax-persistence-api (not javax.persistence which is from Eclipse)
+  Add to build.gradle file:
   implementation group: 'javax.persistence', name: 'javax.persistence-api', version: '2.2'
 -- alternative jakarta-persistence-api (https://genotechies.medium.com/not-found-javax-persistence-in-my-spring-boot-project-b52939614066)
 
+------------------------------------------------
+JPA TOOLS, ENTITY GENERATION, PERSISTENCE.YML
+------------------------------------------------
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ADD JPA TOOLS
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 - Add JPA Tools to Eclipse project, generate entity classes from tables, add persistence.xml
 https://stackoverflow.com/questions/50817803/jpa-tools-menu-missing-from-eclipse
 https://help.eclipse.org/latest/index.jsp?topic=%2Forg.eclipse.jpt.doc.user%2Ftasks024.htm
@@ -71,11 +82,118 @@ Project --> right click --> properties --> Project Facets --> Enable facets --> 
 
 This much will bring in "JPA Content" item to the project hierarchy.
 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+GENERATE ENTITIES FROM TABLES
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 -- IF GENERATING ENTITIES FROM TABLES
 Project --> right click --> JPA Tools --> Generate entities from tables --> then add connection --> choose and remove the default Postgres driver -->
 --> add the driver gotten in "Project and External Dependencies" --> press OK --> give URL and credentials (as in the persistence stuff below)
 Then you will be able to see the tables and choose and get the entities created (default in 'model' package - change it to 'domain' package if needed)
 
+Example entity it generates:
+package com.example.postgresjpa4.domains;
+
+import java.io.Serializable;
+import javax.persistence.*;
+import java.sql.Timestamp;
+
+
+/**
+ * The persistent class for the employees database table.
+ * 
+ */
+@Entity
+@Table(name="employees")
+@NamedQuery(name="Employee.findAll", query="SELECT e FROM Employee e")
+public class Employee implements Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Id
+	@GeneratedValue(strategy=GenerationType.IDENTITY)
+	@Column(unique=true, nullable=false)
+	private Integer id;
+
+	@Column(name="active_status", nullable=false)
+	private Integer activeStatus;
+
+	@Column(name="created_by", nullable=false, length=100)
+	private String createdBy;
+
+	@Column(name="created_timestamp", nullable=false)
+	private Timestamp createdTimestamp;
+
+	@Column(nullable=false, length=100)
+	private String name;
+
+	@Column(name="updated_by", length=100)
+	private String updatedBy;
+
+	@Column(name="updated_timestamp")
+	private Timestamp updatedTimestamp;
+
+	public Employee() {
+	}
+
+	public Integer getId() {
+		return this.id;
+	}
+
+	public void setId(Integer id) {
+		this.id = id;
+	}
+
+	public Integer getActiveStatus() {
+		return this.activeStatus;
+	}
+
+	public void setActiveStatus(Integer activeStatus) {
+		this.activeStatus = activeStatus;
+	}
+
+	public String getCreatedBy() {
+		return this.createdBy;
+	}
+
+	public void setCreatedBy(String createdBy) {
+		this.createdBy = createdBy;
+	}
+
+	public Timestamp getCreatedTimestamp() {
+		return this.createdTimestamp;
+	}
+
+	public void setCreatedTimestamp(Timestamp createdTimestamp) {
+		this.createdTimestamp = createdTimestamp;
+	}
+
+	public String getName() {
+		return this.name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	public String getUpdatedBy() {
+		return this.updatedBy;
+	}
+
+	public void setUpdatedBy(String updatedBy) {
+		this.updatedBy = updatedBy;
+	}
+
+	public Timestamp getUpdatedTimestamp() {
+		return this.updatedTimestamp;
+	}
+
+	public void setUpdatedTimestamp(Timestamp updatedTimestamp) {
+		this.updatedTimestamp = updatedTimestamp;
+	}
+
+}
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+GENERATE PERSISTENCE.XML
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 -- IF USING PERSISTENCE.XML
 Then, open persistence.xml of "JPA Content"
 - Non JTA data source: Localhost PG13 mydb myuser (gave this arbitrary name)
