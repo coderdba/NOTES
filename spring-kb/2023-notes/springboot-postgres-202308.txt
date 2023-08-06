@@ -10,8 +10,36 @@ May try https://spring.io/guides/gs/accessing-data-rest
   that accesses relational JPA data through a hypermedia-based RESTful front end.
 
 ===============
+postgresjpa4
+===============
+Git: Folder "postgresjpa4" inside git repo: coderdba-coding-org/sb-postgres-jpa1.git
+
+- STARTER PROJECT CREATION
+https://start.spring.io/
+Project: Gradle-Groovy (traditional Gradle build file) (alternative Gradle-Kotlin was also tried, but finally used gradle-groovy)
+Language: Java
+Spring Boot: 3.1.2
+Group: com.example
+Artefact: postgresjpa3
+Package Name: com.example.postgresjpa3
+Packagin: Jar
+Java: 17
+
+Dependencies:
+- Spring Data JPA
+- Spring Web
+- Lombok (will also need Lombok to be installed on Eclipse)
+- Postgres SQL Driver
+- Rest Repositories - https://spring.io/guides/gs/accessing-data-rest
+- Spring Boot Actuator
+- Spring Data JDBC
+- JDBC API
+
+===============
 postgresjpa3
 ===============
+NOTE: Abandoned this due to errors related to spring-session, micrometer-influx etc for which we have not configured destinations
+
 Git: Folder "postgresjpa3" inside git repo: coderdba-coding-org/sb-postgres-jpa1.git
 
 References:
@@ -95,3 +123,51 @@ Refresh Gradle Project:
 Rigkt-click the project --> Gradle --> Refresh Gradle Project
 - This will show a folder 'Project and External Dependencies' in the project hierarchy and all dependencies show up there
 - Also, when viewing build path, it will show Classpath - Project and External Dependencies, alongwith the original "Module Path"
+
+====================================
+START THE APP - AND TROUBLESHOOT
+====================================
+Go to "Boot Dashboard" in Eclipse and start the project.
+
+------------------------------
+ERROR - Failed to configure a DataSource
+------------------------------
+***************************
+APPLICATION FAILED TO START
+***************************
+
+Description:
+Failed to configure a DataSource: 'url' attribute is not specified and no embedded datasource could be configured.
+Reason: Failed to determine a suitable driver class
+
+Action:
+Consider the following:
+	If you want an embedded database (H2, HSQL or Derby), please put it on the classpath.
+	If you have database settings to be loaded from a particular profile you may need to activate it (no profiles are currently active).
+
+- REASON
+https://www.baeldung.com/spring-boot-failed-to-configure-data-source
+Springboot tries to autowire DB connections
+At least the applications.properties file entries for DB should be present
+
+------------------------------
+ERRORS - Spring Session, Influx etc errors
+------------------------------
+- spring session
+org.springframework.jdbc.BadSqlGrammarException: PreparedStatementCallback; bad SQL grammar [DELETE FROM SPRING_SESSION
+WHERE EXPIRY_TIME < ?
+Caused by: org.postgresql.util.PSQLException: ERROR: relation "spring_session" does not exist
+  Position: 13
+
+- influx
+[2m2023-08-06T18:30:16.466+05:30[0;39m [31mERROR[0;39m [35m8840[0;39m [2m---[0;39m [2m[trics-publisher][0;39m [36mi.micrometer.influx.InfluxMeterRegistry [0;39m [2m:[0;39m unable to create database 'mydb'
+[2m2023-08-06T18:30:16.529+05:30[0;39m [31mERROR[0;39m [35m8840[0;39m [2m---[0;39m [2m[trics-publisher][0;39m [36mi.micrometer.influx.InfluxMeterRegistry [0;39m [2m:[0;39m failed to send metrics to influx
+
+Action:
+Commenting out the following in build.gradle and refreshing gradle did not help
+
+	implementation 'org.springframework.session:spring-session-jdbc'
+	runtimeOnly 'io.micrometer:micrometer-registry-influx'
+	runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
+
+
