@@ -3,20 +3,60 @@ ALLOWING 'BECOME' ROOT IN ANSIBLE
 ==============================================
 Cmnd_Alias      ANSIBLEROOT = /bin/sh --> this is for ansible like users to remotely become any user and run any command
 
+
 ====================================================
 For Sudoers for Ansible to “become” a Specific User
 ====================================================
 
---------------------------------
+====================================================
 Preferred Sudoers Entries
---------------------------------
+====================================================
+------------------------------------------
+SUMMARY OF ALL SUDO SETTINGS
+------------------------------------------
+# For remote actions by 'becoming' the other user
+myuserid ALL=(otherUser) NOPASSWD: /bin/sh  
+%myGroup ALL=(otherUser) NOPASSWD: /bin/sh 
+
+# To logon on a terminal with traditional "sudo su - otheruser"
+myuserid ALL = (root) NOPASSWD: /bin/su - otheruser
+%mygroup ALL = (root) NOPASSWD: /bin/su - otheruser
+
+# To enable otheruser to run root commands, say for example start/stop osquery related services
+otheruser ALL = (root) NOPASSWD: /usr/bin/systemctl start osquery*
+otheruser ALL = (root) NOPASSWD: /usr/bin/systemctl stop osquery*
+
+------------------------------------------
+DETAILS OF ALL SUDO SETTINGS
+------------------------------------------
+See the sections below.
+----------------------------------------------------
 With everything allowed (as a specific other user)
+----------------------------------------------------
 → for Ansible to “become” a specific user
 
 myuserid ALL=(otherUser) NOPASSWD: /bin/sh  
 %myGroup ALL=(otherUser) NOPASSWD: /bin/sh 
 
-Manual operations on terminal:
+----------------------------------------------------------------------------------------------
+Further, to allow sudo to another user on a terminal with traditional "sudo su - otheruser"
+----------------------------------------------------------------------------------------------
+myuserid ALL = (root) NOPASSWD: /bin/su - otheruser
+%mygroup ALL = (root) NOPASSWD: /bin/su - otheruser
+
+----------------------------------------------------------------------------------------------
+Sudoers entries to run root commands as the other user
+----------------------------------------------------------------------------------------------
+That is, myuser will sudo to otheruser and the otheruser has privilege to run, say, root-only commands
+otheruser ALL = (root) NOPASSWD: /usr/bin/systemctl start osquery*
+otheruser ALL = (root) NOPASSWD: /usr/bin/systemctl stop osquery*
+
+-----------------------------------------------------
+Manual operations on terminal - With just /bin/sh 
+-----------------------------------------------------
+With just /bin/sh you cannot do "sudo su - otheruser" to logon to otheruser on a terminal.
+Instead, follow steps like the following.
+
 - To logon as otherUser on terminal:  Do “sudo -u otherUser /bin/sh” to logon to otherUser on a terminal
 -- This does not work: “sudo su - otherUser” with this on a terminal and logon to otherUser
 
@@ -28,6 +68,8 @@ To execute a sudo command which is enabled for otherUser - so, the first sudo is
 
 Another sudo command from otherUser’s sudo privilege
 - sudo -u otherUser /bin/sh -c "sudo /usr/bin/systemctl start aService"
+
+
 
 -----------------------------------------------
 Possible Sudoers File Entries (for reference)
