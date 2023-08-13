@@ -1,0 +1,38 @@
+Reference:
+** Good sql.Rows into empty interface into array of strings:  
+- https://golang.hotexamples.com/examples/database.sql/Rows/Scan/golang-rows-scan-method-examples.html
+
+func rowsToStrings(rows *sql.Rows) [][]string {
+	cols, err := rows.Columns()
+	if err != nil {
+		panic(err)
+	}
+	pretty := [][]string{cols}
+	results := make([]interface{}, len(cols))
+	for i := range results {
+		results[i] = new(interface{})
+	}
+	for rows.Next() {
+		if err := rows.Scan(results[:]...); err != nil {
+			panic(err)
+		}
+		cur := make([]string, len(cols))
+		for i := range results {
+			val := *results[i].(*interface{})
+			var str string
+			if val == nil {
+				str = "NULL"
+			} else {
+				switch v := val.(type) {
+				case []byte:
+					str = string(v)
+				default:
+					str = fmt.Sprintf("%v", v)
+				}
+			}
+			cur[i] = str
+		}
+		pretty = append(pretty, cur)
+	}
+	return pretty
+}
