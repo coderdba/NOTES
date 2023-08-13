@@ -1,0 +1,1095 @@
+https://golang.hotexamples.com/examples/database.sql/Rows/Scan/golang-rows-scan-method-examples.html
+
+import (
+    "database/sql"
+    _ "github.com/lib/pq"
+    "fmt"
+)
+
+func main() {
+    db, err := sql.Open("postgres", "user=test password=test dbname=test host=localhost sslmode=disable")
+    if err != nil {
+        panic(err)
+    }
+    defer db.Close()
+
+    rows, err := db.Query("SELECT id, name, email FROM users")
+    if err != nil {
+        panic(err)
+    }
+    defer rows.Close()
+
+    var id int
+    var name string
+    var email string
+
+    for rows.Next() {
+        err := rows.Scan(&id, &name, &email)
+        if err != nil {
+            panic(err)
+        }
+        fmt.Printf("%d %s %s\n", id, name, email)
+    }
+}
+In this example, we are querying a PostgreSQL database for user data and scanning the results into variables using the Rows.Scan function. The package library used in this example is the "github.com/lib/pq" package, which is a PostgreSQL driver for Go's database/sql package.
+Golang Rows.Scan - 30 examples found. These are the top rated real world Golang examples of database/sql.Rows.Scan extracted from open source projects. You can rate examples to help us improve the quality of examples.
+FREQUENTLY USED METHODS
+Close (30)
+Columns (30)
+Err (30)
+Next (30)
+Scan (30)
+Sibling (2)
+RELATED
+GetById
+VarS
+Parse
+NewCmdAutoscale
+QuoteIDField
+OpenURI
+NewNamer
+crypto_generichash
+SendMail
+New
+RELATED IN LANGS
+bind_params (PHP)
+ctfw_get_page_by_template (PHP)
+IExecutableHandler (C#)
+ColorBrightness (C#)
+led_classdev_suspend (C++)
+preempt_enable (C++)
+Math (Java)
+FileWrapper (Java)
+single_result (Python)
+getTimerService (Python)
+EXAMPLE #18
+File: trace_test.go Project: liugangnhm/cockroach
+func rowsToStrings(rows *sql.Rows) [][]string {
+	cols, err := rows.Columns()
+	if err != nil {
+		panic(err)
+	}
+	pretty := [][]string{cols}
+	results := make([]interface{}, len(cols))
+	for i := range results {
+		results[i] = new(interface{})
+	}
+	for rows.Next() {
+		if err := rows.Scan(results[:]...); err != nil {
+			panic(err)
+		}
+		cur := make([]string, len(cols))
+		for i := range results {
+			val := *results[i].(*interface{})
+			var str string
+			if val == nil {
+				str = "NULL"
+			} else {
+				switch v := val.(type) {
+				case []byte:
+					str = string(v)
+				default:
+					str = fmt.Sprintf("%v", v)
+				}
+			}
+			cur[i] = str
+		}
+		pretty = append(pretty, cur)
+	}
+	return pretty
+}
+EXAMPLE #22
+File: driver_test.go Project: nkhuyu/cockroach
+func readAll(t *testing.T, rows *sql.Rows) resultSlice {
+	defer rows.Close()
+
+	cols, err := rows.Columns()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	colStrs := make([]*string, len(cols))
+	for i := range cols {
+		colStrs[i] = &cols[i]
+	}
+
+	results := resultSlice{colStrs}
+
+	for rows.Next() {
+		strs := make([]*string, len(cols))
+		vals := make([]interface{}, len(cols))
+		for i := range vals {
+			vals[i] = &strs[i]
+		}
+		if err := rows.Scan(vals...); err != nil {
+			t.Fatal(err)
+		}
+		results = append(results, strs)
+	}
+
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+
+	return results
+}
+EXAMPLE #30
+File: dao.go Project: jimmykuu/studygolang
+// 用于FindAll中，具体model在遍历rows时调用（提取的公共代码）
+func (this *Dao) Scan(rows *sql.Rows, colNum int, colFieldMap map[string]interface{}, selectCol ...string) error {
+	scanInterface := make([]interface{}, 0, colNum)
+	for _, column := range selectCol {
+		scanInterface = append(scanInterface, colFieldMap[column])
+	}
+	return rows.Scan(scanInterface...)
+}
+EXAMPLE #40
+File: techSupport.go Project: ninnemana/API
+func populateTechSupports(rows *sql.Rows, ch chan []TechSupport) {
+	var t TechSupport
+	var ts []TechSupport
+	for rows.Next() {
+		err := rows.Scan(
+			&t.ID,
+			&t.VehicleMake,
+			&t.VehicleModel,
+			&t.VehicleYear,
+			&t.PurchaseDate,
+			&t.PurchasedFrom,
+			&t.DealerName,
+			&t.ProductCode,
+			&t.DateCode,
+			&t.Issue,
+			&t.Contact.ID,
+			&t.BrandID,
+		)
+		if err != nil {
+			ch <- ts
+		}
+		ts = append(ts, t)
+	}
+	defer rows.Close()
+	ch <- ts
+	return
+}
+EXAMPLE #50
+File: scanners.go Project: falahhaprak/rter
+func scanUserDirection(direction *data.UserDirection, rows *sql.Rows) error {
+	var updateTimeString string
+
+	err := rows.Scan(
+		&direction.Username,
+		&direction.LockUsername,
+		&direction.Command,
+		&direction.Heading,
+		&direction.Lat,
+		&direction.Lng,
+		&updateTimeString,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	updateTime, err := time.Parse("2006-01-02 15:04:05", updateTimeString) // this assumes UTC as timezone
+
+	if err != nil {
+		log.Println("UserDirection scanner failed to parse time.")
+		return err
+	}
+
+	direction.UpdateTime = updateTime
+
+	return nil
+}
+EXAMPLE #60
+File: AlertAPI.go Project: HannahWatwood/AlertGo-
+func GetResultsTwo(rows *sql.Rows) [][]string {
+	var (
+		results [][]string
+		//result  [][]string
+		id      string
+		types   string
+		title   string
+		message string
+		i       int
+	)
+	results = make([][]string, 1)
+	i = 0
+	for rows.Next() {
+		err := rows.Scan(&id, &types, &title, &message)
+		if err != nil {
+			//fmt.Println(err)
+		}
+		messages := []string{id, types, title, message}
+		fmt.Println(messages)
+		for index, element := range messages {
+			results[i][index] = element
+		}
+		i++
+	}
+	return results
+}
+EXAMPLE #70
+File: field_model.go Project: GeoNet/mtr
+func fieldModelProto(r *http.Request, h http.Header, b *bytes.Buffer) *weft.Result {
+	var err error
+	var rows *sql.Rows
+
+	if rows, err = dbR.Query(`SELECT modelID
+		FROM
+		field.model`); err != nil {
+		return weft.InternalServerError(err)
+	}
+
+	var fmr mtrpb.FieldModelResult
+
+	for rows.Next() {
+		var t mtrpb.FieldModel
+
+		if err = rows.Scan(&t.ModelID); err != nil {
+			return weft.InternalServerError(err)
+		}
+
+		fmr.Result = append(fmr.Result, &t)
+	}
+
+	var by []byte
+	if by, err = proto.Marshal(&fmr); err != nil {
+		return weft.InternalServerError(err)
+	}
+
+	b.Write(by)
+
+	return &weft.StatusOK
+}
+EXAMPLE #80
+File: scope.go Project: eynStudio/gobreak
+func (p *Scope) AllJson(lst T) *Scope {
+	p.checkModel(lst)
+	p.Select(p.orm.mapper("Json"))
+	p.From(p.model.Name)
+	resultv := reflect.ValueOf(lst)
+	if resultv.Kind() != reflect.Ptr || resultv.Elem().Kind() != reflect.Slice {
+		panic("out argument must be a slice address")
+	}
+	slicev := resultv.Elem()
+
+	sa := p.builder.SqlSelect()
+
+	var rows *sql.Rows
+	if rows, p.Err = p._query2(sa); p.NotErr() {
+		defer rows.Close()
+		for rows.Next() {
+			var v []byte
+			rows.Scan(&v)
+			obj := reflect.New(p.model.Type).Interface()
+			json.Unmarshal(v, obj)
+			slicev = reflect.Append(slicev, reflect.ValueOf(obj).Elem())
+		}
+		resultv.Elem().Set(slicev.Slice(0, slicev.Len()))
+	}
+	return p
+}
+EXAMPLE #90
+File: data_site.go Project: GeoNet/mtr
+func dataSiteProto(r *http.Request, h http.Header, b *bytes.Buffer) *weft.Result {
+	var err error
+	var rows *sql.Rows
+
+	if rows, err = dbR.Query(`SELECT siteID, latitude, longitude FROM data.site`); err != nil {
+		return weft.InternalServerError(err)
+	}
+
+	var ts mtrpb.DataSiteResult
+
+	for rows.Next() {
+		var t mtrpb.DataSite
+
+		if err = rows.Scan(&t.SiteID, &t.Latitude, &t.Longitude); err != nil {
+			return weft.InternalServerError(err)
+		}
+
+		ts.Result = append(ts.Result, &t)
+	}
+
+	var by []byte
+	if by, err = proto.Marshal(&ts); err != nil {
+		return weft.InternalServerError(err)
+	}
+
+	b.Write(by)
+
+	return &weft.StatusOK
+}
+EXAMPLE #100
+File: store_sqlite.go Project: fun-alex-alex2006hw/gopher_talkie
+func (s *StoreSqlite) scanUserFromRows(rows *sql.Rows, user *User) error {
+	if rows.Err() != nil {
+		return rows.Err()
+	}
+	if user == nil {
+		return ErrInvalidUser
+	}
+	var params []interface{}
+	columns, err := rows.Columns()
+	if err != nil {
+		return err
+	}
+	for i := range columns {
+		col := columns[i]
+		switch strings.ToLower(col) {
+		case "id":
+			params = append(params, &user.UserID)
+		case "name":
+			params = append(params, &user.Name)
+		case "email":
+			params = append(params, &user.Email)
+		case "key":
+			params = append(params, &user.Key)
+		}
+	}
+	return rows.Scan(params...)
+}
+EXAMPLE #110
+File: mysql.go Project: micro/config-srv
+func (m *mysql) AuditLog(from, to, limit, offset int64, reverse bool) ([]*proto.ChangeLog, error) {
+	var r *sql.Rows
+	var err error
+
+	if from == 0 && to == 0 {
+		q := "readLog"
+		if reverse {
+			q += "Desc"
+		}
+		r, err = st[q].Query(limit, offset)
+	} else {
+		q := "readBetween"
+		if reverse {
+			q += "Desc"
+		}
+		r, err = st[q].Query(from, to, limit, offset)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+	defer r.Close()
+
+	var logs []*proto.ChangeLog
+
+	for r.Next() {
+		var id int
+
+		log := &proto.ChangeLog{
+			Change: &proto.Change{
+				ChangeSet: &proto2.ChangeSet{},
+			},
+		}
+		if err := r.Scan(
+			&id,
+			&log.Action,
+			&log.Change.Id,
+			&log.Change.Path,
+			&log.Change.Author,
+			&log.Change.Comment,
+			&log.Change.Timestamp,
+			&log.Change.ChangeSet.Timestamp,
+			&log.Change.ChangeSet.Checksum,
+			&log.Change.ChangeSet.Data,
+			&log.Change.ChangeSet.Source,
+		); err != nil {
+			if err == sql.ErrNoRows {
+				return nil, errors.New("not found")
+			}
+			return nil, err
+		}
+		logs = append(logs, log)
+
+	}
+	if r.Err() != nil {
+		return nil, err
+	}
+
+	return logs, nil
+}
+EXAMPLE #120
+File: card.go Project: caneroj1/cardsAPI
+// getCardsWithWhereQuery returns all of the cards that match a certain WHERE query.
+func getCardsWithWhereQuery(query string, params ...interface{}) []Card {
+	var cards []Card
+	var err error
+
+	sqlQ := "select cardbody, cardtype, cardblanks, classic, id, createdon, rating, raters, approved, createdby from %s " + query
+	var rows *sql.Rows
+	if len(params) == 0 {
+		rows = database.GetByQuery(sqlQ)
+	} else {
+		rows = database.GetByQuery(sqlQ, params...)
+	}
+	defer rows.Close()
+
+	var card Card
+	for rows.Next() {
+		err = rows.Scan(&card.CardBody, &card.CardType,
+			&card.CardBlanks, &card.Classic, &card.ID,
+			&card.CreatedOn, &card.Rating, &card.Raters,
+			&card.Approved, &card.CreatedBy)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		cards = append(cards, card)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return cards
+}
+EXAMPLE #130
+File: main.go Project: Gwillink/textql
+func displayResult(rows *sql.Rows) {
+	cols, cols_err := rows.Columns()
+
+	if cols_err != nil {
+		log.Fatalln(cols_err)
+	}
+
+	rawResult := make([][]byte, len(cols))
+	result := make([]string, len(cols))
+
+	dest := make([]interface{}, len(cols))
+	for i, _ := range cols {
+		dest[i] = &rawResult[i]
+	}
+
+	for rows.Next() {
+		rows.Scan(dest...)
+
+		for i, raw := range rawResult {
+			result[i] = string(raw)
+		}
+
+		for j, v := range result {
+			fmt.Printf("%s", v)
+			if j != len(result)-1 {
+				fmt.Printf(", ")
+			}
+		}
+		fmt.Printf("\n")
+	}
+}
+EXAMPLE #140
+File: database.go Project: asta-fulda/box
+// Query all expired uploads - uploads thus not having any records which are currently active
+func (tx *Transaction) QueryExpiredUploads() (result []string, err error) {
+	err = tx.do(func(tx *sql.Tx) (err error) {
+		var rows *sql.Rows
+
+		rows, err = tx.Query(`
+      SELECT 
+			  "u"."id" AS "id"
+			FROM "uploads" AS "u"
+			GROUP BY "u"."id"
+			HAVING MAX("u"."expiration") < NOW()`)
+		if err != nil {
+			return
+		}
+
+		defer rows.Close()
+
+		for rows.Next() {
+			var id string
+
+			err = rows.Scan(&id)
+			if err != nil {
+				return
+			}
+
+			result = append(result, id)
+		}
+
+		return
+	})
+
+	return
+}
+EXAMPLE #150
+File: chatArchives.go Project: gk-turnip/server
+func (gkDbCon *GkDbConDef) getMaxChatId() (int32, *gkerr.GkErrDef) {
+	var stmt *sql.Stmt
+	var maxId int32 = 0
+	var err error
+
+	stmt, err = gkDbCon.sqlDb.Prepare("select max(id) from chat_archives")
+	if err != nil {
+		return 0, gkerr.GenGkErr("sql.Prepare"+getDatabaseErrorMessage(err), err, ERROR_ID_PREPARE)
+	}
+
+	defer stmt.Close()
+
+	var rows *sql.Rows
+
+	rows, err = stmt.Query()
+	if err != nil {
+		return 0, gkerr.GenGkErr("stmt.Query"+getDatabaseErrorMessage(err), err, ERROR_ID_QUERY)
+	}
+
+	defer rows.Close()
+
+	if rows.Next() {
+		err = rows.Scan(&maxId)
+		if err != nil {
+			return 0, gkerr.GenGkErr("rows.Scan"+getDatabaseErrorMessage(err), err, ERROR_ID_ROWS_SCAN)
+		}
+	}
+
+	return maxId, nil
+}
+EXAMPLE #160
+File: multi_test.go Project: databasex/mysql
+func validate_multi_second_select(dbt *DBTest, rows *sql.Rows) {
+	if _, ok := rows.Sibling(); false == ok {
+		dbt.Fatal("rows should have a another sibling.")
+	}
+
+	if false == rows.Next() {
+		dbt.Fatalf("should be one row exists.\n")
+	}
+
+	if err := rows.Scan(&id, &fv, &id2); err != nil {
+		dbt.Fatalf("should not get error :%s\n", err.Error())
+	}
+
+	if 323890472 != id {
+		dbt.Fatalf("expect 323890472, but got %d\n", id)
+	}
+
+	if math.Abs(42342.43-float64(fv)) > 0.01 {
+		dbt.Fatalf("expect 42342.432, but not got %+v\n", fv)
+	}
+
+	if rows.Next() {
+		dbt.Fatal("rows should not have more than one row.")
+	}
+
+	if 298723987 != id2 {
+		dbt.Fatalf("expect 298723987, but got %d\n", id2)
+	}
+}
+EXAMPLE #170
+File: benchmark.go Project: viney/go-db-driver
+func bmPreparedQuery(b *testing.B) {
+	stmt, err := db.Prepare("SELECT number, str FROM test")
+	if err != nil {
+		panic(err)
+	}
+
+	var num int64
+	var str string
+	var i int64
+	var rows *sql.Rows
+	for rep := 0; rep < 10000; rep++ {
+		rows, err = stmt.Query()
+		if err != nil {
+			panic(err)
+		}
+
+		i = 0
+		for rows.Next() {
+			rows.Scan(&num, &str)
+			if num != i {
+				panic(fmt.Sprintf("Result didn't match: %d!=%d", num, i))
+			}
+			i++
+		}
+
+		if i != 100 {
+			panic(fmt.Sprintf("Rows count doesn't match: %d!=100", i))
+		}
+	}
+
+	stmt.Close()
+}
+EXAMPLE #180
+File: sqlscan.go Project: uhoh-itsmaciek/meddler
+// scan a single row of data into a struct.
+func (data *structData) scanRow(rows *sql.Rows, dst interface{}, columns []string) error {
+	// check if there is data waiting
+	if !rows.Next() {
+		if err := rows.Err(); err != nil {
+			return err
+		}
+		return sql.ErrNoRows
+	}
+
+	// get a list of targets
+	targets, err := Targets(dst, columns)
+	if err != nil {
+		return err
+	}
+
+	// perform the scan
+	if err := rows.Scan(targets...); err != nil {
+		return err
+	}
+
+	// post-process and copy the target values into the struct
+	if err := WriteTargets(dst, columns, targets); err != nil {
+		return err
+	}
+
+	return rows.Err()
+}
+EXAMPLE #190
+File: scope.go Project: eynStudio/gobreak
+//	sql_ := fmt.Sprintf(`SELECT "Json" %s where `+p.wheresql, p.getFrom())
+//	var rows *sql.Rows
+//	if rows, p.Err = p._query(sql_, p.whereargs...); p.NotErr() {
+//		defer rows.Close()
+//		for rows.Next() {
+//			var v []byte
+//			rows.Scan(&v)
+//			obj := reflect.New(p.model.Type).Interface()
+//			json.Unmarshal(v, obj)
+//			slicev = reflect.Append(slicev, reflect.ValueOf(obj).Elem())
+//		}
+//		resultv.Elem().Set(slicev.Slice(0, slicev.Len()))
+//	}
+//	return p
+//}
+func (p *Scope) PageJson(lst T, page, perPage int) (pager db.Paging) {
+	p.checkModel(lst)
+	pf := filter.NewPageFilter(page, perPage)
+	p.Limit(pf.Skip(), perPage)
+	pager.Total = p.Count(lst)
+	//	log.Println(pager.Total)
+	resultv := reflect.ValueOf(lst)
+	if resultv.Kind() != reflect.Ptr || resultv.Elem().Kind() != reflect.Slice {
+		panic("out argument must be a slice address")
+	}
+	slicev := resultv.Elem()
+	wsa := p.buildWhere()
+	pas := p.buildPage()
+	sql_ := fmt.Sprintf(`SELECT "Json" %s `+wsa.Sql+" "+pas.Sql, p.getFrom())
+	var rows *sql.Rows
+	if rows, p.Err = p._query(sql_, wsa.Args...); p.NotErr() {
+		defer rows.Close()
+		for rows.Next() {
+			var v []byte
+			rows.Scan(&v)
+			obj := reflect.New(p.model.Type).Interface()
+			json.Unmarshal(v, obj)
+			slicev = reflect.Append(slicev, reflect.ValueOf(obj).Elem())
+		}
+		resultv.Elem().Set(slicev.Slice(0, slicev.Len()))
+	}
+	pager.Items = lst
+	//	log.Println(lst)
+	return
+}
+EXAMPLE #200
+File: sqliteWrapper.go Project: kennuzzo/go-utils
+//Parse an executed query
+func (dbw *Sqlite3) Parse(rows *sql.Rows) (results Results, err error) {
+	// here im not sure what im getting from the db as it can be anything from the results
+	//therefore i wish i can just put everything in a bucket, and think later.
+	tc, tn := dbw.TotalCount(rows)
+	// multiFields := make([]interface{}, tc)
+	multiFieldsPtrs := make([]interface{}, tc)
+	for i := 0; i < tc; i++ {
+		var multiFields interface{}
+		multiFieldsPtrs[i] = &multiFields
+	}
+
+	headers := make(map[string]interface{})
+	headers["fields"] = tn
+	results = append(results, headers)
+	for rows.Next() {
+		err = rows.Scan(multiFieldsPtrs...)
+		checkErrors(err)
+		tempMap := make(map[string]interface{})
+		for idx, label := range tn {
+			row := *(multiFieldsPtrs[idx].(*interface{}))
+			// if sizeOf(row) < 1 {
+			// 	skip = true
+			// 	break
+			// }
+			tempMap[label] = row
+		}
+		results = append(results, tempMap)
+	}
+	return
+}
+EXAMPLE #210
+File: filtering_http_api.go Project: beemoboy/squid-helpers
+func sexDomain(dom string) (sexAnswer bool, err error) {
+	var stmt *sql.Stmt
+
+	stmt, err = db.Prepare(`SELECT dom FROM domains WHERE dom = $1 AND sex = true LIMIT 1`)
+
+	if err != nil {
+		fmt.Printf("db.Prepare error: %v\n", err)
+		return false, err
+	}
+
+	var rows *sql.Rows
+
+	rows, err = stmt.Query(dom)
+	if err != nil {
+		fmt.Printf("stmt.Query error: %v\n", err)
+		return false, err
+	}
+
+	defer stmt.Close()
+	if rows.Next() {
+		var domain string
+
+		err = rows.Scan(&domain)
+		if err != nil {
+			fmt.Printf("rows.Scan error: %v\n", err)
+			return false, err
+		}
+		if configuration.Debug == "Yes" {
+			fmt.Println("domain => \"" + domain + "\"")
+		}
+		return true, err
+	}
+
+	return false, nil
+}
+EXAMPLE #220
+File: scan.go Project: rjp/crud
+func (scan *Scan) ScanToStruct(rows *sql.Rows, record reflect.Value) error {
+	columns, err := rows.Columns()
+	if err != nil {
+		return err
+	}
+
+	values := make([]interface{}, len(columns))
+
+	for i, column := range columns {
+		var field reflect.Value
+
+		fieldName := scan.SQLColumnDict[column]
+
+		if scan.ToPointers {
+			field = record.Elem().FieldByName(fieldName)
+		} else {
+			field = record.FieldByName(fieldName)
+		}
+
+		if field.IsValid() {
+			values[i] = field.Addr().Interface()
+		} else {
+			values[i] = &values[i]
+		}
+	}
+
+	return rows.Scan(values...)
+}
+EXAMPLE #230
+File: persister.go Project: mattxia/docker-broker
+func (persister *Persister) GetServiceAgentList(cond string) ([]ServiceAgent, error) {
+	var rows *sql.Rows
+	var err error
+	if cond == "" {
+		rows, err = persister.Db.Query("SELECT service_host,docker_host,docker_port,is_active,perf_factor,ping_interval_secs,last_ping,exec_command,exec_args,portbinding_min,portbinding_max,portbindings FROM serviceagents")
+	} else {
+		rows, err = persister.Db.Query("SELECT service_host,docker_host,docker_port,is_active,perf_factor,ping_interval_secs,last_ping,exec_command,exec_args,portbinding_min,portbinding_max,portbindings FROM serviceagents where " + cond)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var serviceagents []ServiceAgent
+	i := 0
+	for rows.Next() {
+		serviceagent := ServiceAgent{}
+		var timevalue interface{}
+		rows.Scan(&serviceagent.ServiceHost, &serviceagent.DockerHost, &serviceagent.DockerPort, &serviceagent.IsActive, &serviceagent.PerfFactor, &serviceagent.KeepAlive, &timevalue, &serviceagent.ExecCommand, &serviceagent.ExecArgs, &serviceagent.Portbind_min, &serviceagent.Portbind_max, &serviceagent.Portbindings)
+		switch timevalue.(type) {
+		case string:
+			serviceagent.LastPing, err = time.Parse("2006-01-02 15:04:05 ", timevalue.(string))
+		case time.Time:
+			serviceagent.LastPing = timevalue.(time.Time)
+		}
+
+		if err != nil {
+			log.Println("error reading row ", err)
+		}
+		serviceagents = append(serviceagents, serviceagent)
+		i = i + 1
+	}
+	return serviceagents, nil
+}
+EXAMPLE #240
+File: driver_test.go Project: jarpy/beats
+func TestLongData(t *testing.T) {
+	runTests(t, dsn, func(dbt *DBTest) {
+		var maxAllowedPacketSize int
+		err := dbt.db.QueryRow("select @@max_allowed_packet").Scan(&maxAllowedPacketSize)
+		if err != nil {
+			dbt.Fatal(err)
+		}
+		maxAllowedPacketSize--
+
+		// don't get too ambitious
+		if maxAllowedPacketSize > 1<<25 {
+			maxAllowedPacketSize = 1 << 25
+		}
+
+		dbt.mustExec("CREATE TABLE test (value LONGBLOB)")
+
+		in := strings.Repeat(`a`, maxAllowedPacketSize+1)
+		var out string
+		var rows *sql.Rows
+
+		// Long text data
+		const nonDataQueryLen = 28 // length query w/o value
+		inS := in[:maxAllowedPacketSize-nonDataQueryLen]
+		dbt.mustExec("INSERT INTO test VALUES('" + inS + "')")
+		rows = dbt.mustQuery("SELECT value FROM test")
+		if rows.Next() {
+			rows.Scan(&out)
+			if inS != out {
+				dbt.Fatalf("LONGBLOB: length in: %d, length out: %d", len(inS), len(out))
+			}
+			if rows.Next() {
+				dbt.Error("LONGBLOB: unexpexted row")
+			}
+		} else {
+			dbt.Fatalf("LONGBLOB: no data")
+		}
+
+		// Empty table
+		dbt.mustExec("TRUNCATE TABLE test")
+
+		// Long binary data
+		dbt.mustExec("INSERT INTO test VALUES(?)", in)
+		rows = dbt.mustQuery("SELECT value FROM test WHERE 1=?", 1)
+		if rows.Next() {
+			rows.Scan(&out)
+			if in != out {
+				dbt.Fatalf("LONGBLOB: length in: %d, length out: %d", len(in), len(out))
+			}
+			if rows.Next() {
+				dbt.Error("LONGBLOB: unexpexted row")
+			}
+		} else {
+			if err = rows.Err(); err != nil {
+				dbt.Fatalf("LONGBLOB: no data (err: %s)", err.Error())
+			} else {
+				dbt.Fatal("LONGBLOB: no data (err: <nil>)")
+			}
+		}
+	})
+}
+EXAMPLE #250
+File: scanners.go Project: falahhaprak/rter
+func scanUser(user *data.User, rows *sql.Rows) error {
+	var createTimeString string
+
+	err := rows.Scan(
+		&user.Username,
+		&user.Password,
+		&user.Salt,
+		&user.Role,
+		&user.TrustLevel,
+		&createTimeString,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	createTime, err := time.Parse("2006-01-02 15:04:05", createTimeString) // this assumes UTC as timezone
+
+	if err != nil {
+		log.Println("User scanner failed to parse time.")
+		return err
+	}
+
+	user.CreateTime = createTime
+
+	return nil
+}
+EXAMPLE #260
+File: query.go Project: katyhuff/cyan
+func AllAgents(db *sql.DB, simid []byte, proto string) (ags []AgentInfo, err error) {
+	s := `SELECT AgentId,Kind,Spec,Prototype,ParentId,EnterTime,ExitTime,Lifetime FROM
+				Agents
+			WHERE Agents.SimId = ?`
+
+	var rows *sql.Rows
+	if proto != "" {
+		s += ` AND Agents.Prototype = ?`
+		rows, err = db.Query(s, simid, proto)
+	} else {
+		rows, err = db.Query(s, simid)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	for rows.Next() {
+		ai := AgentInfo{}
+		var exit sql.NullInt64
+		if err := rows.Scan(&ai.Id, &ai.Kind, &ai.Impl, &ai.Proto, &ai.Parent, &ai.Enter, &exit, &ai.Lifetime); err != nil {
+			return nil, err
+		}
+		if !exit.Valid {
+			exit.Int64 = -1
+		}
+		ai.Exit = int(exit.Int64)
+		ags = append(ags, ai)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return ags, nil
+}
+EXAMPLE #270
+File: scanners.go Project: falahhaprak/rter
+func scanItemComment(comment *data.ItemComment, rows *sql.Rows) error {
+	var updateTimeString string
+
+	err := rows.Scan(
+		&comment.ID,
+		&comment.ItemID,
+		&comment.Author,
+		&comment.Body,
+		&updateTimeString,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	updateTime, err := time.Parse("2006-01-02 15:04:05", updateTimeString) // this assumes UTC as timezone
+
+	if err != nil {
+		log.Println("ItemComment scanner failed to parse time. " + updateTimeString)
+		return err
+	}
+
+	comment.UpdateTime = updateTime
+
+	return nil
+}
+EXAMPLE #280
+File: chatArchives.go Project: gk-turnip/server
+func (gkDbCon *GkDbConDef) getNextChatArchivesId() (int32, *gkerr.GkErrDef) {
+	var stmt *sql.Stmt
+	var err error
+
+	stmt, err = gkDbCon.sqlDb.Prepare("select nextval('chat_archives_seq')")
+	if err != nil {
+		return 0, gkerr.GenGkErr("sql.Prepare"+getDatabaseErrorMessage(err), err, ERROR_ID_PREPARE)
+	}
+
+	defer stmt.Close()
+
+	var rows *sql.Rows
+
+	rows, err = stmt.Query()
+	if err != nil {
+		return 0, gkerr.GenGkErr("stmt.Query"+getDatabaseErrorMessage(err), err, ERROR_ID_QUERY)
+	}
+
+	defer rows.Close()
+
+	var id int32
+
+	if rows.Next() {
+		err = rows.Scan(&id)
+		if err != nil {
+			return 0, gkerr.GenGkErr("rows.Scan"+getDatabaseErrorMessage(err), err, ERROR_ID_ROWS_SCAN)
+		}
+	} else {
+		return 0, gkerr.GenGkErr("select users", nil, ERROR_ID_NO_ROWS_FOUND)
+	}
+
+	return id, nil
+}
+EXAMPLE #290
+File: scanner.go Project: lankecheng/pgserver
+func Scan2Struct(rows *sql.Rows, stru interface{}) error {
+	beanVal := reflect.ValueOf(stru)
+	if beanVal.Kind() != reflect.Ptr {
+		return errors.New("Scan2Bean bean not a pointer")
+	}
+	beanVal = beanVal.Elem()
+
+	cols, err := rows.Columns()
+	if err != nil {
+		return err
+	}
+
+	dest := make([]interface{}, len(cols))
+	for i, col := range cols {
+		fldName := convertColName2FldName(col)
+		fldVal := beanVal.FieldByName(fldName)
+		if fldVal.Kind() != reflect.Struct && fldVal.Kind() != reflect.Ptr {
+			dest[i] = fldVal.Addr().Interface()
+		} else if fldVal.Type().String() == "time.Time" {
+			dest[i] = &ReflectScanner{Value: &fldVal}
+			//			dest[i] = &TypeTestScanner{}
+		} else {
+			panic(fmt.Sprintf("Scan2Bean %v %v not support", fldName, fldVal.Type().String()))
+		}
+	}
+
+	return rows.Scan(dest...)
+}
+EXAMPLE #300
+File: sql_util.go Project: surpass/cockroach
+// sqlRowsToStrings turns 'rows' into a list of rows, each of which
+// is a  list of column values.
+// 'rows' should be closed by the caller.
+// If 'format' is not nil, the values with column name
+// found in the map are run through the corresponding callback.
+// It returns the header row followed by all data rows.
+// If both the header row and list of rows are empty, it means no row
+// information was returned (eg: statement was not a query).
+func sqlRowsToStrings(rows *sql.Rows, format fmtMap) ([]string, [][]string, error) {
+	cols, err := rows.Columns()
+	if err != nil {
+		return nil, nil, fmt.Errorf("rows.Columns() error: %s", err)
+	}
+
+	if len(cols) == 0 {
+		return nil, nil, nil
+	}
+
+	vals := make([]interface{}, len(cols))
+	for i := range vals {
+		vals[i] = new(interface{})
+	}
+
+	allRows := [][]string{}
+	for rows.Next() {
+		rowStrings := make([]string, len(cols))
+		if err := rows.Scan(vals...); err != nil {
+			return nil, nil, fmt.Errorf("scan error: %s", err)
+		}
+		for i, v := range vals {
+			if f, ok := format[cols[i]]; ok {
+				rowStrings[i] = f(*v.(*interface{}))
+			} else {
+				rowStrings[i] = formatVal(*v.(*interface{}))
+			}
+		}
+		allRows = append(allRows, rowStrings)
+	}
+
+	return cols, allRows, nil
+}
+Top Functions | Top Types | Privacy Policy | Advertise with us
+PHP | C# (CSharp) | Java | Golang | C++ (Cpp) | Python | JavaScript | TypeScript
+EN | RU | DE | FR | ES | PT | IT | JP | ZH
+
