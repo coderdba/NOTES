@@ -1,0 +1,33 @@
+https://golang.hotexamples.com/examples/database.sql/Rows/Scan/golang-rows-scan-method-examples.html
+
+import (
+    "database/sql"
+    _ "github.com/lib/pq"
+    "fmt"
+)
+
+func main() {
+    db, err := sql.Open("postgres", "user=test password=test dbname=test host=localhost sslmode=disable")
+    if err != nil {
+        panic(err)
+    }
+    defer db.Close()
+
+    rows, err := db.Query("SELECT id, name, email FROM users")
+    if err != nil {
+        panic(err)
+    }
+    defer rows.Close()
+
+    var id int
+    var name string
+    var email string
+
+    for rows.Next() {
+        err := rows.Scan(&id, &name, &email)
+        if err != nil {
+            panic(err)
+        }
+        fmt.Printf("%d %s %s\n", id, name, email)
+    }
+}
