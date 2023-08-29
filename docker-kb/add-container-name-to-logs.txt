@@ -1,0 +1,66 @@
+============================================
+ADD CONTAINER NAMES TO DOCKER LOGS
+============================================
+Docker logs do not contain container name or container id to identify different containers.
+This makes it impossible to distinguish logs when sent to remote log storage like Loki.
+
+==============================
+REFERENCE
+==============================
+https://stackoverflow.com/questions/64006994/saving-docker-container-logs-with-container-names-instead-of-container-ids
+- this has tags and labels both options
+
+==============================
+CUSTOMIZE WITH TAGS
+==============================
+https://stackoverflow.com/questions/64006994/saving-docker-container-logs-with-container-names-instead-of-container-ids
+- this has tags and labels both options
+https://docs.docker.com/config/containers/logging/log_tags/
+
+$ docker run --log-driver=fluentd --log-opt fluentd-address=myhost.local:24224 --log-opt tag="mailer"
+$ docker run --log-driver=json --log-opt tag="{{.ImageName}}/{{.Name}}/{{.ID}}"
+$ docker run --log-driver=json --log-opt tag="{{.Name}}/{{.ID}}"
+$ docker run --log-driver=json --log-opt tag="{{.Name}}"
+
+-------------
+TRY THIS
+-------------
+# docker run --name test-log-opts --log-opt tag="{{.Name}}/{{.ID}}" busybox echo hello log opts
+hello log opts
+
+# docker ps -a | grep busybox
+dda6554cfadb   busybox                     "echo hello log opts"    37 seconds ago   Exited (0) 36 seconds ago             test-log-opts
+
+# docker logs test-log-opts
+hello log opts
+
+[root@centos71-1 containers]# pwd
+/var/lib/docker/containers
+
+[root@centos71-1 containers]# ls -l
+total 0
+drwx--x---. 4 root root 237 Aug 29 16:09 0c15af758c87e13751da0f2d7aeee2f686b3418fffa5753bfb3f410ff14eb7e2
+drwx--x---. 4 root root 237 Aug 29 16:09 1133555fb5e44eb98e5d48f877bfa77703097ae1c32b7e439673ebae627f2716
+drwx--x---. 4 root root 237 Aug 29 16:09 355d4a0d37846e1377e9f3d9d9375895cb0791570838f0483c7beaa217d0acca
+drwx--x---. 4 root root 237 Aug 29 16:21 dda6554cfadb0a218a7be38b21e88652e5d559aec12edca0ccfbde5d07afaa9e --> THIS ONE
+drwx--x---. 4 root root 237 Aug 29 16:09 ebc2d6e183dacff5b9585eb8fad8390c150f71ca16074ede4a0f69b7d9ac6671
+
+# cd dda6554cfadb0a218a7be38b21e88652e5d559aec12edca0ccfbde5d07afaa9e
+
+[root@centos71-1 dda6554cfadb0a218a7be38b21e88652e5d559aec12edca0ccfbde5d07afaa9e]# dir
+
+[root@centos71-1 dda6554cfadb0a218a7be38b21e88652e5d559aec12edca0ccfbde5d07afaa9e]# ls -l
+total 28
+drwx------. 2 root root    6 Aug 29 16:21 checkpoints
+-rw-------. 1 root root 2501 Aug 29 16:21 config.v2.json
+-rw-r-----. 1 root root  130 Aug 29 16:21 dda6554cfadb0a218a7be38b21e88652e5d559aec12edca0ccfbde5d07afaa9e-json.log
+-rw-r--r--. 1 root root 1497 Aug 29 16:21 hostconfig.json
+-rw-r--r--. 1 root root   13 Aug 29 16:21 hostname
+-rw-r--r--. 1 root root  174 Aug 29 16:21 hosts
+drwx--x---. 2 root root    6 Aug 29 16:21 mounts
+-rw-r--r--. 1 root root   50 Aug 29 16:21 resolv.conf
+-rw-r--r--. 1 root root   71 Aug 29 16:21 resolv.conf.hash
+
+# cat dda6554cfadb0a218a7be38b21e88652e5d559aec12edca0ccfbde5d07afaa9e-json.log
+{"log":"hello log opts\n","stream":"stdout","attrs":{"tag":"test-log-opts/dda6554cfadb"},"time":"2023-08-29T10:51:14.834420541Z"}
+
