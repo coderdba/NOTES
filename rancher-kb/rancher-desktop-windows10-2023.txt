@@ -23,6 +23,7 @@ Windows Subsystem for Linux
 ============================
 INSTALL UBUNTU WSL
 ============================
+This may not be required - as Rancher seemed to install its own wsl
 install-uninstall-wsl.txt
 
 ============================
@@ -32,5 +33,81 @@ https://docs.rancherdesktop.io/getting-started/installation/
 https://github.com/rancher-sandbox/rancher-desktop/releases
 
 Downloaded 19.1 version
+Click the msi/exe file and it installs everything
+- choose only for logged in user or for all users --> I chose all users
 
+Upon installation, check wsl:
+- Rancher seemed to install its own WSL
+- To access specific WSL, use wsl -d <<NAME>>
+C:\>wsl -l -v
+  NAME                    STATE           VERSION
+* Ubuntu-22.04            Running         2
+  rancher-desktop-data    Stopped         2
+  rancher-desktop         Running         2
 
+============================
+TRY DOCKER PULL AND RUN
+============================
+
+----------
+PULL
+----------
+C:\> docker pull busybox
+
+Using default tag: latest
+latest: Pulling from library/busybox
+3f4d90098f5b: Pull complete
+Digest: sha256:3fbc632167424a6d997e74f52b878d7cc478225cffac6bc977eedfe51c7f4e79
+Status: Downloaded newer image for busybox:latest
+docker.io/library/busybox:latest
+
+----------
+RUN
+----------
+C:\Users\myuser>docker run --name test-log-opts --log-opt tag="{{.Name}}" busybox echo hello log opts
+hello log opts
+
+C:\Users\myuser>docker ps -a
+CONTAINER ID   IMAGE                        COMMAND                  CREATED          STATUS                      PORTS     NAMES
+726116378d8f   busybox                      "echo hello log opts"    44 seconds ago   Exited (0) 43 seconds ago             test-log-opts
+
+C:\Users\myuser>wsl -l -v
+  NAME                    STATE           VERSION
+* Ubuntu-22.04            Running         2
+  rancher-desktop-data    Stopped         2
+  rancher-desktop         Running         2
+
+C:\Users\GSM078>wsl -d rancher-desktop
+/mnt/c/Users/myuser #
+
+C:\Users\myuser>wsl -d rancher-desktop
+/mnt/c/Users/myuser # cd /var/lib/docker/containers
+/var/lib/docker/containers # ls -l 726116378d8f*
+total 36
+-rw-r-----    1 root     0              117 Aug 29 12:09 726116378d8f566051529d63d015512e0a151995846cfda10b7eeb1ec1ee5451-json.log
+drwx------    2 root     0             4096 Aug 29 12:09 checkpoints
+-rw-------    1 root     0             2500 Aug 29 12:09 config.v2.json
+-rw-------    1 root     0             1447 Aug 29 12:09 hostconfig.json
+-rw-r--r--    1 root     0               13 Aug 29 12:09 hostname
+-rw-r--r--    1 root     0              174 Aug 29 12:09 hosts
+drwx--x---    2 root     0             4096 Aug 29 12:09 mounts
+-rw-r--r--    1 root     0               25 Aug 29 12:09 resolv.conf
+-rw-r--r--    1 root     0               71 Aug 29 12:09 resolv.conf.hash
+
+/mnt/c/Users/myuser # cd /var/lib/docker/containers
+/var/lib/docker/containers # ls -l 726116378d8f*
+total 36
+-rw-r-----    1 root     0              117 Aug 29 12:09 726116378d8f566051529d63d015512e0a151995846cfda10b7eeb1ec1ee5451-json.log
+drwx------    2 root     0             4096 Aug 29 12:09 checkpoints
+-rw-------    1 root     0             2500 Aug 29 12:09 config.v2.json
+-rw-------    1 root     0             1447 Aug 29 12:09 hostconfig.json
+-rw-r--r--    1 root     0               13 Aug 29 12:09 hostname
+-rw-r--r--    1 root     0              174 Aug 29 12:09 hosts
+drwx--x---    2 root     0             4096 Aug 29 12:09 mounts
+-rw-r--r--    1 root     0               25 Aug 29 12:09 resolv.conf
+-rw-r--r--    1 root     0               71 Aug 29 12:09 resolv.conf.hash
+
+/var/lib/docker/containers # cd 726116378d8f*
+
+/var/lib/docker/containers/726116378d8f566051529d63d015512e0a151995846cfda10b7eeb1ec1ee5451 # cat 726116378d8f*
+{"log":"hello log opts\n","stream":"stdout","attrs":{"tag":"test-log-opts"},"time":"2023-08-29T12:09:16.655589567Z"}
