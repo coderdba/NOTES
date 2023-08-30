@@ -11,8 +11,50 @@ https://stackoverflow.com/questions/64006994/saving-docker-container-logs-with-c
 - this has tags and labels both options
 
 ==============================
+CUSTOMIZE WITH LABELS
+==============================
+NOTE: This gives flexibility of varied attributes like env, containername, hostname etc. 
+
+-----------------------
+daemon.json of Docker
+-----------------------
+{
+   "log-driver": "json-file",
+   "log-opts": {
+       "max-size": "10m",
+       "max-file": "3",
+       "labels": "env" --> This is the key thing
+   }
+}
+
+------------------------------
+RUN CONTAINER WITH A LABEL
+------------------------------
+[root@centos71-1 lib]# docker rm -f docker run --label environment=dev busybox echo hello logs^C
+
+[root@centos71-1 lib]# docker ps -a |grep busy
+1d5ee9d996c9   busybox                     "echo hello logs"        55 seconds ago   Exited (0) 54 seconds ago             reverent_sammet
+[root@centos71-1 lib]# docker rm -f 1d5ee9d996c9
+1d5ee9d996c9
+[root@centos71-1 lib]# 
+[root@centos71-1 lib]# docker run --label env=dev busybox echo hello logs
+hello logs
+[root@centos71-1 lib]# docker ps -a |grep busy
+4717e4312a21   busybox                     "echo hello logs"        3 seconds ago   Exited (0) 2 seconds ago              eager_aryabhata
+[root@centos71-1 lib]# cd docker/containers/
+[root@centos71-1 containers]# cat 471*/471*log
+{"log":"hello logs\n","stream":"stdout","attrs":{"env":"dev"},"time":"2023-08-30T05:18:41.191104416Z"}
+
+
+
+
+
+==============================
 CUSTOMIZE WITH TAGS
 ==============================
+
+NOTE: This restricts us to use only a few tags allowed by Docker.  We wont have flexibility of varied attributes like env, containername, hostname etc. 
+
 https://stackoverflow.com/questions/64006994/saving-docker-container-logs-with-container-names-instead-of-container-ids
 - this has tags and labels both options
 https://docs.docker.com/config/containers/logging/log_tags/
