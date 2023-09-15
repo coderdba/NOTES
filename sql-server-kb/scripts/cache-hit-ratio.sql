@@ -1,4 +1,21 @@
-ORIGINAL:
+=======
+CORRECT ONE??
+https://dba.stackexchange.com/questions/88784/what-does-a-buffer-cache-hit-ratio-of-9990-mean
+select 100 * a.cntr_value / b.cntr_value 
+from
+--
+(select object_name, cntr_value from sys.dm_os_performance_counters
+WHERE counter_name = 'Buffer cache hit ratio'
+AND object_name like '%Buffer Manager%') a,
+--
+(select object_name, cntr_value from sys.dm_os_performance_counters
+WHERE counter_name = 'Buffer cache hit ratio base'
+AND object_name like '%Buffer Manager%') b
+--
+WHERE a.object_name = b.object_name;
+
+=======
+ORIGINAL: NOT CORRECT
 
 DECLARE @BufferPoolSizeMB DECIMAL(10, 2)
 DECLARE @TotalBufferCachePages BIGINT
