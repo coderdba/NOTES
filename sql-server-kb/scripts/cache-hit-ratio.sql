@@ -1,7 +1,7 @@
 =======
 CORRECT ONE??
 https://dba.stackexchange.com/questions/88784/what-does-a-buffer-cache-hit-ratio-of-9990-mean
-select 100 * a.cntr_value / b.cntr_value 
+select convert(DECIMAL(10,2),(100 * a.cntr_value / b.cntr_value))
 from
 --
 (select object_name, cntr_value from sys.dm_os_performance_counters
