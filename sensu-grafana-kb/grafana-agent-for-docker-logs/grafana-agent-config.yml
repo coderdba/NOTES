@@ -1,0 +1,117 @@
+server:
+  log_level: info
+
+integrations:
+  agent:
+    enabled: true
+  node_exporter:
+    enabled: true
+    include_exporter_metrics: true
+    rootfs_path: /host/root
+    sysfs_path: /host/sys
+    procfs_path: /host/proc
+
+metrics:
+  wal_directory: /etc/agent/wal
+  global:
+    scrape_interval: 15s
+    remote_write:
+      - url: https://telemetry.pensieve.maersk-digital.net/api/v1/push
+        proxy_url: http://10.0.11.1:9400
+        oauth2:
+          proxy_url: http://10.0.11.1:9400
+          client_id: xxxx
+          client_secret: xxxx
+          token_url: https://login.microsoftonline.com/05d75c05-fa1a-42e7-9cf1-eb416c396f2d/oauth2/v2.0/token
+          scopes: ["api://ingestion.pensieve/.default"]
+    external_labels:
+      region: westeurope
+      product_id: empv2
+      provider: onprem
+      env: preprod
+      app: scrbkkadk008270
+  configs:
+    - name: producer
+      scrape_configs:
+        - job_name: producer-agent
+          honor_labels: true
+          static_configs:
+            - targets:
+                - localhost:7076
+              labels:
+                mylabel: producer-health-check
+    - name: consumer
+      scrape_configs:
+        - job_name: consumer-agent
+          honor_labels: true
+          static_configs:
+            - targets:
+                - localhost:7077
+              labels:
+                mylabel: consumer-health-check
+    - name: producer_g2g
+      scrape_configs:
+        - job_name: producer_g2g-agent
+          honor_labels: true
+          static_configs:
+            - targets:
+                - localhost:7079
+              labels:
+                mylabel: producer_g2g-health-check
+    - name: consumer_g2g
+      scrape_configs:
+        - job_name: consumer_g2g-agent
+          honor_labels: true
+          static_configs:
+            - targets:
+                - localhost:7080
+              labels:
+                mylabel: consumer_g2g-health-check
+    - name: kafka_connect-1
+      scrape_configs:
+        - job_name: kafka_connect-1-agent
+          honor_labels: true
+          static_configs:
+            - targets:
+                - localhost:7075
+              labels:
+                mylabel: kafka_connect-1
+    - name: haproxy-1
+      scrape_configs:
+        - job_name: haproxy-1-agent
+          basic_auth:
+            username: "admin"
+            password: "mypassword"
+          honor_labels: true
+          static_configs:
+            - targets:
+                - localhost:1936
+              labels:
+                mylabel: haproxy-1
+logs:
+  positions_directory: /etc/agent/positions
+  configs:
+    - name: default
+      clients:
+        - url: https://telemetry.pensieve.maersk-digital.net/loki/api/v1/push
+          proxy_url: http://10.0.11.1:9400
+          external_labels:
+            region: westeurope
+            product_id: empv2
+            provider: onprem
+            env: preprod
+            app: scrbkkadk008270
+          oauth2:
+            proxy_url: http://10.0.11.1:9400
+            client_id: xxx
+            client_secret: xxx
+            token_url: https://login.microsoftonline.com/05d75c05-fa1a-42e7-9cf1-eb416c396f2d/oauth2/v2.0/token
+            scopes: ["api://ingestion.pensieve/.default"]
+      scrape_configs:
+        - job_name: default-agent
+          pipeline_stages:
+          - labeldrop:
+            - filename
+          static_configs:
+          - labels:
+              __path__: /var/log/messages  
