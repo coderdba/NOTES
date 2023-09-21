@@ -1,0 +1,33 @@
+---
+version: '2.4'
+services:
+  grafana:
+    image: "docker.io/grafana/agent:v0.30.1"
+    user: root
+    privileged: true
+    hostname: localhost
+    container_name: "grafana-agent"
+    restart: unless-stopped
+    network_mode: "host"
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      - HTTP_PROXY=http://10.0.11.1:9400
+      - HTTPS_PROXY=http://10.0.11.1:9400
+      - NO_PROXY=localhost
+      - HOSTNAME=grafana-agent
+    entrypoint:
+      - /bin/agent
+      - -config.file=/etc/agent/agent.yaml
+      - -metrics.wal-directory=/etc/agent/wal
+      - -config.enable-read-api
+    ports:
+      - "12345:12345"
+    volumes:
+      - /home/empadmin/grafana-agent/agent.yaml:/etc/agent/agent.yaml
+      - /home/empadmin/grafana-agent/wal:/etc/agent/wal
+      - /home/empadmin/grafana-agent/positions:/etc/agent/positions
+      - /var/log/messages:/var/log/messages
+      - /:/host/root:ro
+      - /sys:/host/sys:ro
+      - /proc:/host/proc:ro
