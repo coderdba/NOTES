@@ -1,0 +1,36 @@
+There are different ways to connect a Go application to an Oracle database, depending on whether you want to use the Oracle Instant Client library or not. The Oracle Instant Client library is a set of shared libraries that allows applications to connect to Oracle Database without requiring a full Oracle Database installation1. However, it also adds some complexity to the installation and deployment of the Go application.
+
+One option is to use the godror package2, which is a Go database/sql driver for Oracle Database using ODPI-C (Oracle Database Programming Interface for C)2. This package requires the Oracle Instant Client library to be installed and configured on the system where the Go application runs2. You also need to set the runtime link path so that godror can find the libraries it needs to connect to Oracle Database2.
+
+Another option is to use the go_ora package1, which is a pure Go driver for Oracle Database that does not require the Oracle Instant Client library1. This package uses a native implementation of the Oracle network protocol and supports most of the features of the database/sql package1.
+
+To connect to an Oracle standby database, you need to use a connection string that specifies the failover mode and the service name of the standby database. For example, if you have a primary database named dbprod and a standby database named dbstandby, you can use a connection string like this:
+
+user/password@(DESCRIPTION=(FAILOVER=ON)(LOAD_BALANCE=OFF)(ADDRESS_LIST=(ADDRESS=(PROTOCOL=tcp)(HOST=primary-host)(PORT=1521))(ADDRESS=(PROTOCOL=tcp)(HOST=standby-host)(PORT=1521)))(CONNECT_DATA=(SERVICE_NAME=dbstandby)))
+
+This connection string will try to connect to the primary database first, and if it fails, it will switch to the standby database. You can also use other parameters such as FAILOVER_MODE, FAILOVER_DELAY, and FAILOVER_RETRY_COUNT to control the behavior of the failover mechanism3.
+
+To use this connection string with godror, you can simply pass it as an argument to the sql.Open function:
+
+db, err := sql.Open("godror", "user/password@(DESCRIPTION=(FAILOVER=ON)(LOAD_BALANCE=OFF)(ADDRESS_LIST=(ADDRESS=(PROTOCOL=tcp)(HOST=primary-host)(PORT=1521))(ADDRESS=(PROTOCOL=tcp)(HOST=standby-host)(PORT=1521)))(CONNECT_DATA=(SERVICE_NAME=dbstandby)))")
+
+To use this connection string with go_ora, you need to prefix it with “oracle://” and escape any special characters:
+
+db, err := sql.Open("go_ora", "oracle://user:password@(DESCRIPTION%3D(FAILOVER%3DON)(LOAD_BALANCE%3DOFF)(ADDRESS_LIST%3D(ADDRESS%3D(PROTOCOL%3Dtcp)(HOST%3Dprimary-host)(PORT%3D1521))(ADDRESS%3D(PROTOCOL%3Dtcp)(HOST%3Dstandby-host)(PORT%3D1521)))(CONNECT_DATA%3D(SERVICE_NAME%3Ddbstandby)))")
+
+I hope this helps you connect your Go application to an Oracle standby database. For more information, you can check out these resources:
+
+Connecting a Go application to Oracle Database
+https://blogs.oracle.com/developers/post/connecting-a-go-application-to-oracle-database
+
+How to Connect a Go Program to Oracle Database using godror
+https://blogs.oracle.com/developers/post/how-to-connect-a-go-program-to-oracle-database-using-godror
+
+Connecting to Database in Go
+https://blog.devgenius.io/connecting-to-database-in-go-f98c3a7a06a8?gi=0e48f7e6ac3a
+
+Connecting Go Lang to Oracle Database
+https://oralytics.com/2019/05/20/connecting-go-lang-to-oracle-database/
+
+Standby: connect failover to your standby database
+https://dbvisit.com/blog/dbvisit-standby-connect-failover-standby-database  (does not provide golang info)
