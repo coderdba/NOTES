@@ -1,3 +1,7 @@
+====================================================
+CONNECTING TO PRIMARY-STANDBY WITH TAF USING GOLANG
+====================================================
+Not sure if any of these really works.
 
 ===============
 go-ora package
@@ -77,3 +81,48 @@ https://oralytics.com/2019/05/20/connecting-go-lang-to-oracle-database/
 
 Standby: connect failover to your standby database
 https://dbvisit.com/blog/dbvisit-standby-connect-failover-standby-database  (does not provide golang info)
+
+=====
+Bard
+=====
+To enable Transparent Application Failover (TAF) with the goracle package, you'll need to use the godror.RegisterTAFCallback function to register a callback function that will be invoked when a failover event occurs. Here's an example of how to do this:
+
+Go
+package main
+
+import (
+  "database/sql"
+  "fmt"
+
+  "github.com/godror/godror"
+)
+
+func main() {
+  // Define the TAF callback function
+  tafCallback := func(event godror.FailoverEvent) {
+    switch event.EventType {
+    case godror.FailoverEventTypeBegin:
+      fmt.Println("Failover started")
+    case godror.FailoverEventTypeEnd:
+      fmt.Println("Failover completed")
+    case godror.FailoverEventTypeAbort:
+      fmt.Println("Failover aborted")
+    }
+  }
+
+  // Register the TAF callback function
+  godror.RegisterTAFCallback(tafCallback)
+
+  // Connect to the primary database
+  primaryDSN := "oracle://user:password@primary_host:primary_port/primary_service_name"
+  primaryDB, err := sql.Open("godror", primaryDSN)
+  if err != nil {
+    fmt.Println("Error connecting to primary database:", err)
+    return
+  }
+  defer primaryDB.Close()
+
+  // Use the primary database as needed
+  // ...
+}
+
