@@ -1,3 +1,46 @@
+
+===============
+go-ora package
+===============
+https://pkg.go.dev/github.com/sijms/go-ora#section-readme
+
+version 2.4.8: JDBC connect string
+Add new function go_ora.BuildJDBC
+    // program will extract server, ports and protocol and build
+    // connection table
+    connStr := `(DESCRIPTION=
+    (ADDRESS_LIST=
+    	(LOAD_BALANCE=OFF)
+        (FAILOVER=ON)
+    	(address=(PROTOCOL=tcps)(host=localhost)(PORT=2484))
+    	(address=(protocol=tcp)(host=localhost)(port=1521))
+    )
+    (CONNECT_DATA=
+    	(SERVICE_NAME=service)
+        (SERVER=DEDICATED)
+    )
+    (SOURCE_ROUTE=yes)
+    )`
+    // use urlOption to set other options like:
+    // TRACE FILE = for debug
+    // note SSL automatically set from connStr (address=...
+    // SSL Verify = need to cancel certifiate verification
+    // wallet path
+    databaseUrl := go_ora.BuildJDBC(user, password, connStr, urlOptions)
+    conn, err := sql.Open("oracle", databaseUrl)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+    err = conn.Ping()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+=========
+From Bing
+=========
 There are different ways to connect a Go application to an Oracle database, depending on whether you want to use the Oracle Instant Client library or not. The Oracle Instant Client library is a set of shared libraries that allows applications to connect to Oracle Database without requiring a full Oracle Database installation1. However, it also adds some complexity to the installation and deployment of the Go application.
 
 One option is to use the godror package2, which is a Go database/sql driver for Oracle Database using ODPI-C (Oracle Database Programming Interface for C)2. This package requires the Oracle Instant Client library to be installed and configured on the system where the Go application runs2. You also need to set the runtime link path so that godror can find the libraries it needs to connect to Oracle Database2.
