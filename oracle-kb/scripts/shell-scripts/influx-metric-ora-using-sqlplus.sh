@@ -1,4 +1,3 @@
-
 #
 #
 #
@@ -27,7 +26,7 @@ set feed off
 set echo off
 set lines 200
 
-connect monuser/$MONUSER_PASSWORD@192.168.29.197:1521/XEPDB1
+connect sremon/$SREMON_PASSWORD@192.168.29.197:1521/XEPDB1
 
 --select sysdate from dual;
 --select (cast (systimestamp at time zone 'UTC' as date) - date '1970-01-01') * 86400 from dual;
@@ -48,10 +47,11 @@ connect monuser/$MONUSER_PASSWORD@192.168.29.197:1521/XEPDB1
 --where username = 'SREMON' or username like 'AUTOTRON%';
 
 
-select 
+select
 'autotron_oradb'||','||
-'instance_name=' || instance_name || ' up=' || 1 
-from v\$instance; 
+'instance_name=' || instance_name || ',' || 
+'active_state=' || active_state || ',' || 'blocked=' || blocked || ' up=' || 1
+from v\$instance;
 
 select 
 'autotron_oradb'||','||
@@ -79,3 +79,4 @@ else
   cat $outfile
 
 fi
+
