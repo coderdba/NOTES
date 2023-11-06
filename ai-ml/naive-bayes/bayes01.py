@@ -46,9 +46,11 @@ names = np.unique(pred)
 print ("\nINFO - Printing names from predictions \n")
 print (names)
 
+# Create heatmap plot using the matrix
 sns.heatmap(mat, square=True, annot=True, fmt='d', cbar=False,
             xticklabels=names, yticklabels=names)
 plt.xlabel('Truth')
 plt.ylabel('Predicted')
 
+# Show the plot - without this show() call plot wont show up on the screen
 plt.show()
