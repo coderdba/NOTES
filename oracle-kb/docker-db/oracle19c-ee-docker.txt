@@ -20,6 +20,61 @@ docker pull container-registry.oracle.com/database/enterprise:19.19.0.0
 =============
 USAGE
 =============
+
+--------------------------------------------------
+Using This Image - WITHOUT CUSTOMIZATION
+--------------------------------------------------
+Starting an Oracle Database Server Instance
+To start an Oracle Database server instance, execute the following command where <oracle-db> is the name of the container:
+
+$ docker run -d --name <oracle-db>
+container-registry.oracle.com/database/enterprise:21.3.0.0
+The auto-generated default password for connecting to the Oracle Database server instance can be found from the logs using
+
+$ docker logs <oracle-db>
+
+Note: Refer to the section titled "Changing the Default Password for SYS User" to obtain the password.
+
+Oracle Database server is ready to use when the STATUS field shows (healthy) in the docker ps output.
+
+Connecting to Oracle Database Server Container
+Once Oracle Database server indicates that the container has started and the STATUS field shows (healthy),client applications can connect to the database.
+
+Connecting from within the container
+You can connect to Oracle Database server by executing a SQL*Plus command from within the container using one of the following commands:
+
+$ docker exec -it <oracle-db> sqlplus / as sysdba
+$ docker exec -it <oracle-db> sqlplus sys/<your_password>@<your_SID> as sysdba
+$ docker exec -it <oracle-db> sqlplus system/<your_password>@<your_SID>
+$ docker exec -it <oracle-db> sqlplus pdbadmin/<your_password>@<your_PDBname>
+Connecting from outside of the container
+By default, Oracle Database server exposes port 1521 for Oracle client connections over Oracle's SQL*Net protocol. SQL*Plus or any Oracle Java Database Connectivity (JDBC) client can be used to connect to the database server from outside of the container.
+
+To connect from outside of the container, start the container with -poption as described in the detailed docker run command in the section titled "Custom Configurations".
+
+Discover the mapped port by executing the following command:
+
+$ docker port <oracle-db>
+
+To connect from outside of the container using SQL*Plus, execute the following:
+
+$ sqlplus sys/<your_password>@//localhost:<exposed_port>/<your_SID> as sysdba
+$ sqlplus system/<your_password>@//localhost:<exposed_port>/<your_SID>
+$ sqlplus pdbadmin/<your_password>@//localhost:<exposed_port>/<your_PDBname>
+Database Alert Logs
+You can access the database alert log using the following command where <oracle-db> is the name of the container:
+
+$ docker logs <oracle-db>
+
+Changing the Default Password for SYS User
+On the first startup of the container, a random password will be generated for the database if not provided. The user has to mandatorily change the password after the database is created and the corresponding container is healthy.
+
+Using the docker exec command, change the password for those accounts by invoking the setPassword.sh script that is found in the container. Note that the container must be running. For example:
+
+$ docker exec <oracle-db> ./setPassword.sh <your_password>
+
+This new password will be used afterwards.
+
 --------------------------------
 STARTING CUSTOMIZED CONTAINER
 --------------------------------
