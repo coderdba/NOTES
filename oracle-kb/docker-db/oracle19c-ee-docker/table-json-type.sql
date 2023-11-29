@@ -1,1 +1,0 @@
--- INDEXES FOR JSON: https://blogs.oracle.com/database/post/search-indexes-for-json
