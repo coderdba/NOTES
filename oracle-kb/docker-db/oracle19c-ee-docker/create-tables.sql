@@ -1,6 +1,7 @@
 -- Create json datatype table in 19c: https://docs.oracle.com/en/database/oracle/oracle-database/19/adjsn/creating-a-table-with-a-json-column.html#GUID-E6CC0DCF-3D72-41EF-ACA4-B3BF54EE3CA0
 
 -- For Indexes: JSON Search Indexes in 19c: https://blogs.oracle.com/database/post/search-indexes-for-json
+-- For multivalue indexes: https://oracle-base.com/articles/21c/multivalue-function-based-indexes-for-json_exists-21c
 
 /*
 CREATE TABLE j_purchaseorder
@@ -68,4 +69,14 @@ and a.tenant_id = b.id;
 select * 
 from targets t
 where json_textcontains(t.TARGET_ATTRIBUTES, '$.cluster.processes', 'vm1');
+
+-- Querying on an array in the json
+select *
+from   t1
+where  json_exists(json_data, '$.words.pages?(@.number() == 40)');
+
+select *
+from   targets t
+where  json_exists(t.TARGET_ATTRIBUTES, '$.cluster.processes.node?(@.string() == 'vm1')'));
+
 
