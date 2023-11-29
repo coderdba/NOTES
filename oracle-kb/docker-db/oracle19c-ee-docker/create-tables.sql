@@ -30,7 +30,7 @@ CREATE TABLE tenants (
 CREATE TABLE targets (
         ID                  NUMBER GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1),
         NAME                VARCHAR2(50) NOT NULL,
-        TARGET_TYPE         VARCHAR2(10) CHECK (TARGET_TYPE IN ('linux', 'windows')),
+        TARGET_TYPE         VARCHAR2(10) CHECK (TARGET_TYPE IN ('linux', 'windows','weblogic','ibmmq')),
         ENVIRONMENT         VARCHAR2(20) NOT NULL,
         TARGET_ATTRIBUTES   VARCHAR2(2000),
         CONSTRAINT target_ensure_json1 CHECK (TARGET_ATTRIBUTES IS JSON),
