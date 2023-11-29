@@ -38,6 +38,12 @@ CREATE TABLE targets (
         CONSTRAINT targets_name_uk UNIQUE (NAME)
 );
 
+-- Usual indexes
+-- NOTE: PK and UK will already have indexes - no need to create them separately
+
+-- Search Index which can do search all over the json
+create search index targets_target_attributes_json_searchidx on targets (TARGET_ATTRIBUTES) for json;
+
 CREATE TABLE tenant_targets (
     ID                 NUMBER GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1),
     NAME               VARCHAR2(50) NOT NULL,
@@ -49,6 +55,7 @@ CREATE TABLE tenant_targets (
     CONSTRAINT tenant_and_target_uk UNIQUE (TENANT_ID, NAME)
 );
 
+-- HELPFUL QUERIES TO COMBINE DATA
 select a.name, b.name, c.name 
 from
 myschema.tenant_targets a, 
@@ -57,4 +64,8 @@ myschema.targets c
 where a.target_id = c.id 
 and a.tenant_id = b.id;
 
+-- Using json-search (also creating json search index will improve performance)
+select * 
+from targets t
+where json_textcontains(t.TARGET_ATTRIBUTES, '$.cluster.processes', 'vm1');
 
