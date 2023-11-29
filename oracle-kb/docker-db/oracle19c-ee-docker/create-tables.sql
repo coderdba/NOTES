@@ -23,7 +23,7 @@ CREATE TABLE targets (
         NAME                VARCHAR2(50) NOT NULL,
         TARGET_TYPE         VARCHAR2(10) CHECK (TARGET_TYPE IN ('linux', 'windows')),
         ENVIRONMENT         VARCHAR2(20) NOT NULL,
-        TARGET_ATTRIBUTES   VARCHAR2(32767),
+        TARGET_ATTRIBUTES   VARCHAR2(2000),
         CONSTRAINT target_ensure_json1 CHECK (TARGET_ATTRIBUTES IS JSON),
         CONSTRAINT targets_id_pk PRIMARY KEY (ID),
         CONSTRAINT targets_name_uk UNIQUE (NAME)
@@ -42,9 +42,9 @@ CREATE TABLE tenant_targets (
 
 select a.name, b.name, c.name 
 from
-autotrondcmgr.tenant_targets a, 
-autotrondcmgr.tenants b, 
-autotrondcmgr.targets c
+myschema.tenant_targets a, 
+myschema.tenants b, 
+myschema.targets c
 where a.target_id = c.id 
 and a.tenant_id = b.id;
 
