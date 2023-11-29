@@ -1,6 +1,6 @@
 -- Create json datatype table in 19c: https://docs.oracle.com/en/database/oracle/oracle-database/19/adjsn/creating-a-table-with-a-json-column.html#GUID-E6CC0DCF-3D72-41EF-ACA4-B3BF54EE3CA0
 
--- JSON Search Indexes in 19c: https://blogs.oracle.com/database/post/search-indexes-for-json
+-- For Indexes: JSON Search Indexes in 19c: https://blogs.oracle.com/database/post/search-indexes-for-json
 
 /*
 CREATE TABLE j_purchaseorder
@@ -8,6 +8,15 @@ CREATE TABLE j_purchaseorder
    date_loaded TIMESTAMP (6) WITH TIME ZONE,
    po_document VARCHAR2 (2000)
    CONSTRAINT ensure_json CHECK (po_document IS JSON));
+
+create index custid on mytab ( jtext.customer.id.number() )
+create index custname on mytab ( jtext.customer.name.string() )
+
+create multivalue index creditsIdx
+ on person_collection t (t.jdoc.person.creditscore[*].number());
+
+create search index srchidx on person_collection_t (jdoc) for json
+
 */
 
 CREATE TABLE tenants (
