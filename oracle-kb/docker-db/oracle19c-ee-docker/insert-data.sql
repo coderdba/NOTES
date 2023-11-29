@@ -16,17 +16,8 @@ CREATE TABLE targets (
 );
 
 insert into targets (name, target_type, environment, target_attributes) values
-('wl-app1-cluster1', 'weblogic', 'dev', 
-  '{"cluster":{"app":"app1",  
-    "processes":{{"type": "node manager", "name":"nm1", "node": "vm1"},
-                 {"type": "mgmt server", "name":"ms1", "node": "vm1"},
-                 {"type": "mgmt server", "name":"ms2", "node": "vm1"},
-                 {"type": "node manager", "name":"nm1", "node": "vm2"},
-                 {"type": "mgmt server", "name":"ms1", "node": "vm2"}}}');
-
-insert into targets (name, target_type, environment, target_attributes) values
 ('wl-app1-cluster1', 'weblogic', 'dev',
-{"cluster":
+'{"cluster":
     {"app":"app1",  
     "processes":[{"type": "node manager", "name":"nm1", "node": "vm1"},
                  {"type": "mgmt server", "name":"ms1", "node": "vm1"},
@@ -34,5 +25,5 @@ insert into targets (name, target_type, environment, target_attributes) values
                  {"type": "node manager", "name":"nm1", "node": "vm2"},
                  {"type": "mgmt server", "name":"ms1", "node": "vm2"}]
     }
-}
+}'
 );
