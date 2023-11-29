@@ -40,3 +40,12 @@ CREATE TABLE tenant_targets (
     CONSTRAINT tenant_and_target_uk UNIQUE (TENANT_ID, NAME)
 );
 
+select a.name, b.name, c.name 
+from
+autotrondcmgr.tenant_targets a, 
+autotrondcmgr.tenants b, 
+autotrondcmgr.targets c
+where a.target_id = c.id 
+and a.tenant_id = b.id;
+
+
