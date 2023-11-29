@@ -29,6 +29,9 @@ where  json_exists(t.TARGET_ATTRIBUTES, '$.cluster.processes.node?(@.string() ==
 ------------------------------------------------------
 EXPLAIN PLANS
 
+- set tracing and explain
+set autotrace trace explain
+
 - with only json search index
 SQL>  select * from targets where json_value(target_attributes, '$.wlcluster.app') = 'app1';
 
