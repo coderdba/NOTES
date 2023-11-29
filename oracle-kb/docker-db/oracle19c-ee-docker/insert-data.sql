@@ -6,7 +6,7 @@ insert into tenants (name, description) values ('imq', 'ibm mq');
 -- TARGETS
 insert into targets (name, target_type, environment, target_attributes) values
 ('wl-app1-cluster1', 'weblogic', 'dev',
-'{"cluster":
+'{"wlcluster":
     {"app":"app1",  
     "processes":[{"type": "node manager", "name":"nm1", "node": "vm1"},
                  {"type": "mgmt server", "name":"ms1", "node": "vm1"},
