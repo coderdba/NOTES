@@ -2,6 +2,7 @@
 
 -- For Indexes: JSON Search Indexes in 19c: https://blogs.oracle.com/database/post/search-indexes-for-json
 -- For multivalue indexes: https://oracle-base.com/articles/21c/multivalue-function-based-indexes-for-json_exists-21c
+-- For multivalue indexes, json_exists: https://docs.oracle.com/en/database/oracle/oracle-database/21/adjsn/condition-JSON_EXISTS.html
 
 /*
 CREATE TABLE j_purchaseorder
@@ -45,6 +46,13 @@ CREATE TABLE targets (
 -- Search Index which can do search all over the json
 create search index targets_target_attributes_json_searchidx on targets (TARGET_ATTRIBUTES) for json;
 
+-- To search individual json fields
+-- NOTE: This is not working yet
+create index targets_target_attributes_app on targets ( TARGET_ATTRIBUTES.cluster.app.string() );
+
+create index custid on mytab ( jtext.customer.id.number() )
+create index custname on mytab ( jtext.customer.name.string() )
+
 CREATE TABLE tenant_targets (
     ID                 NUMBER GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1),
     NAME               VARCHAR2(50) NOT NULL,
@@ -71,6 +79,7 @@ from targets t
 where json_textcontains(t.TARGET_ATTRIBUTES, '$.cluster.processes', 'vm1');
 
 -- Querying on an array in the json
+-- NOTE: THESE ARE NOT HELPFUL IN OUR DATA FOR TARGETS YET
 select *
 from   t1
 where  json_exists(json_data, '$.words.pages?(@.number() == 40)');
