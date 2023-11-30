@@ -22,6 +22,10 @@ ALTER TABLE IF EXISTS sp.up_down_events
 COMMENT ON TABLE sp.up_down_events
     IS 'up-down events similar to status page events';
 
+create index up_down_events_idx1 on sp.up_down_events(component, time_stamp);
+create index up_down_events_idx2 on sp.up_down_events(component, status, time_stamp);
+
+-- DO THESE INSERTS A FEW TIMES - a few up, a few down in intervals
 insert into sp.up_down_events values (current_timestamp, 'c1', 'up');
 insert into sp.up_down_events values (current_timestamp, 'c1', 'down');
 
@@ -153,3 +157,20 @@ group by a.status, b.status, a.time_stamp
 ) c
 group by a_status, b_status, b_time_stamp
 order by a_time_stamp;	
+
+--explain (format json)
+select component, a_status, min(a_time_stamp) a_time_stamp, b_status, b_time_stamp
+from 
+(
+select a.component, a.status a_status, b.status b_status, a.time_stamp a_time_stamp, min(b.time_stamp) b_time_stamp
+from sp.up_down_events a,
+		(select component, status, time_stamp 
+		 from sp.up_down_events 
+		 order by component, time_stamp asc) b
+where b.status != a.status 
+and   a.component = b.component
+and b.time_stamp > a.time_stamp
+group by a.component, a.status, b.status, a.time_stamp
+) c
+group by component, a_status, b_status, b_time_stamp
+order by component, a_time_stamp;	
