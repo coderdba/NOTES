@@ -20,8 +20,24 @@ docker pull timescale/timescaledb:2.13.0-pg16
 ====================================
 RUN DOCKER IMAGE
 ====================================
-From docs: docker run -d --name timescaledb -p 5432:5432 -e POSTGRES_PASSWORD=password timescale/timescaledb-ha:pg14-latest
+From docs: docker run -d --name timescaledb -p 5432:5432 -e POSTGRES_PASSWORD=password timescale/timescaledb:pg14-latest
 
+-------------------------
+WITH DATA PERSISTENCE
+-------------------------
+The two container types store PostgreSQL data dir in different places, make sure you select the correct one to mount:
+
+Container	PGDATA location
+timescaledb-ha	/home/postgres/pgdata/data
+timescaledb	    /var/lib/postgresql/data
+
+docker run -d --name timescaledb -p 5432:5432 \
+-v C:\pgdata:/var/lib/postgresql/data \
+-e POSTGRES_PASSWORD=postgres timescale/timescale/timescaledb:2.13.0-pg16
+
+-------------------------
+WITHOUT DATA PERSISTENCE
+-------------------------
 docker run -d --name timescaledb -p 5432:5432 -e POSTGRES_PASSWORD=postgres timescale/timescaledb:2.13.0-pg16
 
 ====================================
