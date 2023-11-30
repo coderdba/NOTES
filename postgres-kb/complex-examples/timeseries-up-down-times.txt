@@ -1,0 +1,155 @@
+https://stackoverflow.com/questions/38138228/sql-to-calculate-difference-between-2-latest-recent-values-by-event-types
+https://dba.stackexchange.com/questions/117256/measure-time-duration-between-events-partitioned-by-hours
+https://www.geeksforgeeks.org/postgresql-lag-function/
+
+-- Table: sp.up_down_events
+
+-- DROP TABLE IF EXISTS sp.up_down_events;
+
+CREATE TABLE IF NOT EXISTS sp.up_down_events
+(
+    time_stamp time with time zone NOT NULL,
+    component character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    status character varying(10) COLLATE pg_catalog."default" NOT NULL,
+    CONSTRAINT up_down_events_uk1 UNIQUE (time_stamp, component)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS sp.up_down_events
+    OWNER to myuser;
+
+COMMENT ON TABLE sp.up_down_events
+    IS 'up-down events similar to status page events';
+
+insert into sp.up_down_events values (current_timestamp, 'c1', 'up');
+insert into sp.up_down_events values (current_timestamp, 'c1', 'down');
+
+select * from sp.up_down_events order by component, time_stamp;
+
+select time_stamp from sp.up_down_events where component='c1' and status='down';
+
+--select a.time_stamp from
+--(select time_stamp from sp.up_down_events where component='c1' and status='up') a;
+
+--select a.time_stamp from
+--(select time_stamp from sp.up_down_events where component='c1' and status='down') a;
+
+select status, time_stamp, 
+lead(time_stamp) OVER (PARTITION BY status ORDER BY "time_stamp" asc)
+from sp.up_down_events;
+
+
+select a.component, a.status, b.status, b.time_stamp, a.time_stamp
+from 
+(select component, status, time_stamp, row_number() over (order by time_stamp asc) as rna 
+      from sp.up_down_events where status = 'down') a
+inner join
+(select component, status, time_stamp, row_number() over (order by time_stamp asc) as rnb 
+      from sp.up_down_events where status = 'up') b
+on b.rnb = a.rna;
+
+    SELECT
+        MyTYPE,
+        MyTIME,
+        LAG(MyTIME) OVER (PARTITION BY MyTYPE ORDER BY MyTIME) AS PrevTime
+    FROM MyTable
+	
+	select status, time_stamp, lag(time_stamp) over (partition by status order by time_stamp) as prevtime
+	from sp.up_down_events;
+
+select a.status, a.time_stamp,  lag(a.time_stamp) over (order by a.time_stamp) as TimeDifference
+from 
+(select status, time_stamp, lag(time_stamp) over (order by time_stamp) 
+ as prev_time from sp.up_down_events) as s,
+sp.up_down_events a
+where a.status != s.status
+order by a.time_stamp;
+
+select status, time_stamp, lag(time_stamp) over (order by time_stamp) 
+ as prev_time from sp.up_down_events
+
+CREATE TABLE sp.sales(
+    year SMALLINT CHECK(year > 0),
+    group_id INT NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
+    PRIMARY KEY(year, group_id)
+);
+
+INSERT INTO 
+    sp.sales(year, group_id, amount) 
+VALUES
+    (2018, 1, 1474),
+    (2018, 2, 1787),
+    (2018, 3, 1760),
+    (2019, 1, 1915),
+    (2019, 2, 1911),
+    (2019, 3, 1118),
+    (2020, 1, 1646),
+    (2020, 2, 1975),
+    (2020, 3, 1516);
+	
+WITH cte AS (
+    SELECT 
+        year, 
+        SUM(amount) amount
+    FROM sp.sales
+    GROUP BY year
+) 
+SELECT
+    year, 
+    amount,
+    LAG(amount, 1) OVER (
+        ORDER BY year
+    ) last_year_sales
+FROM
+    cte;
+
+with c as (select status, time_stamp from sp.up_down_events order by time_stamp)
+select status, time_stamp, lag(time_stamp) over (order by time_stamp) prev from c;
+
+select status, time_stamp from sp.up_down_events order by time_stamp;
+
+select status, min(a_time_stamp), b_time_stamp
+from 
+(
+select a.status, a.time_stamp a_time_stamp, min(b.time_stamp) b_time_stamp
+from sp.up_down_events a,
+		(select status, time_stamp 
+		 from sp.up_down_events 
+		 order by time_stamp asc) b
+where b.status != a.status 
+and b.time_stamp > a.time_stamp
+group by a.status, a.time_stamp
+) c
+group by status, b_time_stamp;
+		 
+select a_status, min(a_time_stamp) a_time_stamp, b_status, b_time_stamp
+from 
+(
+select a.status a_status, b.status b_status, a.time_stamp a_time_stamp, min(b.time_stamp) b_time_stamp
+from sp.up_down_events a,
+		(select status, time_stamp 
+		 from sp.up_down_events 
+		 order by time_stamp asc) b
+where b.status != a.status 
+and b.time_stamp > a.time_stamp
+group by a.status, b.status, a.time_stamp
+) c
+group by a_status, b_status, b_time_stamp
+order by a_time_stamp;
+
+select a_status, min(a_time_stamp) a_time_stamp, b_status, b_time_stamp
+from 
+(
+select a.status a_status, b.status b_status, a.time_stamp a_time_stamp, min(b.time_stamp) b_time_stamp
+from sp.up_down_events a,
+		(select status, time_stamp 
+		 from sp.up_down_events 
+		 order by time_stamp asc) b
+where b.status != a.status 
+and b.time_stamp > a.time_stamp
+group by a.status, b.status, a.time_stamp
+) c
+group by a_status, b_status, b_time_stamp
+order by a_time_stamp;	
