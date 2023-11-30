@@ -174,3 +174,19 @@ group by a.component, a.status, b.status, a.time_stamp
 ) c
 group by component, a_status, b_status, b_time_stamp
 order by component, a_time_stamp;	
+
+select component, a_status, min(a_time_stamp) a_time_stamp, b_status, b_time_stamp
+from 
+(
+select a.component, a.status a_status, b.status b_status, a.time_stamp a_time_stamp, min(b.time_stamp) b_time_stamp
+from (select component, status, time_stamp from sp.up_down_events order by component, time_stamp asc) a,
+		(select component, status, time_stamp 
+		 from sp.up_down_events 
+		 order by component, time_stamp asc) b
+where b.status != a.status 
+and   a.component = b.component
+and b.time_stamp > a.time_stamp
+group by a.component, a.status, b.status, a.time_stamp
+) c
+group by component, a_status, b_status, b_time_stamp
+order by component, a_time_stamp;
