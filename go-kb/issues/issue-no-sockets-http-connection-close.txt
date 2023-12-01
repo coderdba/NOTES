@@ -1,0 +1,85 @@
+=======================
+http://golang50shad.es
+=======================
+
+Closing HTTP Connections
+level: intermediate
+Some HTTP servers keep network connections open for a while (based on the HTTP 1.1 spec and the server "keep-alive" configurations). By default, the standard http library will close the network connections only when the target HTTP server asks for it. This means your app may run out of sockets/file descriptors under certain conditions.
+
+You can ask the http library to close the connection after your request is done by setting the Close field in the request variable to true.
+
+Another option is to add a Connection request header and set it to close. The target HTTP server should respond with a Connection: close header too. When the http library sees this response header it will also close the connection.
+
+package main
+
+import (  
+    "fmt"
+    "net/http"
+    "io/ioutil"
+)
+
+func main() {  
+    req, err := http.NewRequest("GET","http://golang.org",nil)
+    if err != nil {
+        fmt.Println(err)
+        return
+    }
+
+    req.Close = true
+    //or do this:
+    //req.Header.Add("Connection", "close")
+
+    resp, err := http.DefaultClient.Do(req)
+    if resp != nil {
+        defer resp.Body.Close()
+    }
+
+    if err != nil {
+        fmt.Println(err)
+        return
+    }
+
+    body, err := ioutil.ReadAll(resp.Body)
+    if err != nil {
+        fmt.Println(err)
+        return
+    }
+
+    fmt.Println(len(string(body)))
+}
+You can also disable http connection reuse globally. You'll need to create a custom http transport configuration for it.
+
+package main
+
+import (  
+    "fmt"
+    "net/http"
+    "io/ioutil"
+)
+
+func main() {  
+    tr := &http.Transport{DisableKeepAlives: true}
+    client := &http.Client{Transport: tr}
+
+    resp, err := client.Get("http://golang.org")
+    if resp != nil {
+        defer resp.Body.Close()
+    }
+
+    if err != nil {
+        fmt.Println(err)
+        return
+    }
+
+    fmt.Println(resp.StatusCode)
+
+    body, err := ioutil.ReadAll(resp.Body)
+    if err != nil {
+        fmt.Println(err)
+        return
+    }
+
+    fmt.Println(len(string(body)))
+}
+
+If you send a lot of requests to the same HTTP server it's ok to keep the network connection open. However, if your app sends one or two requests to many different HTTP servers in a short period of time it's a good idea to close the network connections right after your app receives the responses. Increasing the open file limit might be a good idea too. The correct solution depends on your application though.
