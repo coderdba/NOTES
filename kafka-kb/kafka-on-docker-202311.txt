@@ -7,6 +7,9 @@ REFERENCES
 ========================
 
 CONFLUENT KAFKA
+Quick start with docker: https://docs.confluent.io/platform/current/platform-quickstart.html
+- docker-compose.yml: https://github.com/confluentinc/cp-all-in-one/blob/7.5.2-post/cp-all-in-one-kraft/docker-compose.yml
+
 https://www.baeldung.com/ops/kafka-docker-setup
 https://www.baeldung.com/kafka-docker-connection
 https://www.confluent.io/blog/kafka-listeners-explained/ 
@@ -49,7 +52,8 @@ MODIFIED FROM ORIGNAL
 Kafka ports are up to us to set up. 9092 is generally the default Kafka port.  Let us keep it for within-docker-network access.
 Kafka Port 9092   - connections within docker network, that is, container to container without having to use host network
 Kafka Port 29092  - connections from an app on the host to docker container
-Kafka Port 29093  - connections from an app completely outside of the host itself (like, running on another VM/machine)
+Kafka Port 29093  - controller listener
+Kafka Port 29094  - connections from an app completely outside of the host itself (like, running on another VM/machine)
 Kafka host-port mappings:
 - In the port-mappings, 9092 mapping may not be necessary as it is for docker internal network.
 - Other ports are mapped to same numbered port on host though hostport could be made different.
@@ -67,6 +71,9 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - 22181:2181
+    volumes:
+      - D:\data\Kafka-Confluent-Docker\zk-data:/var/lib/zookeeper/data 
+      - D:\data\Kafka-Confluent-Docker\zk-txn-logs:/var/lib/zookeeper/log 
   
   kafka:
     image: confluentinc/cp-kafka:7.5.2
@@ -76,13 +83,18 @@ services:
       - 9092:9092
       - 29092:29092
       - 29093:29093
+    volumes:
+      - D:\data\Kafka-Confluent-Docker\kafka-data:/var/lib/kafka/data
     environment:
-      KAFKA_BROKER_ID: 1
+      KAFKA_BROKER_ID: 0
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: LISTNER_INTERNAL://kafka:9092,LISTENER_SAME_HOST://localhost:29092,LISTENER_OTHER_HOSTS://192.168.29.195:29093
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTNER_INTERNAL:PLAINTEXT,LISTENER_SAME_HOST:PLAINTEXT,LISTENER_OTHER_HOSTS:PLAINTEXT
+      KAFKA_LISTENERS: 'LISTNER_INTERNAL://kafka:29092,LISTENER_CONTROLLER://kafka:29093,LISTENER_HOST://localhost:9092,LISTENER_EXTERNAL://192.168.29.195:29093'
+      KAFKA_ADVERTISED_LISTENERS: LISTNER_INTERNAL://kafka:9092,LISTENER_HOST://localhost:29092,LISTENER_EXTERNAL://192.168.29.195:29093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTNER_INTERNAL:PLAINTEXT,LISTENER_HOST:PLAINTEXT,LISTENER_EXTERNAL:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: LISTNER_INTERNAL
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_LOG_DIRS: 'D:\data\Kafka-Confluent-Docker\kraft-combined-logs'
+
 
 -------------------------
 ORIGINAL
