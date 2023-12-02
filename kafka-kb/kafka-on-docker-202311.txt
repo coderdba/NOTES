@@ -12,6 +12,9 @@ Quick start with docker: https://docs.confluent.io/platform/current/platform-qui
 Mounting volumes in Docker for persistence: https://docs.confluent.io/platform/current/installation/docker/operations/external-volumes.html
 Quick start to use confluent kafka: https://developer.confluent.io/quickstart/kafka-local/
 
+Docker parameters: https://docs.confluent.io/platform/current/installation/docker/config-reference.html
+Kafka Connect: https://docs.confluent.io/platform/current/connect/index.html#what-is-kafka-connect
+
 https://www.baeldung.com/ops/kafka-docker-setup
 https://www.baeldung.com/kafka-docker-connection
 https://www.confluent.io/blog/kafka-listeners-explained/ 
@@ -34,6 +37,7 @@ https://developer.confluent.io/get-started/go
 
 "confluent" CLI
 https://docs.confluent.io/confluent-cli/current/command-reference/kafka/topic/confluent_kafka_topic_create.html#confluent-kafka-topic-create
+https://developer.confluent.io/quickstart/kafka-local/
 
 ========================
 DOCKER-COMPOSE
@@ -102,8 +106,8 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_PROCESS_ROLES: 'broker,controller'
       KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:29093'  # In model yml it was 'broker' because they called 'kafka' container so
-      KAFKA_LISTENERS: LISTNER_INTERNAL://kafka:29092,LISTENER_CONTROLLER://kafka:29093,LISTENER_HOST://kafka:9092,LISTENER_EXTERNAL://kafka:29094
-      KAFKA_ADVERTISED_LISTENERS: LISTNER_INTERNAL://kafka:9092,LISTENER_HOST://localhost:29092,LISTENER_EXTERNAL://192.168.29.195:29094
+      KAFKA_LISTENERS: LISTNER_INTERNAL://kafka:29092,LISTENER_HOST://kafka:9092,LISTENER_EXTERNAL://kafka:29094,,LISTENER_CONTROLLER://kafka:29093
+      KAFKA_ADVERTISED_LISTENERS: LISTNER_INTERNAL://kafka:29092,LISTENER_HOST://localhost:9092,LISTENER_EXTERNAL://192.168.29.195:29094
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTNER_INTERNAL:PLAINTEXT,LISTENER_CONTROLLER:PLAINTEXT,LISTENER_HOST:PLAINTEXT,LISTENER_EXTERNAL:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: LISTNER_INTERNAL
       KAFKA_CONTROLLER_LISTENER_NAMES: LISTENER_CONTROLLER
@@ -191,12 +195,34 @@ CREATE A TOPIC
 =====================================
 https://levelup.gitconnected.com/running-kafka-on-docker-container-1a15b8d0b77c
 
-Logon to the container
-- docker exec -ti kafka-container-name /bin/sh
+--------------------------
+FROM INSIDE THE CONTAINER
+--------------------------
+NOTE: As we are doing this from within the container, we use "kafka" as the host and 29092 as port (see the discussion on this in docker-compose section)
 
-Run the create topic command
-- /bin/kafka-topics --create --bootstrap-server kafka:29092 --replication-factor 1 --partitions 1 --topic quickstart
+- Logon to the container
+docker exec -ti kafka-container-name /bin/sh
 
-- NOTE: --zookeeper is not supported. Instead zookeeper address is mentioned in kafka container docker-compose itself.
-        /bin/kafka-topics --create --bootstrap-server kafka:29092 --zookeeper zookeeper:2181 --replication-factor 1 --partitions 1 --topic quickstart
+- Run the create topic command
+/bin/kafka-topics --create --bootstrap-server kafka:29092 --replication-factor 1 --partitions 1 --topic quickstart
 
+NOTE: --zookeeper is not supported. Instead zookeeper address is mentioned in kafka container docker-compose itself.
+      This will not work: /bin/kafka-topics --create --bootstrap-server kafka:29092 --zookeeper zookeeper:2181 --replication-factor 1 --partitions 1 --topic quickstart
+
+- List the topic
+/bin/kafka-topics --list --bootstrap-server kafka:29092 
+
+- Produce messages into topic
+kafka-console-producer --topic quickstart --bootstrap-server kafka:29092
+>
+(now type in the messages)
+>message1
+>message2
+>message3
+
+- Consume messages
+kafka-console-consumer --topic quickstart --from-beginning --bootstrap-server kafka:29092
+(output below)
+message1
+message2
+message3
