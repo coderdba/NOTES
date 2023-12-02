@@ -5,11 +5,99 @@ KAFKA ON DOCKER
 ========================
 REFERENCES
 ========================
+
+BITNAMI KAFKA
+https://bitnami.com/stack/kafka/containers
+https://github.com/bitnami/containers/tree/main/bitnami/kafka#how-to-use-this-image
+- Docker-compose: https://github.com/bitnami/containers/blob/main/bitnami/kafka/docker-compose.yml
+
+https://stackoverflow.com/questions/73382919/what-is-the-difference-between-bitnami-kafka-and-confluentinc-cp-kafka
+
+NON-CONFLUENT KAFKA
+https://betterdatascience.com/how-to-install-apache-kafka-using-docker-the-easy-way/
+
+CONFLUENT KAFKA
 https://www.baeldung.com/ops/kafka-docker-setup
+https://www.baeldung.com/kafka-docker-connection
+https://www.confluent.io/blog/kafka-listeners-explained/ - this looks like has wrong listener ports (29092 instead of 9092 for internal)
 
 ========================
 DOCKER-COMPOSE
 ========================
+
+=========================
+BITNAMI KAFKA
+=========================
+docker pull bitnami/kafka:3.6.0
+docker pull bitnami/zookeeper:3.9.1
+
+- Docker-compose: https://github.com/bitnami/containers/blob/main/bitnami/kafka/docker-compose.yml
+
+----------------------------
+MODIFIED FROM ORIGINAL
+----------------------------
+# Copyright VMware, Inc.
+# SPDX-License-Identifier: APACHE-2.0
+
+version: "2"
+
+services:
+  kafka:
+    image: docker.io/bitnami/kafka:3.6
+    ports:
+      - "9092:9092"
+    volumes:
+      - "kafka_data:/bitnami"
+    environment:
+      # KRaft settings
+      - KAFKA_CFG_NODE_ID=0
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
+      # Listeners
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+volumes:
+  kafka_data:
+    driver: local
+
+----------------------------
+ORIGINAL
+----------------------------
+# Copyright VMware, Inc.
+# SPDX-License-Identifier: APACHE-2.0
+
+version: "2"
+
+services:
+  kafka:
+    image: docker.io/bitnami/kafka:3.6
+    ports:
+      - "9092:9092"
+    volumes:
+      - "kafka_data:/bitnami"
+    environment:
+      # KRaft settings
+      - KAFKA_CFG_NODE_ID=0
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
+      # Listeners
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+volumes:
+  kafka_data:
+    driver: local
+
+
+
+=========================
+CONFLUENT KAFKA - IS CONFUSING
+=========================
 
 To start an Apache Kafka server, we’d first need to start a Zookeeper server.
 
@@ -23,9 +111,9 @@ MODIFIED FROM ORIGNAL
 -------------------------
 
 -- NOTES
-Kafka Port 29092 - connections within docker network, that is, container to container without having to use host network
+Kafka Port 29092   - connections within docker network, that is, container to container without having to use host network
 Kafka Port 9092  - connections from an app on the host to docker container
-Kafka Port 29094 - connections from an app completely outside of the host itself (like, running on another VM/machine)
+Kafka Port 29094  - connections from an app completely outside of the host itself (like, running on another VM/machine)
 Kafka host-port mappings:
   In the port-mappings, 29092 mapping may not be necessary as it is for docker internal network.
   Other ports are mapped to same numbered port on host though hostport could be made different.
@@ -55,8 +143,8 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: LISTNER_INTERNAL://kafka:9092,LISTENER_HOST://localhost:29092,LISTENER_EXTERNAL://localhost:29094
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTNER_INTERNAL:PLAINTEXT,LISTENER_HOST:PLAINTEXT,LISTENER_EXTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: LISTNER_INTERNAL://kafka:29092,LISTENER_SAME_HOST://localhost:9092,LISTENER_OTHER_HOSTS://localhost:29094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTNER_INTERNAL:PLAINTEXT,LISTENER_SAME_HOST:PLAINTEXT,LISTENER_OTHER_HOSTS:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: LISTNER_INTERNAL
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
