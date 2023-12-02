@@ -84,20 +84,28 @@ services:
     depends_on:
       - zookeeper
     ports:
-      - 9092:9092
-      - 29092:29092
-      - 29093:29093
+      - 9092:9092    # Host
+      - 29092:29092  # Internal
+      - 29094:29094  # External
     volumes:
       - D:\data\Kafka-Confluent-Docker\kafka-data:/var/lib/kafka/data
     environment:
-      KAFKA_BROKER_ID: 0
+      KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENERS: 'LISTNER_INTERNAL://kafka:29092,LISTENER_CONTROLLER://kafka:29093,LISTENER_HOST://localhost:9092,LISTENER_EXTERNAL://192.168.29.195:29094'
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:29093'  # In model yml it was 'broker' because they called 'kafka' container so
+      KAFKA_LISTENERS: LISTNER_INTERNAL://kafka:29092,LISTENER_CONTROLLER://kafka:29093,LISTENER_HOST://kafka:9092,LISTENER_EXTERNAL://kafka:29094
       KAFKA_ADVERTISED_LISTENERS: LISTNER_INTERNAL://kafka:9092,LISTENER_HOST://localhost:29092,LISTENER_EXTERNAL://192.168.29.195:29094
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTNER_INTERNAL:PLAINTEXT,LISTENER_HOST:PLAINTEXT,LISTENER_EXTERNAL:PLAINTEXT
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTNER_INTERNAL:PLAINTEXT,LISTENER_CONTROLLER:PLAINTEXT,LISTENER_HOST:PLAINTEXT,LISTENER_EXTERNAL:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: LISTNER_INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: LISTENER_CONTROLLER
+      KAFKA_JMX_PORT: 9101
+      KAFKA_JMX_HOSTNAME: localhost
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_LOG_DIRS: 'D:\data\Kafka-Confluent-Docker\kraft-combined-logs'
+      # Replace CLUSTER_ID with a unique base64 UUID using "bin/kafka-storage.sh random-uuid" 
+      # See https://docs.confluent.io/kafka/operations-tools/kafka-tools.html#kafka-storage-sh
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
 
 
 -------------------------
