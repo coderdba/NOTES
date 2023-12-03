@@ -1,0 +1,23 @@
+==============================
+PREVENT AUTO-COMMIT IN KAFKA
+==============================
+
+=========================
+KAFKA-GO Explicit Commit
+=========================
+https://github.com/segmentio/kafka-go#explicit-commits
+  
+Explicit Commits
+kafka-go also supports explicit commits. Instead of calling ReadMessage, call FetchMessage followed by CommitMessages.
+
+ctx := context.Background()
+for {
+    m, err := r.FetchMessage(ctx)
+    if err != nil {
+        break
+    }
+    fmt.Printf("message at topic/partition/offset %v/%v/%v: %s = %s\n", m.Topic, m.Partition, m.Offset, string(m.Key), string(m.Value))
+    if err := r.CommitMessages(ctx, m); err != nil {
+        log.Fatal("failed to commit messages:", err)
+    }
+}
