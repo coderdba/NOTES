@@ -1,0 +1,44 @@
+# https://www.bacancytechnology.com/blog/dockerize-golang-application
+
+# First pull Golang image
+FROM golang:1.19.7-alpine3.17 as build-env
+
+# Set environment variable
+ENV APP_NAME autotron-worker-api
+# CMD_PATH is not needed and errors out if code is split between multiple programs
+#ENV CMD_PATH main.go
+
+# Copy application data into image
+COPY . $GOPATH/src/$APP_NAME
+WORKDIR $GOPATH/src/$APP_NAME
+
+# Build application
+# RUN CGO_ENABLED=0 go build -v -o /$APP_NAME $GOPATH/src/$APP_NAME/.
+RUN go build -v -o /$APP_NAME $GOPATH/src/$APP_NAME/.
+
+# Run Stage
+FROM alpine:3.17
+
+ARG ROOT_CA_CERT
+
+RUN apk add --update openssh sshpass ansible bash ca-certificates py-pip
+RUN pip install pywinrm requests-credssp
+
+# Copy secret file to location and
+# Create a user matching the non-root-user on the VM/Host
+RUN echo "$ROOT_CA_CERT" > /usr/local/share/ca-certificates/ca.crt && \
+    adduser -D -u 2023 myappuser && \
+    update-ca-certificates
+
+USER autotron
+# Set environment variable
+ENV APP_NAME myapp-worker-api
+
+# Copy the app executable
+COPY --from=build-env /$APP_NAME .
+
+# Expose application port
+EXPOSE 8080
+
+# Start app
+ENTRYPOINT ["./myapp-worker-api"]
