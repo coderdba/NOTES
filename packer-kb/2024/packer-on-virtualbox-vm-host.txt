@@ -1,1 +1,54 @@
 https://techviewleo.com/install-use-kvm-virtualization-oracle-linux
+
+# grep -e 'vendor_id' /proc/cpuinfo
+vendor_id	: GenuineIntel
+vendor_id	: GenuineIntel
+
+# lscpu
+- to find what virtualization is enabled
+Virtualization features: 
+  Hypervisor vendor:     KVM  --> This is because KVM was set as paravirtualization for the VM in Virtualbox settings
+  Virtualization type:   full
+
+Upgrade the system
+# dnf makecache
+# dnf update
+# reboot 
+
+Set SELinux to permissive mode
+Leaving SELinux in its default  (enforcing) mode will lead to permission denied errors while creating KVM virtual machines. 
+To avoid this error, edit the etc/selinux/config by changing the mode to permissive
+
+$ sudo vim /etc/selinux/config
+SELINUX=permissive
+
+Remove existing virtualization software:
+# dnf remove libvirt qemu-kvm edk2
+No match for argument: libvirt
+No match for argument: qemu-kvm
+No match for argument: edk2
+No packages marked for removal.
+Dependencies resolved.
+Nothing to do.
+Complete!
+
+Yum repo:
+# dnf install -y oraclelinux-release-el9
+# dnf config-manager --enable ol9_kvm_utils ol9_UEKR7
+
+Virtualization software: (640MB - including upgrades and installs)
+# dnf groupinstall "Virtualization Host"
+
+Verify
+# lsmod | grep kvm
+
+Install tools
+# dnf install qemu-kvm virt-install virt-viewer virt-manager
+
+Start KVM daemon
+# systemctl start libvirtd
+# systemctl enable --now libvirtd
+# systemctl status libvirtd
+
+
+
