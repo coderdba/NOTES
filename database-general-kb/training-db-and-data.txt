@@ -35,19 +35,9 @@ Foreign Keys
 -- Use joins to obtain combined view of child records and parent record
 select a.name, b.name from employees a, departments b where a.department_id = b.id;
 
-- IN MONGO
--- Indirect foreign keys are possible on specific fields - "Manual Reference" 
--- Direct foreign keys are also possible on specific fields - using "DBRef", but expesive operation as per Mongo docs
--- Fetch one record from a collection
--- To find parent details - using foreign field keys in that record, fetch parent details from parent collection
-
--- Fetch one record from a collection. To find parent details - using foreign field keys in that record, fetch parent details from parent collection
--- Or, use $lookup to join child and parent and view combined result
-
 =======================
 CASE 1
 =======================
-
 An organization has many companies
 A company has many departments
 Each department has many employees
@@ -55,9 +45,8 @@ Each department has many applications
 Employees in a department may access applications of one or more departments
 
 ===================================================
-CASE 1 - BASIC
+CASE 1a - BASIC
 ===================================================
-
 ------------------
 TABLE - DEPARTMENT
 ------------------
@@ -98,7 +87,7 @@ QUESTION 1: Tell me what should be the unique constraint here
 QUESTION 2: Is this one to many or many to many or one to one relationship?
 
 =========================================================
-CASE 1 - EXTENDED - ORGANIZATION ACQUIRES MORE COMPANIES 
+CASE 1b - EXTENDED - ORGANIZATION ACQUIRES MORE COMPANIES 
 =========================================================
 ----------------------
 TABLE - ORGANIZATION
@@ -229,85 +218,12 @@ constarint CHECK ACCESS_TYPE IN ('read', 'write', 'admin', 'none')
 QUESTION 1: Tell me what should be the unique constraint here
 QUESTION 2: Is this one to many or many to many or one to one relationship?
 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+PART2  - NON-RELATIONAL DATA STORAGE
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-PART2  - DATA
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-What needs RDBMS
-What is a 'document' (json)
-Where to store JSONs - NOSQL or RDBMS
+Will mainly discuss JSON.
 
-=============================
-JSON, CSV, Plain Text
-=============================
-JSON, CSV, Plain Text - can be 'input data' in files
-They can be used as is from files by programs - or - if necessary stored in DB (RDBMS or NOSQL)
-
-!!!! However !!!!
-A CSV may contain repeating values, varying data
-
-=============================
-CASE 1 - Spare Parts Stores
-=============================
-
-A company has many workshops.
-Each workshop does many types of machining.
-"Similar" or "same" spare-parts are stocked in each workshop's store.
-
-Data: Tools Stock CSV
-STORE1, Welding Rods, 10 boxes, 7018 grade
-STORE1, Grinding wheels, 20 count, EN12313 Grindwell
-STORE1, Grinding wheels, 20 count, A60SST Exovit
-STORE1, Coolant - drilling, 11 liters 
-STORE1, Coolant - lathe, 40 liters 
-STORE1, Welding flux SS, 22 kilograms
-STORE1, Welding flux MS, 10 kilograms
-
-STORE2, Welding Rods, 5 boxes, 7018 Bluekin
-STORE2, Welding Rods, 7 boxes, 7018 ESAB
-STORE2, Grinding wheel, 15 count, Grindwell EN12313
-STORE2, Grinding wheel, 12 count, Carborundum 
-STORE2, Exovit Grinding wheels, 20 count, A60SST 
-STORE2, Coolant - drilling, 8 liters 
-STORE2, Coolant - lathe, brass, 4 liters 
-STORE2, SS Welding flux SS, 10 kilograms
-STORE2, MS flux, 20 kilograms
-
-Application to build:
-- Enter and modify stock data
-- Show storewise stock of each item
-- Show total stock of each item across the company
-- Stock reporting must be accurate
-- If a store has shortage of an item, it should be able to order it from another store
-- Some products are 'similar' that can substitute for the other brand/type if a specific brand/type is not available
-  (example: 7018 welding rods are same properties across brands)
-
-Questions:
-- Is the data in the CSV good for the purpose of the application to build?
-- What type of data store will be suitable - CSV files, RDBMS or NOSQL-Document?
-
-=============================
-CASE 2 - Static Data
-=============================
-Business:
-- A painting company gives quotations to paint apartments.
-- Prices vary by floor, size and type of walls.
-- Customer can choose one ore more whole floors which will then include all apartments of those floors.
-- Customer can choose the whole building which will then include all apartments of the building.
-- Buidling data must be provided to the painting company 
-- Painting company will then update it with pricing for different apartments and upload to their system.
-
-Application to build:
-- Provide dropdowns to choose the whole building or specific floor or specific apartment
-- Depending upon the chosen bundle, give pricing for painting that many apartments
-
-Question:
-- What kind of data structure will be good for this purpose?
-- What kind of file/RDBMS/Document-DB will be good?
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-PART3  - NON-RELATIONAL DATA STORES
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 =============================
 Datatypes to store JSON
 =============================
@@ -373,11 +289,24 @@ Collection: WEBLOGIC_APPS
 - Add the json above as a record in a collection
 - Create a unique index on the app.name field
 
+Unique Keys:
+Uniqueness on fields can be enforced - single field or composite of multiple fields
+https://www.mongodb.com/docs/manual/core/index-unique/
+
+Foreign Keys:
+-- Indirect foreign keys are possible on specific fields - "Manual Reference" 
+-- Direct foreign keys are also possible on specific fields - using "DBRef", but expesive operation as per Mongo docs
+-- Fetch one record from a collection
+-- To find parent details - using foreign field keys in that record, fetch parent details from parent collection
+
+-- Fetch one record from a collection. To find parent details - using foreign field keys in that record, fetch parent details from parent collection
+-- Or, use $lookup to join child and parent and view combined result
+
 ========================
 JSONS IN RDBMS, MONGO
 ========================
 JSON IN RDBMS:
-- Fields of JSON in a RDBMS table or collection can be 'indexed'.
+- Fields of JSON in a RDBMS table or collection can be 'indexed'
 - However, foreign keys cannot be created between fields in a JSON datatype in RDBMS and another table's column.
 - That is, a json field, say 'app.domain' CANNOT be defined as a foreign key to 'domain_id' field in an 'domains' table
 - Indirect foreign-key checks can be made possible using insert/update triggers in Oracle
@@ -385,10 +314,102 @@ JSON IN RDBMS:
 
 JSON IN MONGO:
 - Whole JSONs can be stored in a collection
-- Indexes can be created on specific fields
+- Indexes can be created on specific fields or composite of multiple fields
+- Unique keys can be created on specific fields or composite of multiple fields
 - Indirect foreign keys are possible on specific fields - "Manual Reference" 
 - Direct foreign keys are also possible on specific fields - using "DBRef", but expesive operation as per Mongo docs
 - Use $lookup to join tables on foreign keys
 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+PART3  - DATA
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+What needs RDBMS
+What is a 'document' (json)
+Where to store JSONs - NOSQL or RDBMS
 
+=============================
+JSON, CSV, Plain Text
+=============================
+JSON, CSV, Plain Text - can be 'input data' in files
+They can be used as is from files by programs - or - if necessary stored in DB (RDBMS or NOSQL)
+
+!!!! However !!!!
+Caution 1:
+- Dumping CSV or JSON data into a 'column' in RDBMS will not be always helpful
+- It will be like using a database table as if it is a data-dumping-ground
+- Create tables methodically as discussed earlier and split-and-load CSV data to appropriate parent and child tables
+
+Caution 2:
+- CSV or JSON may contain repeating values, varying data
+- CSVs directly dumped into a table as columns without thought of RDBMS design will defeat the purpose of RDBMS
+- Create tables methodically as discussed earlier and split-and-load CSV data to appropriate parent and child tables
+
+Caution 3:
+- JSONs still can make sense in some cases where:
+-- Fields in data can vary over time (example, 'notification preference' may be a new addition to an employee record)
+-- Parent-child relations are not required or important with other tables (trusted JSONs)
+
+Caution 3:
+- Use well defined JSONs where structure and specificity of fields is important
+- Use Arbitrary jsons without expectation of uniformity ONLY if there is no real expectation of structure
+-- (example - just a collection of records of any type - employees, cars, cities or whatever)
+
+=============================
+CASE 1 - Spare Parts Stores
+=============================
+
+A company has many workshops.
+Each workshop does many types of machining.
+"Similar" or "same" spare-parts are stocked in each workshop's store.
+
+Data: Tools Stock CSV
+STORE1, Welding Rods, 10 boxes, 7018 grade
+STORE1, Grinding wheels, 20 count, EN12313 Grindwell
+STORE1, Grinding wheels, 20 count, A60SST Exovit
+STORE1, Coolant - drilling, 11 liters 
+STORE1, Coolant - lathe, 40 liters 
+STORE1, Welding flux SS, 22 kilograms
+STORE1, Welding flux MS, 10 kilograms
+
+STORE2, Welding Rods, 5 boxes, 7018 Bluekin
+STORE2, Welding Rods, 7 boxes, 7018 ESAB
+STORE2, Grinding wheel, 15 count, Grindwell EN12313
+STORE2, Grinding wheel, 12 count, Carborundum 
+STORE2, Exovit Grinding wheels, 20 count, A60SST 
+STORE2, Coolant - drilling, 8 liters 
+STORE2, Coolant - lathe, brass, 4 liters 
+STORE2, SS Welding flux SS, 10 kilograms
+STORE2, MS flux, 20 kilograms
+
+Application to build:
+- Enter and modify stock data
+- Show storewise stock of each item
+- Show total stock of each item across the company
+- Stock reporting must be accurate
+- If a store has shortage of an item, it should be able to order it from another store
+- Some products are 'similar' that can substitute for the other brand/type if a specific brand/type is not available
+  (example: 7018 welding rods are same properties across brands)
+
+Questions:
+- Is the data in the CSV good for the purpose of the application to build?
+- What type of data store will be suitable - CSV files, RDBMS or Mongo-JSON-Document?
+
+=============================
+CASE 2 - Static Data
+=============================
+Business:
+- A painting company gives quotations to paint apartments.
+- Prices vary by floor, size and type of walls.
+- Customer can choose one ore more whole floors which will then include all apartments of those floors.
+- Customer can choose the whole building which will then include all apartments of the building.
+- Buidling data must be provided to the painting company 
+- Painting company will then update it with pricing for different apartments and upload to their system.
+
+Application to build:
+- Provide dropdowns to choose the whole building or specific floor or specific apartment
+- Depending upon the chosen bundle, give pricing for painting that many apartments
+
+Question:
+- What kind of data structure will be good for this purpose?
+- What kind of file/RDBMS/Document-DB will be good?
 
