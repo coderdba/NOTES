@@ -223,6 +223,17 @@ JSON, CSV, Plain Text
 JSON, CSV, Plain Text - can be 'input data' in files
 They can be used as is from files by programs - or - if necessary stored in DB (RDBMS or NOSQL)
 
+JSON IN RDBMS:
+- Fields of JSON in a RDBMS table or collection can be 'indexed'.
+- However, foreign keys cannot be created between fields in a JSON datatype in RDBMS and another table's column.
+- That is, a json field, say 'app.domain' CANNOT be defined as a foreign key to 'domain_id' field in an 'domains' table
+
+JSON IN MONGO:
+- Whole JSONs can be stored in a collection
+- Indexes can be created on specific fields
+- Indirect foreign keys are possible on specific fields
+- Direct foreign keys are also possible on specific fields, but it can be an expesive operation as per Mongo docs
+
 !!!! However !!!!
 A CSV may contain repeating values, varying data
 
@@ -295,20 +306,64 @@ Datatypes to store JSON
 - JSON, JSONB in Postgres
 - Collections in Mongo
 
+-------------------------
 In Oracle and Postgres
+-------------------------
 - JSON data will be in a column
 - Any key in it cannot be made primary key of the row in the table
 - Keys in the JSON can be indexed
 
-Example:  WEBLOGIC_SERVERS
-ID - int, serial number, primary key
-NAME - unique
-DESCRIPTION
-CITY
-ORGANIZATION_ID - foreign key with ORGANIZATION(ID)
+Examples:
 
+Table: WEBLOGIC_SERVERS
+ID - int, serial number, primary key
+HOST_NAME - unique
+IP_ADDRESS - unique
+WEBLOGIC_APPS - a csv 
+-- QUESTION: Is having a csv here good?  Or bad? What is the alternative if bad?
+
+Table: WEBLOGIC_APPS
+ID - int, serial number, primary key
+APP_NAME - unique
+APP_CLUSTER_DETAILS - a json with app's VMs, domains and instances (processes)
+
+--> JSON data example for one app:
+{
+app: {
+name: app1,
+network: LAN,
+vms: [
+            {
+                  name: vm1
+                  domains: [
+                  {name: domain1, instances: [{name: instance1}, {name: instance2}]},
+                  {name: domain2, instances: [{name: instanceX}, {name: instanceY}]}
+                  ]
+            },
+            {
+                  name: vm2
+                  domains: [
+                  {name: domain3, instances: [{name: instancea}, {name: instanceb}]},
+                  {name: domain4, instances: [{name: instanceP}, {name: instanceQ}]}
+                  ]
+            },
+
+]
+
+}
+
+Index specific fields in the json for faster search.
+
+-- QUESTION: Is having a json here good?  Or bad?  What is the alternative if bad?
+
+-------------------------
 In Mongo
-- 
+-------------------------
+Collection: WEBLOGIC_APPS
+- Create a collection WEBLOGIC_APPS
+- Add the json above as a record in a collection
+- Create a unique index on the app.name field
+
 
 
 
