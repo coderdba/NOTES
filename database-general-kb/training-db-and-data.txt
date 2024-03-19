@@ -55,21 +55,81 @@ NAME - unique
 DESCRIPTION
 COMAPNY_ID - foreign key with COMPANY(ID)
 
+---------------------
+TABLE - EMPLOYEE
+---------------------
+
+- PROBLEMATIC DESIGN:
+ID - int, serial number, primary key
+NAME - unique --> PROBLEM: What if different companies of the same org have same department name (say, RECEIVING, DESPATCH)
+DESCRIPTION
+DEPARTMENT_ID - foreign key with DEPARTMENT(ID)
+
+- CORRECT DESIGN:
+ID - int, serial number, primary key
+NAME  
+DESCRIPTION
+DEPARTMENT_ID - foreign key with DEPARTMENT(ID)
+add constraint UNIQUE KEY (NAME, DEPARTMENT_ID)
 
 ---------------------
 TABLE - APPLICATION
 ---------------------
 
-PROBLEMATIC DESIGN:
+* ITERATION 1
+- PROBLEMATIC DESIGN:
 ID - int, serial number, primary key
 NAME - unique --> PROBLEM: What if different companies of the same org have same department name (say, RECEIVING, DESPATCH)
 DESCRIPTION
 DEPARTMENT_ID - foreign key with DEPARTMENT(ID)
 
+- CORRECT DESIGN:
 ID - int, serial number, primary key
-NAME - unique --> PROBLEM: What if different companies of the same org have same department name (say, RECEIVING, DESPATCH)
+NAME  
 DESCRIPTION
 DEPARTMENT_ID - foreign key with DEPARTMENT(ID)
+add constraint UNIQUE KEY (NAME, DEPARTMENT_ID)
+
+* ITERATION 2 --> Organization decides that across the org, an app_id will be assigned to each app
+- PROBLEMATIC DESIGN:
+ID - int, serial number, primary key
+NAME 
+APP_ID --> newly added
+DESCRIPTION
+DEPARTMENT_ID - foreign key with DEPARTMENT(ID)
+add constraint UNIQUE KEY (NAME, DEPARTMENT_ID) --> NOTE: THIS IS ALSO REQUIRED
+
+- CORRECT DESIGN:
+ID - int, serial number, primary key
+NAME 
+APP_ID - unique 
+DESCRIPTION
+DEPARTMENT_ID - foreign key with DEPARTMENT(ID)
+add constraint UNIQUE KEY (NAME, DEPARTMENT_ID)
+
+* ITERATION 3 --> Rationaize the names of applications making them unique across the organization
+- PROBLEMATIC DESIGN:
+ID - int, serial number, primary key
+NAME --> must be made unique
+APP_ID --> already added
+DESCRIPTION
+DEPARTMENT_ID - foreign key with DEPARTMENT(ID)
+add constraint UNIQUE KEY (NAME, DEPARTMENT_ID) --> NOTE: THIS IS ALSO REQUIRED
+
+- CORRECT DESIGN:
+ID - int, serial number, primary key
+NAME - unique
+APP_ID - unique 
+DESCRIPTION
+DEPARTMENT_ID - foreign key with DEPARTMENT(ID)
+<< constraint removed because now NAME is unique across all departments and companies >>
+
+
+
+
+
+
+
 
 
 
