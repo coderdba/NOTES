@@ -50,27 +50,47 @@ ORGANIZATION_ID - foreign key with ORGANIZATION(ID)
 ------------------
 TABLE - DEPARTMENT
 ------------------
+
+- PROBLEMATIC DESIGN:
 ID - int, serial number, primary key
-NAME - unique
+NAME - unique  --> PROBLEM: What if different companies of the same org have same department name (say, HR, RECEIVING, DESPATCH)
 DESCRIPTION
 COMAPNY_ID - foreign key with COMPANY(ID)
+
+- CORRECT DESIGN:
+ID - int, serial number, primary key
+NAME
+DESCRIPTION
+COMAPNY_ID - foreign key with COMPANY(ID)
+add constraint UNIQUE KEY (NAME, COMAPNY_ID) --> added constraint to accomodate duplicate department names
 
 ---------------------
 TABLE - EMPLOYEE
 ---------------------
-
-- PROBLEMATIC DESIGN:
+NOTE: 
+- Typically emplyee IDs will be different across different companies. So, uniqueness may be already there (version1 below)
+- If not, then keys will have to change (version2  below)
+      
+Version1:
 ID - int, serial number, primary key
-NAME - unique --> PROBLEM: What if different companies of the same org have same department name (say, RECEIVING, DESPATCH)
-DESCRIPTION
+EMPLOYEE_ID - unique
+NAME
+ADDRESS
 DEPARTMENT_ID - foreign key with DEPARTMENT(ID)
 
-- CORRECT DESIGN:
+Version2:
 ID - int, serial number, primary key
-NAME  
-DESCRIPTION
+EMPLOYEE_ID
+COMPANY_ID
+NAME
+ADDRESS
 DEPARTMENT_ID - foreign key with DEPARTMENT(ID)
-add constraint UNIQUE KEY (NAME, DEPARTMENT_ID)
+add constraint UNIQUE KEY (EMPLOYEE_ID, COMPANY_ID) --> added constraint to accomodate duplicate employee id's
+
+--> NOTE: Adding company_id like this amounts to a bit of 'de-normalization' where some foreign-keys are brought 
+in though they can be derived from other foreign keys.  For example, here, COMPANY_ID can be derived using DEPARTMENT_ID.  
+However, due to the peculiarity of EMPLOYEE_ID duplicate values across companies, COMPANY_ID is brought into this table.
+--> Due to adding additional company_id here, programs must check during insert/update that the DEPARTMENT_ID belongs to the same company as the COMPANY_ID
 
 ---------------------
 TABLE - APPLICATION
@@ -79,7 +99,7 @@ TABLE - APPLICATION
 * ITERATION 1
 - PROBLEMATIC DESIGN:
 ID - int, serial number, primary key
-NAME - unique --> PROBLEM: What if different companies of the same org have same department name (say, RECEIVING, DESPATCH)
+NAME - unique --> PROBLEM: What if different companies/departments of the same org have same app name (say, HR, TRANSPORT)
 DESCRIPTION
 DEPARTMENT_ID - foreign key with DEPARTMENT(ID)
 
@@ -88,8 +108,9 @@ ID - int, serial number, primary key
 NAME  
 DESCRIPTION
 DEPARTMENT_ID - foreign key with DEPARTMENT(ID)
-add constraint UNIQUE KEY (NAME, DEPARTMENT_ID)
+add constraint UNIQUE KEY (NAME, DEPARTMENT_ID) --> added constraint to accomodate duplicate app names
 
+~~~~~~~~~~ MORE ITERATIONS ~~~~~~~~~~~~~~~~~~~~~
 * ITERATION 2 --> Organization decides that across the org, an app_id will be assigned to each app
 - PROBLEMATIC DESIGN:
 ID - int, serial number, primary key
@@ -123,7 +144,6 @@ APP_ID - unique
 DESCRIPTION
 DEPARTMENT_ID - foreign key with DEPARTMENT(ID)
 << constraint removed because now NAME is unique across all departments and companies >>
-
 
 
 
