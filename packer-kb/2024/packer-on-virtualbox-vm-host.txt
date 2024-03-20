@@ -58,6 +58,44 @@ Start KVM daemon
 # systemctl start libvirtd
 # systemctl enable --now libvirtd
 # systemctl status libvirtd
+- Error: /dev/kvm does not exist - when systemctl status libvirtd
+- Created /dev/kvm: mkdir /dev/kvm; chgrp kvm /dev/kvm
+- Error: “virHostCPUGetCPUID:1455 : Cannot read host CPUID: Inappropriate ioctl for device
+- Could not resolve. Destroyed the Vbox VM. Creating new
+
+===================================
+FOLLOWING ORACLE DOC
+===================================
+https://docs.oracle.com/en/learn/ol-kvm/index.html
+
+# grep -e 'vendor_id' /proc/cpuinfo
+vendor_id	: GenuineIntel
+vendor_id	: GenuineIntel
+
+# lscpu
+Virtualization features: 
+  Hypervisor vendor:     KVM
+  Virtualization type:   full
+
+# grep -e 'vmx' /proc/cpuinfo
+--> this shows null. So, not sure if it supports virtualization
+
+# lsmod | grep kvm
+--> this shows null. So, not sure if it supports virtualization
+--> Ideal response should be
+kvm_intel             262144  0 
+kvm                   696320  1 kvm_intel
+irqbypass              16384  1 kvm
+
+
+Try install the module
+# modprobe kvm
+
+# lsmod |grep kvm
+kvm                  1142784  0
+irqbypass              16384  1 kvm
+
+
 
 
 
