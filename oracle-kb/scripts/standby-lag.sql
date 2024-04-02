@@ -1,3 +1,17 @@
+select LOG_ARCHIVED, LOG_APPLIED, LOG_ARCHIVED-LOG_APPLIED "LOG_GAP" from
+(SELECT MAX(SEQUENCE#) LOG_ARCHIVED
+FROM V$ARCHIVED_LOG WHERE DEST_ID=1 AND ARCHIVED='YES'),
+(SELECT MAX(SEQUENCE#) LOG_APPLIED
+FROM V$ARCHIVED_LOG WHERE DEST_ID=2 AND APPLIED='YES');
+
+
+select * from v$dataguard_stats;
+select * from v$dataguard_status;
+
+-- Various
+https://expertoracle.com/2014/03/28/physical-standby-data-guard-useful-sql-scripts/
+
+-- THIS MAY NOT BE CORRECT:
 -- https://ittutorial.org/dataguard-status-standby-lag-monitoring-command-and-scripts-oracle-dba-scripts-all-in-one-2/
 
 SELECT ARCH.THREAD# "Thread", ARCH.SEQUENCE# "Last in Sequence", APPL.SEQUENCE# "Last Applied Sequence", (ARCH.SEQUENCE# - APPL.SEQUENCE#) "Difference"
