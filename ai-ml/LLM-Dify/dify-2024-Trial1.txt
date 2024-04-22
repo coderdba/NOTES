@@ -71,6 +71,40 @@ This is in the langchain-chroma directory
 $ cp .env.example .env
 
 - Start LocalAI
+This took a long time and failed.
 docker compose up -d --build
+
+- Therefore, use this: https://localai.io/docs/getting-started/manual/
+Modified the docker-compose.yml in examples/langchain-chroma as follows:
+a. Images - changed latest to latest-cpu
+b. Volumes - changed host volume to the folder that contains the downloaded models
+
+Pull image:
+docker pull quay.io/go-skynet/local-ai:latest-cpu
+
+Run command:
+docker compose up -d 
+(In doc: docker compose up -d --pull always)
+
+-------------------
+docker-compose.yml - Modified
+-------------------
+version: '3.6'
+
+services:
+  api:
+    image: quay.io/go-skynet/local-ai:latest-cpu
+    build:
+      context: ../../
+      dockerfile: Dockerfile
+    ports:
+      - 8080:8080
+    env_file:
+      - ../../.env
+    #volumes:
+    #  - ./models:/models:cached
+    volumes:
+      - C:\opt\LLM\models:/models:cached
+    command: ["/usr/bin/local-ai"]
 
 
