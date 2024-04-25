@@ -109,11 +109,134 @@ services:
     command: ["/usr/bin/local-ai"]
 
 -- TRY OLLAMA
-Dify doc: https://docs.dify.ai/tutorials/model-configuration/ollama
 
-Ollama with locally downloaded model file:
+Dify doc: https://docs.dify.ai/tutorials/model-configuration/ollama
+Official doc: https://github.com/ollama/ollama
+    API Doc: https://github.com/ollama/ollama/blob/main/docs/api.md
+
+Tutorials: Ollama with locally downloaded model file:
 https://medium.com/@gabrielrodewald/running-models-with-ollama-step-by-step-60b6f6125807
 https://discuss.huggingface.co/t/how-to-download-a-model-and-run-it-with-ollama-locally/77317
+
+Download ollama installer file from https://ollama.com/download/windows
+Install it
+It will install to C:\Users\myusername\AppData\Local\Programs\Ollama
+
+Set environment variable OLLAMA_MODELS = C:\opt\llm\models
+--> this did not seem to help - ollama list did not show any models
+
+USE A SPECIFIC MODEL
+Create a file Modelfile.txt with content like the following indicating which model to use:
+FROM ./mistral-7b-instruct-v0.1.Q4_K_M.gguf.bin
+
+Create a model blob 
+- Will get created in the models folder under a 'blob' subfolder
+  NOTE: This will use up additional space in the blob subfolder
+
+ollama create example -f Modelfile.txt
+
+ollama list
+NAME            ID              SIZE    MODIFIED
+example:latest  ea009b1ff01d    4.4 GB  3 minutes ago
+
+Run the model
+ollama run example --> 'example' is the name of the local blob model created from the downloaded model
+NOTE: This will start an interactive shell
+
+Run Ollama as server
+ollama serve
+
+API Calls
+- Generate an answer
+POST to  http://localhost:11434/api/generate
+with body:
+{
+  "model": "example",
+  "prompt": "Why is the sky blue?"
+}
+--> The response will be one json for each word in the response sentence which is a bit crazy!!
+
+{
+    "model": "example",
+    "created_at": "2024-04-25T06:04:28.9559249Z",
+    "response": " This",
+    "done": false
+}
+{
+    "model": "example",
+    "created_at": "2024-04-25T06:04:29.1559437Z",
+    "response": " question",
+    "done": false
+}
+{
+    "model": "example",
+    "created_at": "2024-04-25T06:04:29.3310589Z",
+    "response": " has",
+    "done": false
+}
+{
+    "model": "example",
+    "created_at": "2024-04-25T06:04:29.4957726Z",
+    "response": " conf",
+    "done": false
+}
+{
+    "model": "example",
+    "created_at": "2024-04-25T06:04:29.6652588Z",
+    "response": "ound",
+    "done": false
+}
+{
+    "model": "example",
+    "created_at": "2024-04-25T06:04:29.8488923Z",
+    "response": "ed",
+    "done": false
+}
+{
+    "model": "example",
+    "created_at": "2024-04-25T06:04:30.0221722Z",
+    "response": " people",
+    "done": false
+}
+{
+    "model": "example",
+    "created_at": "2024-04-25T06:04:30.1931946Z",
+    "response": " for",
+    "done": false
+}
+{
+    "model": "example",
+    "created_at": "2024-04-25T06:04:30.3541808Z",
+    "response": " centuries",
+    "done": false
+}
+{
+    "model": "example",
+    "created_at": "2024-04-25T06:04:30.5094005Z",
+    "response": ",",
+    "done": false
+}
+{
+    "model": "example",
+    "created_at": "2024-04-25T06:04:30.6723862Z",
+    "response": " but",
+    "done": false
+}
+{
+    "model": "example",
+    "created_at": "2024-04-25T06:04:30.8484434Z",
+    "response": " the",
+    "done": f ... ...
+...
+...
+...
+
+
+
+
+
+
+
 
 
 
