@@ -1,0 +1,66 @@
+=================
+REFERENCES
+=================
+Langchain with PgVector: https://python.langchain.com/docs/integrations/vectorstores/pgvector/
+PgVector on Azure Postgres Flex Server: https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/how-to-use-pgvector
+Help on using uuid for table's ID: https://python.langchain.com/v0.1/docs/integrations/vectorstores/chroma/
+
+
+=================
+PIP INSTALLS
+=================
+pip install psycopg2-binary
+
+=================
+STEPS
+=================
+For langchain_cohere:
+pip install langchain-core
+pip install -U langchain-community langchain-cohere
+- or - (to install for the current user only, if you face error with the above command)
+pip install -U --user langchain-community langchain-cohere
+pip install -U langchain-postgres
+pip install "psycopg[binary,pool]"
+
+Postgres pgVector Docker container:
+docker pull pgvector/pgvector:pg16
+docker run --name pgvector-container -e POSTGRES_USER=langchain -e POSTGRES_PASSWORD=langchain -e POSTGRES_DB=langchain -p 6024:5432 -d pgvector/pgvector:pg16
+
+Postgres Azure Flex Server config for vector db:
+https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/how-to-use-pgvector
+https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/concepts-extensions#how-to-use-postgresql-extensions
+Go to server parameters
+Find azure.extensions
+In the allow-list dropdown choose AZURE_AI and VECTOR (to recah VECTOR use keyboard to scroll down)
+
+Connect as superuser to the required database.
+Run: create extension vector;
+
+====================
+TROUBLESHOOTING
+====================
+------------------------------------------------
+"langchain_pg_collection" does not exist
+------------------------------------------------
+psycopg.errors.UndefinedTable: relation "langchain_pg_collection" does not exist
+
+Cause: Drop tables step drops the tables
+
+Fix: Create them again
+https://giters.com/langchain-ai/langchain-postgres/issues/33
+vectorstore.create_tables_if_not_exists()
+vectorstore.create_collection()
+
+------------------------------------------------
+Cannot create pgvector extension
+------------------------------------------------
+Error:
+raise Exception(f"Failed to create vector extension: {e}") from e
+Exception: Failed to create vector extension: (psycopg.OperationalError) [Errno 11003] getaddrinfo failed
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+Reason:
+ The Postgres user did not have sufficient permission on the DB and schema (public).
+
+Fix:
+ Give necessary (or ALL) permission to the user on the DB and schema (public)
