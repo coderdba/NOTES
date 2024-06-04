@@ -11,6 +11,14 @@ import dotenv
 # Source environment
 dotenv.load_dotenv()
 
+'''
+# .env contents for load_dotenv()
+#OPENAI_API_VERSION="2023-03-15-preview"  # or other
+#AZURE_OPENAI_DEPLOYMENT="plrs35turbo" # or other
+#AZURE_OPENAI_ENDPOINT="https://plrs.openai.azure.com/"  # or other
+#AZURE_OPENAI_API_KEY="< your AZURE openai api key>"
+'''
+
 # Authentication choice
 use_azure_active_directory = False  # Set this flag to True if you are using Azure Active Directory
 
