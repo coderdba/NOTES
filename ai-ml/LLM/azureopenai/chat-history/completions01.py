@@ -34,7 +34,7 @@ if not use_azure_active_directory:
         #api_version="2023-09-01-preview"
     )
 
-# Authentication using Azure AD
+# Authentication using Azure AD --> only if use_azure_active_directory = True
 '''
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 if use_azure_active_directory:
