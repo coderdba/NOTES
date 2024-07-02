@@ -1,0 +1,66 @@
+========================
+NEO4J DOCKER
+========================
+
+Using Neo:
+https://medium.com/neo4j/how-queries-work-in-neo4j-97229988941a
+
+-----------------
+DOCKER RUN
+-----------------
+https://neo4j.com/docs/operations-manual/current/docker/introduction/
+
+docker pull neo4j:5.20.0-community-bullseye
+docker run -d --name neo4j520 --publish=7474:7474 --publish=7687:7687 --volume=C:\data\neo4j:/data neo4j:5.20.0-community-bullseye
+docker run -d --name neo4j520 -p 7474:7474 -p 7687:7687 -v C:\data\neo4j:/data neo4j:5.20.0-community-bullseye
+
+This allows you to access neo4j through your browser at http://localhost:7474
+
+This binds two ports (7474 and 7687) for HTTP and Bolt access to the Neo4j API. 
+A volume is bound to /data to allow the database to be persisted outside the container.
+
+By default, this requires you to login with neo4j/neo4j and change the password. 
+You can, for development purposes, disable authentication by passing --env=NEO4J_AUTH=none to docker run.
+
+----------------
+CHANGE PASSWORD
+----------------
+http://localhost:7474
+Provide current user/pass --> neo4j/neo4j
+Change the password upon prompt --> neo4jneo4j/neo4jneo4j
+
+
+------------------
+COMMANDS
+------------------
+show databases
+--> neo4j (defalut and home for 'neo4j' user), system
+
+create database llm01 --> fails
+- https://community.neo4j.com/t/create-multiple-databases-in-community-version/5025/5
+--- this method also did not work
+--- use the default database neo4j itself with neo4j user for now
+
+To show nodes and relations:
+MATCH (n) RETURN n LIMIT 25  (got this from web console)
+
+To show nodes and relations: https://community.neo4j.com/t/get-all-nodes-and-the-relations-of-all-nodes/12929/2
+Match (n)-[r]->(m)
+Return n,r,m
+
+To show nodes and relations: https://community.neo4j.com/t/how-to-get-all-the-connected-nodes-and-relationship-of-a-particular-node/50296/5
+
+To get all entities:
+MATCH (n:Entity) RETURN n LIMIT 25  (got this from web-console)
+
+To get property keys: (got this from web-console)
+MATCH (n) WHERE (n.id) IS NOT NULL 
+RETURN DISTINCT "node" as entity, n.id AS id LIMIT 25 
+UNION ALL 
+MATCH ()-[r]-() WHERE (r.id) IS NOT NULL 
+RETURN DISTINCT "relationship" AS entity, r.id AS id LIMIT 25
+
+
+
+
+
