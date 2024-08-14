@@ -1,6 +1,24 @@
 -- https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-exec-procedure-stats-transact-sql?view=sql-server-ver16
 
--- For specific database
+
+-- for specific database
+SELECT TOP 20 
+    -- d.object_id, 
+    db_name(d.database_id) 'DB Name', 
+	OBJECT_NAME(object_id, database_id) 'Stored Proc Name',   
+    --d.sql_handle,
+    d.total_elapsed_time/1000000/d.execution_count AS 'Avg Exec Sec',  
+    d.last_elapsed_time/1000000 as 'Last Exec Sec', 
+	d.total_elapsed_time/1000000 as 'Tot Exec Sec',  
+	d.execution_count as 'Exec Count',
+	d.cached_time as 'Cached Time', 
+	d.last_execution_time as 'Last Exec Time'
+FROM sys.dm_exec_procedure_stats AS d 
+where db_name(d.database_id) = 'WebEc'
+ORDER BY 'Avg Exec Sec' DESC;
+--ORDER BY [total_worker_time] DESC;
+
+-- For specific database (sname case labels)
 SELECT TOP 20 
     -- d.object_id, 
     db_name(d.database_id) 'DB Name', 
