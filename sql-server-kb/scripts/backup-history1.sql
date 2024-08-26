@@ -16,6 +16,7 @@ SELECT
    msdb.dbo.backupset.user_name, 
    msdb.dbo.backupset.backup_start_date, 
    msdb.dbo.backupset.backup_finish_date, 
+   datediff(MINUTE, msdb.dbo.backupset.backup_start_date, msdb.dbo.backupset.backup_finish_date) duration_min,
    --msdb.dbo.backupset.expiration_date, 
    CASE msdb..backupset.type 
       WHEN 'D' THEN 'Full' 
@@ -23,7 +24,7 @@ SELECT
       WHEN 'L' THEN 'Log' 
       END AS backup_type, 
    msdb.dbo.backupset.backup_size, 
-   format(msdb.dbo.backupset.backup_size, 'N0')
+   format(msdb.dbo.backupset.backup_size, 'N0') backup_size_bytes
    --msdb.dbo.backupset.name AS backupset_name, 
    --msdb.dbo.backupset.description 
 FROM 
