@@ -10,8 +10,9 @@ SELECT
    msdb.dbo.backupset.backup_finish_date, 
    msdb.dbo.backupset.expiration_date, 
    CASE msdb..backupset.type 
-      WHEN 'D' THEN 'Database' 
-      WHEN 'L' THEN 'Log' 
+      WHEN 'D' THEN 'Full' 
+	   WHEN 'I' THEN 'Differential'
+      WHEN 'L' THEN 'Log'
       END AS backup_type, 
    msdb.dbo.backupset.backup_size, 
    msdb.dbo.backupmediafamily.logical_device_name, 
