@@ -1,5 +1,14 @@
 -- https://www.mssqltips.com/sqlservertip/1601/script-to-retrieve-sql-server-database-backup-history-and-no-backups/
 
+-- WITHOUT BACKUP MEDIA INFO
+select * from  msdb.dbo.backupset
+where msdb.dbo.backupset.database_name = 'ADM_Archive'
+and (CONVERT(datetime, msdb.dbo.backupset.backup_start_date, 102) >= GETDATE() - 2) 
+and user_name = 'ADMIN\sqlsa'
+ORDER BY 
+   msdb.dbo.backupset.database_name, 
+   msdb.dbo.backupset.backup_finish_date
+
 --------------------------------------------------------------------------------- 
 -- Database Backups for all databases For Previous Week 
 --------------------------------------------------------------------------------- 
@@ -23,8 +32,8 @@ FROM
    msdb.dbo.backupmediafamily 
    INNER JOIN msdb.dbo.backupset ON msdb.dbo.backupmediafamily.media_set_id = msdb.dbo.backupset.media_set_id 
 WHERE 
-   msdb..backupset.type in ('D') AND
    (CONVERT(datetime, msdb.dbo.backupset.backup_start_date, 102) >= GETDATE() - 7) 
+   and user_name = 'ADMIN\sqlsa'
 ORDER BY 
    msdb.dbo.backupset.database_name, 
    msdb.dbo.backupset.backup_finish_date 
