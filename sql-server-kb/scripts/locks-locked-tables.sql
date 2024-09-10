@@ -12,3 +12,12 @@ GROUP BY
     OBJECT_NAME(p.OBJECT_ID), l.resource_type, l.request_mode
 ORDER BY 
     LockCount DESC;
+
+-----
+-- https://stackoverflow.com/questions/694581/how-to-check-which-locks-are-held-on-a-table
+USE yourdatabase;
+GO
+
+SELECT * FROM sys.dm_tran_locks
+  WHERE resource_database_id = DB_ID()
+  AND resource_associated_entity_id = OBJECT_ID(N'dbo.yourtablename');
