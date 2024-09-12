@@ -9,3 +9,8 @@ sys.dm_exec_sessions.
 
 sys.dm_exec_sessions
   https://www.mssqltips.com/sqlservertip/5507/understanding-and-using-sysdmexecsessions-in-sql-server/
+
+sys.dm_tran_locks
+sys.partitions 
+sys.tables
+sys.dm_exec_sessions
