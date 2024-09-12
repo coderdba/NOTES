@@ -11,6 +11,61 @@ FROM
 INNER JOIN 
     sys.databases db ON db.database_id = mf.database_id
 
+SELECT
+    db.name AS DBName,
+    type_desc AS FileType,
+	substring(Physical_Name,1,1) DriveName,
+    Physical_Name AS Location,
+    Cast(Cast(Round(cast(size as decimal) * 8.0/1024.0,2) as decimal(18,2)) as nvarchar) SizeMb
+FROM
+    sys.master_files mf
+INNER JOIN 
+    sys.databases db ON db.database_id = mf.database_id
+
+SELECT
+    db.name AS DBName,
+    type_desc AS FileType,
+	substring(Physical_Name,1,1) DriveName,
+    sum(Cast(Round(cast(size as decimal) * 8.0/1024.0,2) as decimal(18,0))) FilesSizeMb
+FROM
+    sys.master_files mf
+INNER JOIN 
+    sys.databases db ON db.database_id = mf.database_id
+GROUP BY db.name, type_desc, substring(Physical_Name,1,1) 
+ORDER BY DBName, DriveName, FileType
+
+SELECT
+    type_desc AS FileType,
+	substring(Physical_Name,1,1) DriveName,
+    sum(Cast(Round(cast(size as decimal) * 8.0/1024.0,2) as decimal(18,0))) FilesSizeMb
+FROM
+    sys.master_files mf
+INNER JOIN 
+    sys.databases db ON db.database_id = mf.database_id
+GROUP BY db.name, type_desc, substring(Physical_Name,1,1) 
+ORDER BY DriveName, FileType
+
+SELECT
+	substring(Physical_Name,1,1) DriveName,
+    sum(Cast(Round(cast(size as decimal) * 8.0/1024.0,2) as decimal(18,0))) FilesSizeMb
+FROM
+    sys.master_files mf
+INNER JOIN 
+    sys.databases db ON db.database_id = mf.database_id
+GROUP BY substring(Physical_Name,1,1) 
+ORDER BY DriveName
+
+SELECT	
+    type_desc AS FileType,	
+	substring(Physical_Name,1,1) DriveName,
+    sum(Cast(Round(cast(size as decimal) * 8.0/1024.0,2) as decimal(18,0))) FilesSizeMb	
+FROM	
+    sys.master_files mf	
+INNER JOIN 	
+    sys.databases db ON db.database_id = mf.database_id	
+GROUP BY  substring(Physical_Name,1,1), type_desc	
+ORDER BY DriveName, FileType
+
 -- EMPTY SPACE
 -- I am using script to get empty space in each file:
 
