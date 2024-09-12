@@ -1,5 +1,19 @@
 -- Locks reqested, granted, waiting etc (not blockers and waiters)
-- A
+
+NOTES:
+C may give results but at the same time B may not give any results.  This was found when C listed CXPACKET, CXCONSUMER kind of waits.
+Run B, D, E for full lock abalysis.
+The wait_resource in B can help locate the PAGE, OBJECT or other items which are locked and waiting.
+Examples of wait_resource:
+    KEY: 8:72057599881379840 (1a5cc1f9fb75)
+    OBJECT: 36:1305771709:26 
+    PAGE: 8:5:3555002
+For PAGE kind of wait_resource, refer to waits_page.sql in this folder. And, also this website to find out the table, index and data in that page
+    https://kendralittle.com/2016/10/17/decoding-key-and-page-waitresource-for-deadlocks-and-blocking/
+
+
+
+-- QUERY: A (ysh)
 SELECT request_session_id AS SessionID,
 resource_database_id AS DatabaseID,
 resource_associated_entity_id AS EntityID,
@@ -7,7 +21,7 @@ request_mode AS LockType,
 request_status AS Status
 FROM sys.dm_tran_locks;
 
-- B
+-- QUERY: B
 SELECT 
     blocking_session_id AS BlockingSessionID,
     session_id AS BlockedSessionID,
@@ -17,7 +31,7 @@ SELECT
 FROM sys.dm_exec_requests
 WHERE blocking_session_id <> 0;
 
-- C
+-- QUERY: C
 SELECT session_id, wait_duration_ms, wait_type, blocking_session_id
 FROM sys.dm_os_waiting_tasks
 WHERE blocking_session_id <> 0;
@@ -33,6 +47,8 @@ BlockingSessionID	BlockedSessionID	wait_type	wait_time	wait_resource
 -- ib.event_info (displayed as input_buffer) would have the stored procedure or command executed on the DB (not the SQL itself) name apparently
 -- t.text has the whole sql (which possibly is from the ib.event_info)
 -- Run this sample query to find the actively executing queries and their current SQL batch text or input buffer text, using the sys.dm_exec_sql_text or sys.dm_exec_input_buffer DMVs. 
+
+-- QUERY: D
 WITH cteBL (session_id, blocking_these) AS 
 (SELECT s.session_id, blocking_these = x.blocking_these FROM sys.dm_exec_sessions s 
 CROSS APPLY    (SELECT isnull(convert(varchar(6), er.session_id),'') + ', '  
@@ -53,6 +69,7 @@ ORDER BY len(bl.blocking_these) desc, r.blocking_session_id desc, r.session_id;
 
 -- BLOCKING CHAIN: Run this more elaborate sample query, provided by Microsoft Support, to identify the head of a multiple session blocking chain, 
 -- including the query text of the sessions involved in a blocking chain.
+-- QUERY: E
 WITH cteHead ( session_id,request_id,wait_type,wait_resource,last_wait_type,is_user_process,request_cpu_time
 ,request_logical_reads,request_reads,request_writes,wait_time,blocking_session_id,memory_usage
 ,session_cpu_time,session_reads,session_writes,session_logical_reads
