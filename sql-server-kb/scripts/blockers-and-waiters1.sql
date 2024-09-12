@@ -1,9 +1,13 @@
 -- Locks reqested, granted, waiting etc (not blockers and waiters)
 
+=====================================
+ANALYSIS STEPS AND NOTES
+=====================================
 NOTES:
 C may give results but at the same time B may not give any results.  This was found when C listed CXPACKET, CXCONSUMER kind of waits.
 Run B, D, E for full lock abalysis.
-The wait_resource in B can help locate the PAGE, OBJECT or other items which are locked and waiting.
+    
+The wait_resource in queries B & D can help locate the PAGE, OBJECT or other items which are locked and waiting.
 Examples of wait_resource:
     KEY: 8:72057599881379840 (1a5cc1f9fb75)
     OBJECT: 36:1305771709:26 
@@ -20,8 +24,20 @@ SELECT
 For KEY and PAGE kind of wait_resource, refer to waits_page.sql in this folder. And, also this website to find out the table, index and data in that page
     https://kendralittle.com/2016/10/17/decoding-key-and-page-waitresource-for-deadlocks-and-blocking/
 
+For stored procedure that is running or waiting:
+In Query D output, look for dbid and objectid.  They indicate the object like stored procedure that is running or waiting currently.
 
+Find that object using this sql:
+DECLARE @db_id INT = 8;
+DECLARE @object_id INT = 1020855745;
 
+SELECT 
+    DB_NAME(@db_id) AS DatabaseName,
+    OBJECT_NAME(@object_id, @db_id) AS ObjectName;
+
+=====================================
+QUERIES
+=====================================
 -- QUERY: A (ysh)
 SELECT request_session_id AS SessionID,
 resource_database_id AS DatabaseID,
