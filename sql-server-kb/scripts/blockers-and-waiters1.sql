@@ -1,4 +1,5 @@
 -- Locks reqested, granted, waiting etc (not blockers and waiters)
+- A
 SELECT request_session_id AS SessionID,
 resource_database_id AS DatabaseID,
 resource_associated_entity_id AS EntityID,
@@ -6,6 +7,7 @@ request_mode AS LockType,
 request_status AS Status
 FROM sys.dm_tran_locks;
 
+- B
 SELECT 
     blocking_session_id AS BlockingSessionID,
     session_id AS BlockedSessionID,
@@ -13,6 +15,11 @@ SELECT
     wait_time,
     wait_resource
 FROM sys.dm_exec_requests
+WHERE blocking_session_id <> 0;
+
+- C
+SELECT session_id, wait_duration_ms, wait_type, blocking_session_id
+FROM sys.dm_os_waiting_tasks
 WHERE blocking_session_id <> 0;
 
 Typical output:
