@@ -1,8 +1,24 @@
 
+
+SELECT 
+    blocking_session_id AS BlockingSessionID,
+    session_id AS BlockedSessionID,
+    wait_type,
+    wait_time,
+    wait_resource
+FROM sys.dm_exec_requests
+WHERE blocking_session_id <> 0;
+
+Typical output:
+BlockingSessionID	BlockedSessionID	wait_type	wait_time	wait_resource
+536	467	LCK_M_X	134585	KEY: 8:72057599881379840 (1a5cc1f9fb75)
+
 -------------------------------------------------------
 -- https://learn.microsoft.com/en-us/troubleshoot/sql/database-engine/performance/understand-resolve-blocking
 -- BLOCKERS AND WAITERS
 
+-- ib.event_info (displayed as input_buffer) would have the stored procedure or command executed on the DB (not the SQL itself) name apparently
+-- t.text has the whole sql (which possibly is from the ib.event_info)
 -- Run this sample query to find the actively executing queries and their current SQL batch text or input buffer text, using the sys.dm_exec_sql_text or sys.dm_exec_input_buffer DMVs. 
 WITH cteBL (session_id, blocking_these) AS 
 (SELECT s.session_id, blocking_these = x.blocking_these FROM sys.dm_exec_sessions s 
