@@ -8,7 +8,16 @@ Examples of wait_resource:
     KEY: 8:72057599881379840 (1a5cc1f9fb75)
     OBJECT: 36:1305771709:26 
     PAGE: 8:5:3555002
-For PAGE kind of wait_resource, refer to waits_page.sql in this folder. And, also this website to find out the table, index and data in that page
+
+For OBJECT kind of wait_resource, find the object as follows:
+DECLARE @db_id INT = 36;
+DECLARE @object_id INT = 1305771709;
+
+SELECT 
+    DB_NAME(@db_id) AS DatabaseName,
+    OBJECT_NAME(@object_id, @db_id) AS ObjectName;
+
+For KEY and PAGE kind of wait_resource, refer to waits_page.sql in this folder. And, also this website to find out the table, index and data in that page
     https://kendralittle.com/2016/10/17/decoding-key-and-page-waitresource-for-deadlocks-and-blocking/
 
 
