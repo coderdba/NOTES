@@ -1,3 +1,6 @@
+-- For compile lock issues:  https://learn.microsoft.com/en-us/troubleshoot/sql/database-engine/performance/troubleshoot-blocking-caused-compile-locks
+
+
 -- https://blog.sqlauthority.com/2019/11/22/sql-server-recompile-stored-procedures-two-easy-ways/
 -- Here is the simple script which you can run to identify which stored procedure is cached for your database 
 -- and various associated properties of the stored procedure.
