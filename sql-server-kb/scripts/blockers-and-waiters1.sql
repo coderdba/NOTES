@@ -3,9 +3,10 @@
 =====================================
 ANALYSIS STEPS AND NOTES
 =====================================
-NOTES:
-C may give results but at the same time B may not give any results.  This was found when C listed CXPACKET, CXCONSUMER kind of waits.
 Run B, D, E for full lock abalysis.
+
+C may give results but at the same time B may not give any results.  
+    This was found when C listed CXPACKET, CXCONSUMER kind of waits.
     
 The wait_resource in queries B & D can help locate the PAGE, OBJECT or other items which are locked and waiting.
 Examples of wait_resource:
