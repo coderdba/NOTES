@@ -1,0 +1,41 @@
+==================================
+TIMESCALE DB 
+==================================
+References:
+- Azure: https://xaviergeerinck.com/2022/10/18/deploying-timescaledb-on-azure-to-store-your-iot-data/
+- Timescale website: https://docs.timescale.com/tutorials/latest/blockchain-query/blockchain-dataset/
+
+=====================================
+FROM TIMESCALE WEBSITE - BLOCKCHAIN
+=====================================
+https://docs.timescale.com/tutorials/latest/blockchain-query/blockchain-dataset/
+
+- Table
+CREATE TABLE transactions (
+   time TIMESTAMPTZ,
+   block_id INT,
+   hash TEXT,
+   size INT,
+   weight INT,
+   is_coinbase BOOLEAN,
+   output_total BIGINT,
+   output_total_usd DOUBLE PRECISION,
+   fee BIGINT,
+   fee_usd DOUBLE PRECISION,
+   details JSONB
+);
+
+- Hypertable (this creates partitions on time column)
+SELECT create_hypertable('transactions', by_range('time'));
+
+- Indexes
+CREATE INDEX hash_idx ON public.transactions USING HASH (hash);
+CREATE INDEX block_idx ON public.transactions (block_id);
+
+- Unique keys
+CREATE UNIQUE INDEX time_hash_idx ON public.transactions (time, hash);
+
+
+
+
+
