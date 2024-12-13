@@ -1,0 +1,34 @@
+=============================================
+ROUTING TECHNIQUES
+=============================================
+
+------------------------
+LLM WITH TOOLS
+------------------------
+https://python.langchain.com/docs/how_to/qa_chat_history_how_to/
+tools=[func1,func2,func3]
+
+llm=AzureOpenAI(....)
+llm_with_tools = llm.bind_tools(tools)
+
+def query_or_respond(state: MessagesState):
+    """Generate tool call for retrieval or respond."""
+    
+    print("INFO - In query_or_respond()")
+    
+    llm_with_tools = llm.bind_tools([retrieve])
+    response = llm_with_tools.invoke(state["messages"])
+    
+    print("INFO - In query_or_respond() - response: ", response)
+
+    # MessagesState appends messages to state instead of overwriting
+    return {"messages": [response]}
+
+graph_builder.set_entry_point("query_or_respond")
+graph_builder.add_conditional_edges(
+    "query_or_respond",
+    tools_condition,  # tools_contiditon will only say 'tools' or END
+    {END: END, "tools": "tools"},
+)
+
+
