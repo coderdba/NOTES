@@ -13,7 +13,7 @@ INSTALL SINGLE SPA CLI
 npm -i -g create-single-spa
 
 ============================================
-ROOT APP
+ROOT APP (CONTAINER)
 ============================================
 mkdir single-spa-demo
 cd single-spa-demo
@@ -21,7 +21,7 @@ mkdir single-spa-demo-root-config
 cd single-spa-demo-root-config
 npx create-single-spa
 
-We’ll then follow the CLI prompts:
+Prompt responses:
 ? Directory for new project .
 ? Select type to generate single-spa root config --> NOT Parcel
 ? Which package manager do you want to use? npm
@@ -46,18 +46,776 @@ Changes to package.json were detected.
 Error detecting the package manager. Falling back to npm.
 
 Running npm install for you to install the required dependencies.
+...
+...
+
+Prompt responses from tutorial:
+We’ll then follow the CLI prompts:
+Select “single spa root config”
+Select “yarn” or “npm” (I chose “yarn”)
+Enter an organization name (I used “thawkin3,” but it can be whatever you want)
 
 ============================================
-MICRO APP 1
+MICRO APP - NAVIGATION APP
 ============================================
 cd .. (back to single-spa-demo)
 mkdir single-spa-demo-nav  (under single-spa-demo folder)
 cd single-spa-demo-nav
 npx create-single-spa
 
-We’ll then follow the CLI prompts:
+Prompt responses:
+npx create-single-spa
+? Directory for new project .
+? Select type to generate single-spa application / parcel
+? Which framework do you want to use? react
+? Which package manager do you want to use? npm
+? Will this project use Typescript? No
+? Organization name (can use letters, numbers, dash or underscore) gm
+? Project name (can use letters, numbers, dash or underscore) nav
+Initialized empty Git repository in C:/Users/GSM078/CODE-MAERSK/git-maersk/gowrish/single-spa-demo/single-spa-demo-nav/.git/
+
+Initialized git repository
+
+   create package.json
+   create jest.config.js
+   create babel.config.json
+   create .eslintrc
+   create .gitignore
+   create .husky\pre-commit
+   create .prettierignore
+   create webpack.config.js
+   create src\root.component.js
+   create src\root.component.test.js
+   create src\gm-nav.js
+
+Changes to package.json were detected.
+Error detecting the package manager. Falling back to npm.
+
+Running npm install for you to install the required dependencies.
+
+Initialized git repository
+
+   create package.json
+   create jest.config.js
+   create babel.config.json
+   create .eslintrc
+   create .gitignore
+   create .husky\pre-commit
+   create .prettierignore
+   create webpack.config.js
+   create src\root.component.js
+   create src\root.component.test.js
+   create src\gm-demo.js
+
+Changes to package.json were detected.
+Error detecting the package manager. Falling back to npm.
+
+Running npm install for you to install the required dependencies.
+
+NOTE: Prompt responses from the tutorial:
 Select “single-spa application / parcel”
 Select “react”
 Select “yarn” or “npm” (I chose “yarn”)
 Enter an organization name, the same one you used when creating the root config app (“thawkin3” in my case)
 Enter a project name (I used “single-spa-demo-nav”)
+
+
+============================================
+MICRO APP - APP 1
+============================================
+cd .. (back to single-spa-demo)
+mkdir single-spa-demo-app1  (under single-spa-demo folder)
+cd single-spa-demo-app1
+npx create-single-spa
+
+Prompt responses:
+npx create-single-spa
+? Directory for new project .
+? Select type to generate single-spa application / parcel
+? Which framework do you want to use? react
+? Which package manager do you want to use? npm
+? Will this project use Typescript? No
+? Organization name (can use letters, numbers, dash or underscore) gm
+? Project name (can use letters, numbers, dash or underscore) app1
+
+============================================
+MICRO APP - APP 2
+============================================
+cd .. (back to single-spa-demo)
+mkdir single-spa-demo-app2  (under single-spa-demo folder)
+cd single-spa-demo-app2
+npx create-single-spa
+
+Prompt responses:
+npx create-single-spa
+? Directory for new project .
+? Select type to generate single-spa application / parcel
+? Which framework do you want to use? react
+? Which package manager do you want to use? npm
+? Will this project use Typescript? No
+? Organization name (can use letters, numbers, dash or underscore) gm
+? Project name (can use letters, numbers, dash or underscore) app2
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+===============
+TUTORIAL TEXT
+===============
+August 3, 2020
+/
+#architecture
+How to Develop and Deploy Micro-Frontends with Single-SPA
+How to Develop and Deploy Micro-Frontends with Single-SPA
+By Tyler Hawkins
+
+Micro-frontends are the future of front end web development.
+
+Inspired by microservices, which allow you to break up your backend into smaller pieces, micro-frontends allow you to build, test, and deploy pieces of your frontend app independently of each other.
+
+Depending on the micro-frontend framework you choose, you can even have multiple micro-frontend apps — written in React, Angular, Vue, or anything else — coexisting peacefully together in the same larger app.
+
+In this article, we’re going to develop an app composed of micro-frontends using single-spa and deploy it to Heroku.
+
+We’ll set up continuous integration using Travis CI. Each CI pipeline will bundle the JavaScript for a micro-frontend app and then upload the resulting build artifacts to AWS S3.
+
+Finally, we’ll make an update to one of the micro-frontend apps and see how it can be deployed to production independently of the other micro-frontend apps.
+
+Overview of the Demo App
+Demo app — end resultDemo app — end result
+
+Before we discuss the step-by-step instructions, let’s get a quick overview of what makes up the demo app. This app is composed of four sub-apps:
+
+A container app that serves as the main page container and coordinates the mounting and unmounting of the micro-frontend apps
+A micro-frontend navbar app that’s always present on the page
+A micro-frontend “page 1” app that only shows when active
+A micro-frontend “page 2” app that also only shows when active
+These four apps all live in separate repos, available on GitHub, which I’ve linked to above.
+
+The end result is fairly simple in terms of the user interface, but, to be clear, the user interface isn’t the point here.
+
+If you’re following along on your own machine, by the end of this article you too will have all the underlying infrastructure necessary to get started with your own micro-frontend app.
+
+Alright, grab your scuba gear, because it’s time to dive in!
+
+Creating the Container App
+To generate the apps for this demo, we’re going to use a command-line interface (CLI) tool called create-single-spa. The version of create-single-spa at the time of writing is 1.10.0, and the version of single-spa installed via the CLI is 4.4.2.
+
+We’ll follow these steps to create the container app (also sometimes called the root config):
+
+mkdir single-spa-demo
+
+cd single-spa-demo
+
+mkdir single-spa-demo-root-config
+
+cd single-spa-demo-root-config
+
+npx create-single-spa
+We’ll then follow the CLI prompts:
+
+Select “single spa root config”
+Select “yarn” or “npm” (I chose “yarn”)
+Enter an organization name (I used “thawkin3,” but it can be whatever you want)
+Great! Now, if you check out the single-spa-demo-root-config directory, you should see a skeleton root config app. We'll customize this in a bit, but first let's also use the CLI tool to create our other three micro-frontend apps.
+
+Creating the Micro-Frontend Apps
+To generate our first micro-frontend app, the navbar, we’ll follow these steps:
+
+cd ..
+
+mkdir single-spa-demo-nav
+
+cd single-spa-demo-nav
+
+npx create-single-spa
+We’ll then follow the CLI prompts:
+
+Select “single-spa application / parcel”
+Select “react”
+Select “yarn” or “npm” (I chose “yarn”)
+Enter an organization name, the same one you used when creating the root config app (“thawkin3” in my case)
+Enter a project name (I used “single-spa-demo-nav”)
+Now that we’ve created the navbar app, we can follow these same steps to create our two page apps. But, we’ll replace each place we see “single-spa-demo-nav” with “single-spa-demo-page-1” the first time through and then with “single-spa-demo-page-2” the second time through.
+
+At this point we’ve generated all four apps that we need: one container app and three micro-frontend apps. Now it’s time to hook our apps together.
+
+Registering the Micro-Frontend Apps with the Container App
+As stated before, one of the container app’s primary responsibilities is to coordinate when each app is “active” or not. In other words, it handles when each app should be shown or hidden.
+
+To help the container app understand when each app should be shown, we provide it with what are called “activity functions.” Each app has an activity function that simply returns a boolean, true or false, for whether or not the app is currently active.
+
+Inside the single-spa-demo-root-config directory, in the activity-functions.js file, we'll write the following activity functions for our three micro-frontend apps.
+
+export function prefix(location, ...prefixes) {
+  return prefixes.some(
+    prefix => location.href.indexOf(`${location.origin}/${prefix}`) !== -1
+  );
+}
+
+export function nav() {
+  // The nav is always active
+  return true;
+}
+
+export function page1(location) {
+  return prefix(location, 'page1');
+}
+
+export function page2(location) {
+  return prefix(location, 'page2');
+}
+Next, we need to register our three micro-frontend apps with single-spa. To do that, we use the registerApplication function. This function accepts a minimum of three arguments: the app name, a method to load the app, and an activity function to determine when the app is active.
+
+Inside the single-spa-demo-root-config directory, in the root-config.js file, we'll add the following code to register our apps:
+
+import { registerApplication, start } from "single-spa";
+import * as isActive from "./activity-functions";
+
+registerApplication(
+  "@thawkin3/single-spa-demo-nav",
+  () => System.import("@thawkin3/single-spa-demo-nav"),
+  isActive.nav
+);
+
+registerApplication(
+  "@thawkin3/single-spa-demo-page-1",
+  () => System.import("@thawkin3/single-spa-demo-page-1"),
+  isActive.page1
+);
+
+registerApplication(
+  "@thawkin3/single-spa-demo-page-2",
+  () => System.import("@thawkin3/single-spa-demo-page-2"),
+  isActive.page2
+);
+
+start();
+Now that we’ve set up the activity functions and registered our apps, the last step before we can get this running locally is to update the local import map inside the index.ejs file in the same directory.
+
+We'll add the following code inside the head tag to specify where each app can be found when running locally:
+
+<% if (isLocal) { %>
+  <script type="systemjs-importmap">
+    {
+      "imports": {
+        "@thawkin3/root-config": "http://localhost:9000/root-config.js",
+        "@thawkin3/single-spa-demo-nav": "http://localhost:9001/thawkin3-single-spa-demo-nav.js",
+        "@thawkin3/single-spa-demo-page-1": "http://localhost:9002/thawkin3-single-spa-demo-page-1.js",
+        "@thawkin3/single-spa-demo-page-2": "http://localhost:9003/thawkin3-single-spa-demo-page-2.js"
+      }
+    }
+  </script>
+<% } %>
+Each app contains its own startup script, which means that each app will be running locally on its own development server during local development. As you can see, our navbar app is on port 9001, our page 1 app is on port 9002, and our page 2 app is on port 9003.
+
+With those three steps taken care of, let’s try out our app.
+
+Test Run for Running Locally
+To get our app running locally, we can follow these steps:
+
+Open four terminal tabs, one for each app
+For the root config, in the single-spa-demo-root-config directory: yarn start (runs on port 9000 by default)
+For the nav app, in the single-spa-demo-nav directory: yarn start --port 9001
+For the page 1 app, in the single-spa-demo-page-1 directory: yarn start --port 9002
+For the page 2 app, in the single-spa-demo-page-2 directory: yarn start --port 9003
+Now, we’ll navigate in the browser to http://localhost:9000 to view our app.
+
+We should see… some text! Super exciting.
+
+Demo app — main pageDemo app — main page
+
+On our main page, the navbar is showing because the navbar app is always active.
+
+Now, let’s navigate to http://localhost:9000/page1. As shown in our activity functions above, we’ve specified that the page 1 app should be active (shown) when the URL path begins with “page1.” So, this activates the page 1 app, and we should see the text for both the navbar and the page 1 app now.
+
+Demo app — page 1 routeDemo app — page 1 route
+
+One more time, let’s now navigate to http://localhost:9000/page2. As expected, this activates the page 2 app, so we should see the text for the navbar and the page 2 app now.
+
+Demo app — page 2 routeDemo app — page 2 route
+
+Making Minor Tweaks to the Apps
+So far our app isn’t very exciting to look at, but we do have a working micro-frontend setup running locally. If you aren’t cheering in your seat right now, you should be!
+
+Let’s make some minor improvements to our apps so they look and behave a little nicer.
+
+Specifying the Mount Containers
+First, if you refresh your page over and over when viewing the app, you may notice that sometimes the apps load out of order, with the page app appearing above the navbar app.
+
+This is because we haven’t actually specified where each app should be mounted. The apps are simply loaded by SystemJS, and then whichever app finishes loading fastest gets appended to the page first.
+
+We can fix this by specifying a mount container for each app when we register them.
+
+In our index.ejs file that we worked in previously, let's add some HTML to serve as the main content containers for the page:
+
+<div id="nav-container"></div>
+<main>
+  <div id="page-1-container"></div>
+  <div id="page-2-container"></div>
+</main>
+Then, in our root-config.js file where we've registered our apps, let's provide a fourth argument to each function call that includes the DOM element where we'd like to mount each app:
+
+import { registerApplication, start } from "single-spa";
+import * as isActive from "./activity-functions";
+
+registerApplication(
+  "@thawkin3/single-spa-demo-nav",
+  () => System.import("@thawkin3/single-spa-demo-nav"),
+  isActive.nav,
+  { domElement: document.getElementById('nav-container') }
+);
+
+registerApplication(
+  "@thawkin3/single-spa-demo-page-1",
+  () => System.import("@thawkin3/single-spa-demo-page-1"),
+  isActive.page1,
+  { domElement: document.getElementById('page-1-container') }
+);
+
+registerApplication(
+  "@thawkin3/single-spa-demo-page-2",
+  () => System.import("@thawkin3/single-spa-demo-page-2"),
+  isActive.page2,
+  { domElement: document.getElementById('page-2-container') }
+);
+
+start();
+Now, the apps will always be mounted to a specific and predictable location. Nice!
+
+Styling the App
+Next, let’s style up our app a bit. Plain black text on a white background isn’t very interesting to look at.
+
+In the single-spa-demo-root-config directory, in the index.ejs file again, we can add some basic styles for the whole app by pasting the following CSS at the bottom of the head tag:
+
+<style>
+  body, html { margin: 0; padding: 0; font-size: 16px; font-family: Arial, Helvetica, sans-serif; height: 100%; }
+  body { display: flex; flex-direction: column; }
+  * { box-sizing: border-box; }
+</style>
+Next, we can style our navbar app by finding the single-spa-demo-nav directory, creating a root.component.css file, and adding the following CSS:
+
+.nav {
+  display: flex;
+  flex-direction: row;
+  padding: 20px;
+  background: #000;
+  color: #fff;
+}
+
+.link {
+  margin-right: 20px;
+  color: #fff;
+  text-decoration: none;
+}
+
+.link:hover,
+.link:focus {
+  color: #1098f7;
+}
+We can then update the root.component.js file in the same directory to import the CSS file and apply those classes and styles to our HTML. We'll also change the navbar content to actually contain two links so we can navigate around the app by clicking the links instead of entering a new URL in the browser's address bar.
+
+import React from "react";
+import "./root.component.css";
+
+export default function Root() {
+  return (
+    <nav className="nav">
+      <a href="/page1" className="link">
+        Page 1
+      </a>
+      <a href="/page2" className="link">
+        Page 2
+      </a>
+    </nav>
+  );
+}
+We’ll follow a similar process for the page 1 and page 2 apps as well. We’ll create a root.component.css file for each app in their respective project directories and update the root.component.js files for both apps too.
+
+For the page 1 app, the changes look like this:
+
+.container1 {
+  background: #1098f7;
+  color: white;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  font-size: 3rem;
+}
+import React from "react";
+import "./root.component.css";
+
+export default function Root() {
+  return (
+    <div className="container1">
+      <p>Page 1 App</p>
+    </div>
+  );
+}
+And for the page 2 app, the changes look like this:
+
+.container2 {
+  background: #9e4770;
+  color: white;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  font-size: 3rem;
+}
+import React from "react";
+import "./root.component.css";
+
+export default function Root() {
+  return (
+    <div className="container2">
+      <p>Page 2 App</p>
+    </div>
+  );
+}
+Adding React Router
+The last small change we’ll make is to add React Router to our app. Right now the two links we’ve placed in the navbar are just normal anchor tags, so navigating from page to page causes a page refresh. Our app will feel much smoother if the navigation is handled client-side with React Router.
+
+To use React Router, we’ll first need to install it. From the terminal, in the single-spa-demo-nav directory, we'll install React Router using yarn by entering yarn add react-router-dom. (Or if you're using npm, you can enter npm install react-router-dom.)
+
+Then, in the single-spa-demo-nav directory in the root.component.js file, we'll replace our anchor tags with React Router's Link components like so:
+
+import React from "react";
+import { BrowserRouter, Link } from "react-router-dom";
+import "./root.component.css";
+
+export default function Root() {
+  return (
+    <BrowserRouter>
+      <nav className="nav">
+        <Link to="/page1" className="link">
+          Page 1
+        </Link>
+        <Link to="/page2" className="link">
+          Page 2
+        </Link>
+      </nav>
+    </BrowserRouter>
+  );
+}
+Cool. That looks and works much better!
+
+Demo app — styled and using React RouterDemo app — styled and using React Router
+
+Getting Ready for Production
+At this point we have everything we need to continue working on the app while running it locally. But how do we get it hosted somewhere publicly available?
+
+There are several possible approaches we can take using our tools of choice, but the main tasks are:
+
+to have somewhere we can upload our build artifacts, like a CDN, and
+to automate this process of uploading artifacts each time we merge new code into the master branch.
+For this article, we’re going to use AWS S3 to store our assets, and we’re going to use Travis CI to run a build job and an upload job as part of a continuous integration pipeline.
+
+Let’s get the S3 bucket set up first.
+
+Setting up the AWS S3 Bucket
+It should go without saying, but you’ll need an AWS account if you’re following along here.
+
+If we are the root user on our AWS account, we can create a new IAM user that has programmatic access only. This means we’ll be given an access key ID and a secret access key from AWS when we create the new user. We’ll want to store these in a safe place since we’ll need them later.
+
+Finally, this user should be given permissions to work with S3 only, so that the level of access is limited if our keys were to fall into the wrong hands.
+
+AWS has some great resources for best practices with access keys and managing access keys for IAM users that would be well worth checking out if you’re unfamiliar with how to do this.
+
+Next we need to create an S3 bucket. S3 stands for Simple Storage Service and is essentially a place to upload and store files hosted on Amazon’s servers. A bucket is simply a directory.
+
+I’ve named my bucket “single-spa-demo,” but you can name yours whatever you’d like. You can follow the AWS guides for how to create a new bucket for more info.
+
+AWS S3 bucketAWS S3 bucket
+
+Once we have our bucket created, it’s also important to make sure the bucket is public and that CORS (cross-origin resource sharing) is enabled for our bucket so that we can access and use our uploaded assets in our app.
+
+In the permissions for our bucket, we can add the following CORS configuration rules:
+
+<CORSConfiguration>
+ <CORSRule>
+   <AllowedOrigin>*</AllowedOrigin>
+   <AllowedMethod>GET</AllowedMethod>
+ </CORSRule>
+</CORSConfiguration>
+In the AWS console, it ends up looking like this after we hit Save:
+
+ImageCORS configuration
+
+Creating a Travis CI Job to Upload Artifacts to AWS S3
+Now that we have somewhere to upload files, let’s set up an automated process that will take care of uploading new JavaScript bundles each time we merge new code into the master branch for any of our repos.
+
+To do this, we’re going to use Travis CI. As mentioned earlier, each app lives in its own repo on GitHub, so we have four GitHub repos to work with. We can integrate Travis CI with each of our repos and set up continuous integration pipelines for each one.
+
+To configure Travis CI for any given project, we create a .travis.yml file in the project's root directory. Let's create that file in the single-spa-demo-root-config directory and insert the following code:
+
+language: node_js
+node_js:
+  - node
+script:
+  - yarn build
+  - echo "Commit sha - $TRAVIS_COMMIT"
+  - mkdir -p dist/@thawkin3/root-config/$TRAVIS_COMMIT
+  - mv dist/*.* dist/@thawkin3/root-config/$TRAVIS_COMMIT/
+deploy:
+  provider: s3
+  access_key_id: "$AWS_ACCESS_KEY_ID"
+  secret_access_key: "$AWS_SECRET_ACCESS_KEY"
+  bucket: "single-spa-demo"
+  region: "us-west-2"
+  cache-control: "max-age=31536000"
+  acl: "public_read"
+  local_dir: dist
+  skip_cleanup: true
+  on:
+    branch: master
+This implementation is what I came up with after reviewing the Travis CI docs for AWS S3 uploads and a single-spa Travis CI example config.
+
+Because we don’t want our AWS secrets exposed in our GitHub repo, we can store those as environment variables. You can place environment variables and their secret values within the Travis CI web console for anything that you want to keep private, so that’s where the .travis.yml file gets those values from.
+
+Now, when we commit and push new code to the master branch, the Travis CI job will run, which will build the JavaScript bundle for the app and then upload those assets to S3. To verify, we can check out the AWS console to see our newly uploaded files:
+
+Uploaded files as a result of a Travis CI jobUploaded files as a result of a Travis CI job
+
+Neat! So far so good. Now we need to implement the same Travis CI configuration for our other three micro-frontend apps, but swapping out the directory names in the .travis.yml file as needed. After following the same steps and merging our code, we now have four directories created in our S3 bucket, one for each repo.
+
+Four directories within our S3 bucketFour directories within our S3 bucket
+
+Creating an Import Map for Production
+Let’s recap what we’ve done so far. We have four apps, all living in separate GitHub repos. Each repo is set up with Travis CI to run a job when code is merged into the master branch, and that job handles uploading the build artifacts into an S3 bucket.
+
+With all that in one place, there’s still one thing missing: How do these new build artifacts get referenced in our container app? In other words, even though we’re pushing up new JavaScript bundles for our micro-frontends with each new update, the new code isn’t actually used in our container app yet!
+
+If we think back to how we got our app running locally, we used an import map. This import map is simply JSON that tells the container app where each JavaScript bundle can be found.
+
+But, our import map from earlier was specifically used for running the app locally. Now we need to create an import map that will be used in the production environment.
+
+If we look in the single-spa-demo-root-config directory, in the index.ejs file, we see this line:
+
+<script type="systemjs-importmap" src="https://storage.googleapis.com/react.microfrontends.app/importmap.json"></script>
+Opening up that URL in the browser reveals an import map that looks like this:
+
+{
+  "imports": {
+    "react": "https://cdn.jsdelivr.net/npm/react@16.13.1/umd/react.production.min.js",
+    "react-dom": "https://cdn.jsdelivr.net/npm/react-dom@16.13.1/umd/react-dom.production.min.js",
+    "single-spa": "https://cdn.jsdelivr.net/npm/single-spa@5.5.3/lib/system/single-spa.min.js",
+    "@react-mf/root-config": "https://react.microfrontends.app/root-config/e129469347bb89b7ff74bcbebb53cc0bb4f5e27f/react-mf-root-config.js",
+    "@react-mf/navbar": "https://react.microfrontends.app/navbar/631442f229de2401a1e7c7835dc7a56f7db606ea/react-mf-navbar.js",
+    "@react-mf/styleguide": "https://react.microfrontends.app/styleguide/f965d7d74e99f032c27ba464e55051ae519b05dd/react-mf-styleguide.js",
+    "@react-mf/people": "https://react.microfrontends.app/people/dd205282fbd60b09bb3a937180291f56e300d9db/react-mf-people.js",
+    "@react-mf/api": "https://react.microfrontends.app/api/2966a1ca7799753466b7f4834ed6b4f2283123c5/react-mf-api.js",
+    "@react-mf/planets": "https://react.microfrontends.app/planets/5f7fc62b71baeb7a0724d4d214565faedffd8f61/react-mf-planets.js",
+    "@react-mf/things": "https://react.microfrontends.app/things/7f209a1ed9ac9690835c57a3a8eb59c17114bb1d/react-mf-things.js",
+    "rxjs": "https://cdn.jsdelivr.net/npm/@esm-bundle/rxjs@6.5.5/system/rxjs.min.js",
+    "rxjs/operators": "https://cdn.jsdelivr.net/npm/@esm-bundle/rxjs@6.5.5/system/rxjs-operators.min.js"
+  }
+}
+That import map was the default one provided as an example when we used the CLI to generate our container app. What we need to do now is replace this example import map with an import map that actually references the bundles we’re using.
+
+So, using the original import map as a template, we can create a new file called importmap.json, place it outside of our repos and add JSON that looks like this:
+
+{
+  "imports": {
+    "react": "https://cdn.jsdelivr.net/npm/react@16.13.0/umd/react.production.min.js",
+    "react-dom": "https://cdn.jsdelivr.net/npm/react-dom@16.13.0/umd/react-dom.production.min.js",
+    "single-spa": "https://cdn.jsdelivr.net/npm/single-spa@5.5.1/lib/system/single-spa.min.js",
+    "@thawkin3/root-config": "https://single-spa-demo.s3-us-west-2.amazonaws.com/%40thawkin3/root-config/179ba4f2ce4d517bf461bee986d1026c34967141/root-config.js",
+    "@thawkin3/single-spa-demo-nav": "https://single-spa-demo.s3-us-west-2.amazonaws.com/%40thawkin3/single-spa-demo-nav/f0e9d35392ea0da8385f6cd490d6c06577809f16/thawkin3-single-spa-demo-nav.js",
+    "@thawkin3/single-spa-demo-page-1": "https://single-spa-demo.s3-us-west-2.amazonaws.com/%40thawkin3/single-spa-demo-page-1/4fd417ee3faf575fcc29d17d874e52c15e6f0780/thawkin3-single-spa-demo-page-1.js",
+    "@thawkin3/single-spa-demo-page-2": "https://single-spa-demo.s3-us-west-2.amazonaws.com/%40thawkin3/single-spa-demo-page-2/8c58a825c1552aab823bcbd5bdd13faf2bd4f9dc/thawkin3-single-spa-demo-page-2.js"
+  }
+}
+You’ll note that the first three imports are for shared dependencies: react, react-dom, and single-spa. That way we don’t have four copies of React in our app causing bloat and longer download times. Next, we have imports for each of our four apps. The URL is simply the URL for each uploaded file in S3 (called an “object” in AWS terminology).
+
+Now that we have this file created, we can manually upload it to our bucket in S3 through the AWS console.
+
+Note: This is a pretty important and interesting caveat when using single-spa: The import map doesn’t actually live anywhere in source control or in any of the git repos. That way, the import map can be updated on the fly without requiring checked-in changes in a repo. We’ll come back to this concept in a little bit.
+
+Import map manually uploaded to the S3 bucketImport map manually uploaded to the S3 bucket
+
+Finally, we can now reference this new file in our index.ejs file instead of referencing the original import map.
+
+<script type="systemjs-importmap" src="//single-spa-demo.s3-us-west-2.amazonaws.com/%40thawkin3/importmap.json"></script>
+Creating a Production Server
+We are getting closer to having something up and running in production! We’re going to host this demo on Heroku, so in order to do that, we’ll need to create a simple Node.js and Express server to serve our file.
+
+First, in the single-spa-demo-root-config directory, we'll install express by running yarn add express (or npm install express). Next, we'll add a file called server.js that contains a small amount of code for starting up an express server and serving our main index.html file.
+
+const express = require("express");
+const path = require("path");
+const PORT = process.env.PORT || 5000;
+
+express()
+  .use(express.static(path.join(__dirname, "dist")))
+  .get("*", (req, res) => {
+    res.sendFile("index.html", { root: "dist" });
+  })
+  .listen(PORT, () => console.log(`Listening on ${PORT}`));
+Finally, we’ll update the NPM scripts in our package.json file to differentiate between running the server in development mode and running the server in production mode.
+
+"scripts": {
+  "build": "webpack --mode=production",
+  "lint": "eslint src",
+  "prettier": "prettier --write './**'",
+  "start:dev": "webpack-dev-server --mode=development --port 9000 --env.isLocal=true",
+  "start": "node server.js",
+  "test": "jest"
+}
+Deploying to Heroku
+Now that we have a production server ready, let’s get this thing deployed to Heroku! In order to do so, you’ll need to have a Heroku account created, the Heroku CLI installed, and be logged in. Deploying to Heroku is as easy as 1–2–3:
+
+In the single-spa-demo-root-config directory: heroku create thawkin3-single-spa-demo (changing that last argument to a unique name to be used for your Heroku app)
+git push heroku master
+heroku open
+And with that, we are up and running in production. Upon running the heroku open command, you should see your app open in your browser. Try navigating between pages using the nav links to see the different micro-frontend apps mount and unmount.
+
+Demo app — up and running in productionDemo app — up and running in production
+
+Making Updates
+At this point, you may be asking yourself, “All that work for this? Why?” And you’d be right. Sort of. This is a lot of work, and we don’t have much to show for it, at least not visually. But, we’ve laid the groundwork for whatever app improvements we’d like.
+
+The setup cost for any microservice or micro-frontend is often a lot higher than the setup cost for a monolith; it’s not until later that you start to reap the rewards.
+
+So let’s start thinking about future modifications. Let’s say that it’s now five or ten years later, and your app has grown. A lot. And, in that time, a hot new framework has been released, and you’re dying to re-write your entire app using that new framework.
+
+When working with a monolith, this would likely be a years-long effort and may be nearly impossible to accomplish. But, with micro-frontends, you could swap out technologies one piece of the app at a time, allowing you to slowly and smoothly transition to a new tech stack. Magic!
+
+Or, you may have one piece of your app that changes frequently and another piece of your app that is rarely touched. While making updates to the volatile app, wouldn’t it be nice if you could just leave the legacy code alone?
+
+With a monolith, it’s possible that changes you make in one place of your app may affect other sections of your app. What if you modified some stylesheets that multiple sections of the monolith were using? Or what if you updated a dependency that was used in many different places?
+
+With a micro-frontend approach, you can leave those worries behind, refactoring and updating one app where needed while leaving legacy apps alone.
+
+But, how do you make these kinds of updates? Or updates of any sort, really?
+
+Right now we have our production import map in our index.ejs file, but it's just pointing to the file we manually uploaded to our S3 bucket. If we wanted to release some new changes right now, we'd need to push new code for one of the micro-frontends, get a new build artifact, and then manually update the import map with a reference to the new JavaScript bundle.
+
+Is there a way we could automate this? Yes!
+
+Updating One of the Apps
+Let’s say we want to update our page 1 app to have different text showing. In order to automate the deployment of this change, we can update our CI pipeline to not only build an artifact and upload it to our S3 bucket, but to also update the import map to reference the new URL for the latest JavaScript bundle.
+
+Let’s start by updating our .travis.yml file like so:
+
+language: node_js
+node_js:
+  - node
+env:
+  global:
+    # include $HOME/.local/bin for `aws`
+    - PATH=$HOME/.local/bin:$PATH
+before_install:
+  - pyenv global 3.7.1
+  - pip install -U pip
+  - pip install awscli
+script:
+  - yarn build
+  - echo "Commit sha - $TRAVIS_COMMIT"
+  - mkdir -p dist/@thawkin3/root-config/$TRAVIS_COMMIT
+  - mv dist/*.* dist/@thawkin3/root-config/$TRAVIS_COMMIT/
+deploy:
+  provider: s3
+  access_key_id: "$AWS_ACCESS_KEY_ID"
+  secret_access_key: "$AWS_SECRET_ACCESS_KEY"
+  bucket: "single-spa-demo"
+  region: "us-west-2"
+  cache-control: "max-age=31536000"
+  acl: "public_read"
+  local_dir: dist
+  skip_cleanup: true
+  on:
+    branch: master
+after_deploy:
+  - chmod +x after_deploy.sh
+  - "./after_deploy.sh"
+The main changes here are adding a global environment variable, installing the AWS CLI, and adding an after_deploy script as part of the pipeline. This references an after_deploy.sh file that we need to create. The contents will be:
+
+echo "Downloading import map from S3"
+aws s3 cp s3://single-spa-demo/@thawkin3/importmap.json importmap.json
+echo "Updating import map to point to new version of @thawkin3/root-config"
+node update-importmap.mjs
+echo "Uploading new import map to S3"
+aws s3 cp importmap.json s3://single-spa-demo/@thawkin3/importmap.json --cache-control 'public, must-revalidate, max-age=0' --acl 'public-read'
+echo "Deployment successful"
+This file downloads the existing import map from S3, modifies it to reference the new build artifact, and then re-uploads the updated import map to S3. To handle the actual updating of the import map file’s contents, we use a custom script that we’ll add in a file called update-importmap.mjs.
+
+// Note that this file requires node@13.2.0 or higher (or the --experimental-modules flag)
+import fs from "fs";
+import path from "path";
+import https from "https";
+
+const importMapFilePath = path.resolve(process.cwd(), "importmap.json");
+const importMap = JSON.parse(fs.readFileSync(importMapFilePath));
+const url = `https://single-spa-demo.s3-us-west-2.amazonaws.com/%40thawkin3/root-config/${process.env.TRAVIS_COMMIT}/root-config.js`;
+
+https
+  .get(url, res => {
+    // HTTP redirects (301, 302, etc) not currently supported, but could be added
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      if (
+        res.headers["content-type"] &&
+        res.headers["content-type"].toLowerCase().trim() ===
+          "application/javascript"
+      ) {
+        const moduleName = `@thawkin3/root-config`;
+        importMap.imports[moduleName] = url;
+        fs.writeFileSync(importMapFilePath, JSON.stringify(importMap, null, 2));
+        console.log(
+          `Updated import map for module ${moduleName}. New url is ${url}.`
+        );
+      } else {
+        urlNotDownloadable(
+          url,
+          Error(`Content-Type response header must be application/javascript`)
+        );
+      }
+    } else {
+      urlNotDownloadable(
+        url,
+        Error(`HTTP response status was ${res.statusCode}`)
+      );
+    }
+  })
+  .on("error", err => {
+    urlNotDownloadable(url, err);
+  });
+
+function urlNotDownloadable(url, err) {
+  throw Error(
+    `Refusing to update import map - could not download javascript file at url ${url}. Error was '${err.message}'`
+  );
+}
+Note that we need to make these changes for these three files in all of our GitHub repos so that each one is able to update the import map after creating a new build artifact.
+
+The file contents will be nearly identical for each repo, but we’ll need to change the app names or URL paths to the appropriate values for each one.
+
+A Side Note on the Import Map
+Earlier I mentioned that the import map file we manually uploaded to S3 doesn’t actually live anywhere in any of our GitHub repos or in any of our checked-in code. If you’re like me, this probably seems really odd! Shouldn’t everything be in source control?
+
+The reason it’s not in source control is so that our CI pipeline can handle updating the import map with each new micro-frontend app release.
+
+If the import map were in source control, making an update to one micro-frontend app would require changes in two repos: the micro-frontend app repo where the change is made, and the root config repo where the import map would be checked in. This sort of setup would invalidate one of micro-frontend architecture’s main benefits, which is that each app can be deployed completely independent of the other apps.
+
+In order to achieve some level of source control on the import map, we can always use S3’s versioning feature for our bucket.
+
+Moment of Truth
+With those modifications to our CI pipelines in place, it’s time for the final moment of truth: Can we update one of our micro-frontend apps, deploy it independently, and then see those changes take effect in production without having to touch any of our other apps?
+
+In the single-spa-demo-page-1 directory, in the root.component.js file, let's change the text from "Page 1 App" to "Page 1 App - UPDATED!" Next, let's commit that change and push and merge it to master.
+
+This will kick off the Travis CI pipeline to build the new page 1 app artifact and then update the import map to reference that new file URL.
+
+If we then navigate in our browser to https://thawkin3-single-spa-demo.herokuapp.com/page1, we’ll now see… drum roll please… our updated app!
+
+Demo app — successfully updating one of the micro-frontend appsDemo app — successfully updating one of the micro-frontend apps
+
+Conclusion
+I said it before, and I’ll say it again: Micro-frontends are the future of frontend web development.
+
+The benefits are massive, including independent deployments, independent areas of ownership, faster build and test times, and the ability to mix and match various frameworks if needed.
+
+There are some drawbacks, such as the initial set up cost and the complexity of maintaining a distributed architecture, but I strongly believe the benefits outweigh the costs.
+
+Single-spa makes micro-frontend architecture easy. Now you, too, can go break up the monolith!
