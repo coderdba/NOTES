@@ -21,3 +21,17 @@ SELECT
     [stats_id]) AS [StatisticUpdateDate]
 FROM 
     sys.stats;
+
+SELECT 
+    s.name AS StatsName,
+    sp.last_updated AS LastUpdated,
+    sp.rows AS Row_Count,
+    sp.rows_sampled AS RowsSampled,
+    sp.steps AS Steps,
+    sp.unfiltered_rows AS UnfilteredRows
+FROM 
+    sys.stats AS s
+CROSS APPLY 
+    sys.dm_db_stats_properties(s.object_id, s.stats_id) AS sp
+WHERE 
+    s.object_id = OBJECT_ID('YourTableName');
