@@ -20,8 +20,9 @@ SELECT
      TableName = t.name,
      IndexName = ind.name,
      IndexId = ind.index_id,
-     ColumnId = ic.index_column_id,
+	 ic.key_ordinal,
      ColumnName = col.name,
+     ColumnId = ic.index_column_id,
      ind.*,
      ic.*,
      col.* 
