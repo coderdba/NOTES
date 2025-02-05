@@ -1,0 +1,24 @@
+https://www.mssqltips.com/sqlservertip/3663/sql-server-and-postgresql-foreign-data-wrapper-configuration-part-3/
+https://aws.amazon.com/blogs/database/use-the-tds_fdw-extension-to-migrate-data-from-sql-server-to-postgresql/
+
+CREATE SERVER mssql_adworks2012_server
+FOREIGN DATA WRAPPER tds_fdw
+OPTIONS (servername '10.51.2.228', port '1433', database 'dms_sample');
+GRANT USAGE ON FOREIGN SERVER mssql_adworks2012_server TO dms_user;  
+
+CREATE USER MAPPING FOR postgres
+SERVER mssql_adworks2012_server
+OPTIONS (username 'sa', password 'mypassword'); --> this mapping is in postgres, but username/password is for sql server
+
+CREATE FOREIGN TABLE mssql_adworks2012_Sales_SalesPerson_table (
+BusinessEntityID int NOT NULL,
+TerritoryID int NULL,
+SalesQuota money NULL,
+Bonus money NOT NULL,
+CommissionPct real NOT NULL,
+SalesYTD money NOT NULL,
+SalesLastYear money NOT NULL,
+ModifiedDate text NOT NULL
+)
+SERVER mssql_adworks2012_server 
+OPTIONS (database 'AdventureWorks2012', query 'SELECT BusinessEntityID, TerritoryID, SalesQuota, Bonus, CommissionPct, SalesYTD, SalesLastYe
