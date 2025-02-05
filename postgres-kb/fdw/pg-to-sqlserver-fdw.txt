@@ -1,5 +1,8 @@
 https://www.mssqltips.com/sqlservertip/3663/sql-server-and-postgresql-foreign-data-wrapper-configuration-part-3/
 https://aws.amazon.com/blogs/database/use-the-tds_fdw-extension-to-migrate-data-from-sql-server-to-postgresql/
+https://dbsguru.com/access-the-mssql-database-from-postgresql-using-tds-foreign-data-wrapper-tds_fdw/
+https://github.com/tds-fdw/tds_fdw
+https://stackoverflow.com/questions/47360413/tds-fdw-adaptive-server-connection-failing-but-message-is-success
 
 CREATE SERVER mssql_adworks2012_server
 FOREIGN DATA WRAPPER tds_fdw
@@ -22,3 +25,35 @@ ModifiedDate text NOT NULL
 )
 SERVER mssql_adworks2012_server 
 OPTIONS (database 'AdventureWorks2012', query 'SELECT BusinessEntityID, TerritoryID, SalesQuota, Bonus, CommissionPct, SalesYTD, SalesLastYe
+
+==============
+https://stackoverflow.com/questions/47360413/tds-fdw-adaptive-server-connection-failing-but-message-is-success
+
+CREATE EXTENSION tds_fdw;
+
+-- DROP SERVER mssql_acudb_server;
+CREATE SERVER mssql_acudb_server
+    FOREIGN DATA WRAPPER tds_fdw
+    OPTIONS (servername 'wwww', port '1433', database 'AcuDB');
+
+ALTER SERVER mssql_acudb_server
+    OPTIONS (ADD msg_handler 'notice');
+
+-- DROP USER MAPPING FOR postgres SERVER mssql_acudb_server;
+CREATE USER MAPPING FOR postgres
+    SERVER mssql_acudb_server
+    OPTIONS (username 'xxxx\yyyy', password 'zzzz');
+
+-- DROP FOREIGN TABLE acudb_project;
+CREATE FOREIGN TABLE acudb_project (
+    id BIGINT NOT NULL,
+    "name" TEXT NOT NULL,
+    path_prefix TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    sec_active_size BIGINT NULL
+)
+SERVER mssql_acudb_server 
+    OPTIONS (query 'SELECT [id],[name],[path_prefix],[type],[sec_active_size] 
+    FROM [projects]');
+
+SELECT * FROM acudb_project
