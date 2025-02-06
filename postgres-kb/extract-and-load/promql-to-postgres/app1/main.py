@@ -19,7 +19,7 @@ class Settings:
     ARM_TENANT_ID = os.getenv("ARM_TENANT_ID")
     ARM_CLIENT_ID = os.getenv("ARM_CLIENT_ID")
     ARM_CLIENT_SECRET = os.getenv("ARM_CLIENT_SECRET")
-    STARGATE_CONSUMER_KEY = os.getenv("STARGATE_CONSUMER_KEY")
+    STARGATE_CONSUMER_KEY = os.getenv("API_MGMT_CONSUMER_KEY")
 
 # Load configuration from JSON file
 def load_config(filename):
