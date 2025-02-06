@@ -1,3 +1,13 @@
+=======================================
+POSTGRES FDW TO REMOTE SQL SERVER 
+=======================================
+2025 Feb
+
+NOTE: Postgres (flexible server) and SQL Server were both on Azure as-a-service
+
+========================
+REFERENCES
+========================
 https://www.mssqltips.com/sqlservertip/3663/sql-server-and-postgresql-foreign-data-wrapper-configuration-part-3/
 https://aws.amazon.com/blogs/database/use-the-tds_fdw-extension-to-migrate-data-from-sql-server-to-postgresql/
 https://dbsguru.com/access-the-mssql-database-from-postgresql-using-tds-foreign-data-wrapper-tds_fdw/
@@ -5,12 +15,124 @@ https://github.com/tds-fdw/tds_fdw
 https://stackoverflow.com/questions/47360413/tds-fdw-adaptive-server-connection-failing-but-message-is-success
 https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/postgresql-tds-fdw.html
 
+======================
+ACTUAL STEPS DONE
+======================
+-----------------
+POSTGRES SETUP
+-----------------
+- LIST ENABLED EXTENSIONS ('enabled' to allow creation - not created)
+show azure.extensions
+AZURE_AI,TIMESCALEDB,VECTOR
+
+- ENABLE EXTENSIONS so that we can create them 
+In Azure portal, go to the Postgres resource
+Choose 'settings' --> server parameters
+Locate azure.extensions
+Add POSTGRES_FDW, TDS_FDW, ORACLE_FDW extensions
+NOTE: TDS_FDW is the one for SQL Server
+
+- CREATE EXTENSIONS
+create extension tds_fdw;
+create extension postgres_fdw;
+create extension oracle_fdw;
+
+-----------------
+SQL SERVER SETUP
+-----------------
+- Server: sqlazwemydev01.database.windows.net
+- Create 'login' to be used as user in other required databases like my_pgfdw1: 
+  create login myfdw with password = 'password';
+  NOTE: DO NOT use special characters in password, like @ and # as they may not work when we create user-mapping in Postgres
+- Add this login as user in master database and other required databases:
+  Connect to master database (and then the required remote database) and run:
+  create user gowrishfdw for login gowrishfdw;
+  (For this, In SSMS, logon as myadmin (or other superuser), right click on master/other database, do new user, then in the popup window run the above command)
+- Grant necessary privileges on required tables to the user OR role
+  In SSMS right click on the table, choose permissions in the popup and grant
+
+----------------------------------
+CREATE FDW OBJECTS ON POSTGRES 
+----------------------------------
+- REMOTE SERVER DEFINITION
+drop server mssql_sqlazwemydev01_my_pgfdw1
+CREATE SERVER mssql_sqlazwemydev01_my_pgfdw1
+FOREIGN DATA WRAPPER tds_fdw
+OPTIONS (servername 'sqlazwemydev01.database.windows.net', port '1433',
+database 'my_pgfdw1', tds_version '7.1', msg_handler 'notice');
+
+- USER MAPPING - LOCAL USER TO REMOTE USER
+drop USER MAPPING FOR serveradmin SERVER mssql_sqlazwemydev01_my_pgfdw1;
+CREATE USER MAPPING FOR serveradmin
+SERVER mssql_sqlazwemydev01_my_pgfdw1
+OPTIONS (username 'myfdw@sqlazwemydev01.database.windows.net', password 'password');
+
+- FOREIGN TABLE DEFINITION
+DROP FOREIGN TABLE fdw_dept;
+CREATE FOREIGN TABLE fdw_dept (
+id int NOT NULL,
+name varchar(10) NOT NULL,
+city varchar(10) NOT NULL
+)
+SERVER mssql_sqlazwemydev01_my_pgfdw1 
+options (table_name 'dept');
+
+-- Instead of table_name, can use OPTIONS to just query
+-- OPTIONS (query 'SELECT id, name, city from dept');
+
+- TEST
+Logon to Postgres as the user in user mapping
+select * from fdw_dept;
+
+======================
+STEPS FROM WEBSITES
+======================
+
+create extension postgres_fdw;
+create extension tds_fdw;
+
+show azure.extensions
+
+drop server mssql_sqlazweskydeckdev01_gowrish_pgfdw1
+
+CREATE SERVER mssql_sqlazweskydeckdev01_gowrish_pgfdw1
+FOREIGN DATA WRAPPER tds_fdw
+OPTIONS (servername 'sqlazweskydeckdev01.database.windows.net', port '1433',
+--database 'tori-snowmirror', tds_version '7.1', msg_handler 'notice')
+database 'gowrish_pgfdw1', tds_version '7.1', msg_handler 'notice');
+
+drop USER MAPPING FOR serveradmin SERVER mssql_sqlazweskydeckdev01_gowrish_pgfdw1;
+CREATE USER MAPPING FOR serveradmin
+SERVER mssql_sqlazweskydeckdev01_gowrish_pgfdw1
+--OPTIONS (username 'sreadmin', password 'cK79r8ZtZ@');
+OPTIONS (username 'sreadmin@sqlazweskydeckdev01.database.windows.net', password 'cK79r8ZtZ\@');
+
+CREATE USER MAPPING FOR serveradmin
+SERVER mssql_sqlazweskydeckdev01_gowrish_pgfdw1
+OPTIONS (username 'gowrishfdw@sqlazweskydeckdev01.database.windows.net', password 'fdw_gsm_123');
+
+OPTIONS (username 'gowrishfdw', password 'fdw_gsm_123');
+
+DROP FOREIGN TABLE fdw_dept;
+CREATE FOREIGN TABLE fdw_dept (
+id int NOT NULL,
+name varchar(10) NOT NULL,
+city varchar(10) NOT NULL
+)
+SERVER mssql_sqlazweskydeckdev01_gowrish_pgfdw1 
+options (table_name 'dept');
+
+OPTIONS (query 'SELECT id, name, city from dept');
+
+select * from fdw_dept;
+======================
+STEPS FROM WEBSITES
+======================
 Enable postgres fdw, tds fdw, oracle fdw extensions in server parameters --> azure.extensions
 Verify: show azure.extensions
 
 create extension postgres_fdw;
 create extension tds_fdw;
-
 
 CREATE SERVER mssql_adworks2012_server
 FOREIGN DATA WRAPPER tds_fdw
