@@ -1,6 +1,19 @@
 -- https://www.sqlshack.com/sql-server-memory-performance-metrics-part-4-buffer-cache-hit-ratio-page-life-expectancy/
 
 -- Use this:
+SELECT
+CAST(bc.cntr_value AS FLOAT) / NULLIF(bc_base.cntr_value, 0) * 100 AS BufferCacheHitPercentage
+FROM
+sys.dm_os_performance_counters AS bc
+INNER JOIN
+sys.dm_os_performance_counters AS bc_base
+ON bc.[object_name] = bc_base.[object_name]
+AND bc.instance_name = bc_base.instance_name
+WHERE
+bc.counter_name = 'Buffer cache hit ratio'
+AND bc_base.counter_name = 'Buffer cache hit ratio base';
+
+-- Use this:
 https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-os-performance-counters-transact-sql?view=sql-server-ver16
 DECLARE @CacheHits BIGINT, @CacheLookups BIGINT;
 
