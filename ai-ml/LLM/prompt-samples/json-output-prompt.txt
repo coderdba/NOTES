@@ -1,0 +1,104 @@
+# Define JSON Schema
+json_schema = """
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "low_utilized_vms_per_subscription": {
+      "type": "object",
+      "patternProperties": {
+        "^[a-f0-9-]{36}$": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "vm_name": { "type": "string" },
+              "vm_size": { "type": "string" },
+              "average_cpu_utilization_in_percentage": { "type": "number" },
+              "average_memory_utilization_in_percentage": { "type": "number" },
+              "adviced_vm_size": { "type": "string" },
+              "Reason_to_Choose": { "type": "string" },
+              "Steps_to_Optimize_Via_Powershell": { "type": "string" }
+            },
+            "required": [
+              "vm_name",
+              "vm_size",
+              "average_cpu_utilization_in_percentage",
+              "average_memory_utilization_in_percentage",
+              "adviced_vm_size",
+              "Reason_to_Choose",
+              "Steps_to_Optimize_Via_Powershell"
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "high_utilized_vms_per_subscription": {
+      "type": "object",
+      "patternProperties": {
+        "^[a-f0-9-]{36}$": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "vm_name": { "type": "string" },
+              "vm_size": { "type": "string" },
+              "average_cpu_utilization_in_percentage": { "type": "number" },
+              "average_memory_utilization_in_percentage": { "type": "number" },
+              "adviced_vm_size": { "type": "string" },
+              "Reason_to_Choose": { "type": "string" },
+              "Steps_to_Optimize_Via_Powershell": { "type": "string" }
+            },
+            "required": [
+              "vm_name",
+              "vm_size",
+              "average_cpu_utilization_in_percentage",
+              "average_memory_utilization_in_percentage",
+              "adviced_vm_size",
+              "Reason_to_Choose",
+              "Steps_to_Optimize_Via_Powershell"
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "low_utilized_vms_per_subscription",
+    "high_utilized_vms_per_subscription"
+  ]
+}
+"""
+
+prompt = f"""
+Analyze the Azure VM utilization data and return a JSON response that strictly adheres to this schema:
+
+```json
+{json_schema}
+
+1. Analyse all records of vm_data and identify top 5 low-utilized VMs. In around 100 words, give Reason_to_Choose this VM; why GenAI choosed this VM over comapring list of other VMs data given to you and why GenAI has adviced adviced_vm_size? Also give detail Steps_to_Optimize_Via_Powershell in poweshell with full explanation, embedding vm_name, adviced_vm_size, resource_group, subscription etc into script.
+2. Analyse all records of vm_data and identify top 5 high-utilized VMs. In around 100 words, give Reason_to_Choose this VM; why GenAI choosed this VM over comapring list of other VMs data given to you and why GenAI has adviced adviced_vm_size? Also give detail Steps_to_Optimize_Via_Powershell in poweshell with full explanation, embedding vm_name, adviced_vm_size, resource_group, subscription etc into script.
+
+Data:
+{vm_data}
+
+ONLY return valid JSON. Do NOT include explanations, formatting, or extra text.
+"""
+
+response = openai.ChatCompletion.create(
+    engine="gpt-4o",
+    messages=[{"role": "system", "content": "You are an expert in cloud cost optimization."},
+              {"role": "user", "content": prompt}],
+    format="json",
+    temperature=0,  
+    max_tokens=9000
+)
+
+content = response["choices"][0]["message"]["content"].strip()
+
+# Check if the response starts with ``` and remove it
+if content.startswith("```") and content.endswith("```"):
+    content = content.split("\n", 1)[-1]  # Remove the first line (```json)
+    content = content.rsplit("\n", 1)[0]  # Remove the last line (```)
