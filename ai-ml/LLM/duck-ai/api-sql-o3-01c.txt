@@ -1,0 +1,1004 @@
+﻿This conversation was generated with Duck.ai (https://duck.ai) using OpenAI's o3-mini null Model. AI chats may display inaccurate or offensive information (see https://duckduckgo.com/duckai/privacy-terms for more info).
+
+====================
+
+User prompt 1 of 7 - 2/11/2025, 9:34:11 PM:
+Give me a python fastapi program which returns json, by running sqls on postgres database. SQLs for each requirement should be in a config file. And, the path from root should be the key in the config file. SQLs should take in parameters supplied as query parameters for each endpoint.
+
+Just give the program, config file and a few sqls with relevant create table statements.
+
+Do not provide any explanation.
+
+o3-mini null:
+───────────────────────────── main.py ─────────────────────────────
+import json
+import asyncio
+import asyncpg
+from fastapi import FastAPI, Query, HTTPException
+from fastapi.responses import JSONResponse
+
+app = FastAPI()
+
+# Load SQL queries configuration from file at startup
+with open("queries.json") as f:
+    sql_config = json.load(f)
+
+DATABASE_CONFIG = {
+    "user": "your_db_user",
+    "password": "your_db_password",
+    "database": "your_db_name",
+    "host": "localhost",
+    "port": 5432,
+}
+
+async def get_db_connection():
+    return await asyncpg.connect(**DATABASE_CONFIG)
+
+@app.get("/{path:path}")
+async def run_query(path: str, q: dict = Query(None)):
+    if f"/{path}" not in sql_config:
+        raise HTTPException(status_code=404, detail="Endpoint not found")
+    sql_info = sql_config[f"/{path}"]
+    sql = sql_info["sql"]
+    # Extract parameters from query parameters if available.
+    # Here we assume that sql parameters are directly mapped from query parameters.
+    try:
+        conn = await get_db_connection()
+        # Executing the SQL with provided parameters. Use fetch for SELECT queries.
+        if sql.strip().lower().startswith("select"):
+            records = await conn.fetch(sql, *list(q.values()) if q else [])
+            result = [dict(record) for record in records]
+        else:
+            result = await conn.execute(sql, *list(q.values()) if q else [])
+        await conn.close()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return JSONResponse(content={"result": result})
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+───────────────────────────── queries.json ─────────────────────────────
+{
+    "/users": {
+        "sql": "SELECT * FROM users WHERE age >= $1"
+    },
+    "/orders": {
+        "sql": "SELECT * FROM orders WHERE user_id = $1"
+    },
+    "/create-user": {
+        "sql": "INSERT INTO users (name, age) VALUES ($1, $2) RETURNING *"
+    }
+}
+
+───────────────────────────── schema.sql ─────────────────────────────
+-- Create table for users
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    age INTEGER NOT NULL
+);
+
+-- Create table for orders
+CREATE TABLE IF NOT EXISTS orders (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    product VARCHAR(100) NOT NULL,
+    amount DECIMAL(10,2)
+);
+
+
+--------------------
+
+User prompt 2 of 7 - 2/11/2025, 9:36:13 PM:
+Can you do every error check with error message, and an info message at every salient step. Use a logger to display messages
+
+o3-mini null:
+───────────────────────────── main.py ─────────────────────────────
+import json
+import asyncio
+import asyncpg
+import logging
+from fastapi import FastAPI, Query, HTTPException, Request
+from fastapi.responses import JSONResponse
+
+# Configure logger
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger(__name__)
+
+app = FastAPI()
+
+# Load SQL queries configuration from file at startup.
+try:
+    with open("queries.json") as f:
+        sql_config = json.load(f)
+    logger.info("Successfully loaded SQL configuration.")
+except Exception as e:
+    logger.error(f"Failed to load SQL configuration: {e}")
+    raise
+
+DATABASE_CONFIG = {
+    "user": "your_db_user",
+    "password": "your_db_password",
+    "database": "your_db_name",
+    "host": "localhost",
+    "port": 5432,
+}
+
+async def get_db_connection():
+    try:
+        conn = await asyncpg.connect(**DATABASE_CONFIG)
+        logger.info("Database connection established.")
+        return conn
+    except Exception as e:
+        logger.error(f"Database connection failed: {e}")
+        raise
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logger.info(f"Incoming request: {request.method} {request.url}")
+    response = await call_next(request)
+    logger.info(f"Completed response with status code: {response.status_code}")
+    return response
+
+@app.get("/{path:path}")
+async def run_query(path: str, q: dict = Query(None)):
+    endpoint = f"/{path}"
+    logger.info(f"Received query for endpoint: {endpoint}")
+    if endpoint not in sql_config:
+        error_msg = f"Endpoint {endpoint} not found in configuration."
+        logger.error(error_msg)
+        raise HTTPException(status_code=404, detail=error_msg)
+        
+    sql_info = sql_config[endpoint]
+    sql = sql_info.get("sql")
+    if not sql:
+        error_msg = f"No SQL found for endpoint {endpoint}."
+        logger.error(error_msg)
+        raise HTTPException(status_code=500, detail=error_msg)
+    
+    params = list(q.values()) if q else []
+    logger.info(f"SQL to execute: {sql} with parameters: {params}")
+
+    try:
+        conn = await get_db_connection()
+    except Exception as e:
+        error_msg = f"Failed to connect to the database: {e}"
+        logger.error(error_msg)
+        raise HTTPException(status_code=500, detail=error_msg)
+    
+    try:
+        if sql.strip().lower().startswith("select"):
+            records = await conn.fetch(sql, *params)
+            result = [dict(record) for record in records]
+            logger.info(f"SQL SELECT executed successfully. Records fetched: {len(result)}")
+        else:
+            result = await conn.execute(sql, *params)
+            logger.info("SQL executed successfully.")
+        await conn.close()
+        logger.info("Database connection closed.")
+    except Exception as e:
+        logger.error(f"Error executing SQL: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    
+    return JSONResponse(content={"result": result})
+
+if __name__ == "__main__":
+    import uvicorn
+    logger.info("Starting FastAPI server.")
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+───────────────────────────── queries.json ─────────────────────────────
+{
+    "/users": {
+        "sql": "SELECT * FROM users WHERE age >= $1"
+    },
+    "/orders": {
+        "sql": "SELECT * FROM orders WHERE user_id = $1"
+    },
+    "/create-user": {
+        "sql": "INSERT INTO users (name, age) VALUES ($1, $2) RETURNING *"
+    }
+}
+
+───────────────────────────── schema.sql ─────────────────────────────
+-- Create table for users
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    age INTEGER NOT NULL
+);
+
+-- Create table for orders
+CREATE TABLE IF NOT EXISTS orders (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    product VARCHAR(100) NOT NULL,
+    amount DECIMAL(10,2)
+);
+
+--------------------
+
+User prompt 3 of 7 - 2/11/2025, 9:38:06 PM:
+Make it a post instead of get 
+
+o3-mini null:
+───────────────────────────── main.py ─────────────────────────────
+import json
+import asyncio
+import asyncpg
+import logging
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+from typing import Dict, Any
+
+# Configure logger
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger(__name__)
+
+app = FastAPI()
+
+# Load SQL queries configuration from file at startup.
+try:
+    with open("queries.json") as f:
+        sql_config = json.load(f)
+    logger.info("Successfully loaded SQL configuration.")
+except Exception as e:
+    logger.error(f"Failed to load SQL configuration: {e}")
+    raise
+
+DATABASE_CONFIG = {
+    "user": "your_db_user",
+    "password": "your_db_password",
+    "database": "your_db_name",
+    "host": "localhost",
+    "port": 5432,
+}
+
+async def get_db_connection():
+    try:
+        conn = await asyncpg.connect(**DATABASE_CONFIG)
+        logger.info("Database connection established.")
+        return conn
+    except Exception as e:
+        logger.error(f"Database connection failed: {e}")
+        raise
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logger.info(f"Incoming request: {request.method} {request.url}")
+    response = await call_next(request)
+    logger.info(f"Completed response with status code: {response.status_code}")
+    return response
+
+class QueryParams(BaseModel):
+    parameters: Dict[str, Any] = {}
+
+@app.post("/{path:path}")
+async def run_query(path: str, body: QueryParams):
+    endpoint = f"/{path}"
+    logger.info(f"Received query for endpoint: {endpoint}")
+    
+    if endpoint not in sql_config:
+        error_msg = f"Endpoint {endpoint} not found in configuration."
+        logger.error(error_msg)
+        raise HTTPException(status_code=404, detail=error_msg)
+        
+    sql_info = sql_config[endpoint]
+    sql = sql_info.get("sql")
+    if not sql:
+        error_msg = f"No SQL found for endpoint {endpoint}."
+        logger.error(error_msg)
+        raise HTTPException(status_code=500, detail=error_msg)
+    
+    # Convert dictionary of parameters to list preserving order by insertion
+    # Note: The order of parameters must match the SQL placeholders order.
+    params = list(body.parameters.values())
+    logger.info(f"SQL to execute: {sql} with parameters: {params}")
+
+    try:
+        conn = await get_db_connection()
+    except Exception as e:
+        error_msg = f"Failed to connect to the database: {e}"
+        logger.error(error_msg)
+        raise HTTPException(status_code=500, detail=error_msg)
+    
+    try:
+        if sql.strip().lower().startswith("select"):
+            records = await conn.fetch(sql, *params)
+            result = [dict(record) for record in records]
+            logger.info(f"SQL SELECT executed successfully. Records fetched: {len(result)}")
+        else:
+            result = await conn.execute(sql, *params)
+            logger.info("SQL executed successfully.")
+        await conn.close()
+        logger.info("Database connection closed.")
+    except Exception as e:
+        logger.error(f"Error executing SQL: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    
+    return JSONResponse(content={"result": result})
+
+if __name__ == "__main__":
+    import uvicorn
+    logger.info("Starting FastAPI server.")
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+───────────────────────────── queries.json ─────────────────────────────
+{
+    "/users": {
+        "sql": "SELECT * FROM users WHERE age >= $1"
+    },
+    "/orders": {
+        "sql": "SELECT * FROM orders WHERE user_id = $1"
+    },
+    "/create-user": {
+        "sql": "INSERT INTO users (name, age) VALUES ($1, $2) RETURNING *"
+    }
+}
+
+───────────────────────────── schema.sql ─────────────────────────────
+-- Create table for users
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    age INTEGER NOT NULL
+);
+
+-- Create table for orders
+CREATE TABLE IF NOT EXISTS orders (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    product VARCHAR(100) NOT NULL,
+    amount DECIMAL(10,2)
+);
+
+--------------------
+
+User prompt 4 of 7 - 2/11/2025, 9:41:26 PM:
+Enforce specific keys to be used in the body to supply to the sqls. 
+
+o3-mini null:
+───────────────────────────── main.py ─────────────────────────────
+import json
+import asyncio
+import asyncpg
+import logging
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
+from typing import Dict, Any
+
+# Configure logger
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger(__name__)
+
+app = FastAPI()
+
+# Load SQL queries configuration from file at startup.
+try:
+    with open("queries.json") as f:
+        sql_config = json.load(f)
+    logger.info("Successfully loaded SQL configuration.")
+except Exception as e:
+    logger.error(f"Failed to load SQL configuration: {e}")
+    raise
+
+DATABASE_CONFIG = {
+    "user": "your_db_user",
+    "password": "your_db_password",
+    "database": "your_db_name",
+    "host": "localhost",
+    "port": 5432,
+}
+
+async def get_db_connection():
+    try:
+        conn = await asyncpg.connect(**DATABASE_CONFIG)
+        logger.info("Database connection established.")
+        return conn
+    except Exception as e:
+        logger.error(f"Database connection failed: {e}")
+        raise
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logger.info(f"Incoming request: {request.method} {request.url}")
+    response = await call_next(request)
+    logger.info(f"Completed response with status code: {response.status_code}")
+    return response
+
+class QueryBody(BaseModel):
+    parameters: Dict[str, Any] = Field(default_factory=dict, description="Query parameters for the SQL")
+
+@app.post("/{path:path}")
+async def run_query(path: str, body: QueryBody):
+    endpoint = f"/{path}"
+    logger.info(f"Received query for endpoint: {endpoint}")
+    
+    if endpoint not in sql_config:
+        error_msg = f"Endpoint {endpoint} not found in configuration."
+        logger.error(error_msg)
+        raise HTTPException(status_code=404, detail=error_msg)
+        
+    sql_info = sql_config[endpoint]
+    sql = sql_info.get("sql")
+    if not sql:
+        error_msg = f"No SQL found for endpoint {endpoint}."
+        logger.error(error_msg)
+        raise HTTPException(status_code=500, detail=error_msg)
+    
+    required_keys = sql_info.get("required_keys", [])
+    missing_keys = [key for key in required_keys if key not in body.parameters]
+    if missing_keys:
+        error_msg = f"Missing required parameters: {', '.join(missing_keys)}"
+        logger.error(error_msg)
+        raise HTTPException(status_code=400, detail=error_msg)
+    
+    # Prepare parameters in order specified in config.
+    params = [body.parameters[key] for key in required_keys]
+    logger.info(f"SQL to execute: {sql} with parameters: {params}")
+
+    try:
+        conn = await get_db_connection()
+    except Exception as e:
+        error_msg = f"Failed to connect to the database: {e}"
+        logger.error(error_msg)
+        raise HTTPException(status_code=500, detail=error_msg)
+    
+    try:
+        if sql.strip().lower().startswith("select"):
+            records = await conn.fetch(sql, *params)
+            result = [dict(record) for record in records]
+            logger.info(f"SQL SELECT executed successfully. Records fetched: {len(result)}")
+        else:
+            result = await conn.execute(sql, *params)
+            logger.info("SQL executed successfully.")
+        await conn.close()
+        logger.info("Database connection closed.")
+    except Exception as e:
+        logger.error(f"Error executing SQL: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    
+    return JSONResponse(content={"result": result})
+
+if __name__ == "__main__":
+    import uvicorn
+    logger.info("Starting FastAPI server.")
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+───────────────────────────── queries.json ─────────────────────────────
+{
+    "/users": {
+        "sql": "SELECT * FROM users WHERE age >= $1",
+        "required_keys": ["age"]
+    },
+    "/orders": {
+        "sql": "SELECT * FROM orders WHERE user_id = $1",
+        "required_keys": ["user_id"]
+    },
+    "/create-user": {
+        "sql": "INSERT INTO users (name, age) VALUES ($1, $2) RETURNING *",
+        "required_keys": ["name", "age"]
+    }
+}
+
+───────────────────────────── schema.sql ─────────────────────────────
+-- Create table for users
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    age INTEGER NOT NULL
+);
+
+-- Create table for orders
+CREATE TABLE IF NOT EXISTS orders (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    product VARCHAR(100) NOT NULL,
+    amount DECIMAL(10,2)
+);
+
+--------------------
+
+User prompt 5 of 7 - 2/11/2025, 9:48:20 PM:
+Can you paginate the query output
+
+o3-mini null:
+───────────────────────────── main.py ─────────────────────────────
+import json
+import asyncio
+import asyncpg
+import logging
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
+from typing import Dict, Any
+
+# Configure logger
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger(__name__)
+
+app = FastAPI()
+
+# Load SQL queries configuration from file at startup.
+try:
+    with open("queries.json") as f:
+        sql_config = json.load(f)
+    logger.info("Successfully loaded SQL configuration.")
+except Exception as e:
+    logger.error(f"Failed to load SQL configuration: {e}")
+    raise
+
+DATABASE_CONFIG = {
+    "user": "your_db_user",
+    "password": "your_db_password",
+    "database": "your_db_name",
+    "host": "localhost",
+    "port": 5432,
+}
+
+async def get_db_connection():
+    try:
+        conn = await asyncpg.connect(**DATABASE_CONFIG)
+        logger.info("Database connection established.")
+        return conn
+    except Exception as e:
+        logger.error(f"Database connection failed: {e}")
+        raise
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logger.info(f"Incoming request: {request.method} {request.url}")
+    response = await call_next(request)
+    logger.info(f"Completed response with status code: {response.status_code}")
+    return response
+
+class QueryBody(BaseModel):
+    parameters: Dict[str, Any] = Field(default_factory=dict, description="Query parameters for the SQL")
+
+@app.post("/{path:path}")
+async def run_query(path: str, body: QueryBody):
+    endpoint = f"/{path}"
+    logger.info(f"Received query for endpoint: {endpoint}")
+    
+    if endpoint not in sql_config:
+        error_msg = f"Endpoint {endpoint} not found in configuration."
+        logger.error(error_msg)
+        raise HTTPException(status_code=404, detail=error_msg)
+        
+    sql_info = sql_config[endpoint]
+    sql = sql_info.get("sql")
+    if not sql:
+        error_msg = f"No SQL found for endpoint {endpoint}."
+        logger.error(error_msg)
+        raise HTTPException(status_code=500, detail=error_msg)
+    
+    # Enforce required keys.
+    required_keys = sql_info.get("required_keys", [])
+    missing_keys = [key for key in required_keys if key not in body.parameters]
+    if missing_keys:
+        error_msg = f"Missing required parameters: {', '.join(missing_keys)}"
+        logger.error(error_msg)
+        raise HTTPException(status_code=400, detail=error_msg)
+    
+    # Prepare parameters in order specified in config.
+    params = [body.parameters[key] for key in required_keys]
+    
+    # Check if query is a SELECT and prepare pagination.
+    if sql.strip().lower().startswith("select"):
+        # Get pagination values if provided.
+        try:
+            limit = int(body.parameters.get("limit", 10))
+            offset = int(body.parameters.get("offset", 0))
+        except ValueError as ve:
+            error_msg = f"Pagination parameters must be integers: {ve}"
+            logger.error(error_msg)
+            raise HTTPException(status_code=400, detail=error_msg)
+        logger.info(f"Applying pagination: limit={limit}, offset={offset}")
+        # Append pagination clause. Determine next placeholder index.
+        next_index = len(params) + 1
+        sql = f"{sql} LIMIT ${next_index} OFFSET ${next_index + 1}"
+        params.extend([limit, offset])
+    
+    logger.info(f"SQL to execute: {sql} with parameters: {params}")
+
+    try:
+        conn = await get_db_connection()
+    except Exception as e:
+        error_msg = f"Failed to connect to the database: {e}"
+        logger.error(error_msg)
+        raise HTTPException(status_code=500, detail=error_msg)
+    
+    try:
+        if sql.strip().lower().startswith("select"):
+            records = await conn.fetch(sql, *params)
+            result = [dict(record) for record in records]
+            logger.info(f"SQL SELECT executed successfully. Records fetched: {len(result)}")
+        else:
+            result = await conn.execute(sql, *params)
+            logger.info("SQL executed successfully.")
+        await conn.close()
+        logger.info("Database connection closed.")
+    except Exception as e:
+        logger.error(f"Error executing SQL: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    
+    return JSONResponse(content={"result": result})
+
+if __name__ == "__main__":
+    import uvicorn
+    logger.info("Starting FastAPI server.")
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+───────────────────────────── queries.json ─────────────────────────────
+{
+    "/users": {
+        "sql": "SELECT * FROM users WHERE age >= $1",
+        "required_keys": ["age"]
+    },
+    "/orders": {
+        "sql": "SELECT * FROM orders WHERE user_id = $1",
+        "required_keys": ["user_id"]
+    },
+    "/create-user": {
+        "sql": "INSERT INTO users (name, age) VALUES ($1, $2) RETURNING *",
+        "required_keys": ["name", "age"]
+    }
+}
+
+───────────────────────────── schema.sql ─────────────────────────────
+-- Create table for users
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    age INTEGER NOT NULL
+);
+
+-- Create table for orders
+CREATE TABLE IF NOT EXISTS orders (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    product VARCHAR(100) NOT NULL,
+    amount DECIMAL(10,2)
+);
+
+--------------------
+
+User prompt 6 of 7 - 2/11/2025, 9:53:34 PM:
+Make the database settings environment variables
+
+o3-mini null:
+───────────────────────────── main.py ─────────────────────────────
+import json
+import asyncio
+import asyncpg
+import logging
+import os
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
+from typing import Dict, Any
+
+# Configure logger
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger(__name__)
+
+app = FastAPI()
+
+# Load SQL queries configuration from file at startup.
+try:
+    with open("queries.json") as f:
+        sql_config = json.load(f)
+    logger.info("Successfully loaded SQL configuration.")
+except Exception as e:
+    logger.error(f"Failed to load SQL configuration: {e}")
+    raise
+
+# Database settings from environment variables.
+DATABASE_CONFIG = {
+    "user": os.getenv("DB_USER", "your_db_user"),
+    "password": os.getenv("DB_PASSWORD", "your_db_password"),
+    "database": os.getenv("DB_NAME", "your_db_name"),
+    "host": os.getenv("DB_HOST", "localhost"),
+    "port": int(os.getenv("DB_PORT", 5432)),
+}
+
+async def get_db_connection():
+    try:
+        conn = await asyncpg.connect(**DATABASE_CONFIG)
+        logger.info("Database connection established.")
+        return conn
+    except Exception as e:
+        logger.error(f"Database connection failed: {e}")
+        raise
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logger.info(f"Incoming request: {request.method} {request.url}")
+    response = await call_next(request)
+    logger.info(f"Completed response with status code: {response.status_code}")
+    return response
+
+class QueryBody(BaseModel):
+    parameters: Dict[str, Any] = Field(default_factory=dict, description="Query parameters for the SQL")
+
+@app.post("/{path:path}")
+async def run_query(path: str, body: QueryBody):
+    endpoint = f"/{path}"
+    logger.info(f"Received query for endpoint: {endpoint}")
+    
+    if endpoint not in sql_config:
+        error_msg = f"Endpoint {endpoint} not found in configuration."
+        logger.error(error_msg)
+        raise HTTPException(status_code=404, detail=error_msg)
+        
+    sql_info = sql_config[endpoint]
+    sql = sql_info.get("sql")
+    if not sql:
+        error_msg = f"No SQL found for endpoint {endpoint}."
+        logger.error(error_msg)
+        raise HTTPException(status_code=500, detail=error_msg)
+    
+    # Enforce required keys.
+    required_keys = sql_info.get("required_keys", [])
+    missing_keys = [key for key in required_keys if key not in body.parameters]
+    if missing_keys:
+        error_msg = f"Missing required parameters: {', '.join(missing_keys)}"
+        logger.error(error_msg)
+        raise HTTPException(status_code=400, detail=error_msg)
+    
+    # Prepare parameters in order specified in config.
+    params = [body.parameters[key] for key in required_keys]
+    
+    # Check if query is a SELECT and prepare pagination.
+    if sql.strip().lower().startswith("select"):
+        try:
+            limit = int(body.parameters.get("limit", 10))
+            offset = int(body.parameters.get("offset", 0))
+        except ValueError as ve:
+            error_msg = f"Pagination parameters must be integers: {ve}"
+            logger.error(error_msg)
+            raise HTTPException(status_code=400, detail=error_msg)
+        logger.info(f"Applying pagination: limit={limit}, offset={offset}")
+        # Append pagination clause. Determine next placeholder index.
+        next_index = len(params) + 1
+        sql = f"{sql} LIMIT ${next_index} OFFSET ${next_index + 1}"
+        params.extend([limit, offset])
+    
+    logger.info(f"SQL to execute: {sql} with parameters: {params}")
+
+    try:
+        conn = await get_db_connection()
+    except Exception as e:
+        error_msg = f"Failed to connect to the database: {e}"
+        logger.error(error_msg)
+        raise HTTPException(status_code=500, detail=error_msg)
+    
+    try:
+        if sql.strip().lower().startswith("select"):
+            records = await conn.fetch(sql, *params)
+            result = [dict(record) for record in records]
+            logger.info(f"SQL SELECT executed successfully. Records fetched: {len(result)}")
+        else:
+            result = await conn.execute(sql, *params)
+            logger.info("SQL executed successfully.")
+        await conn.close()
+        logger.info("Database connection closed.")
+    except Exception as e:
+        logger.error(f"Error executing SQL: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    
+    return JSONResponse(content={"result": result})
+
+if __name__ == "__main__":
+    import uvicorn
+    logger.info("Starting FastAPI server.")
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+───────────────────────────── queries.json ─────────────────────────────
+{
+    "/users": {
+        "sql": "SELECT * FROM users WHERE age >= $1",
+        "required_keys": ["age"]
+    },
+    "/orders": {
+        "sql": "SELECT * FROM orders WHERE user_id = $1",
+        "required_keys": ["user_id"]
+    },
+    "/create-user": {
+        "sql": "INSERT INTO users (name, age) VALUES ($1, $2) RETURNING *",
+        "required_keys": ["name", "age"]
+    }
+}
+
+───────────────────────────── schema.sql ─────────────────────────────
+-- Create table for users
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    age INTEGER NOT NULL
+);
+
+-- Create table for orders
+CREATE TABLE IF NOT EXISTS orders (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    product VARCHAR(100) NOT NULL,
+    amount DECIMAL(10,2)
+);
+
+--------------------
+
+User prompt 7 of 7 - 2/11/2025, 9:54:21 PM:
+Add checks to error out if environment variables are not set
+
+o3-mini null:
+───────────────────────────── main.py ─────────────────────────────
+import json
+import asyncio
+import asyncpg
+import logging
+import os
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
+from typing import Dict, Any
+
+# Configure logger
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger(__name__)
+
+app = FastAPI()
+
+# Load SQL queries configuration from file at startup.
+try:
+    with open("queries.json") as f:
+        sql_config = json.load(f)
+    logger.info("Successfully loaded SQL configuration.")
+except Exception as e:
+    logger.error(f"Failed to load SQL configuration: {e}")
+    raise
+
+# Check for required environment variables
+required_env_vars = ["DB_USER", "DB_PASSWORD", "DB_NAME", "DB_HOST", "DB_PORT"]
+for var in required_env_vars:
+    if not os.getenv(var):
+        error_msg = f"Environment variable {var} is not set."
+        logger.error(error_msg)
+        raise Exception(error_msg)
+
+# Database settings from environment variables.
+DATABASE_CONFIG = {
+    "user": os.getenv("DB_USER"),
+    "password": os.getenv("DB_PASSWORD"),
+    "database": os.getenv("DB_NAME"),
+    "host": os.getenv("DB_HOST"),
+    "port": int(os.getenv("DB_PORT")),
+}
+
+async def get_db_connection():
+    try:
+        conn = await asyncpg.connect(**DATABASE_CONFIG)
+        logger.info("Database connection established.")
+        return conn
+    except Exception as e:
+        logger.error(f"Database connection failed: {e}")
+        raise
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logger.info(f"Incoming request: {request.method} {request.url}")
+    response = await call_next(request)
+    logger.info(f"Completed response with status code: {response.status_code}")
+    return response
+
+class QueryBody(BaseModel):
+    parameters: Dict[str, Any] = Field(default_factory=dict, description="Query parameters for the SQL")
+
+@app.post("/{path:path}")
+async def run_query(path: str, body: QueryBody):
+    endpoint = f"/{path}"
+    logger.info(f"Received query for endpoint: {endpoint}")
+    
+    if endpoint not in sql_config:
+        error_msg = f"Endpoint {endpoint} not found in configuration."
+        logger.error(error_msg)
+        raise HTTPException(status_code=404, detail=error_msg)
+        
+    sql_info = sql_config[endpoint]
+    sql = sql_info.get("sql")
+    if not sql:
+        error_msg = f"No SQL found for endpoint {endpoint}."
+        logger.error(error_msg)
+        raise HTTPException(status_code=500, detail=error_msg)
+    
+    # Enforce required keys.
+    required_keys = sql_info.get("required_keys", [])
+    missing_keys = [key for key in required_keys if key not in body.parameters]
+    if missing_keys:
+        error_msg = f"Missing required parameters: {', '.join(missing_keys)}"
+        logger.error(error_msg)
+        raise HTTPException(status_code=400, detail=error_msg)
+    
+    # Prepare parameters in order specified in config.
+    params = [body.parameters[key] for key in required_keys]
+    
+    # Check if query is a SELECT and prepare pagination.
+    if sql.strip().lower().startswith("select"):
+        try:
+            limit = int(body.parameters.get("limit", 10))
+            offset = int(body.parameters.get("offset", 0))
+        except ValueError as ve:
+            error_msg = f"Pagination parameters must be integers: {ve}"
+            logger.error(error_msg)
+            raise HTTPException(status_code=400, detail=error_msg)
+        logger.info(f"Applying pagination: limit={limit}, offset={offset}")
+        # Append pagination clause. Determine next placeholder index.
+        next_index = len(params) + 1
+        sql = f"{sql} LIMIT ${next_index} OFFSET ${next_index + 1}"
+        params.extend([limit, offset])
+    
+    logger.info(f"SQL to execute: {sql} with parameters: {params}")
+
+    try:
+        conn = await get_db_connection()
+    except Exception as e:
+        error_msg = f"Failed to connect to the database: {e}"
+        logger.error(error_msg)
+        raise HTTPException(status_code=500, detail=error_msg)
+    
+    try:
+        if sql.strip().lower().startswith("select"):
+            records = await conn.fetch(sql, *params)
+            result = [dict(record) for record in records]
+            logger.info(f"SQL SELECT executed successfully. Records fetched: {len(result)}")
+        else:
+            result = await conn.execute(sql, *params)
+            logger.info("SQL executed successfully.")
+        await conn.close()
+        logger.info("Database connection closed.")
+    except Exception as e:
+        logger.error(f"Error executing SQL: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    
+    return JSONResponse(content={"result": result})
+
+if __name__ == "__main__":
+    import uvicorn
+    logger.info("Starting FastAPI server.")
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+───────────────────────────── queries.json ─────────────────────────────
+{
+    "/users": {
+        "sql": "SELECT * FROM users WHERE age >= $1",
+        "required_keys": ["age"]
+    },
+    "/orders": {
+        "sql": "SELECT * FROM orders WHERE user_id = $1",
+        "required_keys": ["user_id"]
+    },
+    "/create-user": {
+        "sql": "INSERT INTO users (name, age) VALUES ($1, $2) RETURNING *",
+        "required_keys": ["name", "age"]
+    }
+}
+
+───────────────────────────── schema.sql ─────────────────────────────
+-- Create table for users
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    age INTEGER NOT NULL
+);
+
+-- Create table for orders
+CREATE TABLE IF NOT EXISTS orders (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    product VARCHAR(100) NOT NULL,
+    amount DECIMAL(10,2)
+);
