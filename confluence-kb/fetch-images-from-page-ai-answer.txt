@@ -1,0 +1,69 @@
+Answer from Copilot:
+
+how to fetch images from confluence page using its rest api?
+
+
+Fetching images from a Confluence page using its REST API involves a few steps. Here's a general approach:
+
+1. **Retrieve the Page Content**:
+   Use the Confluence REST API to get the content of the page. This will give you the page's metadata, including attachments.
+
+   ```bash
+   curl -u '<USERNAME>:<API_TOKEN>' \
+        -X GET \
+        -H 'Content-Type: application/json' \
+        'https://<YOUR_CONFLUENCE_URL>/wiki/rest/api/content/<PAGE_ID>?expand=body.storage'
+   ```
+
+2. **Get the Attachments**:
+   Fetch the attachments of the page to find the image files.
+
+   ```bash
+   curl -u '<USERNAME>:<API_TOKEN>' \
+        -X GET \
+        -H 'Content-Type: application/json' \
+        'https://<YOUR_CONFLUENCE_URL>/wiki/rest/api/content/<PAGE_ID>/child/attachment'
+   ```
+
+3. **Download the Image**:
+   Once you have the attachment metadata, you can download the image using the download link provided in the metadata.
+
+   ```bash
+   curl -u '<USERNAME>:<API_TOKEN>' \
+        -X GET \
+        -H 'Content-Type: application/json' \
+        'https://<YOUR_CONFLUENCE_URL>/wiki/download/attachments/<PAGE_ID>/<ATTACHMENT_ID>?api=v2'
+   ```
+
+4. **Display the Image on the Page**:
+   To display the image on the Confluence page, you need to update the page content to include the image using the `<ac:image>` tag.
+
+   ```bash
+   curl -u '<USERNAME>:<API_TOKEN>' \
+        -X PUT \
+        -H 'Content-Type: application/json' \
+        -d '{
+             "version": {
+               "number": <NEW_VERSION_NUMBER>
+             },
+             "title": "<PAGE_TITLE>",
+             "type": "page",
+             "body": {
+               "storage": {
+                 "value": "<p>Here is an image:</p><ac:image><ri:attachment ri:filename=\"<IMAGE_FILENAME>\" /></ac:image>",
+                 "representation": "storage"
+               }
+             }
+           }' \
+        'https://<YOUR_CONFLUENCE_URL>/wiki/rest/api/content/<PAGE_ID>'
+   ```
+
+Replace `<USERNAME>`, `<API_TOKEN>`, `<YOUR_CONFLUENCE_URL>`, `<PAGE_ID>`, `<ATTACHMENT_ID>`, `<NEW_VERSION_NUMBER>`, `<PAGE_TITLE>`, and `<IMAGE_FILENAME>` with your actual values.
+
+This process involves:
+1. Retrieving the page content.
+2. Fetching the attachments.
+3. Downloading the image.
+4. Updating the page to display the image.
+
+If you encounter any issues or need further assistance, feel free to ask!
