@@ -4,13 +4,13 @@
 
 SELECT 
   TOP(15) qs.execution_count AS [Execution Count], 
-  (qs.total_physical_reads)/1000.0 AS [Total Physical Reads in ms], 
-  (qs.total_physical_reads/qs.execution_count)/1000.0 AS [Avg Physical Reads in ms], 
-  (qs.total_logical_reads)/1000.0 AS [Total Logical Reads in ms], 
-  (qs.total_logical_reads/qs.execution_count)/1000.0 AS [Avg Logical Reads in ms], 
-  (qs.total_worker_time)/1000.0 AS [Total Worker Time in ms], 
-  (qs.total_worker_time/qs.execution_count)/1000.0 AS [Avg Worker Time in ms], 
-  (qs.total_elapsed_time)/1000.0 AS [Total Elapsed Time in ms], 
+  (qs.total_physical_reads)/1000.0 AS [Total Physical Reads], 
+  (qs.total_physical_reads/qs.execution_count)/1000.0 AS [Avg Physical Reads], 
+  (qs.total_logical_reads)/1000.0 AS [Total Logical Reads], 
+  (qs.total_logical_reads/qs.execution_count)/1000.0 AS [Avg Logical Reads], 
+  (qs.total_worker_time)/1000.0 AS [Total Worker Time ms], 
+  (qs.total_worker_time/qs.execution_count)/1000.0 AS [Avg Worker Time ms], 
+  (qs.total_elapsed_time)/1000.0 AS [Total Elapsed Time ms], 
   (qs.total_elapsed_time/qs.execution_count)/1000.0 AS [Avg Elapsed Time in ms], 
   qs.creation_time AS [Creation Time] , 
   LEFT(t.text, 1000) AS [Partial Query Text] 
