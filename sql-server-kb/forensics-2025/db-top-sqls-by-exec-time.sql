@@ -8,6 +8,8 @@ SELECT
   (qs.total_physical_reads/qs.execution_count)/1000.0 AS [Avg Physical Reads], 
   (qs.total_logical_reads)/1000.0 AS [Total Logical Reads], 
   (qs.total_logical_reads/qs.execution_count)/1000.0 AS [Avg Logical Reads], 
+  (qs.total_logical_writes)/1000.0 AS [Total Logical Writes], 
+  (qs.total_logical_writes/qs.execution_count)/1000.0 AS [Avg Logical Writes], 
   (qs.total_worker_time)/1000.0 AS [Total Worker Time ms], 
   (qs.total_worker_time/qs.execution_count)/1000.0 AS [Avg Worker Time ms], 
   (qs.total_elapsed_time)/1000.0 AS [Total Elapsed Time ms], 
