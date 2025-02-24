@@ -8,6 +8,7 @@ SELECT TOP 20
   d.min_physical_reads as 'Min Phy Reads', 
   d.last_physical_reads as 'Last Phy Reads', 
 	d.total_physical_reads as 'Tot Phy Reads',  
+	d.total_logical_writes as 'Tot Logical Writes',
 	d.execution_count as 'Exec Count',
 	d.cached_time as 'Cached Time', 
 	d.last_execution_time as 'Last Exec Time'
