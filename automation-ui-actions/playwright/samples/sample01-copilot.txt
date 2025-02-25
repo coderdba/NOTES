@@ -1,0 +1,40 @@
+#
+# sample python program with playwright to logon to gmail and send a message 
+#
+
+from playwright.sync_api import sync_playwright
+
+def send_gmail():
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=False)
+        page = browser.new_page()
+
+        # Navigate to Gmail login page
+        page.goto("https://mail.google.com/")
+
+        # Log in to Gmail
+        page.fill("input[type='email']", "your-email@gmail.com")
+        page.click("button:has-text('Next')")
+        page.wait_for_timeout(2000)  # Adjust timeout as needed
+        page.fill("input[type='password']", "your-password")
+        page.click("button:has-text('Next')")
+
+        # Wait for the inbox to load
+        page.wait_for_selector("div[role='main']")
+
+        # Click on the compose button
+        page.click("div[role='button'][gh='cm']")
+
+        # Fill in the recipient, subject, and body of the email
+        page.fill("textarea[name='to']", "recipient-email@example.com")
+        page.fill("input[name='subjectbox']", "Test Email")
+        page.fill("div[aria-label='Message Body']", "This is a test email sent using Playwright.")
+
+        # Click the send button
+        page.click("div[aria-label='Send']")
+
+        # Close the browser
+        browser.close()
+
+if __name__ == "__main__":
+    send_gmail()
