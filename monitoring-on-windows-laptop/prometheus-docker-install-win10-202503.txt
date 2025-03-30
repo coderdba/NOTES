@@ -18,6 +18,8 @@ cat /etc/prometheus/prometheus.yml --> default config file given below
 --------------------------------------
 DEFAULT CONFIG FILE IN THE CONTAINER
 --------------------------------------
+/etc/prometheus/prometheus.yml
+
 # my global config
 global:
   scrape_interval: 15s # Set the scrape interval to every 15 seconds. Default is every 1 minute.
@@ -58,14 +60,58 @@ CUSTOMIZE CONFIG FILE, ADD DATA VOLUME
 # Create DIRECTORY for your data
 D:\etc\prometheus\data
 
+# Create config file as D:\etc\prometheus\prometheus.yml (note - added remote-write to mimir also)
+
+# my global config
+global:
+  scrape_interval: 60s # Set the scrape interval to every 15 seconds. Default is every 1 minute.
+  evaluation_interval: 60s # Evaluate rules every 15 seconds. The default is every 1 minute.
+  #scrape_interval: 15s # Set the scrape interval to every 15 seconds. Default is every 1 minute.
+  #evaluation_interval: 15s # Evaluate rules every 15 seconds. The default is every 1 minute.
+  # scrape_timeout is set to the global default (10s).
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+# Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+# A scrape configuration containing exactly one endpoint to scrape:
+# Here it's Prometheus itself.
+scrape_configs:
+  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+  - job_name: "prometheus"
+
+    # metrics_path defaults to '/metrics'
+    # scheme defaults to 'http'.
+
+    static_configs:
+      - targets: ["localhost:9090"] # localhost:9090 is Prometheus itself
+       # The label name is added as a label `label_name=<label_value>` to any timeseries scraped from this config.
+        labels:
+          app: "prometheus"
+
+# Configure Prometheus to write to Grafana Mimir
+remote_write:
+  - url: http://localhost:9009/api/v1/push
+
 # Start Prometheus container
-docker run \
-    -p 9090:9090 \
-    -v /path/to/prometheus.yml:/etc/prometheus/prometheus.yml \
-    -v prometheus-data:/prometheus \
-    prom/prometheus
+docker run ^
+    --name prometheus ^
+    -d
+    -p 9090:9090 ^
+    -v D:\etc\prometheus\prometheus.yml:/etc/prometheus/prometheus.yml ^
+    -v prometheus-data:/prometheus ^
+     prom/prometheus:v3.3.0-rc.0
+
 =============================================================================
-Volumes & bind-mount - FOR CONFIGURATION SETTINGS
+FROM DOCS: Volumes & bind-mount - FOR CONFIGURATION SETTINGS
 =============================================================================
 To provide your own configuration, there are several options. Here are two examples.
 
