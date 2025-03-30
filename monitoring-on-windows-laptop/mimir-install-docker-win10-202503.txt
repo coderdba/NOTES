@@ -1,6 +1,6 @@
-
-
-
+========================================================
+MIMIR INSTALL ON DOCKER ON WINDOWS 10 - 202503
+========================================================
 https://grafana.com/docs/mimir/latest/get-started/
 https://grafana.com/docs/mimir/latest/references/http-api/#index-page
 
@@ -140,10 +140,22 @@ remote_write:
 Configure Grafana agent to write to Grafana Mimir
 ------------------------------------------------------------------
 
-In Grafana agent's config file, add the following and restart the service/container.
+In Grafana agent's config file, add the remote_write section under metrics-->global section and restart the service/container.
 
-remote_write:
-  - url: "http://localhost:9009/api/v1/push"  # Mimir's remote write endpoint
+server:
+  log_level: warn
+metrics:
+  wal_directory: C:\ProgramData\grafana-agent-wal
+  global:
+    scrape_interval: 1m
+    remote_write:
+      - url: http://localhost:9009/api/v1/push
+  configs:
+    - name: integrations
+
+integrations:
+  windows_exporter:
+    enabled: true
 
 ------------------------------------------------------------------
 Configure Grafana UI to read from mimir
