@@ -14,3 +14,44 @@ Web access:
 http://localhost:12345/-/healthy
 http://localhost:12345/agent/api/v1/metrics/targets
 
+=====================================
+CONFIGURE
+=====================================
+https://grafana.com/docs/agent/latest/static/configuration/create-config-file/
+The Grafana Agent supports configuring multiple independent “subsystems.” Each subsystem helps you collect data for a specific type of telemetry.
+
+The Metrics subsystem allows you collect metrics to send to Prometheus.
+The Logs subsystem allows you to collect logs to send to Grafana Loki.
+The Traces subsystem allows you to collect spans to send to Grafana Tempo.
+The Integrations subsystem allows you to collect metrics for common applications, such as MySQL.
+
+<< TBD >>
+
+
+=====================================
+SEND WINDOWS LOGS TO LOKI
+=====================================
+Uses in-built promtail functionality.
+
+server:
+  log_level: debug
+logs:
+  # Choose a directory to save the last read position of log files at.
+  # This directory will be created if it doesn't already exist.
+  positions_directory: "C:\\path\\to\\directory"
+  configs:
+    - name: windows
+      # Loki endpoint to push logs to
+      clients:
+        - url: https://example.com
+      scrape_configs:
+      - job_name: windows
+        windows_events:
+          # Note the directory structure must already exist but the file will be created on demand
+          bookmark_path: "C:\\path\\to\\bookmark\\directory\\bookmark.xml"
+          use_incoming_timestamp: false
+          eventlog_name: "Application"
+          # Filter for logs
+          xpath_query: '*'
+          labels:
+            job: windows
