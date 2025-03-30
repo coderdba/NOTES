@@ -57,11 +57,14 @@ scrape_configs:
 CUSTOMIZE CONFIG FILE, ADD DATA VOLUME
 =============================================================================
 
-# Create DIRECTORY for your data
+-----------------------------------------------------------------------------------------------------
+Create DIRECTORY for your data
+-----------------------------------------------------------------------------------------------------
 D:\etc\prometheus\data
 
-# Create config file as D:\etc\prometheus\prometheus.yml (note - added remote-write to mimir also)
-
+-----------------------------------------------------------------------------------------------------
+Create config file as D:\etc\prometheus\prometheus.yml (note - added remote-write to mimir also)
+-----------------------------------------------------------------------------------------------------
 # my global config
 global:
   scrape_interval: 60s # Set the scrape interval to every 15 seconds. Default is every 1 minute.
@@ -97,14 +100,20 @@ scrape_configs:
         labels:
           app: "prometheus"
 
-# Configure Prometheus to write to Grafana Mimir
+# Configure Prometheus to write to Grafana Mimir (mimir: is the container in same docker network as prometheus)
 remote_write:
-  - url: http://localhost:9009/api/v1/push
+  - url: http://mimir:9009/api/v1/push
+
+---------------
+START CONTAINER
+---------------
+NOTE: Used the same docker network as mimir
 
 # Start Prometheus container
 docker run ^
     --name prometheus ^
     -d
+    --network grafanet ^
     -p 9090:9090 ^
     -v D:\etc\prometheus\prometheus.yml:/etc/prometheus/prometheus.yml ^
     -v prometheus-data:/prometheus ^
