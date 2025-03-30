@@ -3,6 +3,9 @@ https://grafana.com/docs/grafana/latest/setup-grafana/installation/docker/
 docker pull grafana/grafana:11.6.0
 docker pull grafana/grafana-enterprise:11.6.0
 
+------------------------------------
+START WITH DOCKER VOLUME FOR DATA
+------------------------------------
 # create a persistent volume for your data
 docker volume create grafana-storage
 
@@ -10,11 +13,32 @@ docker volume create grafana-storage
 # you should see some JSON output
 docker volume inspect grafana-storage
 
-# start grafana
-docker run -d -p 3000:3000 --name=grafana \
-  --volume grafana-storage:/var/lib/grafana \
-  grafana/grafana-enterprise
+# start grafana with docker volume
+docker run -d -p 3000:3000 --name=grafana ^
+  --volume grafana-storage:/var/lib/grafana ^
+  grafana/grafana-enterprise:11.6.0
 
+------------------------------------
+START WITH A DIRECTORY FOR DATA
+------------------------------------
+# create a directory for your data
+mkdir D:\etc\grafana\data
+
+# start grafana with your user id and using the data directory
+docker run -d -p 3000:3000 --name=grafana ^
+  --volume "D:\etc\grafana\data:/var/lib/grafana" ^
+  grafana/grafana-enterprise:11.6.0
+
+# Linux (user thing)
+# start grafana with your user id and using the data directory
+docker run -d -p 3000:3000 --name=grafana ^
+  --user "$(id -u)" ^
+  --volume "D:\etc\grafana\data:/var/lib/grafana" ^
+  grafana/grafana-enterprise:11.6.0
+
+---------------------------------------
+START WITHOUT STORAGE VOLUME FOR DATA
+---------------------------------------
 # starting without storage volume
-##docker run -d -p 3000:3000 --name=grafana grafana/grafana-enterprise
-##docker run -d -p 3000:3000 --name=grafana grafana/grafana-enterprise
+##docker run -d -p 3000:3000 --name=grafana grafana/grafana-enterprise:11.6.0
+##docker run -d -p 3000:3000 --name=grafana grafana/grafana-enterprise:11.6.0
