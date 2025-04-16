@@ -1,0 +1,131 @@
+=========================================
+PAGE BY ID
+=========================================
+from atlassian import Confluence
+
+confluence = Confluence(
+    url='https://your-confluence-instance.atlassian.net',
+    username='your-email@example.com',
+    password='your-api-token'
+)
+
+page_id = '123456'
+page = confluence.get_page_by_id(page_id, expand='version')
+latest_version = page['version']['number']
+print(f"Latest page version: {latest_version}")
+
+=========================================
+ATTACHMENTS FROM CONTENT
+=========================================
+from atlassian import Confluence
+import requests
+
+confluence = Confluence(
+    url='https://your-confluence-instance.atlassian.net',
+    username='your-email@example.com',
+    password='your-api-token'
+)
+
+page_id = '123456'
+attachments = confluence.get_attachments_from_content(page_id=page_id, start=0, limit=500)['results']
+
+for attachment in attachments:
+    download_link = confluence.url + attachment['_links']['download']
+    response = requests.get(download_link, auth=(confluence.username, confluence.password))
+    with open(attachment['title'], 'wb') as file:
+        file.write(response.content)
+    print(f"Downloaded {attachment['title']}")
+
+
+=========================================
+ATTACHMENTS THAT ARE ACTUALLY USED
+=========================================
+Identifying unused attachments in Confluence using the REST API involves checking if attachments are referenced in any page content. 
+Unfortunately, Confluence does not provide a direct API endpoint for this purpose. 
+However, you can use a combination of API calls and custom scripts to achieve this.
+--------
+Non Programmatic:
+--------
+https://community.atlassian.com/forums/Confluence-questions/How-to-see-which-attachments-are-in-use-and-which-not/qaq-p/1085686
+https://marketplace.atlassian.com/apps/1237051?tab=overview&hosting=cloud
+https://marketplace.atlassian.com/apps/1236523?tab=overview&hosting=cloud
+
+--------
+Manual Check: You can manually check each page to see if the attachments are being used. This is time-consuming and not practical for large spaces.
+--------
+Using Add-ons: There are add-ons available in the Atlassian Marketplace that can help you manage and identify unused attachments. For example:
+
+Attachment Manager by Easy Apps: This add-on allows you to filter attachments by visibility, version, and more1.
+Confluentis Unused Attachments: This plugin scans the Confluence database to identify unused attachments2.
+Custom Scripts: If you have development resources, you can write custom scripts using the Confluence REST API to identify unused attachments. 
+This would involve checking each attachment to see if it is referenced in any page content.
+
+------------------------------------------------
+Here's a general approach: (PROGRAMMATIC)
+------------------------------------------------
+
+Fetch All Attachments: Use the REST API to fetch all attachments for a given space or page.
+Check References: For each attachment, check if it is referenced in any page content.
+Here's an example script to get you started:
+
+import requests
+
+confluence_url = 'https://your-confluence-instance.atlassian.net'
+username = 'your-email@example.com'
+api_token = 'your-api-token'
+
+# Function to get all attachments for a page
+def get_attachments(page_id):
+    url = f"{confluence_url}/rest/api/content/{page_id}/child/attachment"
+    response = requests.get(url, auth=(username, api_token))
+    return response.json()['results']
+
+# Function to check if an attachment is referenced in page content
+def is_attachment_used(page_id, attachment_title):
+    url = f"{confluence_url}/rest/api/content/{page_id}?expand=body.storage"
+    response = requests.get(url, auth=(username, api_token))
+    page_content = response.json()['body']['storage']['value']
+    return attachment_title in page_content
+
+# Example usage
+page_id = '123456'
+attachments = get_attachments(page_id)
+unused_attachments = []
+
+for attachment in attachments:
+    if not is_attachment_used(page_id, attachment['title']):
+        unused_attachments.append(attachment['title'])
+
+print(f"Unused attachments: {unused_attachments}")
+
+
+
+=========================================
+THIS IS NOT GOOD ENOUGH
+=========================================
+To get only the latest versions of attachments using the atlassian-python-api package, 
+you can use the expand='version' parameter when fetching the attachments. 
+Here's an example:
+
+from atlassian import Confluence
+
+confluence = Confluence(
+    url='https://your-confluence-instance.atlassian.net',
+    username='your-email@example.com',
+    password='your-api-token'
+)
+
+page_id = '123456'
+attachments = confluence.get_attachments_from_content(page_id=page_id, expand='version')
+
+latest_versions = []
+for attachment in attachments['results']:
+    latest_version = attachment['version']['number']
+    latest_versions.append({
+        'title': attachment['title'],
+        'version': latest_version,
+        'download_link': confluence.url + attachment['_links']['download']
+    })
+
+for attachment in latest_versions:
+    print(f"Title: {attachment['title']}, Version: {attachment['version']}, Download Link: {attachment['download_link']}")
