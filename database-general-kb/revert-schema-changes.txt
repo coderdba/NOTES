@@ -1,0 +1,26 @@
+Reverting from schema changes
+Snapshot - Database Snapshots (SQL Server) - SQL Server | Microsoft Learn
+Option 1:  Reconstruct only required tables/indexes querying their structure and data from the snapshot
+This is more advantageous than option2 as we wont lose whole databases' changes when we revert
+Also, we can rename the current table (which underwent schema change), reconstruct the table and data using snapshot, and also try recover some or all changes to data from the renamed table
+Option 2:  Revert the whole DB to the state of the snapshot taken earlier
+Schema changes and data-add/modify/delete done after snapshot was created will be lost
+Point in time recovery - using the full, incremental and log backups
+This is recovering using backups regularly taken
+Does not need taking snapshot (snapshot needs time to create and uses disk space)
+Exact time and disk space needs to be experimented
+Disadvantages:
+It takes much time to restore and the whole database reverts to a point in time
+Another option:
+Backup (I guess export) just the affected tables with data before schema changes, with apps accessing that table stopped
+To revert, use techniques like those in option1 mentioned above
+Debug log for stored procedures:
+If the users have read-access to stored procedure code (in addition to execute privilege), they can use SSMS to debug: Debugging stored procedures in SQL Server Management Studio (SSMS)
+Other than this, I am not aware where we can turn a "debug mode" on 
+Alternative:  Create a sort of 'turn on debug'
+Add many "print" statements in the stored proc code
+Create a table stored_proc_debug_mode with stored proc name and debug flag
+Set that debug flag as needed
+Make whichever is 'debug' type to print based on an if then else condition based on that setting
+View the logs with normal and debug 'prints' 
+I hope this helps!
