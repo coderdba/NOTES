@@ -41,6 +41,86 @@ API KEY: lksjdlskjfls
 API Version: 2024-08-01-preview
 Base Model: gpt-4o-mini
 
+================================
+APP - CHATBOT
+================================
+localhost --> apps (localhost/apps)
+Choose chatbot
+Name: chat-norag1
+Description: chatbot1 without rag
 
+================================
+TOOL - CUSTOM TOOL
+================================
+
+How it works:
+- It creates a tool by transparently writing wrapper around APIs
+- Give Dify the API spec in OpenAPI format
+- Give it the credentials (API Key)
+- Then it will create the tool wrapper implicitly and publish as a tool
+
+API:
+- The chat-azureopenai - chat-hist-05-agent-supervisor-lg-pg multi-function agentic AI API
+- NOTE: If API is running on the same machine, and Dify is docker based, then use host.docker.internal to access the host address (localhost does not work)
+
+- OpenAPI spec: (YML)
+
+openapi: "3.0.0"
+info:
+  version: "1.0.0"
+  title: "Query API"
+  description: "API for querying data"
+servers:
+  - url: "http://host.docker.internal:5101"
+paths:
+  /query:
+    get:
+      summary: "Query data"
+      description: "Returns data based on the query parameter"
+      parameters:
+        - name: "query"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+          description: "The query string"
+      responses:
+        200:
+          description: "Successful response"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  data:
+                    type: "array"
+                    items:
+                      type: "object"
+        400:
+          description: "Invalid query parameter"
+        500:
+          description: "Internal server error"
+
+
+--------------------
+STEPS
+--------------------
+Main page --> Tools --> Custom
+--> Create custom tool
+- Name = chat-hist-05-agent-supervisor-lg-pg
+- OpenAPI spec = as above
+- Authorization = none
+- Other fields = blanks
+
+It will read the endpoints from spec and add 'tools':
+Available Tools
+Name	    Description                              	Method	Path	  Actions
+query_get	Returns data based on the query parameter	get	    /query	Test (to test)
+
+Do a test.
+Paramter  Value
+query     where is usa located
+
+You should see the output from the API.
 
 
