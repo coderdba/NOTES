@@ -73,7 +73,7 @@ This installed the following versions:
 STEPS:
 
 npx create-next-app@latest
-√ What is your project named? ... gowrish-nextjs-learn01
+√ What is your project named? ... myapp
 √ Would you like to use TypeScript? ... No / Yes
 √ Would you like to use ESLint? ... No / Yes
 √ Would you like to use Tailwind CSS? ... No / Yes
@@ -81,7 +81,7 @@ npx create-next-app@latest
 √ Would you like to use App Router? (recommended) ... No / Yes
 √ Would you like to use Turbopack for `next dev`? ... No / Yes
 √ Would you like to customize the import alias (`@/*` by default)? ... No / Yes
-Creating a new Next.js app in C:\Users\GSM078\CODE-MAERSK\git-maersk\gowrish\gowrish-nextjs-learn01.
+Creating a new Next.js app in C:\Users\myuser\mygit\myapp.
 
 Using npm.
 
@@ -111,7 +111,7 @@ added 374 packages, and audited 375 packages in 3m
 found 0 vulnerabilities
 Initialized a git repository.
 
-Success! Created gowrish-nextjs-learn01 at C:\Users\GSM078\CODE-MAERSK\git-maersk\gowrish\gowrish-nextjs-learn01
+Success! Created gowrish-nextjs-learn01 at C:\Users\myuser\mygit\myapp
 
 ========================
 CREATE THE APP - OLD
@@ -131,7 +131,7 @@ Ok to proceed? (y) y
 √ Would you like to use `src/` directory? ... No / Yes --> default is no, choose yes 
 √ Would you like to use App Router? (recommended) ... No / Yes
 √ Would you like to customize the default import alias (@/*)? ... No / Yes
-Creating a new Next.js app in C:\Users\GSM078\CODE-MAERSK\git-maersk\gowrish\gowrish-nextjs-portal01\app.
+Creating a new Next.js app in C:\Users\myuser\mygit\app.
 
 Using npm.
 
@@ -171,8 +171,7 @@ To address all issues, run:
   npm audit fix --force
 
 Run `npm audit` for details.
-Success! Created app at C:\Users\GSM078\CODE-MAERSK\git-maersk\gowrish\gowrish-nextjs-portal01\app
-
+Success! Created app at C:\Users\myuser\mygit\app
 npm notice
 npm notice New major version of npm available! 10.9.2 -> 11.3.0
 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.3.0
