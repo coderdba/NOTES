@@ -111,7 +111,7 @@ added 374 packages, and audited 375 packages in 3m
 found 0 vulnerabilities
 Initialized a git repository.
 
-Success! Created gowrish-nextjs-learn01 at C:\Users\myuser\mygit\myapp
+Success! Created myapp at C:\Users\myuser\mygit\myapp
 
 ========================
 CREATE THE APP - OLD
