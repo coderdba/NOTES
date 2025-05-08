@@ -1,0 +1,41 @@
+===============================
+"DOWN" SYSTEMS
+===============================
+count(count by (node_name) (max_over_time(up{cloud_service="google_cloud_vmware_engine"}[24h])) 
+unless 
+count by (node_name) (max_over_time(up{cloud_service="google_cloud_vmware_engine"}[5m]))) 
+or vector(0)
+
+------------------
+EXPLANATION
+------------------
+Expression Breakdown
+
+up{cloud_service="google_cloud_vmware_engine"}:
+This part of the query selects the up metric, which typically indicates whether a service is up (1) or down (0). The filter {cloud_service="google_cloud_vmware_engine"} restricts the results to only those instances that are part of the Google Cloud VMware Engine.
+
+max_over_time(...[24h]):
+This function calculates the maximum value of the up metric over the last 24 hours for each time series. If the service was up at any point in the last 24 hours, this will return 1; otherwise, it will return 0.
+
+count by (node_name)(...):
+This counts the number of time series (or instances) for each node_name that have a maximum value over the last 24 hours. Essentially, it tells you how many nodes have been up at least once in the last 24 hours.
+
+max_over_time(...[5m]):
+Similar to the previous max_over_time, but this one looks at the maximum value over the last 5 minutes. This will return 1 if the service is currently up and 0 if it is down.
+
+count by (node_name)(...):
+This counts the number of time series (or instances) for each node_name that have been up in the last 5 minutes.
+
+unless:
+The unless operator is used to exclude the results of the second count from the first count. In this case, it means that we are interested in nodes that were up in the last 24 hours but are not currently up in the last 5 minutes.
+
+count(...):
+The outer count function counts the number of nodes that meet the criteria defined by the previous operations.
+
+or vector(0):
+This part ensures that if there are no nodes that meet the criteria (i.e., the count is zero), the query will return a value of 0 instead of no data. The vector(0) creates a single-element vector with a value of 0.
+
+Summary
+Putting it all together, this PromQL query counts the number of nodes in the Google Cloud VMware Engine that were up at least once in the last 24 hours but are currently down (not up in the last 5 minutes). If there are no such nodes, it will return 0.
+
+This can be useful for monitoring the availability of your services and identifying nodes that may have gone down recently after being operational.
