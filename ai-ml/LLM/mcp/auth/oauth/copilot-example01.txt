@@ -1,0 +1,39 @@
+Here's a working example of using OAuth with AuthSettings in the MCP Python SDK, based on a GitHub example server that integrates GitHub OAuth2:
+
+✅ Example: MCP Server with GitHub OAuth
+
+from mcp.server.fastmcp import FastMCP
+from mcp.auth import AuthSettings
+from mcp.auth.oauth import OAuthProvider
+
+# Configure OAuth provider (e.g., GitHub)
+oauth_provider = OAuthProvider(
+    client_id="your_github_client_id",
+    client_secret="your_github_client_secret",
+    authorize_url="https://github.com/login/oauth/authorize",
+    token_url="https://github.com/login/oauth/access_token",
+    user_info_url="https://api.github.com/user",
+    scopes=["read:user", "user:email"],
+    redirect_uri="http://localhost:8000/auth/callback"
+)
+
+# Wrap in AuthSettings
+auth_settings = AuthSettings(provider=oauth_provider)
+
+# Create the MCP server with OAuth authentication
+mcp = FastMCP("OAuthMCPServer", auth=auth_settings)
+
+@mcp.tool()
+def get_user_profile(user: dict) -> str:
+    """Returns the authenticated user's GitHub login."""
+    return f"Authenticated as: {user.get('login', 'unknown')}"
+
+  
+
+🔧 Notes:
+Replace client_id and client_secret with your GitHub OAuth app credentials.
+The redirect_uri must match what you configured in your GitHub OAuth app.
+The user_info_url is used to fetch the authenticated user's profile after login.
+This setup allows your MCP server to authenticate users via GitHub and pass their identity into tools.
+
+Would you like help setting this up locally or deploying it somewhere like Render or Fly.io?
