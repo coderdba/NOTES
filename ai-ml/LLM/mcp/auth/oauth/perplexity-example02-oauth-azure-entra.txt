@@ -1,0 +1,93 @@
+===============================================================
+OAUTH WITH AZURE APP REGISTRATION / ENTRA
+===============================================================
+Can you modify the above server program to accommodate an azure app registration as the client identifier
+
+https://fastapi.tiangolo.com/tutorial/security/simple-oauth2/
+https://fastapi.tiangolo.com/tutorial/security/simple-oauth2/
+https://learn.microsoft.com/en-us/azure/healthcare-apis/register-application
+https://intility.github.io/fastapi-azure-auth/usage-and-faq/calling_your_apis_from_python/
+
+To modify your MCP server program to use Azure App Registration as the client identifier (i.e., authenticate using Microsoft Entra ID/Azure AD), you should:
+
+Register your API in Azure (get the Application (client) ID and Directory (tenant) ID).
+
+Use a library like fastapi-azure-auth for easy and secure Azure AD authentication in FastAPI.
+
+Protect your endpoints with the Azure authentication dependency, referencing your Azure App Registration’s client ID.
+
+Below is a complete FastAPI server example using Azure App Registration for OAuth2 authentication. This code uses the fastapi-azure-auth package for simplicity and follows best practices.
+
+1. Install Required Packages
+pip install fastapi uvicorn fastapi-azure-auth
+
+2. Set up Azure App Registration
+Go to Azure Portal → Azure Active Directory → App registrations.
+
+Register a new application (single-tenant or multi-tenant as needed).
+
+Note the Application (client) ID and Directory (tenant) ID.
+
+Under Expose an API, add a scope (e.g., user_impersonation).
+
+Under Authentication, add your redirect URIs as needed.
+
+3. Create server.py
+import os
+from fastapi import FastAPI, Depends
+from fastapi_azure_auth import SingleTenantAzureAuthorizationCodeBearer
+
+# Set these as environment variables or hardcode for testing
+CLIENT_ID = os.getenv("AZURE_CLIENT_ID", "your-azure-client-id")
+TENANT_ID = os.getenv("AZURE_TENANT_ID", "your-azure-tenant-id")
+
+azure_scheme = SingleTenantAzureAuthorizationCodeBearer(
+    app_client_id=CLIENT_ID,
+    tenant_id=TENANT_ID,
+    scopes={f'api://{CLIENT_ID}/user_impersonation': 'user_impersonation'},
+)
+
+app = FastAPI(
+    swagger_ui_oauth2_redirect_url='/oauth2-redirect',
+    swagger_ui_init_oauth={
+        'usePkceWithAuthorizationCodeGrant': True,
+        'clientId': CLIENT_ID,
+    },
+)
+
+@app.get("/")
+def root():
+    return {"message": "MCP OAuth2 Server with Azure App Registration is running."}
+
+@app.post("/tools/secure_echo")
+async def secure_echo(data: dict, user=Depends(azure_scheme)):
+    message = data.get("message", "")
+    # user contains claims from the Azure token
+    return {"echo": message, "user": user.get("preferred_username", "unknown")}
+
+# To run: uvicorn server:app --reload
+
+
+4. How it Works
+The SingleTenantAzureAuthorizationCodeBearer dependency validates incoming tokens against your Azure App Registration.
+
+The /tools/secure_echo endpoint is protected: only requests with a valid Azure AD access token (for your app) are allowed.
+
+The client must obtain a token from Azure AD using your app’s client ID and include it as a Bearer token in requests.
+
+5. References & Further Reading
+fastapi-azure-auth documentation for multi-tenant, B2C, and advanced scenarios.
+- https://intility.github.io/fastapi-azure-auth/
+
+Microsoft: Register a client application in Microsoft Entra ID.
+- https://learn.microsoft.com/en-us/azure/healthcare-apis/register-application
+
+Summary Table
+
+Setting	Value from Azure Portal
+CLIENT_ID	Application (client) ID
+TENANT_ID	Directory (tenant) ID
+Scope	api://{CLIENT_ID}/user_impersonation
+
+This setup ensures your MCP server authenticates requests using Azure App Registration as the client identifier, leveraging Microsoft Entra ID for secure OAuth2 flows.
+
