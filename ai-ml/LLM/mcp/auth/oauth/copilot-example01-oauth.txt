@@ -1,3 +1,7 @@
+==============================
+OAUTH WITH GITHUB
+==============================
+
 Here's a working example of using OAuth with AuthSettings in the MCP Python SDK, based on a GitHub example server that integrates GitHub OAuth2:
 
 ✅ Example: MCP Server with GitHub OAuth
@@ -37,3 +41,142 @@ The user_info_url is used to fetch the authenticated user's profile after login.
 This setup allows your MCP server to authenticate users via GitHub and pass their identity into tools.
 
 Would you like help setting this up locally or deploying it somewhere like Render or Fly.io?
+
+-----------------------------------------
+MORE COMPLETE SERVER PROGRAM
+-----------------------------------------
+Can you give a more complete server program?  The above one is only a snippet
+
+Here’s a complete example of an MCP server using GitHub OAuth with AuthSettings. This includes:
+
+- OAuth configuration
+- A simple tool that returns the authenticated user's GitHub login
+- Server startup
+
+from mcp.server.fastmcp import FastMCP
+from mcp.auth import AuthSettings
+from mcp.auth.oauth import OAuthProvider
+from fastapi.middleware.cors import CORSMiddleware
+
+# OAuth configuration for GitHub
+oauth_provider = OAuthProvider(
+    client_id="your_github_client_id",
+    client_secret="your_github_client_secret",
+    authorize_url="https://github.com/login/oauth/authorize",
+    token_url="https://github.com/login/oauth/access_token",
+    user_info_url="https://api.github.com/user",
+    scopes=["read:user", "user:email"],
+    redirect_uri="http://localhost:8000/auth/callback"
+)
+
+# Wrap in AuthSettings
+auth_settings = AuthSettings(provider=oauth_provider)
+
+# Create the MCP server
+mcp = FastMCP(
+    name="OAuthMCPServer",
+    description="An MCP server secured with GitHub OAuth",
+    auth=auth_settings
+)
+
+# Optional: Add CORS middleware if you're testing from a browser
+mcp.app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Define a tool that uses the authenticated user info
+@mcp.tool()
+def whoami(user: dict) -> str:
+    """Returns the GitHub username of the authenticated user."""
+    return f"You are logged in as: {user.get('login', 'unknown')}"
+
+# Run the server
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(mcp.app, host="0.0.0.0", port=8000)
+
+
+Setup Instructions:
+
+Create a GitHub OAuth App:
+Go to GitHub Developer Settings
+Set the Authorization callback URL to http://localhost:8000/auth/callback
+
+Install dependencies:
+pip install mcp fastapi uvicorn
+
+Run the server:
+python server.py
+
+Test it:
+Visit http://localhost:8000/docs to see the Swagger UI.
+Authenticate via GitHub when prompted.
+
+---------------------------------
+FURTHER FIXED PROGRAM BY COPILOT
+---------------------------------
+It looks like there was a syntax issue while generating the file — specifically with the docstring inside the whoami function. Let me fix that and regenerate the file for you.
+
+Analysis
+Here is your complete MCP server implementation with GitHub OAuth authentication:
+
+📄 Download mcp_server_with_github_oauth.py
+
+You can now:
+
+Replace the placeholder client_id and client_secret with your GitHub OAuth app credentials.
+
+Run the server using:
+python mcp_server_with_github_oauth.py
+
+=========================================
+TESTING THE SERVER LOCALLY
+=========================================
+To test your MCP server with GitHub OAuth locally, follow these steps:
+
+Step 1: Create a GitHub OAuth App
+Go to GitHub Developer Settings.
+Click "New OAuth App".
+Fill in:
+Application name: e.g., MCP OAuth Server
+Homepage URL: http://localhost:8000
+Authorization callback URL: http://localhost:8000/auth/callback
+After creating the app, copy the Client ID and Client Secret.
+
+Step 2: Update Your Server Code
+Open mcp_server_with_github_oauth.py and replace:
+client_id="your_github_client_id",
+client_secret="your_github_client_secret",
+
+with your actual credentials from GitHub.
+
+Step 3: Install Required Packages
+Make sure you have the necessary Python packages installed:
+pip install mcp fastapi uvicorn python-dotenv
+
+Step 4: Run the Server
+Start the server:
+python mcp_server_with_github_oauth.py
+
+You should see output like:
+INFO:     Uvicorn running on http://0.0.0.0:8000
+
+Step 5: Test the Server
+Open your browser and go to: http://localhost:8000/docs
+Click the /whoami endpoint.
+Click "Authorize" — this will redirect you to GitHub to log in.
+After logging in, GitHub will redirect you back to your server.
+You can now call the whoami tool and see your GitHub username returned.
+
+
+
+
+
+
+
+
+
