@@ -1,0 +1,107 @@
+===============
+SERVER
+===============
+I need a python example for mcp server with authsettings
+
+Example: MCP Server in Python with Authentication Settings
+The official MCP Python SDK provides a flexible way to build MCP servers, but by default, authentication is not enabled out-of-the-box in the simplest examples. However, the SDK and related documentation suggest that you can configure authentication (such as API keys or OAuth) by adjusting the server's initialization parameters or by integrating with external authentication middleware.
+
+Below is a sample Python MCP server using the FastMCP class, with a placeholder for authentication settings. You can adapt this for your needs by plugging in your preferred authentication mechanism.
+
+
+=== CODE
+
+from mcp.server.fastmcp import FastMCP
+
+# Example: Adding authentication settings via custom middleware or config
+def authenticate(request):
+    # Replace this logic with your actual authentication (API key, OAuth, etc.)
+    api_key = request.headers.get("x-api-key")
+    if api_key != "your-secret-key":
+        raise PermissionError("Unauthorized")
+
+# Initialize the MCP server with custom auth (pseudo-code for illustration)
+mcp = FastMCP(
+    name="SecureMCPServer",
+    stateless_http=True,
+    # If the SDK exposes an authsettings or middleware parameter, use it here
+    # Example: authsettings={"api_key": "your-secret-key"}  # (Pseudo-code)
+)
+
+# Example tool with authentication check
+@mcp.tool(description="A secure echo tool")
+def secure_echo(message: str, request=None) -> str:
+    authenticate(request)
+    return f"Echo: {message}"
+
+if __name__ == "__main__":
+    mcp.run()
+
+====
+
+Notes:
+
+The actual method to inject authentication (such as authsettings or middleware) may depend on the version of the SDK and your transport (HTTP, stdio, etc.). The SDK currently does not document a direct authsettings parameter, so you may need to implement authentication as a decorator or middleware around your tool/resource functions.
+
+For HTTP servers, you can check headers or tokens in the request object. For stdio or other transports, you might handle authentication at the session or message level.
+
+For production use, consider integrating with OAuth or API key management as shown in cloud deployment samples.
+
+References for Further Customization
+Official MCP Python SDK examples - https://github.com/modelcontextprotocol/python-sdk
+DigitalOcean MCP server tutorial - https://www.digitalocean.com/community/tutorials/mcp-server-python
+Azure Functions MCP server with built-in auth - https://learn.microsoft.com/en-us/samples/azure-samples/remote-mcp-functions-python/remote-mcp-functions-python/
+
+If you need a specific authentication method (e.g., OAuth2, JWT, API Key), provide more details and I can tailor the code accordingly.
+
+============
+CLIENT
+============
+Can you give a client program in python that calls this server tool?
+
+Absolutely! Here’s a simple Python client that calls the secure_echo tool on your MCP server, passing the required API key for authentication. This example assumes your MCP server is running locally on the default HTTP port (8000) and you’re using HTTP transport.
+
+Python MCP Client Example
+
+=== CODE
+import requests
+
+# MCP server URL and endpoint for the tool
+MCP_SERVER_URL = "http://localhost:8000/tools/secure_echo"
+API_KEY = "your-secret-key"  # Must match the server's expected key
+
+def call_secure_echo(message):
+    headers = {
+        "x-api-key": API_KEY,  # Custom header for authentication
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "message": message
+    }
+    response = requests.post(MCP_SERVER_URL, json=payload, headers=headers)
+    if response.status_code == 200:
+        print("Server response:", response.json())
+    else:
+        print(f"Error {response.status_code}: {response.text}")
+
+if __name__ == "__main__":
+    call_secure_echo("Hello from the client!")
+    
+===
+
+How it works:
+The client sends a POST request to the /tools/secure_echo endpoint.
+
+The request includes the x-api-key header for authentication.
+
+The server validates the key and, if correct, echoes the message.
+
+Troubleshooting
+Ensure the server is running and accessible at localhost:8000.
+
+The endpoint path (/tools/secure_echo) may differ based on your server setup. Adjust if necessary.
+
+The API key in the client must match the one expected by the server.
+
+Let me know if you need an example for a different transport (e.g., stdio, websocket) or want to use a different authentication method!
+
