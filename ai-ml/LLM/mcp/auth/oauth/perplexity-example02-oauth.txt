@@ -1,0 +1,224 @@
+=========================
+SERVER
+=========================
+Can you give an oauth example of mcp in python?
+
+Answer 
+- https://github.com/modelcontextprotocol/python-sdk
+- https://modelcontextprotocol.io/specification/2025-03-26
+- https://modelcontextprotocol.io/specification/2025-03-26/basic/authorization
+- https://blog.cloudflare.com/nl-nl/remote-model-context-protocol-servers-mcp/
+
+Python MCP OAuth Example
+Below is a concise example of how to implement OAuth 2.1 in a Python MCP client and server context, following the latest MCP specification. This example demonstrates the key steps: client registration, authorization code flow (with PKCE), and token exchange. It assumes you are using an HTTP-based MCP server that supports OAuth endpoints as per the spec.
+
+1. MCP Server (OAuth endpoints)
+If you're using an MCP server framework, you will need to expose OAuth endpoints (/authorize, /token) and integrate with an OAuth provider (such as Auth0, Google, or GitHub). Many MCP server implementations or frameworks provide this, or you can use middleware such as authlib in Python.
+
+Example server snippet (using FastAPI and Authlib):
+from fastapi import FastAPI, Request
+from authlib.integrations.starlette_client import OAuth
+
+app = FastAPI()
+oauth = OAuth()
+
+# Register your OAuth provider (e.g., Auth0)
+oauth.register(
+    name='auth0',
+    client_id='YOUR_CLIENT_ID',
+    client_secret='YOUR_CLIENT_SECRET',
+    server_metadata_url='https://YOUR_DOMAIN/.well-known/openid-configuration',
+    client_kwargs={'scope': 'openid profile email'},
+)
+
+@app.get('/authorize')
+async def authorize(request: Request):
+    redirect_uri = request.url_for('auth')
+    return await oauth.auth0.authorize_redirect(request, redirect_uri)
+
+@app.get('/auth')
+async def auth(request: Request):
+    token = await oauth.auth0.authorize_access_token(request)
+    user = await oauth.auth0.parse_id_token(request, token)
+    # Issue your own MCP token here, bind to user session
+    return {"access_token": token['access_token'], "user": user}
+
+@app.post('/token')
+async def token(request: Request):
+    # Implement token exchange logic here
+    ...
+
+This is a minimal example. In production, you should handle session management, error handling, and secure token storage as per the MCP spec. (ref 3,4,5)
+
+2. MCP Client (OAuth 2.1 Flow with PKCE)
+The client must:
+
+Discover the server's OAuth endpoints (metadata discovery)
+
+Register itself (Dynamic Client Registration, if supported)
+
+Initiate the OAuth Authorization Code flow with PKCE
+
+Exchange the code for an access token
+
+Use the token in subsequent MCP requests
+
+Example client using requests and requests_oauthlib:
+
+from requests_oauthlib import OAuth2Session
+
+# Discover endpoints (metadata discovery)
+MCP_SERVER = "https://your-mcp-server.com"
+metadata = requests.get(f"{MCP_SERVER}/.well-known/oauth-authorization-server").json()
+authorization_base_url = metadata['authorization_endpoint']
+token_url = metadata['token_endpoint']
+
+client_id = 'YOUR_CLIENT_ID'
+redirect_uri = 'http://localhost:8000/auth/callback'
+scope = ['openid', 'profile', 'email']
+
+# PKCE support
+oauth = OAuth2Session(client_id, redirect_uri=redirect_uri, scope=scope, code_challenge_method='S256')
+
+# Step 1: Redirect user to MCP server's /authorize endpoint
+authorization_url, state = oauth.authorization_url(authorization_base_url)
+print("Go to the following URL and authorize:", authorization_url)
+
+# Step 2: After user authorizes, MCP server redirects to your redirect_uri with a code
+# You need to capture the code from the redirect (in a web app, this is a route handler)
+redirect_response = input("Paste the full redirect URL here: ")
+
+# Step 3: Exchange code for token
+token = oauth.fetch_token(token_url, authorization_response=redirect_response, client_secret='YOUR_CLIENT_SECRET')
+
+print("Access token:", token['access_token'])
+
+# Step 4: Use the access token in your MCP requests
+headers = {"Authorization": f"Bearer {token['access_token']}"}
+response = requests.post(f"{MCP_SERVER}/tools/secure_echo", json={"message": "Hello, OAuth!"}, headers=headers)
+print(response.json())
+
+
+Key Points
+PKCE is required for security in OAuth 2.1 flows.
+
+Metadata Discovery allows the client to find OAuth endpoints automatically.
+
+Dynamic Client Registration can be used for seamless onboarding if the server supports it.
+
+Third-party providers (Auth0, Google, GitHub) can be integrated via the server, which issues its own tokens to the client.
+
+The MCP spec encourages using OAuth 2.1 with PKCE, metadata discovery, and dynamic client registration for secure, user-friendly authorization.
+
+If you need a full working demo or want to see how to wire this up with a specific MCP server framework, let me know your stack and I can provide a more tailored example.
+
+---------------------------------------------------------------
+MORE COMPLETE PROGRAM
+---------------------------------------------------------------
+Can you give a more complete server code? The code you have given is partial
+
+Absolutely! Here’s a complete example of an MCP-like server in Python that uses OAuth 2.0 for authentication, using FastAPI and Authlib. This example demonstrates:
+
+How to protect your MCP tool endpoint with OAuth2.
+
+How to set up OAuth2 with Authlib and FastAPI.
+
+How to verify access tokens on incoming requests.
+
+This example uses Auth0 as the OAuth provider, but you can adapt it to any provider that supports OpenID Connect.
+
+Complete Python MCP Server with OAuth2 (FastAPI + Authlib)
+
+1. Install dependencies
+pip install fastapi uvicorn authlib python-dotenv
+
+2. .env file (for secrets)
+AUTH0_DOMAIN=your-auth0-domain.auth0.com
+AUTH0_CLIENT_ID=your-client-id
+AUTH0_CLIENT_SECRET=your-client-secret
+API_AUDIENCE=your-api-audience
+
+3. server.py
+import os
+from fastapi import FastAPI, Depends, HTTPException, status, Request
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from dotenv import load_dotenv
+from authlib.jose import jwt, JoseError
+import requests
+
+load_dotenv()
+
+AUTH0_DOMAIN = os.getenv("AUTH0_DOMAIN")
+API_AUDIENCE = os.getenv("API_AUDIENCE")
+
+app = FastAPI()
+bearer_scheme = HTTPBearer()
+
+# Get JWKS for Auth0 domain
+JWKS_URL = f"https://{AUTH0_DOMAIN}/.well-known/jwks.json"
+jwks = requests.get(JWKS_URL).json()
+
+def get_public_key(token):
+    header = jwt.get_unverified_header(token)
+    for key in jwks["keys"]:
+        if key["kid"] == header["kid"]:
+            return key
+    raise Exception("Public key not found.")
+
+def verify_jwt_token(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
+    token = credentials.credentials
+    try:
+        key = get_public_key(token)
+        claims = jwt.decode(token, key)
+        claims.validate()
+        # Optionally check audience
+        if API_AUDIENCE not in claims["aud"]:
+            raise HTTPException(status_code=403, detail="Invalid audience")
+        return claims
+    except (JoseError, Exception) as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+        )
+
+@app.get("/")
+def root():
+    return {"message": "MCP OAuth2 Server is running."}
+
+@app.post("/tools/secure_echo")
+def secure_echo(request: Request, claims=Depends(verify_jwt_token)):
+    data = await request.json()
+    message = data.get("message")
+    user = claims.get("sub", "unknown user")
+    return {"echo": message, "user": user}
+
+# For development: run with `uvicorn server:app --reload`
+
+
+4. How it works
+The /tools/secure_echo endpoint is protected by OAuth2 Bearer authentication.
+
+The server fetches the JWKS (public keys) from your Auth0 domain and uses them to verify incoming JWTs.
+
+If the token is valid and the audience matches, the request proceeds.
+
+The server echoes the message and returns the user’s subject (sub) from the JWT.
+
+5. Testing
+Get a token from your OAuth provider (Auth0, Google, etc.) and call the endpoint:
+curl -X POST http://localhost:8000/tools/secure_echo \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Hello, OAuth!"}'
+
+
+Notes
+You can use any OAuth2 provider; just adjust the JWKS URL and audience.
+
+This is a minimal, production-grade pattern for OAuth2-protected APIs in Python.
+
+For a real MCP server, you would add more endpoints and MCP-specific logic, but this pattern is the foundation for secure, standards-based authentication.
+
+If you want a full MCP protocol implementation or have a specific provider or workflow in mind, let me know!
+
+
