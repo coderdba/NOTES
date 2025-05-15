@@ -12,7 +12,7 @@ SELECT TOP(15) qs.sql_handle, qs.plan_handle,
       qs.creation_time AS [Creation Time] , LEFT(t.text, 1000) AS [Partial Query Text] 
       FROM sys.dm_exec_query_stats AS qs WITH (NOLOCK) 
       CROSS APPLY sys.dm_exec_sql_text(plan_handle) AS t 
-      WHERE t.dbid = DB_ID() ORDER BY [Avg Elapsed Time 
+      WHERE t.dbid = DB_ID() ORDER BY [Avg Elapsed Time]
 
 SELECT TOP 5 query_stats.query_hash AS Query_Hash,   
     SUM(query_stats.total_worker_time) / SUM(query_stats.execution_count) AS Avg_CPU_Time,  
