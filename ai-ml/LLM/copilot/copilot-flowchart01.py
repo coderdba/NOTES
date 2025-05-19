@@ -6,15 +6,18 @@ For LLM model use the function llm_init_AzureOpenAi_Langchain() in src/llmfuncti
 To use this code:
 
 Make sure you have required packages:
+pip install python-docx python-dotenv
+
 Place your Word document (mydoc.docx) in the same directory as fc01.py
 
 The code will:
-
 Extract text from the Word document
 Use Azure OpenAI to analyze the text and create a process flow
 Output the flow in a format compatible with draw.io
 Save the result to process_flow.txt
+
 The output format will look like:
+[Start] -> [Process Step 1] -> {Decision Point} -> [Process Step 2] -> [End]
 
 You can then:
 Open draw.io
