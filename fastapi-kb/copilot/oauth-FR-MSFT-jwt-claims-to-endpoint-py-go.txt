@@ -858,7 +858,7 @@ fmt.Println(string(body))
 }
 
 ==============================================================
-FORGEROCK - Dont we need a secret key also for verification?
+Dont we need a secret key also for verification?
 ==============================================================
 🔐 Do You Need a Secret Key for JWT Verification?
 
@@ -879,7 +879,129 @@ The public key is fetched from ForgeRock’s JWKS endpoint and used to verify th
 
 jwt.decode(token, public_key_from_jwks, algorithms=["RS256"])
 
+==============================================================
+How do we know if a jwt is symmetric or asymmetric
+==============================================================
 
+To determine whether a JWT was signed using a symmetric or asymmetric algorithm, you can inspect the header of the decoded JWT.
+
+🔍 Step-by-Step: How to Tell
+A JWT has three parts:
+
+<base64url-encoded header>.<base64url-encoded payload>.<signature>
+
+When you decode the header, you'll see something like this:
+{
+  "alg": "RS256",
+  "typ": "JWT",
+  "kid": "abc123"
+}
+
+
+🔐 Look at the alg (algorithm) field:
+alg Value	Type	Description
+HS256	Symmetric	HMAC using SHA-256 (needs secret)
+RS256	Asymmetric	RSA with SHA-256 (needs public key)
+ES256	Asymmetric	ECDSA with SHA-256
+PS256	Asymmetric	RSASSA-PSS with SHA-256
+
+So:
+If alg is HS256, HS384, or HS512 → symmetric
+If alg is RS256, RS512, ES256, PS256, etc. → asymmetric
+
+✅ Example
+{
+  "alg": "RS256",
+  "typ": "JWT",
+  "kid": "abc123"
+}
+
+This means the token was signed using RS256, which is asymmetric — you verify it using a public key (e.g., from JWKS).
+
+---------------------------------------------------------------------
+🐍 Python Script: Detect JWT Algorithm Type
+---------------------------------------------------------------------
+import base64
+import json
+
+def decode_jwt_header(token):
+    try:
+        header_b64 = token.split('.')[0]
+        # Pad base64 if needed
+        header_b64 += '=' * (-len(header_b64) % 4)
+        header_json = base64.urlsafe_b64decode(header_b64).decode('utf-8')
+        header = json.loads(header_json)
+        alg = header.get("alg", "none")
+
+        print("JWT Header:", json.dumps(header, indent=2))
+
+        if alg.startswith("HS"):
+            print(f"Algorithm: {alg} → Symmetric (HMAC)")
+        elif alg.startswith(("RS", "ES", "PS")):
+            print(f"Algorithm: {alg} → Asymmetric (Public/Private Key)")
+        else:
+            print(f"Algorithm: {alg} → Unknown or unsupported")
+    except Exception as e:
+        print("Error decoding JWT header:", e)
+
+# Example usage
+jwt_token = "your.jwt.token.here"
+decode_jwt_header(jwt_token)
+
+🔧 How to Use:
+Replace "your.jwt.token.here" with your actual JWT.
+Run the script — it will print the decoded header and classify the algorithm.
+
+---------------------------------------------------------------------
+🐍 Python Script: Decode JWT Header & Payload + Algorithm Type
+---------------------------------------------------------------------
+import base64
+import json
+
+def decode_base64url(data):
+    """Decode base64url with padding."""
+    data += '=' * (-len(data) % 4)
+    return base64.urlsafe_b64decode(data).decode('utf-8')
+
+def decode_jwt(token):
+    try:
+        header_b64, payload_b64, _ = token.split('.')
+        
+        header_json = decode_base64url(header_b64)
+        payload_json = decode_base64url(payload_b64)
+
+        header = json.loads(header_json)
+        payload = json.loads(payload_json)
+
+        alg = header.get("alg", "none")
+
+        print("🔐 JWT Header:")
+        print(json.dumps(header, indent=2))
+
+        print("\n📦 JWT Payload:")
+        print(json.dumps(payload, indent=2))
+
+        print("\n🔍 Algorithm Type:")
+        if alg.startswith("HS"):
+            print(f"{alg} → Symmetric (HMAC)")
+        elif alg.startswith(("RS", "ES", "PS")):
+            print(f"{alg} → Asymmetric (Public/Private Key)")
+        else:
+            print(f"{alg} → Unknown or unsupported")
+    except Exception as e:
+        print("❌ Error decoding JWT:", e)
+
+# Example usage
+jwt_token = "your.jwt.token.here"
+decode_jwt(jwt_token)
+
+🔧 How to Use:
+Replace "your.jwt.token.here" with your actual JWT string.
+Run the script — it will print:
+The decoded header
+The decoded payload
+The type of algorithm used (symmetric or asymmetric)
+Would you like a version that also checks expiration (exp) or other standard claims?
 
 
 
