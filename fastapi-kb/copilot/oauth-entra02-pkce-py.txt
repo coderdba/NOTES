@@ -1,0 +1,223 @@
+=====================================================================================================
+Can you give a fastapi python code which does pkce authentication using microsoft entra tokens
+=====================================================================================================
+To implement PKCE authentication in a FastAPI application using Microsoft Entra ID (formerly Azure AD), you can use the fastapi-azure-auth library. 
+This library simplifies integration with Azure Entra ID and supports PKCE out of the box.
+
+Here’s a basic example of how to set it up:
+
+1. Install the required package
+pip install fastapi-azure-auth
+
+2. FastAPI App Setup with PKCE
+from fastapi import FastAPI, Depends
+from fastapi_azure_auth.auth import SingleTenantAzureAuthorizationCodeBearer
+from fastapi_azure_auth.user import User
+
+# Replace with your actual values
+TENANT_ID = "your-tenant-id"
+CLIENT_ID = "your-client-id"
+SCOPES = {f"api://{CLIENT_ID}/user_impersonation": "user_impersonation"}
+
+azure_scheme = SingleTenantAzureAuthorizationCodeBearer(
+    app_client_id=CLIENT_ID,
+    tenant_id=TENANT_ID,
+    scopes=SCOPES,
+)
+
+app = FastAPI(
+    swagger_ui_oauth2_redirect_url="/oauth2-redirect",
+    swagger_ui_init_oauth={
+        "usePkceWithAuthorizationCodeGrant": True,
+        "clientId": CLIENT_ID,
+    },
+)
+
+@app.get("/secure-data")
+async def secure_data(user: User = Depends(azure_scheme)):
+    return {"message": f"Hello, {user.name}!"}
+
+
+3. Azure App Registration Notes
+Register your app in Azure Entra ID.
+Enable the Authorization Code flow with PKCE.
+Set the redirect URI to http://localhost:8000/oauth2-redirect.
+Define the scope user_impersonation under Expose an API.
+
+========================================================================================================
+Would you like a complete working example with environment variables and a .env file setup?
+========================================================================================================
+Here’s a complete FastAPI project setup for PKCE authentication using Microsoft Entra ID (Azure AD), including environment configuration and secure endpoint handling:
+
+Project Files
+.env – for storing your Azure credentials
+main.py – the FastAPI app with PKCE authentication
+requirements.txt – dependencies for the project
+
+Project Files
+.env – for storing your Azure credentials
+main.py – the FastAPI app with PKCE authentication
+requirements.txt – dependencies for the project
+
+TENANT_ID=your-tenant-id
+CLIENT_ID=your-client-id
+
+Install dependencies:
+pip install -r requirements.txt
+
+Run the app:
+uvicorn main:app --reload
+
+Open your browser at http://localhost:8000/docs to test the secured endpoint with PKCE.
+
+=======================================================================================
+Would you like help setting up the Azure App Registration or testing the token flow?
+=======================================================================================
+Here’s a step-by-step guide to register your FastAPI app in Microsoft Entra ID (Azure AD) for PKCE authentication:
+
+Step 1: Sign in to Azure Portal
+Go to https://portal.azure.com and sign in with your Microsoft account.
+
+Step 2: Register a New Application
+Navigate to Microsoft Entra ID (formerly Azure Active Directory).
+
+Click "App registrations" > "New registration".
+
+Fill in the details:
+Name: FastAPI PKCE App
+Supported account types: Choose Single tenant (or multi-tenant if needed).
+Redirect URI:
+Platform: Web
+URI: http://localhost:8000/oauth2-redirect
+Click Register.
+
+Step 3: Configure API Permissions
+Go to API permissions > Add a permission.
+Choose My APIs > your app.
+Select Delegated permissions.
+Add the scope: user_impersonation.
+
+Step 4: Expose an API
+Go to Expose an API.
+Click "Set" for Application ID URI (e.g., api://<client-id>).
+Click "Add a scope":
+Scope name: user_impersonation
+Admin consent display name: Access FastAPI
+Admin consent description: Allow the app to access FastAPI on your behalf
+State: Enabled
+Click Add scope.
+
+Step 5: Enable PKCE
+Go to Authentication.
+Under Platform configurations, ensure Web is configured.
+Check:
+✅ Authorization code flow
+✅ Allow public client flows (if needed)
+✅ Enable the following flows: Authorization code with PKCE
+
+Step 6: Copy Credentials
+From the Overview tab, copy:
+Application (client) ID → use as CLIENT_ID
+Directory (tenant) ID → use as TENANT_ID
+Paste these into your .env file.
+
+==============================================
+Yes, how do I test the login flow?
+==============================================
+
+Here's how you can test the PKCE login flow with your FastAPI app using Microsoft Entra ID:
+
+Step-by-Step: Test the Login Flow
+
+1. Start Your FastAPI App
+Make sure your app is running:
+uvicorn main:app --reload
+
+2. Open Swagger UI
+Visit: http://localhost:8000/docs
+
+You’ll see the Swagger UI with a "Authorize" button at the top right.
+
+3. Click "Authorize"
+A popup will appear with your client_id already filled in.
+It will use PKCE and redirect you to the Microsoft login page.
+Sign in with a user from your Azure AD tenant.
+
+4. Consent to Permissions
+The first time you log in, you may be asked to consent to the user_impersonation scope.
+If you're not an admin, you may need an admin to grant consent.
+
+5. Test the Secure Endpoint
+Once authenticated, try the /secure-data endpoint in Swagger UI.
+
+You should see a response like:
+{
+  "message": "Hello, John Doe!"
+}
+
+
+This confirms that:
+
+PKCE flow worked
+Token was validated
+User info was extracted
+
+===========================================================================
+how do I decode the JWT token?  What claims should I look for in the token
+===========================================================================
+To decode a JWT access token from Microsoft Entra ID and inspect its claims, follow these steps:
+
+Step 1: Get the Access Token
+After logging in via Swagger UI (/docs), your browser stores the token. You can:
+
+Open Developer Tools → Network tab
+Look for a request to /secure-data
+Check the Authorization header:
+Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOi...
+
+Copy the token value (everything after Bearer ).
+
+Step 2: Decode the Token
+You can decode it using:
+
+✅ Option 1: jwt.ms
+Go to https://jwt.ms
+Paste your token
+It will show the decoded header, payload (claims), and signature
+
+✅ Option 2: Python (locally)
+If you prefer decoding in Python without verifying the signature:
+
+import jwt
+
+token = "your-access-token"
+decoded = jwt.decode(token, options={"verify_signature": False})
+print(decoded)
+
+Step 3: Key Claims to Look For
+Here are the most important claims in a Microsoft Entra ID token:
+
+Claim	Description
+aud	Audience – should match your CLIENT_ID or api://<client-id>
+iss	Issuer – should be your tenant's URL (e.g., https://sts.windows.net/<tenant-id>/)
+sub	Subject – unique identifier for the user
+name	Full name of the user
+preferred_username	Usually the user's email
+oid	Object ID of the user in Azure AD
+scp	Scopes granted (e.g., user_impersonation)
+roles	(Optional) Roles assigned to the user
+exp	Expiration time (Unix timestamp)
+iat	Issued at time
+
+
+
+
+
+
+
+
+
+
+
+
+
