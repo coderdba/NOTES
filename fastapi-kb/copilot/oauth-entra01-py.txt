@@ -1,0 +1,76 @@
+Can you give me a python fastapi code with oauth2 auth using microsoft entra
+
+Here's a FastAPI application that integrates OAuth2 authentication using Microsoft Entra ID (formerly Azure AD). It includes:
+
+A public route (/)
+A protected route (/protected) that requires a valid Microsoft Entra-issued token
+Token validation using Entra's JWKS (JSON Web Key Set)
+However, the code execution environment is missing the python-jose library, which is required for JWT decoding. You can still run this code locally by installing the necessary dependencies.
+
+
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import OAuth2AuthorizationCodeBearer
+from jose import JWTError, jwt
+from pydantic import BaseModel
+import requests
+
+app = FastAPI()
+
+# OAuth2 scheme for Microsoft Entra ID
+oauth2_scheme = OAuth2AuthorizationCodeBearer(
+    authorizationUrl="https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+    tokenUrl="https://login.microsoftonline.com/common/oauth2/v2.0/token"
+)
+
+# Configuration for Microsoft Entra ID
+TENANT_ID = "your-tenant-id"
+CLIENT_ID = "your-client-id"
+JWKS_URL = f"https://login.microsoftonline.com/{TENANT_ID}/discovery/v2.0/keys"
+
+# Fetch JWKS keys
+response = requests.get(JWKS_URL)
+jwks = response.json()
+
+class TokenPayload(BaseModel):
+    sub: str
+    exp: int
+
+def verify_token(token: str):
+    try:
+        unverified_header = jwt.get_unverified_header(token)
+        rsa_key = {}
+        for key in jwks["keys"]:
+            if key["kid"] == unverified_header["kid"]:
+                rsa_key = {
+                    "kty": key["kty"],
+                    "kid": key["kid"],
+                    "use": key["use"],
+                    "n": key["n"],
+                    "e": key["e"]
+                }
+        if rsa_key:
+            payload = jwt.decode(
+                token,
+                rsa_key,
+                algorithms=["RS256"],
+                audience=CLIENT_ID,
+                issuer=f"https://login.microsoftonline.com/{TENANT_ID}/v2.0"
+            )
+            return TokenPayload(**payload)
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+def get_current_user(token: str = Depends(oauth2_scheme)):
+    return verify_token(token)
+
+@app.get("/protected")
+async def protected_route(current_user: TokenPayload = Depends(get_current_user)):
+    return {"message": f"Hello, {current_user.sub}!"}
+
+@app.get("/")
+async def public_route():
+    return {"message": "Welcome to the FastAPI app with Microsoft Entra OAuth2!"}
