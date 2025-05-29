@@ -44,6 +44,150 @@ API2 checks the aud and scope claims before allowing access to /data/read
 ======================================================================================
 Can you give a fastapi python code to do this claim based endpoint access?
 ======================================================================================
+
+--------------------------------------------------------------------
+WITH SIGNATURE CHECK - WITH ONLY PROVIDER PLACEHOLDER
+--------------------------------------------------------------------
+Here’s a revised version of the original claim-based FastAPI example, now with proper JWT signature validation using a JWKS (JSON Web Key Set) endpoint — which is how providers like Azure, Auth0, or ForgeRock expose their public keys.
+
+✅ FastAPI Example with Signature Verification via JWKS
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from jose import jwt, JWTError
+import requests
+
+app = FastAPI()
+
+# Configuration
+JWKS_URL = "https://your-auth-provider.com/.well-known/jwks.json"  # Replace with actual JWKS URL
+AUDIENCE = "your-client-id"
+ISSUER = "https://your-auth-provider.com/"  # Replace with actual issuer
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+# Fetch JWKS
+jwks = requests.get(JWKS_URL).json()
+
+def get_signing_key(token):
+    unverified_header = jwt.get_unverified_header(token)
+    for key in jwks["keys"]:
+        if key["kid"] == unverified_header["kid"]:
+            return key
+    raise HTTPException(status_code=401, detail="Invalid signing key")
+
+def verify_token(token: str):
+    key = get_signing_key(token)
+    try:
+        payload = jwt.decode(
+            token,
+            key,
+            algorithms=["RS256"],
+            audience=AUDIENCE,
+            issuer=ISSUER
+        )
+        return payload
+    except JWTError as e:
+        raise HTTPException(status_code=401, detail=f"Token verification failed: {str(e)}")
+
+def require_claims(required_claims: dict):
+    def dependency(token: str = Depends(oauth2_scheme)):
+        payload = verify_token(token)
+        for claim, value in required_claims.items():
+            if payload.get(claim) != value:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Missing or invalid claim: {claim}",
+                )
+        return payload
+    return dependency
+
+@app.get("/admin")
+def read_admin_data(user=Depends(require_claims({"role": "admin"}))):
+    return {"message": "Welcome, verified admin!"}
+
+🔧 What You Need to Replace:
+JWKS_URL: The JWKS endpoint from your identity provider (e.g., Azure, ForgeRock).
+AUDIENCE: Your app’s client ID.
+ISSUER: The expected issuer (usually your identity provider’s base URL).
+
+--------------------------------------------------------------------
+WITH SIGNATURE CHECK - FORGEROCK
+--------------------------------------------------------------------
+To modify the FastAPI code for ForgeRock, you need to use ForgeRock's JWKS endpoint to verify the JWT signature. Here's how to do it:
+
+🔑 ForgeRock JWKS Endpoint Format
+If you're using ForgeRock AM (Access Management), the JWKS endpoint typically looks like this:
+https://<forgerock-host>/am/oauth2/realms/<realm-name>/connect/jwk_uri
+
+For example, if your ForgeRock instance is at https://forgerock.example.com and you're using the root realm:
+https://forgerock.example.com/am/oauth2/realms/root/connect/jwk_uri
+
+✅ Updated FastAPI Code for ForgeRock JWT Validation
+
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from jose import jwt, JWTError
+import requests
+
+app = FastAPI()
+
+# ForgeRock configuration
+FORGEROCK_DOMAIN = "https://forgerock.example.com"  # Replace with your ForgeRock domain
+REALM = "root"  # Replace with your realm
+JWKS_URL = f"{FORGEROCK_DOMAIN}/am/oauth2/realms/{REALM}/connect/jwk_uri"
+AUDIENCE = "your-client-id"  # Replace with your app's client ID
+ISSUER = f"{FORGEROCK_DOMAIN}/am/oauth2/realms/{REALM}"
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+# Fetch JWKS
+jwks = requests.get(JWKS_URL).json()
+
+def get_signing_key(token):
+    unverified_header = jwt.get_unverified_header(token)
+    for key in jwks["keys"]:
+        if key["kid"] == unverified_header["kid"]:
+            return key
+    raise HTTPException(status_code=401, detail="Invalid signing key")
+
+def verify_token(token: str):
+    key = get_signing_key(token)
+    try:
+        payload = jwt.decode(
+            token,
+            key,
+            algorithms=["RS256"],
+            audience=AUDIENCE,
+            issuer=ISSUER
+        )
+        return payload
+    except JWTError as e:
+        raise HTTPException(status_code=401, detail=f"Token verification failed: {str(e)}")
+
+def require_claims(required_claims: dict):
+    def dependency(token: str = Depends(oauth2_scheme)):
+        payload = verify_token(token)
+        for claim, value in required_claims.items():
+            if payload.get(claim) != value:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Missing or invalid claim: {claim}",
+                )
+        return payload
+    return dependency
+
+@app.get("/admin")
+def read_admin_data(user=Depends(require_claims({"role": "admin"}))):
+    return {"message": "Welcome, ForgeRock-verified admin!"}
+
+🛠️ What You Need to Replace:
+FORGEROCK_DOMAIN: Your ForgeRock AM base URL.
+REALM: The realm where your OAuth2 provider is configured.
+AUDIENCE: Your app’s client ID registered in ForgeRock.
+
+----------------------------------
+WITHOUT SIGNATURE CHECK
+----------------------------------
 Here’s a simple FastAPI example that demonstrates how to restrict access to API endpoints based on claims in a JWT token (like those issued by ForgeRock or any OAuth2 provider).
 
 This example assumes:
