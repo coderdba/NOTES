@@ -186,6 +186,102 @@ REALM: The realm where your OAuth2 provider is configured.
 AUDIENCE: Your app’s client ID registered in ForgeRock.
 
 ----------------------------------
+WITHOUT SIGNATURE CHECK - GOLANG
+----------------------------------
+✅ Go Program: JWT Verification + Claim-Based Access (ForgeRock-Compatible)
+
+package main
+
+import (
+"encoding/json"
+"fmt"
+"io/ioutil"
+"log"
+"net/http"
+"strings"
+
+"github.com/golang-jwt/jwt/v5"
+"github.com/MicahParks/keyfunc"
+)
+
+const (
+jwksURL  = "https://forgerock.example.com/am/oauth2/realms/root/connect/jwk_uri" // Replace with your JWKS URL
+audience = "your-client-id"                                                      // Replace with your client ID
+issuer   = "https://forgerock.example.com/am/oauth2/realms/root"                 // Replace with your issuer
+)
+
+var jwks *keyfunc.JWKS
+
+func init() {
+var err error
+jwks, err = keyfunc.Get(jwksURL, keyfunc.Options{})
+if err != nil {
+log.Fatalf("Failed to get JWKS: %v", err)
+}
+}
+
+func verifyJWT(tokenString string) (*jwt.Token, error) {
+return jwt.Parse(tokenString, jwks.Keyfunc,
+jwt.WithAudience(audience),
+jwt.WithIssuer(issuer),
+jwt.WithValidMethods([]string{"RS256"}),
+)
+}
+
+func requireClaim(claimKey, expectedValue string, handler http.HandlerFunc) http.HandlerFunc {
+return func(w http.ResponseWriter, r *http.Request) {
+authHeader := r.Header.Get("Authorization")
+if !strings.HasPrefix(authHeader, "Bearer ") {
+http.Error(w, "Missing or invalid Authorization header", http.StatusUnauthorized)
+return
+}
+tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+
+token, err := verifyJWT(tokenStr)
+if err != nil || !token.Valid {
+http.Error(w, "Invalid token", http.StatusUnauthorized)
+return
+}
+
+claims, ok := token.Claims.(jwt.MapClaims)
+if !ok {
+http.Error(w, "Invalid claims", http.StatusUnauthorized)
+return
+}
+
+if val, ok := claims[claimKey]; !ok || val != expectedValue {
+http.Error(w, "Forbidden: missing or incorrect claim", http.StatusForbidden)
+return
+}
+
+handler(w, r)
+}
+}
+
+func adminHandler(w http.ResponseWriter, r *http.Request) {
+response := map[string]string{"message": "Welcome, ForgeRock-verified admin!"}
+json.NewEncoder(w).Encode(response)
+}
+
+func main() {
+http.HandleFunc("/admin", requireClaim("role", "admin", adminHandler))
+
+fmt.Println("Server running on http://localhost:8080")
+log.Fatal(http.ListenAndServe(":8080", nil))
+}
+
+🔧 What You Need to Replace:
+jwksURL: Your ForgeRock JWKS endpoint
+audience: Your registered client ID
+issuer: Your realm's issuer URL
+
+🧩 Dependencies
+Install these Go packages:
+
+go get github.com/golang-jwt/jwt/v5
+go get github.com/MicahParks/keyfunc
+
+----------------------------------
 WITHOUT SIGNATURE CHECK
 ----------------------------------
 Here’s a simple FastAPI example that demonstrates how to restrict access to API endpoints based on claims in a JWT token (like those issued by ForgeRock or any OAuth2 provider).
@@ -355,6 +451,10 @@ If your server doesn't check the signature, it might accept this token — which
 Assume that the JWT is from Azure app registration.  
 Can you modify the python code you gave for that?  Also, ensure signature is checked
 ======================================================================================
+
+---------------------------------------
+WITH SIGNATURE CHECK - AZURE APP REG
+---------------------------------------
 To validate a JWT issued by Azure App Registration (Microsoft Identity Platform) in a FastAPI app, you need to:
 
 Verify the token's signature using Azure's public keys (via JWKS).
@@ -429,6 +529,224 @@ Replace your-tenant-id and your-app-client-id with your actual Azure values.
 Ensure your Azure app registration includes the roles or scp claims in the token.
 Use HTTPS in production.
 
+-------------------------------------------------
+WITH SIGNATURE CHECK - AZURE APP REG - GOLANG
+-------------------------------------------------
+Here’s a Go (Golang) version of the FastAPI program that validates Azure-issued JWT tokens, including:
+
+Signature verification using Azure’s JWKS endpoint
+Validation of aud (audience), iss (issuer)
+Claim-based access control (e.g., checking for a specific roles claim)
+
+✅ Go Program: Azure JWT Validation + Claim-Based Access
+
+package main
+
+import (
+"encoding/json"
+"fmt"
+"io/ioutil"
+"log"
+"net/http"
+"strings"
+
+"github.com/golang-jwt/jwt/v5"
+"github.com/MicahParks/keyfunc"
+)
+
+const (
+tenantID = "your-tenant-id"
+clientID = "your-client-id"
+)
+
+var (
+jwksURL = fmt.Sprintf("https://login.microsoftonline.com/%s/discovery/v2.0/keys", tenantID)
+issuer  = fmt.Sprintf("https://login.microsoftonline.com/%s/v2.0", tenantID)
+jwks    *keyfunc.JWKS
+)
+
+func init() {
+var err error
+jwks, err = keyfunc.Get(jwksURL, keyfunc.Options{})
+if err != nil {
+log.Fatalf("Failed to load JWKS: %v", err)
+}
+}
+
+func verifyJWT(tokenString string) (*jwt.Token, error) {
+return jwt.Parse(tokenString, jwks.Keyfunc,
+jwt.WithAudience(clientID),
+jwt.WithIssuer(issuer),
+jwt.WithValidMethods([]string{"RS256"}),
+)
+}
+
+func requireClaim(claimKey, expectedValue string, handler http.HandlerFunc) http.HandlerFunc {
+return func(w http.ResponseWriter, r *http.Request) {
+authHeader := r.Header.Get("Authorization")
+if !strings.HasPrefix(authHeader, "Bearer ") {
+http.Error(w, "Missing or invalid Authorization header", http.StatusUnauthorized)
+return
+}
+tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+
+token, err := verifyJWT(tokenStr)
+if err != nil || !token.Valid {
+http.Error(w, "Invalid token", http.StatusUnauthorized)
+return
+}
+
+claims, ok := token.Claims.(jwt.MapClaims)
+if !ok {
+http.Error(w, "Invalid claims", http.StatusUnauthorized)
+return
+}
+
+if val, ok := claims[claimKey]; !ok || val != expectedValue {
+http.Error(w, "Forbidden: missing or incorrect claim", http.StatusForbidden)
+return
+}
+
+handler(w, r)
+}
+}
+
+func adminHandler(w http.ResponseWriter, r *http.Request) {
+response := map[string]string{"message": "Welcome, Azure-verified admin!"}
+json.NewEncoder(w).Encode(response)
+}
+
+func main() {
+http.HandleFunc("/admin", requireClaim("roles", "Admin", adminHandler))
+
+fmt.Println("Server running on http://localhost:8080")
+log.Fatal(http.ListenAndServe(":8080", nil))
+}
+
+🔧 What You Need to Replace:
+tenantID: Your Azure AD tenant ID
+clientID: Your Azure App Registration client ID
+"roles" and "Admin": Adjust based on the claim and value you want to enforce
+
+🧩 Dependencies
+Install these Go packages:
+go get github.com/golang-jwt/jwt/v5
+go get github.com/MicahParks/keyfunc
+
+------------------------------------
+MULTIPLE ROLES - GOLANG
+------------------------------------
+
+Here’s an updated version of the Go program that supports multiple roles or scopes in a list. 
+This is useful when a user can have one of several valid roles or permissions.
+
+✅ Go Program: Azure JWT Validation with Multiple Roles Support
+
+package main
+
+import (
+"encoding/json"
+"fmt"
+"log"
+"net/http"
+"strings"
+
+"github.com/golang-jwt/jwt/v5"
+"github.com/MicahParks/keyfunc"
+)
+
+const (
+tenantID = "your-tenant-id"
+clientID = "your-client-id"
+)
+
+var (
+jwksURL = fmt.Sprintf("https://login.microsoftonline.com/%s/discovery/v2.0/keys", tenantID)
+issuer  = fmt.Sprintf("https://login.microsoftonline.com/%s/v2.0", tenantID)
+jwks    *keyfunc.JWKS
+)
+
+func init() {
+var err error
+jwks, err = keyfunc.Get(jwksURL, keyfunc.Options{})
+if err != nil {
+log.Fatalf("Failed to load JWKS: %v", err)
+}
+}
+
+func verifyJWT(tokenString string) (*jwt.Token, error) {
+return jwt.Parse(tokenString, jwks.Keyfunc,
+jwt.WithAudience(clientID),
+jwt.WithIssuer(issuer),
+jwt.WithValidMethods([]string{"RS256"}),
+)
+}
+
+func hasAnyClaimValue(claim interface{}, allowed []string) bool {
+switch v := claim.(type) {
+case string:
+for _, allowedVal := range allowed {
+if v == allowedVal {
+return true
+}
+}
+case []interface{}:
+for _, item := range v {
+if str, ok := item.(string); ok {
+for _, allowedVal := range allowed {
+if str == allowedVal {
+return true
+}
+}
+}
+}
+}
+return false
+}
+
+func requireAnyClaimValue(claimKey string, allowedValues []string, handler http.HandlerFunc) http.HandlerFunc {
+return func(w http.ResponseWriter, r *http.Request) {
+authHeader := r.Header.Get("Authorization")
+if !strings.HasPrefix(authHeader, "Bearer ") {
+http.Error(w, "Missing or invalid Authorization header", http.StatusUnauthorized)
+return
+}
+tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+
+token, err := verifyJWT(tokenStr)
+if err != nil || !token.Valid {
+http.Error(w, "Invalid token", http.StatusUnauthorized)
+return
+}
+
+claims, ok := token.Claims.(jwt.MapClaims)
+if !ok {
+http.Error(w, "Invalid claims", http.StatusUnauthorized)
+return
+}
+
+if claimVal, ok := claims[claimKey]; !ok || !hasAnyClaimValue(claimVal, allowedValues) {
+http.Error(w, "Forbidden: missing or incorrect claim", http.StatusForbidden)
+return
+}
+
+handler(w, r)
+}
+}
+
+func adminHandler(w http.ResponseWriter, r *http.Request) {
+response := map[string]string{"message": "Welcome, Azure-verified admin or manager!"}
+json.NewEncoder(w).Encode(response)
+}
+
+func main() {
+http.HandleFunc("/admin", requireAnyClaimValue("roles", []string{"Admin", "Manager"}, adminHandler))
+
+fmt.Println("Server running on http://localhost:8080")
+log.Fatal(http.ListenAndServe(":8080", nil))
+}
+
+
 ====================================================================================
 Can you give a python and a curl code to obtain a forgerock token for a client.
 ====================================================================================
@@ -476,7 +794,68 @@ if response.status_code == 200:
 else:
     print("Error:", response.status_code, response.text)
 
+====================================================================================
+Can you give me an equivalent golang program?
+====================================================================================
 
+✅ Go Program to Get a ForgeRock Access Token
+
+package main
+
+import (
+"bytes"
+"fmt"
+"io/ioutil"
+"net/http"
+"net/url"
+)
+
+func main() {
+// Replace with your ForgeRock details
+forgerockURL := "https://<forgerock-domain>/am/oauth2/realms/<realm-name>/access_token"
+clientID := "<your-client-id>"
+clientSecret := "<your-client-secret>"
+scope := "<optional-scope>" // Can be empty if not needed
+
+// Prepare form data
+data := url.Values{}
+data.Set("grant_type", "client_credentials")
+data.Set("client_id", clientID)
+data.Set("client_secret", clientSecret)
+if scope != "" {
+data.Set("scope", scope)
+}
+
+// Create HTTP request
+req, err := http.NewRequest("POST", forgerockURL, bytes.NewBufferString(data.Encode()))
+if err != nil {
+panic(err)
+}
+req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+// Send request
+client := &http.Client{}
+resp, err := client.Do(req)
+if err != nil {
+panic(err)
+}
+defer resp.Body.Close()
+
+// Read response
+body, err := ioutil.ReadAll(resp.Body)
+if err != nil {
+panic(err)
+}
+
+// Output result
+if resp.StatusCode == http.StatusOK {
+fmt.Println("Access Token Response:")
+fmt.Println(string(body))
+} else {
+fmt.Printf("Error: %s\n", resp.Status)
+fmt.Println(string(body))
+}
+}
 
 
 
