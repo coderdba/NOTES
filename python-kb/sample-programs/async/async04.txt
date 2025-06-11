@@ -1,0 +1,74 @@
+#  To run two functions concurrently in Python, you can use the concurrent.futures module or the asyncio library, depending on whether your functions are CPU-bound or I/O-bound. Below are three approaches:
+#  Key Considerations:
+#  Use ThreadPoolExecutor or asyncio for I/O-bound tasks (e.g., file operations, network requests).
+#  Use multiprocessing for CPU-bound tasks (e.g., heavy computations) to leverage multiple CPU cores.
+
+#  1. Using concurrent.futures.ThreadPoolExecutor (for I/O-bound tasks)
+
+from concurrent.futures import ThreadPoolExecutor
+
+print("\n\n1. Using concurrent.futures.ThreadPoolExecutor (for I/O-bound tasks)")
+
+def function_one():
+    print("Function One is running")
+    # Simulate work
+    import time; time.sleep(2)
+    print("Function One is done")
+
+def function_two():
+    print("Function Two is running")
+    # Simulate work
+    import time; time.sleep(1)
+    print("Function Two is done")
+
+with ThreadPoolExecutor() as executor:
+    executor.submit(function_one)
+    executor.submit(function_two)
+
+exit()
+
+#  2. Using asyncio (for I/O-bound tasks with async functions)
+print("\n\n2. Using asyncio (for I/O-bound tasks with async functions)")
+
+import asyncio
+
+async def function_one():
+    print("Function One is running")
+    await asyncio.sleep(2)  # Simulate async work
+    print("Function One is done")
+
+async def function_two():
+    print("Function Two is running")
+    await asyncio.sleep(1)  # Simulate async work
+    print("Function Two is done")
+
+async def main():
+    await asyncio.gather(function_one(), function_two())
+
+asyncio.run(main())
+
+# 3. Using multiprocessing (for CPU-bound tasks)
+print("\n\n3. Using multiprocessing (for CPU-bound tasks)")
+from multiprocessing import Process
+
+def function_one():
+    print("Function One is running")
+    # Simulate work
+    import time; time.sleep(2)
+    print("Function One is done")
+
+def function_two():
+    print("Function Two is running")
+    # Simulate work
+    import time; time.sleep(1)
+    print("Function Two is done")
+
+if __name__ == "__main__":
+    process1 = Process(target=function_one)
+    process2 = Process(target=function_two)
+
+    process1.start()
+    process2.start()
+
+    process1.join()
+    process2.join()
