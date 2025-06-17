@@ -107,5 +107,67 @@ else:
     print("Failed to initialize session. Status code:", response.status_code)
     print("Response:", response.text)
 
+========================================================================
+WITH LANGCHAIN - COPILOT CODE (not using langchain-mcp-adapter)
+========================================================================
+
+Here's a complete example of how to build a Python MCP client using LangChain's MCP adapter to connect to a streamable HTTP MCP server, retrieve tools, and invoke them using a LangChain-compatible agent.
+
+✅ 1. Install Required Packages
+pip install langchain-mcp-adapters langgraph "langchain[openai]"
+
+✅ 2. Start a Streamable HTTP MCP Server
+You can use the example server provided in the langchain-mcp-adapters GitHub repo: https://github.com/langchain-ai/langchain-mcp-adapters
+
+cd examples/servers/streamable-http-stateless/
+uv run mcp-simple-streamablehttp-stateless --port 3000
+
+This will start a server at http://localhost:3000/mcp/
+
+✅ 3. Python Client Code Using LangChain MCP Adapter
+import asyncio
+from mcp import ClientSession
+from mcp.client.streamable_http import streamablehttp_client
+from langchain_mcp_adapters.tools import load_mcp_tools
+from langgraph.prebuilt import create_react_agent
+from langchain_openai import ChatOpenAI
+
+# Initialize the LLM (you can use any LangChain-compatible model)
+llm = ChatOpenAI(model="gpt-4", temperature=0)
+
+async def main():
+    # Connect to the MCP server via streamable HTTP
+    async with streamablehttp_client("http://localhost:3000/mcp/") as (read, write, _):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            print("✅ MCP Session Initialized")
+
+            # Load tools from the MCP server
+            tools = await load_mcp_tools(session)
+            print(f"🛠️ Loaded Tools: {[tool.name for tool in tools]}")
+
+            # Create a LangChain agent with the tools
+            agent = create_react_agent(llm, tools)
+
+            # Invoke the agent with a user query
+            response = await agent.ainvoke({
+                "messages": [("user", "What is (3 + 5) x 12?")]
+            })
+
+            print("🤖 Agent Response:")
+            print(response["messages"][-1].content)
+
+if __name__ == "__main__":
+    asyncio.run(main())
+
+🧠 What This Does
+Connects to a streamable HTTP MCP server.
+Initializes a session and retrieves the Mcp-Session-Id internally.
+Loads available tools from the server.
+Uses a LangChain-compatible LLM to invoke those tools via a ReAct agent.
+
+
+
+
 
 
