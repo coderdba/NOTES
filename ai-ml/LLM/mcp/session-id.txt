@@ -1,0 +1,111 @@
+==================================================
+SESSION ID FROM MCP SERVER - Mcp-Session-Id
+==================================================
+https://modelcontextprotocol.io/docs/concepts/transports#python-client
+
+Session Management
+Streamable HTTP supports stateful sessions to maintain context across multiple requests:
+
+Session Initialization: Servers may assign a session ID during initialization by including it in an Mcp-Session-Id header
+Session Persistence: Clients must include the session ID in all subsequent requests using the Mcp-Session-Id header
+Session Termination: Sessions can be explicitly terminated by sending an HTTP DELETE request with the session ID
+
+Example session flow:
+// Server assigns session ID during initialization
+app.post("/mcp", (req, res) => {
+  if (req.body.method === "initialize") {
+    const sessionId = generateSecureId();
+    res.setHeader("Mcp-Session-Id", sessionId);
+    // Store session state...
+  }
+  // Handle request...
+});
+
+// Client includes session ID in subsequent requests
+fetch("/mcp", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "Mcp-Session-Id": sessionId,
+  },
+  body: JSON.stringify(request),
+});
+
+Resumability and Redelivery
+To support resuming broken connections, Streamable HTTP provides:
+
+Event IDs: Servers can attach unique IDs to SSE events for tracking
+Resume from Last Event: Clients can resume by sending the Last-Event-ID header
+Message Replay: Servers can replay missed messages from the disconnection point
+This ensures reliable message delivery even with unstable network connections.
+
+​
+Security Considerations
+When implementing Streamable HTTP transport, follow these security best practices:
+
+Validate Origin Headers: Always validate the Origin header on all incoming connections to prevent DNS rebinding attacks
+Bind to Localhost: When running locally, bind only to localhost (127.0.0.1) rather than all network interfaces (0.0.0.0)
+Implement Authentication: Use proper authentication for all connections
+Use HTTPS: Always use TLS/HTTPS for production deployments
+Validate Session IDs: Ensure session IDs are cryptographically secure and properly validated
+Without these protections, attackers could use DNS rebinding to interact with local MCP servers from remote websites.
+
+
+=====================================
+PYTHON CLIENT CODE - COPILOT 
+=====================================
+import requests
+import json
+
+# Replace this with your actual MCP server URL
+MCP_SERVER_URL = "https://your-mcp-server.com/mcp"
+
+# Step 1: Send initialize request
+init_request = {
+    "jsonrpc": "2.0",
+    "id": "init-001",
+    "method": "initialize",
+    "params": {
+        "client": "python-client",
+        "version": "1.0"
+    }
+}
+
+response = requests.post(
+    MCP_SERVER_URL,
+    headers={
+        "Content-Type": "application/json",
+        "Accept": "application/json, text/event-stream"
+    },
+    data=json.dumps(init_request)
+)
+
+if response.status_code == 200:
+    session_id = response.headers.get("Mcp-Session-Id")
+    print("Mcp-Session-Id:", session_id)
+
+    # Step 2: Send a follow-up request using the session ID
+    follow_up_request = {
+        "jsonrpc": "2.0",
+        "id": "req-002",
+        "method": "getStatus",
+        "params": {}
+    }
+
+    follow_up_response = requests.post(
+        MCP_SERVER_URL,
+        headers={
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "Mcp-Session-Id": session_id
+        },
+        data=json.dumps(follow_up_request)
+    )
+
+    print("Follow-up response:", follow_up_response.json())
+else:
+    print("Failed to initialize session. Status code:", response.status_code)
+    print("Response:", response.text)
+
+
+
