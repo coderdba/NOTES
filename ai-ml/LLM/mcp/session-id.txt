@@ -224,7 +224,7 @@ Loads tools from all connected servers.
 Uses a LangChain-compatible LLM to invoke those tools via a ReAct agent.
 
 ----------------------------------------------------------------------
-In this client program how to get session id from mcp servers
+Client program getting session ids from multiple mcp servers
 ----------------------------------------------------------------------
 ✅ Accessing Session IDs from MultiServerMCPClient
 Each server connection inside MultiServerMCPClient is a ClientSession object. You can access them like this:
@@ -240,6 +240,156 @@ Add this right after await client.initialize() in the previous code:
 for url, session in client.sessions.items():
     print(f"🔗 Connected to: {url}")
     print(f"🆔 MCP Session ID: {session.session_id}")
+
+✅ Full Python Client Code
+import asyncio
+from langchain_openai import ChatOpenAI
+from langgraph.prebuilt import create_react_agent
+from langchain_mcp_adapters.client import MultiServerMCPClient
+from langchain_mcp_adapters.tools import load_mcp_tools
+
+# Define the full MCP endpoint URLs
+MCP_ENDPOINTS = [
+    "http://localhost:3000/mcp/math",
+    "http://localhost:3000/mcp/utils"
+]
+
+# Initialize the LLM
+llm = ChatOpenAI(model="gpt-4", temperature=0)
+
+async def main():
+    # Connect to both MCP endpoints
+    async with MultiServerMCPClient(MCP_ENDPOINTS) as client:
+        await client.initialize()
+        print("✅ Multi-server MCP session initialized")
+
+        # Print session IDs for each endpoint
+        for url, session in client.sessions.items():
+            print(f"🔗 Connected to: {url}")
+            print(f"🆔 MCP Session ID: {session.session_id}")
+
+        # Load tools from both endpoints
+        tools = await load_mcp_tools(client)
+        print(f"🛠️ Loaded tools: {[tool.name for tool in tools]}")
+
+        # Create a LangChain ReAct agent
+        agent = create_react_agent(llm, tools)
+
+        # Invoke the agent with a user query
+        response = await agent.ainvoke({
+            "messages": [("user", "What is the reverse of 'LangChain' and also 12 times 3?")]
+        })
+
+        print("🤖 Agent Response:")
+        print(response["messages"][-1].content)
+
+if __name__ == "__main__":
+    asyncio.run(main())
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Doing subsequent tool calls using session id
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+How can we do subsequent tool calls passing session id to the servers
+
+To perform subsequent tool calls using the same session ID with MCP servers, you don’t need to manually pass the session ID in most cases when using MultiServerMCPClient. It handles session management internally. However, if you want to explicitly control or reuse sessions for advanced use cases, here’s how you can do it:
+
+✅ How It Works Internally
+Each ClientSession inside MultiServerMCPClient maintains its own session_id. When you call tools via LangChain agents, the adapter automatically includes the correct Mcp-Session-Id in the headers for each request.
+
+✅ Manual Tool Invocation with Session ID
+If you want to manually invoke a tool using a specific session, you can do something like this:
+
+# Access a specific session
+session = client.sessions["http://localhost:3000/mcp/math"]
+
+# Manually call a tool using that session
+result = await session.call_tool("add_numbers", {"a": 5, "b": 7})
+print("Manual tool result:", result)
+
+This ensures the tool call is made using the correct session and server.
+
+✅ Subsequent Calls via Agent (Automatic)
+If you're using a LangChain agent (like ReAct), you don’t need to do anything special. The agent will:
+
+Use the tools loaded from each session.
+Automatically include the correct Mcp-Session-Id when calling tools.
+So you can just do:
+
+response = await agent.ainvoke({
+    "messages": [("user", "Now multiply the result by 2.")]
+})
+
+And the agent will handle session continuity.
+
+🧠 Summary
+Method	Session ID Handling
+MultiServerMCPClient	Automatic per endpoint
+Manual tool call	Use session.call_tool(...)
+LangChain agent	Automatic via tool wrappers
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+FULL CODE
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Here’s a complete example that demonstrates both:
+
+Manual tool invocation using a specific session and session ID.
+Agent-based invocation using LangChain’s ReAct agent.
+✅ Combined Example: Manual + Agent Tool Calls
+import asyncio
+from langchain_openai import ChatOpenAI
+from langgraph.prebuilt import create_react_agent
+from langchain_mcp_adapters.client import MultiServerMCPClient
+from langchain_mcp_adapters.tools import load_mcp_tools
+
+# MCP endpoints
+MCP_ENDPOINTS = [
+    "http://localhost:3000/mcp/math",
+    "http://localhost:3000/mcp/utils"
+]
+
+# Initialize LLM
+llm = ChatOpenAI(model="gpt-4", temperature=0)
+
+async def main():
+    async with MultiServerMCPClient(MCP_ENDPOINTS) as client:
+        await client.initialize()
+        print("✅ Sessions initialized")
+
+        # Print session IDs
+        for url, session in client.sessions.items():
+            print(f"🔗 {url} → 🆔 {session.session_id}")
+
+        # Manual tool call using math session
+        math_session = client.sessions["http://localhost:3000/mcp/math"]
+        result = await math_session.call_tool("add_numbers", {"a": 10, "b": 5})
+        print("🧮 Manual tool call (add_numbers):", result)
+
+        # Load tools for agent
+        tools = await load_mcp_tools(client)
+        agent = create_react_agent(llm, tools)
+
+        # Agent-based follow-up using previous result
+        response = await agent.ainvoke({
+            "messages": [("user", f"Now multiply {result} by 3.")]
+        })
+
+        print("🤖 Agent Response:")
+        print(response["messages"][-1].content)
+
+if __name__ == "__main__":
+    asyncio.run(main())
+
+🧠 What This Demonstrates
+Manual call to add_numbers using a specific session.
+Agent call that uses the result of the manual call.
+Session IDs are printed for transparency and debugging.
+
+
+
+
+
+
+
 
 
 ---------------------------------------------------------------------------------
