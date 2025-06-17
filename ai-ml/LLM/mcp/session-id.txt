@@ -108,7 +108,7 @@ else:
     print("Response:", response.text)
 
 ========================================================================
-WITH LANGCHAIN - COPILOT CODE (not using langchain-mcp-adapter)
+WITH LANGCHAIN - COPILOT CODE 
 ========================================================================
 
 Here's a complete example of how to build a Python MCP client using LangChain's MCP adapter to connect to a streamable HTTP MCP server, retrieve tools, and invoke them using a LangChain-compatible agent.
@@ -165,6 +165,202 @@ Connects to a streamable HTTP MCP server.
 Initializes a session and retrieves the Mcp-Session-Id internally.
 Loads available tools from the server.
 Uses a LangChain-compatible LLM to invoke those tools via a ReAct agent.
+
+========================================================================
+WITH LANGCHAIN MULTIPLE MCP SERVERS IN ONE CLIENT - COPILOT CODE 
+========================================================================
+
+----------------------------------------------------------------------
+Client program - not yet getting session ids
+----------------------------------------------------------------------
+Here’s a complete example of a Python client using MultiServerMCPClient from langchain_mcp_adapters to connect to multiple MCP servers, load tools from each, and use them with a LangChain agent.
+
+✅ 1. Install Required Packages
+pip install langchain-mcp-adapters langgraph "langchain[openai]"
+
+✅ 2. Python Client Using MultiServerMCPClient
+import asyncio
+from langchain_openai import ChatOpenAI
+from langgraph.prebuilt import create_react_agent
+from langchain_mcp_adapters.client import MultiServerMCPClient
+from langchain_mcp_adapters.tools import load_mcp_tools
+
+# Define the MCP server URLs
+MCP_SERVERS = [
+    "http://localhost:3000/mcp/",
+    "http://localhost:3001/mcp/"
+]
+
+# Initialize the LLM
+llm = ChatOpenAI(model="gpt-4", temperature=0)
+
+async def main():
+    # Create a MultiServerMCPClient
+    async with MultiServerMCPClient(MCP_SERVERS) as client:
+        await client.initialize()
+        print("✅ Multi-server MCP session initialized")
+
+        # Load tools from all servers
+        tools = await load_mcp_tools(client)
+        print(f"🛠️ Loaded tools from multiple servers: {[tool.name for tool in tools]}")
+
+        # Create a LangChain ReAct agent
+        agent = create_react_agent(llm, tools)
+
+        # Invoke the agent with a user query
+        response = await agent.ainvoke({
+            "messages": [("user", "Use any available tools to calculate the square root of 144.")]
+        })
+
+        print("🤖 Agent Response:")
+        print(response["messages"][-1].content)
+
+if __name__ == "__main__":
+    asyncio.run(main())
+
+🧠 What This Does
+Connects to multiple MCP servers using MultiServerMCPClient.
+Loads tools from all connected servers.
+Uses a LangChain-compatible LLM to invoke those tools via a ReAct agent.
+
+----------------------------------------------------------------------
+In this client program how to get session id from mcp servers
+----------------------------------------------------------------------
+✅ Accessing Session IDs from MultiServerMCPClient
+Each server connection inside MultiServerMCPClient is a ClientSession object. You can access them like this:
+
+for url, session in client.sessions.items():
+    print(f"Server: {url}")
+    print(f"Session ID: {session.session_id}")
+
+🔁 Updated Example Snippet
+Add this right after await client.initialize() in the previous code:
+
+# Print session IDs for each MCP server
+for url, session in client.sessions.items():
+    print(f"🔗 Connected to: {url}")
+    print(f"🆔 MCP Session ID: {session.session_id}")
+
+
+---------------------------------------------------------------------------------
+mcp servers mounted with fastapi for the two mcp servers in the client example
+---------------------------------------------------------------------------------
+✅ 1. Install Required Packages
+pip install fastapi uvicorn langchain-mcp-adapters
+
+✅ 2. MCP Server 1: Math Tools
+from fastapi import FastAPI
+from langchain_mcp_adapters.server.fastapi import create_mcp_app
+from langchain.tools import tool
+
+@tool
+def add_numbers(a: int, b: int) -> int:
+    """Add two numbers."""
+    return a + b
+
+@tool
+def multiply_numbers(a: int, b: int) -> int:
+    """Multiply two numbers."""
+    return a * b
+
+tools = [add_numbers, multiply_numbers]
+
+app = FastAPI()
+app.mount("/mcp", create_mcp_app(tools))
+
+Run it with:
+uvicorn server1:app --port 3000
+
+✅ 3. MCP Server 2: Utility Tools
+from fastapi import FastAPI
+from langchain_mcp_adapters.server.fastapi import create_mcp_app
+from langchain.tools import tool
+
+@tool
+def reverse_string(text: str) -> str:
+    """Reverse a string."""
+    return text[::-1]
+
+@tool
+def count_words(text: str) -> int:
+    """Count the number of words in a string."""
+    return len(text.split())
+
+tools = [reverse_string, count_words]
+
+app = FastAPI()
+app.mount("/mcp", create_mcp_app(tools))
+
+Run it with:
+uvicorn server2:app --port 3001
+
+🧠 Summary
+Server 1 (port 3000): Offers math tools (add_numbers, multiply_numbers)
+Server 2 (port 3001): Offers utility tools (reverse_string, count_words)
+Both are mounted at /mcp and are compatible with MultiServerMCPClient.
+
+--------------------------------------------------------------------------------------
+Combine both servers into two separate mcp endpoints in one single fastapi server
+--------------------------------------------------------------------------------------
+NOTE: THIS MAY NOT BE ENTIRELY CORRECT CODE
+
+You can absolutely run two separate MCP endpoints on a single FastAPI server by mounting two different MCP apps at different paths (e.g., /mcp/math and /mcp/utils).
+
+✅ Combined FastAPI Server with Two MCP Endpoints
+
+from fastapi import FastAPI
+from langchain_mcp_adapters.server.fastapi import create_mcp_app
+from langchain.tools import tool
+
+# Math tools
+@tool
+def add_numbers(a: int, b: int) -> int:
+    """Add two numbers."""
+    return a + b
+
+@tool
+def multiply_numbers(a: int, b: int) -> int:
+    """Multiply two numbers."""
+    return a * b
+
+# Utility tools
+@tool
+def reverse_string(text: str) -> str:
+    """Reverse a string."""
+    return text[::-1]
+
+@tool
+def count_words(text: str) -> int:
+    """Count the number of words in a string."""
+    return len(text.split())
+
+# Create MCP apps
+math_tools = [add_numbers, multiply_numbers]
+utils_tools = [reverse_string, count_words]
+
+math_mcp_app = create_mcp_app(math_tools)
+utils_mcp_app = create_mcp_app(utils_tools)
+
+# Main FastAPI app
+app = FastAPI()
+
+# Mount each MCP app at a different route
+app.mount("/mcp/math", math_mcp_app)
+app.mount("/mcp/utils", utils_mcp_app)
+
+
+🚀 Run the Server
+Save this as combined_server.py and run:
+uvicorn combined_server:app --port 3000
+
+
+You’ll now have:
+
+http://localhost:3000/mcp/math → Math tools
+http://localhost:3000/mcp/utils → Utility tools
+
+
+
 
 
 
