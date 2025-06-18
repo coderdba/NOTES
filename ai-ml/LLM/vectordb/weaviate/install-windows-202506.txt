@@ -1,0 +1,82 @@
+https://weaviate.io/developers/weaviate/installation
+https://weaviate.io/developers/weaviate/installation/docker-compose
+
+https://hub.docker.com/r/semitechnologies/weaviate-console
+
+docker pull semitechnologies/weaviate:1.31.1-d8743aa.amd64
+
+=========================
+DOCKER RUN METHOD
+=========================
+docker run -p 8080:8080 -p 50051:50051 cr.weaviate.io/semitechnologies/weaviate:1.31.1
+
+=========================
+DOCKER COMPOSE METHOD
+=========================
+https://weaviate.io/developers/weaviate/installation/docker-compose?docker-compose=auth
+https://www.docker.com/blog/how-to-get-started-weaviate-vector-database-on-docker/
+https://stochasticcoder.com/2023/10/10/getting-started-with-weaviate-setting-up-and-securing-your-instance-with-docker-compose-nginx-and-lets-encrypt/
+https://github.com/weaviate/weaviate-io/blob/main/developers/weaviate/installation/docker-compose.md
+https://gist.github.com/mrisher/a3854c48e6e3cc702bffaef97dee5e26 --> with various modules enabled
+
+docker-compose.yml  (without auth)
+---
+services:
+  weaviate:
+    command:
+    - --host
+    - 0.0.0.0
+    - --port
+    - '8080'
+    - --scheme
+    - http
+    image: cr.weaviate.io/semitechnologies/weaviate:1.31.1
+    ports:
+    - 8080:8080
+    - 50051:50051
+    volumes:
+    - weaviate_data:/var/lib/weaviate
+    restart: on-failure:0
+    environment:
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'true'
+      PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
+      ENABLE_API_BASED_MODULES: 'true'
+      CLUSTER_HOSTNAME: 'node1'
+volumes:
+  weaviate_data:
+...
+
+
+docker-compose.yml (with auth)
+---
+services:
+  weaviate:
+    command:
+    - --host
+    - 0.0.0.0
+    - --port
+    - '8080'
+    - --scheme
+    - http
+    image: cr.weaviate.io/semitechnologies/weaviate:1.31.1
+    ports:
+    - 8080:8080
+    - 50051:50051
+    volumes:
+    - weaviate_data:/var/lib/weaviate
+    restart: on-failure:0
+    environment:
+      QUERY_DEFAULTS_LIMIT: 25
+      PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
+      ENABLE_API_BASED_MODULES: 'true'
+      CLUSTER_HOSTNAME: 'node1'
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'false'
+      AUTHENTICATION_APIKEY_ENABLED: 'true'
+      AUTHENTICATION_APIKEY_ALLOWED_KEYS: 'user-a-key,user-b-key'
+      AUTHENTICATION_APIKEY_USERS: 'user-a,user-b'
+      AUTHORIZATION_ENABLE_RBAC: 'true'
+      AUTHORIZATION_RBAC_ROOT_USERS: 'user-a'
+volumes:
+  weaviate_data:
+...
