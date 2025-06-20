@@ -1,0 +1,73 @@
+https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/determine-the-actual-size-of-the-winsxs-folder?view=windows-11
+https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/clean-up-the-winsxs-folder?view=windows-11
+
+==============
+CHECK
+==============
+C:> Dism.exe /Online /Cleanup-Image /AnalyzeComponentStore
+
+Deployment Image Servicing and Management tool
+Version: 10.0.26100.1150
+
+Image Version: 10.0.26100.4061
+
+[==========================100.0%==========================]
+
+Component Store (WinSxS) information:
+
+Windows Explorer Reported Size of Component Store : 19.20 GB
+
+Actual Size of Component Store : 18.13 GB
+
+    Shared with Windows : 7.52 GB
+    Backups and Disabled Features : 10.27 GB
+    Cache and Temporary Data : 336.64 MB
+
+Date of Last Cleanup : 2025-06-18 10:38:31
+
+Number of Reclaimable Packages : 21
+Component Store Cleanup Recommended : Yes
+
+The operation completed successfully.
+Restart Windows to complete this operation.
+Do you want to restart the computer now? (Y/N) N
+
+====================================
+SCHEDULE BASED FIX
+====================================
+Run the StartComponentCleanup task in Task Scheduler to clean up and compress components
+If Task Scheduler is not open, start the Task Scheduler. For more information, see Start Task Scheduler.
+
+Expand the console tree and navigate to Task Scheduler Library\Microsoft\Windows\Servicing\StartComponentCleanup.
+
+Under Selected Item, click Run
+
+schtasks.exe /Run /TN "\Microsoft\Windows\Servicing\StartComponentCleanup"
+
+====================================
+MANUAL FIX RUN
+====================================
+Dism.exe
+The /Cleanup-Image parameter of Dism.exe provides advanced users more options to further reduce the size of the WinSxS folder. For more information, see DISM Operating System Package Servicing Command-Line Options.
+
+Use the /StartComponentCleanup parameter
+Using the /StartComponentCleanup parameter of Dism.exe on a running version of Windows 10 or later gives you similar results to running the StartComponentCleanup task in Task Scheduler, except previous versions of updated components will be immediately deleted (without a 30 day grace period) and you will not have a 1-hour timeout limitation.
+
+From an elevated command prompt, run:
+
+Windows Command Prompt
+
+
+Dism.exe /online /Cleanup-Image /StartComponentCleanup
+Use the /ResetBase switch with the /StartComponentCleanup parameter
+Using the /ResetBase parameter together with the /StartComponentCleanup parameter of DISM.exe on a running version of Windows 10 or later removes all superseded versions of every component in the component store.
+
+From an elevated command prompt, run:
+
+Windows Command Prompt
+
+Dism.exe /online /Cleanup-Image /StartComponentCleanup /ResetBase
+
+
+
+
